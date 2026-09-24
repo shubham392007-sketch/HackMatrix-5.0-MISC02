@@ -1,0 +1,257 @@
+/* ── RecommendationsPanel.css ─────────────────────────────────────
+   Modern, dark‑themed dashboard widget for skill recommendations.
+   Works standalone — no Tailwind required.
+   ──────────────────────────────────────────────────────────────── */
+
+/* ── Panel wrapper ────────────────────────────────────────────── */
+.rec-panel {
+  --clr-bg: #0f1117;
+  --clr-surface: #1a1d27;
+  --clr-border: #2a2d3a;
+  --clr-text: #e4e6eb;
+  --clr-muted: #8b8fa3;
+  --clr-accent-yellow: #f5a623;
+  --clr-accent-red: #e74c5e;
+  --clr-accent-blue: #5b8def;
+  --clr-accent-green: #34d399;
+  --radius: 14px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  padding: 2rem;
+  border-radius: var(--radius);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Title ────────────────────────────────────────────────────── */
+.rec-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.rec-title-icon {
+  font-size: 1.3rem;
+}
+
+/* ── Grid ─────────────────────────────────────────────────────── */
+.rec-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Card base ────────────────────────────────────────────────── */
+.rec-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.rec-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.rec-card--tutorial::before {
+  background: linear-gradient(180deg, var(--clr-accent-red), var(--clr-accent-yellow));
+}
+
+.rec-card--mentor::before {
+  background: linear-gradient(180deg, var(--clr-accent-blue), var(--clr-accent-green));
+}
+
+.rec-card:hover {
+  border-color: #3a3d4a;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Badge ────────────────────────────────────────────────────── */
+.rec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clr-accent-yellow);
+  background: rgba(245, 166, 35, 0.1);
+  padding: 0.25rem 0.65rem;
+  border-radius: 100px;
+  margin-bottom: 0.75rem;
+}
+
+.rec-badge-icon {
+  font-size: 0.85rem;
+}
+
+/* ── Competency heading ───────────────────────────────────────── */
+.rec-competency {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--clr-text);
+}
+
+.rec-competency-name {
+  color: var(--clr-accent-red);
+}
+
+/* ── Evidence ref ─────────────────────────────────────────────── */
+.rec-evidence {
+  font-size: 0.82rem;
+  color: var(--clr-muted);
+  margin: 0 0 0.35rem;
+}
+
+.rec-evidence-code {
+  background: rgba(91, 141, 239, 0.12);
+  color: var(--clr-accent-blue);
+  padding: 0.1rem 0.45rem;
+  border-radius: 5px;
+  font-family: "Fira Code", "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+}
+
+/* ── Action label ─────────────────────────────────────────────── */
+.rec-action-label {
+  font-size: 0.85rem;
+  color: var(--clr-muted);
+  margin: 0 0 1rem;
+  font-style: italic;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.rec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--transition), box-shadow var(--transition),
+    background var(--transition);
+}
+
+.rec-btn:hover {
+  transform: translateY(-1px);
+}
+
+.rec-btn:active {
+  transform: translateY(0);
+}
+
+/* Tutorial CTA */
+.rec-btn--tutorial {
+  background: linear-gradient(135deg, #e74c5e, #f5a623);
+  color: #fff;
+}
+
+.rec-btn--tutorial:hover {
+  box-shadow: 0 4px 18px rgba(231, 76, 94, 0.4);
+}
+
+/* Mentorship CTA */
+.rec-btn--mentor {
+  background: linear-gradient(135deg, #5b8def, #34d399);
+  color: #fff;
+}
+
+.rec-btn--mentor:hover {
+  box-shadow: 0 4px 18px rgba(91, 141, 239, 0.4);
+}
+
+/* Sent state */
+.rec-btn--sent {
+  background: var(--clr-accent-green);
+  cursor: default;
+  opacity: 0.85;
+}
+
+.rec-btn--sent:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.rec-empty {
+  text-align: center;
+  color: var(--clr-muted);
+  padding: 2rem 0;
+  font-size: 0.95rem;
+}
+
+/* ── Error state ──────────────────────────────────────────────── */
+.rec-error {
+  color: var(--clr-accent-red);
+  background: rgba(231, 76, 94, 0.08);
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* ── Skeleton loader ──────────────────────────────────────────── */
+.rec-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rec-skeleton-card {
+  height: 140px;
+  background: linear-gradient(
+    90deg,
+    var(--clr-surface) 25%,
+    #22252f 50%,
+    var(--clr-surface) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .rec-panel {
+    padding: 1.25rem;
+  }
+
+  .rec-card {
+    padding: 1.15rem;
+  }
+
+  .rec-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
