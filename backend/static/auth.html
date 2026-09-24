@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrowthLens — Authentication & Profile Onboarding</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur px-8 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-brain text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base tracking-wide flex items-center gap-2">
+          GrowthLens
+          <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded font-mono">MISC02</span>
+        </h1>
+        <p class="text-xs text-slate-400">Continuous Talent Intelligence & Skill Growth</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-xs">
+      <a href="/dev" class="text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-terminal"></i> Developer Workbench
+      </a>
+      <a href="/docs" target="_blank" class="text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-book"></i> API Docs
+      </a>
+    </div>
+  </header>
+
+  <!-- Centered Form Container -->
+  <main class="flex-1 flex items-center justify-center px-4 py-8">
+    <div class="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 space-y-6">
+
+      <!-- Form Switcher Tabs -->
+      <div class="flex border-b border-slate-800">
+        <button onclick="setAuthMode('register')" id="tab-register-btn" class="w-1/2 pb-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-user-plus"></i> Create Profile & Connect Credentials
+        </button>
+        <button onclick="setAuthMode('login')" id="tab-login-btn" class="w-1/2 pb-3 font-medium text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Login Existing Profile
+        </button>
+      </div>
+
+      <!-- Alert Message Box -->
+      <div id="alert-box" class="hidden p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium"></div>
+
+      <!-- ==================== REGISTRATION FORM ==================== -->
+      <form id="form-register" onsubmit="handleRegister(event)" class="space-y-6">
+        
+        <!-- Section 1: Employee Identity -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 border-b border-slate-800/80 pb-1.5">
+            <i class="fa-solid fa-id-card"></i> 1. Employee Profile Details
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Full Name <span class="text-rose-400">*</span></label>
+              <input id="reg-name" type="text" required placeholder="e.g. Maya Sharma" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Work Email <span class="text-rose-400">*</span></label>
+              <input id="reg-email" type="email" required placeholder="e.g. maya@growthlens.internal" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Password <span class="text-rose-400">*</span></label>
+              <input id="reg-pwd" type="password" required minlength="6" placeholder="Min. 6 characters" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Job Title / Role</label>
+              <input id="reg-role" type="text" placeholder="e.g. Senior Backend & Data Engineer" value="Senior Backend Engineer" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-slate-300 block mb-1 font-medium">Department / Squad</label>
+              <input id="reg-dept" type="text" placeholder="e.g. Core Platform & Intelligence" value="Core Engineering" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: GitHub Credentials -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-200 border-b border-slate-800/80 pb-1.5">
+            <span class="flex items-center gap-2">
+              <i class="fa-brands fa-github text-base"></i> 2. GitHub Integration Credentials
+            </span>
+            <span class="text-[10px] lowercase text-slate-400 font-normal">optional for demo</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">GitHub Username</label>
+              <input id="reg-gh-user" type="text" placeholder="e.g. mayasharma-dev" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Personal Access Token (PAT)</label>
+              <div class="relative">
+                <input id="reg-gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 pr-9">
+                <button type="button" onclick="toggleSecret('reg-gh-token')" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-200"><i class="fa-regular fa-eye"></i></button>
+              </div>
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Default Repo Owner</label>
+              <input id="reg-gh-owner" type="text" placeholder="e.g. myorg" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Default Repo Name</label>
+              <input id="reg-gh-repo" type="text" placeholder="e.g. backend-core" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Jira Credentials -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-blue-400 border-b border-slate-800/80 pb-1.5">
+            <span class="flex items-center gap-2">
+              <i class="fa-brands fa-jira text-base"></i> 3. Jira Cloud Credentials
+            </span>
+            <span class="text-[10px] lowercase text-slate-400 font-normal">optional for demo</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Jira Cloud URL</label>
+              <input id="reg-jira-url" type="url" placeholder="https://company.atlassian.net" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Jira Account Email</label>
+              <input id="reg-jira-email" type="email" placeholder="e.g. maya@company.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Jira API Token</label>
+              <div class="relative">
+                <input id="reg-jira-token" type="password" placeholder="ATATT3xxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 pr-9">
+                <button type="button" onclick="toggleSecret('reg-jira-token')" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-200"><i class="fa-regular fa-eye"></i></button>
+              </div>
+            </div>
+            <div>
+              <label class="text-slate-300 block mb-1 font-medium">Project Key</label>
+              <input id="reg-jira-key" type="text" placeholder="e.g. DEV or PROJ" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-register" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-rocket"></i> Create Profile & Launch GrowthLens
+        </button>
+      </form>
+
+      <!-- ==================== LOGIN FORM ==================== -->
+      <form id="form-login" onsubmit="handleLogin(event)" class="space-y-5 hidden">
+        <div class="space-y-4 text-xs">
+          <div>
+            <label class="text-slate-300 block mb-1 font-medium">Work Email</label>
+            <input id="login-email" type="email" required placeholder="e.g. maya@growthlens.internal" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-slate-300 block mb-1 font-medium">Password</label>
+            <input id="login-pwd" type="password" required placeholder="Enter your password" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Login & Access Workbench
+        </button>
+      </form>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-900/40 text-center py-4 text-xs text-slate-500">
+    GrowthLens &bull; HackMatrix 5.0 Track MISC02 &bull; Confidential & Secure Credential Store
+  </footer>
+
+  <script>
+    function setAuthMode(mode) {
+      const regForm = document.getElementById('form-register');
+      const loginForm = document.getElementById('form-login');
+      const regBtn = document.getElementById('tab-register-btn');
+      const loginBtn = document.getElementById('tab-login-btn');
+      hideAlert();
+
+      if (mode === 'register') {
+        regForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        regBtn.className = "w-1/2 pb-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center justify-center gap-2 transition";
+        loginBtn.className = "w-1/2 pb-3 font-medium text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2 transition";
+      } else {
+        regForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        loginBtn.className = "w-1/2 pb-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 flex items-center justify-center gap-2 transition";
+        regBtn.className = "w-1/2 pb-3 font-medium text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2 transition";
+      }
+    }
+
+    function toggleSecret(id) {
+      const input = document.getElementById(id);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function showAlert(msg, isError = true) {
+      const box = document.getElementById('alert-box');
+      box.innerText = msg;
+      box.className = isError 
+        ? "p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20"
+        : "p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      box.classList.remove('hidden');
+    }
+
+    function hideAlert() {
+      document.getElementById('alert-box').classList.add('hidden');
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      hideAlert();
+      const btn = document.getElementById('btn-submit-register');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Creating Profile...';
+
+      const payload = {
+        name: document.getElementById('reg-name').value.trim(),
+        email: document.getElementById('reg-email').value.trim(),
+        password: document.getElementById('reg-pwd').value,
+        role: document.getElementById('reg-role').value.trim() || 'Software Engineer',
+        department: document.getElementById('reg-dept').value.trim() || 'Engineering',
+        github_username: document.getElementById('reg-gh-user').value.trim() || null,
+        github_token: document.getElementById('reg-gh-token').value.trim() || null,
+        github_repository_owner: document.getElementById('reg-gh-owner').value.trim() || null,
+        github_repository_name: document.getElementById('reg-gh-repo').value.trim() || null,
+        jira_base_url: document.getElementById('reg-jira-url').value.trim() || null,
+        jira_email: document.getElementById('reg-jira-email').value.trim() || null,
+        jira_api_token: document.getElementById('reg-jira-token').value.trim() || null,
+        jira_project_key: document.getElementById('reg-jira-key').value.trim() || null,
+      };
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Registration failed');
+        }
+
+        // Save session in localStorage
+        localStorage.setItem('growthlens_token', data.access_token);
+        localStorage.setItem('growthlens_active_emp', JSON.stringify(data.employee));
+        showAlert("Profile created successfully! Redirecting to Workbench...", false);
+
+        setTimeout(() => {
+          window.location.href = '/dev';
+        }, 1000);
+
+      } catch (err) {
+        showAlert(err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Create Profile & Launch GrowthLens';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideAlert();
+      const btn = document.getElementById('btn-submit-login');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Authenticating...';
+
+      const payload = {
+        email: document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-pwd').value,
+      };
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Login failed');
+        }
+
+        // Save session in localStorage
+        localStorage.setItem('growthlens_token', data.access_token);
+        localStorage.setItem('growthlens_active_emp', JSON.stringify(data.employee));
+        showAlert("Authenticated successfully! Loading Workbench...", false);
+
+        setTimeout(() => {
+          window.location.href = '/dev';
+        }, 800);
+
+      } catch (err) {
+        showAlert(err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Login & Access Workbench';
+      }
+    }
+  </script>
+</body>
+</html>

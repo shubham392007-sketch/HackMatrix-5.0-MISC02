@@ -76,10 +76,11 @@ import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees
+from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees, auth
 
 # Register routers
 app.include_router(health.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(employees.router, prefix="/api")
 app.include_router(github.router, prefix="/api")
 app.include_router(jira.router, prefix="/api")
@@ -101,3 +102,12 @@ async def serve_developer_workbench():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"message": "GrowthLens API is active. Go to /docs for Swagger UI."}
+
+@app.get("/auth", include_in_schema=False)
+@app.get("/login", include_in_schema=False)
+async def serve_auth_page():
+    """Serves the Authentication & Onboarding Page."""
+    auth_file = os.path.join(static_dir, "auth.html")
+    if os.path.exists(auth_file):
+        return FileResponse(auth_file)
+    return {"message": "Auth page missing"}
