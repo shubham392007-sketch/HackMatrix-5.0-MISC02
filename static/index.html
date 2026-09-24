@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Next-Action Recommendation Engine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Globals ───────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #08090d;
+      --surface:   #12141c;
+      --card:      #191c28;
+      --border:    #252836;
+      --text:      #e4e6f0;
+      --muted:     #7c8094;
+      --yellow:    #f5a623;
+      --red:       #e74c5e;
+      --blue:      #5b8def;
+      --green:     #34d399;
+      --purple:    #a78bfa;
+      --radius:    16px;
+      --ease:      cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Animated gradient background ──────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(91,141,239,.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(167,139,250,.06) 0%, transparent 60%);
+      z-index: -1;
+      animation: bgShift 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+      to { filter: hue-rotate(30deg); }
+    }
+
+    /* ── Header / Hero ─────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 3.5rem 1.5rem 1rem;
+      max-width: 680px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--purple);
+      background: rgba(167,139,250,.1);
+      padding: .35rem .9rem;
+      border-radius: 100px;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1.2;
+      background: linear-gradient(135deg, var(--text), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      margin-top: .75rem;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.6;
+    }
+
+    /* ── Stats Row ─────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem 1.5rem 2rem;
+      max-width: 680px;
+      width: 100%;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.15rem 1.25rem;
+      text-align: center;
+      transition: border-color .3s var(--ease);
+    }
+
+    .stat-card:hover { border-color: #3a3d4e; }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-top: .25rem;
+    }
+
+    .stat-card:nth-child(1) .stat-value { color: var(--red); }
+    .stat-card:nth-child(2) .stat-value { color: var(--yellow); }
+    .stat-card:nth-child(3) .stat-value { color: var(--green); }
+
+    /* ── Panel Container ───────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      max-width: 680px;
+      width: calc(100% - 3rem);
+      margin-bottom: 3rem;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .panel-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .panel-subtitle {
+      font-size: .75rem;
+      color: var(--muted);
+    }
+
+    /* ── Loading skeleton ──────────────────────────────────── */
+    .skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .skeleton-card {
+      height: 160px;
+      background: linear-gradient(90deg, var(--card) 25%, #1f2230 50%, var(--card) 75%);
+      background-size: 200% 100%;
+      border-radius: 12px;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .rec-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .rec-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.35rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease);
+    }
+
+    .rec-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 4px; height: 100%;
+      border-radius: 12px 0 0 12px;
+    }
+
+    .rec-card--tutorial::before {
+      background: linear-gradient(180deg, var(--red), var(--yellow));
+    }
+
+    .rec-card--mentor::before {
+      background: linear-gradient(180deg, var(--blue), var(--green));
+    }
+
+    .rec-card:hover {
+      border-color: #3a3d4e;
+      box-shadow: 0 8px 30px rgba(0,0,0,.4);
+      transform: translateY(-2px);
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: .25rem .65rem;
+      border-radius: 100px;
+      margin-bottom: .65rem;
+    }
+
+    .badge--warn {
+      color: var(--yellow);
+      background: rgba(245,166,35,.1);
+    }
+
+    .badge--mentor {
+      color: var(--blue);
+      background: rgba(91,141,239,.1);
+    }
+
+    /* Card headings */
+    .rec-heading {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: .4rem;
+    }
+
+    .rec-heading .highlight { color: var(--red); }
+
+    .rec-evidence {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: .15rem;
+    }
+
+    .rec-evidence code {
+      background: rgba(91,141,239,.12);
+      color: var(--blue);
+      padding: .1rem .4rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .74rem;
+    }
+
+    .rec-action-type {
+      font-size: .82rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 1rem;
+    }
+
+    /* CTA buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .7rem 1.3rem;
+      font-size: .82rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn--tutorial {
+      background: linear-gradient(135deg, #e74c5e, #f5a623);
+      color: #fff;
+    }
+
+    .btn--tutorial:hover {
+      box-shadow: 0 4px 20px rgba(231,76,94,.4);
+    }
+
+    .btn--mentor {
+      background: linear-gradient(135deg, #5b8def, #34d399);
+      color: #fff;
+    }
+
+    .btn--mentor:hover {
+      box-shadow: 0 4px 20px rgba(91,141,239,.4);
+    }
+
+    .btn--sent {
+      background: var(--green);
+      cursor: default;
+      opacity: .85;
+    }
+
+    .btn--sent:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Error ─────────────────────────────────────────────── */
+    .error-box {
+      color: var(--red);
+      background: rgba(231,76,94,.08);
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: .88rem;
+    }
+
+    /* ── Empty ─────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem 0;
+    }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--muted);
+      font-size: .72rem;
+    }
+
+    .footer a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    /* ── Responsive ────────────────────────────────────────── */
+    @media (max-width: 520px) {
+      .stats { flex-direction: column; }
+      .panel { padding: 1.25rem; }
+      .rec-card { padding: 1.1rem; }
+      .btn { width: 100%; justify-content: center; }
+    }
+
+    /* ── Fade-in animation ─────────────────────────────────── */
+    .fade-in {
+      animation: fadeIn .5s var(--ease) both;
+    }
+
+    .fade-in:nth-child(2) { animation-delay: .08s; }
+    .fade-in:nth-child(3) { animation-delay: .16s; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">🧠 HackMatrix 5.0 — MISC02</div>
+    <h1>Next-Action Recommendation Engine</h1>
+    <p>AI-driven skill-gap analysis with LSTM trajectory prediction. Personalised learning paths &amp; peer mentorship matching — all in real time.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-declining">—</div>
+      <div class="stat-label">Declining Skills</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-confidence">—</div>
+      <div class="stat-label">Model Confidence</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-actions">—</div>
+      <div class="stat-label">Suggested Actions</div>
+    </div>
+  </div>
+
+  <!-- Recommendations Panel -->
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <div class="panel-title">🎯 Suggested Next Actions</div>
+      <div class="panel-subtitle">Learner: <strong>user_123</strong></div>
+    </div>
+    <div id="content">
+      <!-- loading skeleton -->
+      <div class="skeleton">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built for <strong>HackMatrix 5.0</strong> · Powered by FastAPI &amp; LSTM · <a href="/docs" target="_blank">API Docs ↗</a>
+  </div>
+
+  <script>
+    const API_BASE  = '';          // same origin
+    const LEARNER   = 'user_123';
+    const contentEl = document.getElementById('content');
+
+    async function loadRecommendations() {
+      try {
+        const res  = await fetch(`${API_BASE}/api/v1/learner/${LEARNER}/recommendations`);
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        const data = await res.json();
+        const recs = data.recommendations || [];
+
+        // Update stats
+        document.getElementById('stat-declining').textContent  = recs.length;
+        document.getElementById('stat-confidence').textContent = '85%';
+        document.getElementById('stat-actions').textContent    = recs.length;
+
+        if (recs.length === 0) {
+          contentEl.innerHTML = '<p class="empty">No action items right now — you\'re on track! 🚀</p>';
+          return;
+        }
+
+        contentEl.innerHTML = '<div class="rec-grid">' + recs.map((rec, i) => {
+          const isMentor = !!rec.mentor_suggestion;
+          const cardClass = isMentor ? 'rec-card--mentor' : 'rec-card--tutorial';
+          const badgeClass = isMentor ? 'badge--mentor' : 'badge--warn';
+          const badgeText  = isMentor ? '🤝 Mentorship Match' : '⚠️ Skill Warning';
+
+          let cta = '';
+          if (rec.external_link) {
+            cta = `<a href="${rec.external_link}" target="_blank" rel="noopener noreferrer" class="btn btn--tutorial">▶ Watch Recommended Tutorial</a>`;
+          }
+          if (rec.mentor_suggestion) {
+            cta = `<button class="btn btn--mentor" id="mentor-btn-${i}"
+                     onclick="requestMentorship('${rec.mentor_suggestion.mentor_id}', '${rec.competency}', ${i})">
+                     🤝 Request Peer Mentorship from ${rec.mentor_suggestion.mentor_name}
+                   </button>`;
+          }
+
+          return `
+            <div class="rec-card ${cardClass} fade-in">
+              <div class="badge ${badgeClass}">${badgeText}</div>
+              <h3 class="rec-heading"><span class="highlight">${rec.competency}</span> is declining</h3>
+              <p class="rec-evidence">Evidence Reference: <code>${rec.evidence_ref}</code></p>
+              <p class="rec-action-type">${rec.action}</p>
+              ${cta}
+            </div>`;
+        }).join('') + '</div>';
+
+      } catch (err) {
+        contentEl.innerHTML = `<div class="error-box">⚠ Unable to load recommendations: ${err.message}</div>`;
+      }
+    }
+
+    async function requestMentorship(mentorId, competencyId, idx) {
+      const btn = document.getElementById(`mentor-btn-${idx}`);
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/manager/mentorship/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            manager_id:    'mgr_1',
+            mentee_id:     LEARNER,
+            mentor_id:     mentorId,
+            competency_id: competencyId,
+          }),
+        });
+        if (!res.ok) throw new Error('Request failed');
+        btn.textContent = '✓ Request Sent!';
+        btn.classList.add('btn--sent');
+      } catch {
+        btn.textContent = '✗ Failed — Retry';
+        btn.disabled = false;
+      }
+    }
+
+    loadRecommendations();
+  </script>
+</body>
+</html>

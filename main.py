@@ -1,7 +1,13 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from routers.recommendations import router as recommendations_router
+
+BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
     title="Next-Action Recommendation Engine",
@@ -22,3 +28,13 @@ app.add_middleware(
 
 # ── Router registration ──────────────────────────────────────────
 app.include_router(recommendations_router)
+
+# ── Static files & dashboard ─────────────────────────────────────
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+@app.get("/")
+async def root():
+    """Serve the dashboard UI."""
+    return FileResponse(str(BASE_DIR / "static" / "index.html"))
+

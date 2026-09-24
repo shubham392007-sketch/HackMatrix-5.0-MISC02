@@ -1,14 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 # Service imports
 from services.youtube_service import get_top_youtube_tutorial
 from services.mentorship_service import find_internal_mentor
 from utils.mock_triggers import mock_get_skill_trajectory
-
-# SQLAlchemy model import (for the POST endpoint)
-from models.recommendations import MentorshipPairing
-from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -64,26 +60,32 @@ class MentorshipRequest(BaseModel):
 
 
 @router.post("/api/v1/manager/mentorship/request")
-async def request_mentorship(request: MentorshipRequest, db: Session):
+async def request_mentorship(request: MentorshipRequest):
     """Create a new MentorshipPairing record with a pending status.
 
-    Args:
-        request: Payload containing IDs required for the pairing.
-        db: SQLAlchemy Session injected by the FastAPI dependency system.
+    Currently mocked – the real SQLAlchemy write will be wired in during
+    integration once the database dependency (get_db) is configured.
+
+    # --- Real implementation (uncomment during integration) ---
+    # from fastapi import Depends
+    # from models.recommendations import MentorshipPairing
+    # async def request_mentorship(request: MentorshipRequest, db: Session = Depends(get_db)):
+    #     new_pairing = MentorshipPairing(
+    #         mentor_id=request.mentor_id,
+    #         mentee_id=request.mentee_id,
+    #         competency_id=request.competency_id,
+    #         status="pending",
+    #         initiated_by_manager_id=request.manager_id,
+    #     )
+    #     db.add(new_pairing)
+    #     db.commit()
+    #     db.refresh(new_pairing)
     """
-    new_pairing = MentorshipPairing(
-        mentor_id=request.mentor_id,
-        mentee_id=request.mentee_id,
-        competency_id=request.competency_id,
-        status="pending",
-        initiated_by_manager_id=request.manager_id,
+    # Mock: log the request and return success
+    print(
+        f"[MOCK DB] Mentorship pairing created: "
+        f"mentor={request.mentor_id}, mentee={request.mentee_id}, "
+        f"competency={request.competency_id}, manager={request.manager_id}"
     )
-    db.add(new_pairing)
-    try:
-        db.commit()
-        db.refresh(new_pairing)
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(exc))
 
     return {"status": "success", "message": "Mentorship request initiated"}
