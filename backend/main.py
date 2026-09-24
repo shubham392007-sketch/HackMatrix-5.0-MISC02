@@ -1,0 +1,84 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.core.config import get_settings
+from backend.core.logging import setup_logging, get_logger
+from backend.core.exceptions import GrowthLensError
+from backend.api.routes import health
+
+logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application startup and shutdown."""
+    settings = get_settings()
+    setup_logging(debug=settings.debug)
+    logger.info("GrowthLens backend starting", extra={"version": settings.app_version})
+    yield
+    logger.info("GrowthLens backend shutting down")
+
+
+app = FastAPI(
+    title="GrowthLens",
+    description="AI-Driven Evidence Extraction & RAG Pipeline for Continuous Talent Intelligence",
+    version=get_settings().app_version,
+    lifespan=lifespan,
+)
+
+# CORS - permissive for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Global exception handler for GrowthLens errors
+@app.exception_handler(GrowthLensError)
+async def growthlens_error_handler(request: Request, exc: GrowthLensError):
+    """Handle all GrowthLens custom exceptions."""
+    logger.error(
+        f"{exc.error_code}: {exc.message}",
+        extra={"error_category": exc.error_code},
+    )
+    return JSONResponse(
+        status_code=_error_code_to_status(exc.error_code),
+        content={
+            "error": exc.error_code,
+            "message": exc.message,
+            "details": exc.details,
+        },
+    )
+
+
+def _error_code_to_status(error_code: str) -> int:
+    """Map error codes to HTTP status codes."""
+    mapping = {
+        "database_unavailable": 503,
+        "github_integration_error": 502,
+        "jira_integration_error": 502,
+        "llm_service_unavailable": 503,
+        "vector_store_unavailable": 503,
+        "employee_mapping_required": 422,
+        "insufficient_evidence": 200,  # Valid response, not an error
+        "cross_employee_access_denied": 403,
+        "internal_error": 500,
+    }
+    return mapping.get(error_code, 500)
+
+
+from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion
+
+# Register routers
+app.include_router(health.router, prefix="/api")
+app.include_router(github.router, prefix="/api")
+app.include_router(jira.router, prefix="/api")
+app.include_router(identities.router, prefix="/api")
+app.include_router(evidence.router, prefix="/api")
+app.include_router(rag.router, prefix="/api")
+app.include_router(ingestion.router, prefix="/api")
