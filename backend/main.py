@@ -72,13 +72,32 @@ def _error_code_to_status(error_code: str) -> int:
     return mapping.get(error_code, 500)
 
 
-from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+
+from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees
 
 # Register routers
 app.include_router(health.router, prefix="/api")
+app.include_router(employees.router, prefix="/api")
 app.include_router(github.router, prefix="/api")
 app.include_router(jira.router, prefix="/api")
 app.include_router(identities.router, prefix="/api")
 app.include_router(evidence.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(ingestion.router, prefix="/api")
+
+# Mount static folder
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+@app.get("/", include_in_schema=False)
+@app.get("/dev", include_in_schema=False)
+async def serve_developer_workbench():
+    """Serves the Feature 1 Developer Testing Workbench."""
+    index_file = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"message": "GrowthLens API is active. Go to /docs for Swagger UI."}

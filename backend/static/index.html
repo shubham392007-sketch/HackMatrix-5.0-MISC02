@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrowthLens — Feature 1 Developer Workbench</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+  <!-- Top Navigation & Live Health -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-brain text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base tracking-wide flex items-center gap-2">
+          GrowthLens
+          <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded font-mono">MISC02 Feature 1</span>
+        </h1>
+        <p class="text-xs text-slate-400">AI-Driven Evidence Extraction & RAG Pipeline Workbench</p>
+      </div>
+    </div>
+
+    <!-- Health Status Indicators -->
+    <div class="flex items-center gap-2 text-xs mono">
+      <button onclick="checkHealth()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-arrows-rotate"></i> Ping Health
+      </button>
+      <span id="pill-api" class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">API: ...</span>
+      <span id="pill-db" class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">Supabase: ...</span>
+      <span id="pill-llm" class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">Qwen3 8B: ...</span>
+      <span id="pill-vector" class="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">ChromaDB: Local</span>
+      <a href="/docs" target="_blank" class="px-2.5 py-1 rounded bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 border border-indigo-500/40 ml-2 font-sans font-medium">
+        <i class="fa-solid fa-book-open mr-1"></i> Swagger API
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+    <!-- Active Employee Selector Bar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-slate-800 text-indigo-400">
+          <i class="fa-solid fa-user-tag text-lg"></i>
+        </div>
+        <div>
+          <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block">Active Employee Context</label>
+          <div class="flex items-center gap-2 mt-0.5">
+            <select id="employee-select" onchange="onEmployeeChanged()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 min-w-[280px]">
+              <option value="">Loading employees from Supabase...</option>
+            </select>
+            <button onclick="loadEmployees()" class="p-1.5 text-slate-400 hover:text-white"><i class="fa-solid fa-rotate"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openCreateEmployeeModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> New Employee
+        </button>
+        <button onclick="openMapIdentityModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5">
+          <i class="fa-brands fa-github mr-0.5"></i>/<i class="fa-brands fa-jira mr-0.5"></i> Map Identity
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-800 gap-1 text-sm font-medium">
+      <button onclick="switchTab('tab-ingest')" id="btn-tab-ingest" class="px-4 py-2.5 border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2">
+        <i class="fa-solid fa-cloud-arrow-down"></i> 1. Ingest Evidence
+      </button>
+      <button onclick="switchTab('tab-explorer')" id="btn-tab-explorer" class="px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-database"></i> 2. Evidence & Skills Explorer
+      </button>
+      <button onclick="switchTab('tab-search')" id="btn-tab-search" class="px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-magnifying-glass"></i> 3. Semantic Vector Search
+      </button>
+      <button onclick="switchTab('tab-rag')" id="btn-tab-rag" class="px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-microchip"></i> 4. RAG Justification Engine
+      </button>
+      <button onclick="switchTab('tab-runs')" id="btn-tab-runs" class="px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-list-check"></i> 5. Ingestion Runs
+      </button>
+    </div>
+
+    <!-- ==================== TAB 1: INGESTION ==================== -->
+    <div id="tab-ingest" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Panel A: GitHub Integration -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold text-sm flex items-center gap-2">
+                <i class="fa-brands fa-github text-lg text-slate-200"></i> GitHub Ingestion
+              </h2>
+              <span id="badge-github" class="text-[10px] px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-400">Checking...</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">Fetches commits & PRs, normalizes to canonical evidence, runs Qwen3 skill extraction, and indexes in ChromaDB.</p>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="text-slate-400 block mb-1">Owner / Organization</label>
+                <input id="gh-owner" type="text" placeholder="e.g. facebook" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Repository Name</label>
+                <input id="gh-repo" type="text" placeholder="e.g. react" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div class="flex gap-2">
+                <div class="w-1/2">
+                  <label class="text-slate-400 block mb-1">Max Commits</label>
+                  <input id="gh-limit-commits" type="number" value="10" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                </div>
+                <div class="w-1/2">
+                  <label class="text-slate-400 block mb-1">Max PRs</label>
+                  <input id="gh-limit-prs" type="number" value="5" min="1" max="30" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                </div>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer pt-1">
+                <input id="gh-run-ai" type="checkbox" checked class="rounded border-slate-700 text-indigo-600">
+                <span class="text-slate-300">Run Qwen3 AI Extraction</span>
+              </label>
+            </div>
+          </div>
+          <div class="pt-4 flex gap-2">
+            <button onclick="testGitHub()" class="w-1/2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium">Test Connection</button>
+            <button onclick="syncGitHub()" id="btn-gh-sync" class="w-1/2 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrows-rotate"></i> Sync GitHub
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel B: Jira Integration -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold text-sm flex items-center gap-2">
+                <i class="fa-brands fa-jira text-lg text-blue-400"></i> Jira Ingestion
+              </h2>
+              <span id="badge-jira" class="text-[10px] px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-400">Checking...</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">Searches project issues via JQL, extracts ADF description text, resolves assignee to employee, and indexes in ChromaDB.</p>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="text-slate-400 block mb-1">Jira Project Key</label>
+                <input id="jira-proj" type="text" placeholder="e.g. PROJ or DEV" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Max Issues</label>
+                <input id="jira-limit" type="number" value="10" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer pt-1">
+                <input id="jira-run-ai" type="checkbox" checked class="rounded border-slate-700 text-indigo-600">
+                <span class="text-slate-300">Run Qwen3 AI Extraction</span>
+              </label>
+            </div>
+          </div>
+          <div class="pt-4 flex gap-2">
+            <button onclick="testJira()" class="w-1/2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium">Test Connection</button>
+            <button onclick="syncJira()" id="btn-jira-sync" class="w-1/2 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrows-rotate"></i> Sync Jira
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel C: Direct Custom Evidence Ingestion -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold text-sm flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400"></i> Direct Custom Evidence
+              </h2>
+              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Instant Test</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">Directly submit any work activity (commit, bug fix, PR, code review) to test the complete live pipeline instantly.</p>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="text-slate-400 block mb-1">Activity Title</label>
+                <input id="custom-title" type="text" value="Fix missing-value imputation in Pandas preprocessing pipeline" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Activity Details / Diff / Summary</label>
+                <textarea id="custom-content" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">Refactored dataset loader to handle NaN values and optimized dataframe merging using vectorized Pandas operations.</textarea>
+              </div>
+              <div class="flex gap-2">
+                <div class="w-1/2">
+                  <label class="text-slate-400 block mb-1">Source</label>
+                  <select id="custom-source" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                    <option value="github">GitHub</option>
+                    <option value="jira">Jira</option>
+                    <option value="internal">Internal</option>
+                  </select>
+                </div>
+                <div class="w-1/2">
+                  <label class="text-slate-400 block mb-1">Type</label>
+                  <select id="custom-type" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                    <option value="commit">Commit</option>
+                    <option value="pull_request">Pull Request</option>
+                    <option value="issue">Issue</option>
+                    <option value="task">Task</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pt-4">
+            <button onclick="submitCustomEvidence()" id="btn-custom-submit" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-bolt"></i> Ingest, Tag & Index Vector
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Operation Log Output -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-terminal"></i> Ingestion Log Output
+          </span>
+          <button onclick="clearLog()" class="text-xs text-slate-500 hover:text-slate-300">Clear</button>
+        </div>
+        <pre id="log-output" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs mono text-slate-300 max-h-56 overflow-y-auto whitespace-pre-wrap">Ready. Select an action above to start evidence ingestion.</pre>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: EXPLORER ==================== -->
+    <div id="tab-explorer" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold">Stored Evidence & Skill Tagging</h2>
+          <p class="text-xs text-slate-400">Canonical evidence stored in Supabase PostgreSQL with AI-extracted skills & competencies.</p>
+        </div>
+        <button onclick="loadEmployeeEvidence()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate"></i> Refresh Evidence
+        </button>
+      </div>
+
+      <div id="evidence-list" class="space-y-3">
+        <div class="p-8 text-center text-slate-500 text-sm">Select an active employee to view evidence records.</div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: SEMANTIC SEARCH ==================== -->
+    <div id="tab-search" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <h2 class="font-bold text-sm mb-1 flex items-center gap-2">
+          <i class="fa-solid fa-vector-square text-indigo-400"></i> Semantic Vector Search (ChromaDB)
+        </h2>
+        <p class="text-xs text-slate-400 mb-4">Queries evidence embeddings using ChromaDB. Demonstrates strict employee-scoped isolation.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div class="md:col-span-2">
+            <label class="text-xs text-slate-400 block mb-1">Search Query</label>
+            <input id="search-query" type="text" value="Pandas dataframe optimization and missing values" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Optional Competency Filter</label>
+            <select id="search-comp-filter" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+              <option value="">All Competencies</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="runSemanticSearch()" id="btn-search" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Vectors
+        </button>
+      </div>
+
+      <div id="search-results" class="space-y-3">
+        <div class="p-8 text-center text-slate-500 text-sm">Enter a search query and click "Search Vectors".</div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 4: RAG JUSTIFICATION ENGINE ==================== -->
+    <div id="tab-rag" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-bold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-microchip text-indigo-400"></i> Evidence Justification Engine (Qwen3 8B RAG)
+          </h2>
+          <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono">Core MISC02 Objective</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">
+          Retrieves employee-isolated evidence, constructs a strictly bounded context, and executes local Qwen3 8B to generate an evidence-backed development action with traceable internal references.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Target Competency</label>
+            <select id="rag-competency-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+              <option value="Data Processing & Analytics">Data Processing & Analytics</option>
+              <option value="Backend Engineering & API Development">Backend Engineering & API Development</option>
+              <option value="Database Systems & Storage">Database Systems & Storage</option>
+              <option value="DevOps & Cloud Infrastructure">DevOps & Cloud Infrastructure</option>
+              <option value="Quality Assurance & Testing">Quality Assurance & Testing</option>
+              <option value="Technical Communication & Collaboration">Technical Communication & Collaboration</option>
+              <option value="Quantum Propulsion Engineering">Quantum Propulsion Engineering (Test Insufficient Evidence)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Specific Inquiry Context (Optional)</label>
+            <input id="rag-context-input" type="text" placeholder="e.g. Propose next development actions based on recent project activity" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <button onclick="runRAGJustification()" id="btn-run-rag" class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Run Justification Engine (Qwen3 8B)
+        </button>
+      </div>
+
+      <!-- RAG Result Display -->
+      <div id="rag-output-panel" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <span id="rag-badge-sufficiency" class="text-xs px-2.5 py-1 rounded-full font-mono font-semibold uppercase">SUFFICIENT</span>
+            <h3 id="rag-res-competency" class="font-bold text-base text-slate-100">Competency Name</h3>
+          </div>
+          <div class="text-xs text-slate-400 mono">
+            Confidence: <span id="rag-res-confidence" class="font-bold text-indigo-400">0.85</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-1">Recommended Next Action</label>
+          <div id="rag-res-action" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-medium text-emerald-400">
+            Action text...
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-1">Evidence-Grounded Justification</label>
+          <p id="rag-res-justification" class="text-sm text-slate-300 leading-relaxed bg-slate-950/60 border border-slate-800 rounded-lg p-3.5">
+            Justification explanation...
+          </p>
+        </div>
+
+        <div>
+          <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-1.5">Supporting Evidence References (Traceability)</label>
+          <div id="rag-res-refs" class="flex flex-wrap gap-2">
+            <!-- Reference tags inserted here -->
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800">
+          <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-2">Retrieved Evidence Documents in Context</label>
+          <div id="rag-res-docs" class="space-y-2">
+            <!-- Backing evidence cards -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 5: INGESTION RUNS ==================== -->
+    <div id="tab-runs" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold">Ingestion Run History</h2>
+          <p class="text-xs text-slate-400">Audit trail of all synchronization runs recorded in Supabase PostgreSQL.</p>
+        </div>
+        <button onclick="loadIngestionRuns()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate"></i> Refresh Runs
+        </button>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 font-mono">
+            <tr>
+              <th class="p-3">Run ID</th>
+              <th class="p-3">Source</th>
+              <th class="p-3">Status</th>
+              <th class="p-3 text-right">Found</th>
+              <th class="p-3 text-right">Processed</th>
+              <th class="p-3 text-right">Skipped</th>
+              <th class="p-3 text-right">Failed</th>
+              <th class="p-3">Started</th>
+            </tr>
+          </thead>
+          <tbody id="runs-table-body" class="divide-y divide-slate-800 text-slate-300">
+            <tr><td colspan="8" class="p-6 text-center text-slate-500">Loading runs...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modals -->
+  <!-- Create Employee Modal -->
+  <div id="modal-employee" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <h3 class="font-bold text-base flex items-center gap-2">
+        <i class="fa-solid fa-user-plus text-indigo-400"></i> Create Test Employee
+      </h3>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Full Name</label>
+          <input id="new-emp-name" type="text" value="Maya Sharma" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Email</label>
+          <input id="new-emp-email" type="email" value="maya.sharma@growthlens.internal" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Role</label>
+          <input id="new-emp-role" type="text" value="Senior Backend & Data Engineer" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Department</label>
+          <input id="new-emp-dept" type="text" value="Core Engineering" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('modal-employee')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs">Cancel</button>
+        <button onclick="createEmployeeSubmit()" class="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">Create Employee</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map Identity Modal -->
+  <div id="modal-identity" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <h3 class="font-bold text-base flex items-center gap-2">
+        <i class="fa-solid fa-link text-indigo-400"></i> Map External Identity
+      </h3>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Provider</label>
+          <select id="map-provider" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+            <option value="github">GitHub</option>
+            <option value="jira">Jira</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">External Username (GitHub username or Jira account)</label>
+          <input id="map-username" type="text" placeholder="e.g. mayasharma-dev" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">External Email (Commit author email or Jira email)</label>
+          <input id="map-email" type="email" placeholder="e.g. maya@example.com" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('modal-identity')" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs">Cancel</button>
+        <button onclick="mapIdentitySubmit()" class="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">Save Mapping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script logic -->
+  <script>
+    let activeEmployeeId = null;
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        
+        document.getElementById('pill-api').className = "px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        document.getElementById('pill-api').innerText = `API: v${data.version}`;
+
+        const dbStatus = data.services?.supabase?.status;
+        document.getElementById('pill-db').className = dbStatus === 'healthy' 
+          ? "px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        document.getElementById('pill-db').innerText = `Supabase: ${dbStatus || 'error'}`;
+
+        const ollamaStatus = data.services?.ollama?.status;
+        document.getElementById('pill-llm').className = ollamaStatus === 'healthy'
+          ? "px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "px-2 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
+        document.getElementById('pill-llm').innerText = `Qwen3: ${ollamaStatus || 'error'}`;
+      } catch (err) {
+        document.getElementById('pill-api').className = "px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        document.getElementById('pill-api').innerText = "API: Offline";
+      }
+
+      // Check integration status
+      checkIntegrationStatuses();
+    }
+
+    async function checkIntegrationStatuses() {
+      try {
+        const gh = await (await fetch('/api/integrations/github/status')).json();
+        document.getElementById('badge-github').innerText = gh.status;
+        document.getElementById('badge-github').className = gh.configured 
+          ? "text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "text-[10px] px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-400";
+
+        const jira = await (await fetch('/api/integrations/jira/status')).json();
+        document.getElementById('badge-jira').innerText = jira.status;
+        document.getElementById('badge-jira').className = jira.configured 
+          ? "text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "text-[10px] px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-400";
+      } catch(e) {}
+    }
+
+    async function loadEmployees() {
+      const select = document.getElementById('employee-select');
+      try {
+        const res = await fetch('/api/employees');
+        const data = await res.json();
+        let employees = data.employees || [];
+
+        // If no employees exist yet in Supabase, auto-create Maya Sharma as default demo employee
+        if (employees.length === 0) {
+          const createRes = await fetch('/api/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: 'Maya Sharma',
+              email: 'maya.sharma@growthlens.internal',
+              role: 'Senior Backend & Data Engineer',
+              department: 'Core Intelligence'
+            })
+          });
+          const newEmp = await createRes.json();
+          employees = [newEmp];
+          appendLog(`Initialized default test employee: ${newEmp.name} (${newEmp.id})`);
+        }
+
+        select.innerHTML = '';
+        employees.forEach(emp => {
+          const opt = document.createElement('option');
+          opt.value = emp.id;
+          opt.innerText = `${emp.name} — ${emp.role || 'Engineer'} (${emp.id.slice(0, 8)}...)`;
+          select.appendChild(opt);
+        });
+
+        if (employees.length > 0) {
+          activeEmployeeId = employees[0].id;
+          select.value = activeEmployeeId;
+        }
+      } catch (e) {
+        select.innerHTML = '<option value="">Error loading employees</option>';
+      }
+    }
+
+    function onEmployeeChanged() {
+      activeEmployeeId = document.getElementById('employee-select').value;
+      loadEmployeeEvidence();
+    }
+
+    function switchTab(tabId) {
+      ['tab-ingest', 'tab-explorer', 'tab-search', 'tab-rag', 'tab-runs'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+        document.getElementById(`btn-${id}`).className = "px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2";
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      document.getElementById(`btn-${tabId}`).className = "px-4 py-2.5 border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 font-semibold";
+
+      if (tabId === 'tab-explorer') loadEmployeeEvidence();
+      if (tabId === 'tab-runs') loadIngestionRuns();
+    }
+
+    function appendLog(msg) {
+      const pre = document.getElementById('log-output');
+      const timestamp = new Date().toLocaleTimeString();
+      pre.innerText += `\n[${timestamp}] ${msg}`;
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log-output').innerText = 'Log cleared.';
+    }
+
+    async function testGitHub() {
+      appendLog("Testing GitHub API connection...");
+      try {
+        const res = await fetch('/api/integrations/github/test', { method: 'POST' });
+        const data = await res.json();
+        appendLog(`GitHub Result: ${JSON.stringify(data, null, 2)}`);
+      } catch (err) {
+        appendLog(`GitHub Test Failed: ${err.message}`);
+      }
+    }
+
+    async function syncGitHub() {
+      const owner = document.getElementById('gh-owner').value.trim();
+      const repo = document.getElementById('gh-repo').value.trim();
+      const limit_commits = parseInt(document.getElementById('gh-limit-commits').value) || 10;
+      const limit_prs = parseInt(document.getElementById('gh-limit-prs').value) || 5;
+      const run_ai = document.getElementById('gh-run-ai').checked;
+
+      appendLog(`Starting GitHub sync for ${owner || '(default)'}/${repo || '(default)'}...`);
+      document.getElementById('btn-gh-sync').disabled = true;
+      try {
+        const res = await fetch('/api/integrations/github/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner: owner || null, repo: repo || null, limit_commits, limit_prs, run_ai_extraction: run_ai })
+        });
+        const data = await res.json();
+        appendLog(`GitHub Sync Complete: ${JSON.stringify(data, null, 2)}`);
+      } catch (err) {
+        appendLog(`GitHub Sync Failed: ${err.message}`);
+      } finally {
+        document.getElementById('btn-gh-sync').disabled = false;
+      }
+    }
+
+    async function testJira() {
+      appendLog("Testing Jira Cloud connection...");
+      try {
+        const res = await fetch('/api/integrations/jira/test', { method: 'POST' });
+        const data = await res.json();
+        appendLog(`Jira Result: ${JSON.stringify(data, null, 2)}`);
+      } catch (err) {
+        appendLog(`Jira Test Failed: ${err.message}`);
+      }
+    }
+
+    async function syncJira() {
+      const project_key = document.getElementById('jira-proj').value.trim();
+      const max_issues = parseInt(document.getElementById('jira-limit').value) || 10;
+      const run_ai = document.getElementById('jira-run-ai').checked;
+
+      appendLog(`Starting Jira sync for project ${project_key || '(default)'}...`);
+      document.getElementById('btn-jira-sync').disabled = true;
+      try {
+        const res = await fetch('/api/integrations/jira/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_key: project_key || null, max_issues, run_ai_extraction: run_ai })
+        });
+        const data = await res.json();
+        appendLog(`Jira Sync Complete: ${JSON.stringify(data, null, 2)}`);
+      } catch (err) {
+        appendLog(`Jira Sync Failed: ${err.message}`);
+      } finally {
+        document.getElementById('btn-jira-sync').disabled = false;
+      }
+    }
+
+    async function submitCustomEvidence() {
+      const title = document.getElementById('custom-title').value.trim();
+      const content = document.getElementById('custom-content').value.trim();
+      const source = document.getElementById('custom-source').value;
+      const type = document.getElementById('custom-type').value;
+
+      if (!title || !content) {
+        alert("Please enter title and content");
+        return;
+      }
+
+      appendLog(`Submitting custom evidence for employee ${activeEmployeeId}...`);
+      document.getElementById('btn-custom-submit').disabled = true;
+
+      const payload = {
+        employee_id: activeEmployeeId,
+        source: source,
+        source_type: type,
+        source_reference: `manual-${Date.now()}`,
+        project_name: "Developer Workbench",
+        title: title,
+        content: content,
+        occurred_at: new Date().toISOString(),
+        evidence_type: type,
+        evidence_strength: 0.9,
+        is_mapped: true
+      };
+
+      try {
+        const res = await fetch('/api/evidence/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        appendLog(`Evidence Processed & Vector Indexed: ${JSON.stringify(data, null, 2)}`);
+      } catch (err) {
+        appendLog(`Failed: ${err.message}`);
+      } finally {
+        document.getElementById('btn-custom-submit').disabled = false;
+      }
+    }
+
+    async function loadEmployeeEvidence() {
+      if (!activeEmployeeId) return;
+      const container = document.getElementById('evidence-list');
+      container.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs">Loading evidence from Supabase...</div>';
+
+      try {
+        const res = await fetch(`/api/evidence/${activeEmployeeId}`);
+        const data = await res.json();
+        const items = data.evidence || [];
+
+        if (items.length === 0) {
+          container.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm bg-slate-900 border border-slate-800 rounded-xl">
+            No evidence records found for this employee yet. Ingest evidence from Tab 1 to see them here!
+          </div>`;
+          return;
+        }
+
+        container.innerHTML = items.map(ev => `
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase ${ev.source === 'github' ? 'bg-slate-800 text-slate-300' : 'bg-blue-900/30 text-blue-400 border border-blue-500/30'}">
+                  ${ev.source}:${ev.source_type}
+                </span>
+                <span class="text-xs font-mono text-slate-500">${ev.source_reference}</span>
+              </div>
+              <span class="text-xs text-slate-500">${new Date(ev.occurred_at).toLocaleDateString()}</span>
+            </div>
+            <h3 class="font-bold text-sm text-slate-200">${ev.title}</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">${ev.content}</p>
+            ${ev.ai_summary ? `
+              <div class="bg-slate-950/70 border border-slate-800/80 rounded p-2.5 text-xs text-indigo-300">
+                <span class="font-semibold text-indigo-400 block mb-0.5"><i class="fa-solid fa-sparkles mr-1"></i> Qwen3 Summary:</span>
+                ${ev.ai_summary}
+              </div>
+            ` : ''}
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800/60">
+              <span class="text-[11px] mono text-slate-500">ID: ${ev.id}</span>
+              <button onclick="reExtractSkills('${ev.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300">
+                <i class="fa-solid fa-microchip mr-1"></i> Extract Skills (Qwen3)
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        container.innerHTML = `<div class="p-4 text-rose-400 text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Failed loading evidence: ${err.message}</div>`;
+      }
+    }
+
+    async function reExtractSkills(evidenceId) {
+      appendLog(`Running on-demand Qwen3 skill extraction for evidence ${evidenceId}...`);
+      try {
+        const res = await fetch(`/api/evidence/${evidenceId}/extract`, { method: 'POST' });
+        const data = await res.json();
+        appendLog(`Skill Extraction Result: ${JSON.stringify(data, null, 2)}`);
+        loadEmployeeEvidence();
+      } catch (err) {
+        appendLog(`Extraction failed: ${err.message}`);
+      }
+    }
+
+    async function runSemanticSearch() {
+      const query = document.getElementById('search-query').value.trim();
+      const competency = document.getElementById('search-comp-filter').value;
+      const container = document.getElementById('search-results');
+
+      if (!query) return;
+      container.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs">Querying ChromaDB vectors...</div>';
+      document.getElementById('btn-search').disabled = true;
+
+      try {
+        const res = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employee_id: activeEmployeeId,
+            query: query,
+            competency: competency || null,
+            limit: 5
+          })
+        });
+        const data = await res.json();
+        const items = data.evidence || [];
+
+        if (items.length === 0) {
+          container.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm bg-slate-900 border border-slate-800 rounded-xl">
+            No vectors found matching this query for the active employee.
+          </div>`;
+          return;
+        }
+
+        container.innerHTML = items.map((item, idx) => `
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-indigo-400">Match #${idx+1} (Similarity Score: ${item.similarity_score !== null ? item.similarity_score : 'N/A'})</span>
+              <span class="text-xs text-slate-500 font-mono">${item.source}:${item.source_type}</span>
+            </div>
+            <h4 class="font-bold text-sm text-slate-200">${item.title}</h4>
+            <p class="text-xs text-slate-400">${item.content}</p>
+            <div class="text-[11px] mono text-slate-500">Evidence ID: ${item.evidence_id}</div>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        container.innerHTML = `<div class="p-4 text-rose-400 text-xs">Search failed: ${err.message}</div>`;
+      } finally {
+        document.getElementById('btn-search').disabled = false;
+      }
+    }
+
+    async function runRAGJustification() {
+      const competency = document.getElementById('rag-competency-select').value;
+      const context = document.getElementById('rag-context-input').value.trim();
+      const panel = document.getElementById('rag-output-panel');
+      const btn = document.getElementById('btn-run-rag');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Qwen3 8B Thinking...';
+      panel.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/rag/justify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employee_id: activeEmployeeId,
+            competency: competency,
+            request_context: context || null
+          })
+        });
+        const data = await res.json();
+
+        // Render result
+        panel.classList.remove('hidden');
+        document.getElementById('rag-res-competency').innerText = data.competency;
+        document.getElementById('rag-res-confidence').innerText = data.confidence.toFixed(2);
+        
+        const badge = document.getElementById('rag-badge-sufficiency');
+        badge.innerText = data.evidence_sufficiency;
+        if (data.evidence_sufficiency === 'sufficient') {
+          badge.className = "text-xs px-2.5 py-1 rounded-full font-mono font-semibold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        } else if (data.evidence_sufficiency === 'limited') {
+          badge.className = "text-xs px-2.5 py-1 rounded-full font-mono font-semibold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30";
+        } else {
+          badge.className = "text-xs px-2.5 py-1 rounded-full font-mono font-semibold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        }
+
+        document.getElementById('rag-res-action').innerText = data.action || "(No action generated: insufficient evidence)";
+        document.getElementById('rag-res-justification').innerText = data.justification;
+
+        const refsContainer = document.getElementById('rag-res-refs');
+        if (data.evidence_refs && data.evidence_refs.length > 0) {
+          refsContainer.innerHTML = data.evidence_refs.map(ref => `
+            <span class="px-2.5 py-1 rounded bg-indigo-950 border border-indigo-500/40 text-indigo-300 text-xs mono">
+              <i class="fa-solid fa-link mr-1"></i> ${ref}
+            </span>
+          `).join('');
+        } else {
+          refsContainer.innerHTML = '<span class="text-xs text-slate-500">None (insufficient evidence)</span>';
+        }
+
+        const docsContainer = document.getElementById('rag-res-docs');
+        if (data.retrieved_evidence && data.retrieved_evidence.length > 0) {
+          docsContainer.innerHTML = data.retrieved_evidence.map(doc => `
+            <div class="bg-slate-950 border border-slate-800 rounded p-2.5 text-xs text-slate-300 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-200">${doc.title}</span>
+                <span class="mono text-slate-500">${doc.source}:${doc.source_type}</span>
+              </div>
+              <p class="text-slate-400 text-[11px]">${doc.content}</p>
+              <div class="mono text-[10px] text-indigo-400">ID: ${doc.evidence_id}</div>
+            </div>
+          `).join('');
+        } else {
+          docsContainer.innerHTML = '<div class="text-xs text-slate-500">No backing evidence retrieved.</div>';
+        }
+
+      } catch (err) {
+        alert("RAG Justification failed: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Run Justification Engine (Qwen3 8B)';
+      }
+    }
+
+    async function loadIngestionRuns() {
+      const tbody = document.getElementById('runs-table-body');
+      tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-500">Loading runs...</td></tr>';
+      try {
+        const res = await fetch('/api/ingestion/runs?limit=15');
+        const data = await res.json();
+        const runs = data.runs || [];
+
+        if (runs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-500">No ingestion runs recorded yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = runs.map(r => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3 mono text-slate-400">${r.id.slice(0, 8)}...</td>
+            <td class="p-3 uppercase font-semibold text-indigo-300">${r.source}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase ${r.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : (r.status === 'running' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400')}">
+                ${r.status}
+              </span>
+            </td>
+            <td class="p-3 text-right mono">${r.records_found || 0}</td>
+            <td class="p-3 text-right mono text-emerald-400">${r.records_processed || 0}</td>
+            <td class="p-3 text-right mono text-amber-400">${r.records_skipped || 0}</td>
+            <td class="p-3 text-right mono text-rose-400">${r.records_failed || 0}</td>
+            <td class="p-3 text-slate-400">${new Date(r.started_at).toLocaleTimeString()}</td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-rose-400">Failed loading runs: ${err.message}</td></tr>`;
+      }
+    }
+
+    // Modal controls
+    function openCreateEmployeeModal() { document.getElementById('modal-employee').classList.remove('hidden'); }
+    function openMapIdentityModal() { document.getElementById('modal-identity').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    async function createEmployeeSubmit() {
+      const name = document.getElementById('new-emp-name').value.trim();
+      const email = document.getElementById('new-emp-email').value.trim();
+      const role = document.getElementById('new-emp-role').value.trim();
+      const dept = document.getElementById('new-emp-dept').value.trim();
+
+      if (!name || !email) {
+        alert("Please enter full name and email.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, role, department: dept })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Failed creating employee');
+        }
+        const created = await res.json();
+        closeModal('modal-employee');
+        await loadEmployees();
+        activeEmployeeId = created.id;
+        document.getElementById('employee-select').value = created.id;
+        appendLog(`Created employee ${created.name} (${created.id})`);
+        alert(`Employee ${created.name} created successfully!`);
+      } catch (err) {
+        alert("Failed creating employee: " + err.message);
+      }
+    }
+
+    async function mapIdentitySubmit() {
+      const provider = document.getElementById('map-provider').value;
+      const username = document.getElementById('map-username').value.trim();
+      const email = document.getElementById('map-email').value.trim();
+
+      if (!activeEmployeeId) {
+        alert("Please select or create an employee first.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/integrations/identities/map', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employee_id: activeEmployeeId,
+            provider: provider,
+            external_username: username || null,
+            external_email: email || null
+          })
+        });
+        const data = await res.json();
+        closeModal('modal-identity');
+        appendLog(`Identity Mapped: ${JSON.stringify(data, null, 2)}`);
+        alert("Identity mapping saved successfully!");
+      } catch (err) {
+        alert("Failed to map identity: " + err.message);
+      }
+    }
+
+    // Initial boot
+    window.addEventListener('DOMContentLoaded', () => {
+      checkHealth();
+      loadEmployees();
+    });
+  </script>
+</body>
+</html>
