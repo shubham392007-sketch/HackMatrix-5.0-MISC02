@@ -17,15 +17,24 @@ async def list_employee_evidence(
     """Retrieve chronological canonical evidence records for a specific employee."""
     repo = EvidenceRepository()
     records = repo.list_by_employee(employee_id, limit=limit, offset=offset)
+    if not records:
+        return {
+            "employee_id": employee_id,
+            "count": 0,
+            "evidence": []
+        }
+
+    evidence_ids = [r["id"] for r in records if "id" in r]
+    batch_map = repo.get_batch_skills_and_competencies(evidence_ids)
+
     enriched = []
     for rec in records:
-        assoc = repo.get_evidence_skills_and_competencies(rec["id"])
-        skills = [s["skills"]["name"] for s in assoc.get("skills", []) if s.get("skills")]
-        competencies = [c["competencies"]["name"] for c in assoc.get("competencies", []) if c.get("competencies")]
+        eid = rec["id"]
+        meta = batch_map.get(eid, {"skills": [], "competencies": []})
         enriched.append({
             **rec,
-            "skills": skills,
-            "competencies": competencies,
+            "skills": meta.get("skills", []),
+            "competencies": meta.get("competencies", []),
         })
     return {
         "employee_id": employee_id,
