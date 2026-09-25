@@ -1,0 +1,37 @@
+# retention_config.yaml
+# Configuration for the Skill Retention & Decay Risk Prediction Pipeline
+
+dataset:
+  evidence_path: "misc02_dataset/evidence.csv"
+  trajectories_path: "misc02_dataset/trajectories.csv"
+  splits_path: "misc02_dataset/train_val_test_split.csv"
+  output_snapshots: "derived_data/decay_prediction_snapshots.csv"
+  output_survival: "derived_data/decay_survival_dataset.csv"
+
+snapshot_rules:
+  min_historical_observations: 3
+  min_future_observations: 2
+
+decay_event_rules:
+  decay_drop_threshold: 8.0
+  min_confirming_observations: 2
+  baseline_calculation: "mean_last_2" # can be 'mean_all', 'mean_last_2'
+
+prediction_horizons:
+  - 30
+  - 60
+  - 90
+  - 180
+
+source_weights:
+  assessment: 1.00
+  project_outcome: 0.85
+  course_completion: 0.55
+
+risk_thresholds:
+  low_max: 0.30
+  medium_max: 0.60
+  # >0.60 is HIGH
+
+training:
+  random_state: 42
