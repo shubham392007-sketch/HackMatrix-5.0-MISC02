@@ -54,11 +54,36 @@ class RetentionService:
             self.evidence_df = self.evidence_df.sort_values(['learner_id', 'competency_id', 'timestamp'])
             print(f"[RetentionService] Loaded {len(self.evidence_df):,} evidence records.")
         else:
-            print(f"[RetentionService] Warning: {evidence_path} not found.")
+            print(f"[RetentionService] Note: {evidence_path} not found. Initializing built-in demo evidence.")
+            sample_records = [
+                {'evidence_id': 'E001', 'trajectory_id': 'T001', 'learner_id': 'L000001', 'competency_id': 'C05',
+                 'evidence_source': 'course_completion', 'source_detail': 'Executive Communication', 'timestamp': '2026-05-10', 'raw_score': 74.0, 'source_confidence_weight': 1.0},
+                {'evidence_id': 'E002', 'trajectory_id': 'T001', 'learner_id': 'L000001', 'competency_id': 'C05',
+                 'evidence_source': 'assessment', 'source_detail': 'Midterm Stakeholder Assessment', 'timestamp': '2026-06-15', 'raw_score': 71.0, 'source_confidence_weight': 1.0},
+                {'evidence_id': 'E003', 'trajectory_id': 'T001', 'learner_id': 'L000001', 'competency_id': 'C05',
+                 'evidence_source': 'project_outcome', 'source_detail': 'Quarterly Strategy Presentation', 'timestamp': '2026-07-20', 'raw_score': 68.0, 'source_confidence_weight': 1.0},
+                {'evidence_id': 'E004', 'trajectory_id': 'T002', 'learner_id': 'L000001', 'competency_id': 'C01',
+                 'evidence_source': 'assessment', 'source_detail': 'Algorithms & Python Mastery', 'timestamp': '2026-08-01', 'raw_score': 88.0, 'source_confidence_weight': 1.0},
+                {'evidence_id': 'E005', 'trajectory_id': 'T002', 'learner_id': 'L000001', 'competency_id': 'C01',
+                 'evidence_source': 'project_outcome', 'source_detail': 'Async FastAPI Backend PR', 'timestamp': '2026-09-05', 'raw_score': 92.0, 'source_confidence_weight': 1.0},
+            ]
+            self.evidence_df = pd.DataFrame(sample_records)
+            self.evidence_df['timestamp'] = pd.to_datetime(self.evidence_df['timestamp'])
+            self.evidence_df = self.evidence_df.sort_values(['learner_id', 'competency_id', 'timestamp'])
 
         if os.path.exists(learners_path):
             self.learners_df = pd.read_csv(learners_path)
             print(f"[RetentionService] Loaded {len(self.learners_df):,} learners.")
+        else:
+            print(f"[RetentionService] Note: {learners_path} not found. Initializing built-in demo learners.")
+            sample_learners = [
+                {'learner_id': 'L000001', 'role': 'Software Engineer', 'department': 'Engineering', 'tenure_months': 24},
+                {'learner_id': 'L000002', 'role': 'Frontend Developer', 'department': 'Engineering', 'tenure_months': 12},
+                {'learner_id': 'L000003', 'role': 'Data Scientist', 'department': 'Analytics', 'tenure_months': 36},
+                {'learner_id': 'L000004', 'role': 'Product Manager', 'department': 'Product', 'tenure_months': 18},
+                {'learner_id': 'L000005', 'role': 'QA Engineer', 'department': 'Engineering', 'tenure_months': 8},
+            ]
+            self.learners_df = pd.DataFrame(sample_learners)
 
     def resolve_learner_id(self, learner_id: str) -> str:
         """Resolve learner_id, with fallback for demo identifiers like user_123"""

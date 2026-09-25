@@ -98,6 +98,14 @@ try:
 except Exception as e:
     logger.warning(f"Could not load recommendations router: {e}")
 
+# Register retention router if available
+try:
+    from routers.retention import router as retention_router
+    app.include_router(retention_router)
+    logger.info("Skill retention router registered")
+except Exception as e:
+    logger.warning(f"Could not load retention router: {e}")
+
 # Mount static folder
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
@@ -125,10 +133,11 @@ async def serve_auth_page():
 
 @app.get("/recommendations", include_in_schema=False)
 @app.get("/dashboard", include_in_schema=False)
+@app.get("/retention", include_in_schema=False)
 async def serve_recommendations_dashboard():
-    """Serves the Next-Action Recommendations Dashboard."""
+    """Serves the Next-Action Recommendations & Skill Retention Dashboard."""
     rec_file = root_static_dir / "index.html"
     if rec_file.exists():
         return FileResponse(str(rec_file))
-    return {"message": "Recommendations dashboard missing"}
+    return {"message": "Recommendations & Retention dashboard missing"}
 
