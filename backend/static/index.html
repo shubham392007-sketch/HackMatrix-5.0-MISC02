@@ -121,17 +121,20 @@
               <div class="flex gap-2">
                 <div class="w-1/2">
                   <label class="text-slate-400 block mb-1">Max Commits</label>
-                  <input id="gh-limit-commits" type="number" value="10" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                  <input id="gh-limit-commits" type="number" value="3" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
                 </div>
                 <div class="w-1/2">
                   <label class="text-slate-400 block mb-1">Max PRs</label>
-                  <input id="gh-limit-prs" type="number" value="5" min="1" max="30" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                  <input id="gh-limit-prs" type="number" value="1" min="0" max="30" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
                 </div>
               </div>
-              <label class="flex items-center gap-2 cursor-pointer pt-1">
-                <input id="gh-run-ai" type="checkbox" checked class="rounded border-slate-700 text-indigo-600">
-                <span class="text-slate-300">Run Qwen3 AI Extraction</span>
-              </label>
+              <div class="pt-1">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input id="gh-run-ai" type="checkbox" class="rounded border-slate-700 text-indigo-600">
+                  <span class="text-slate-300 font-medium">Deep Qwen3 AI Extraction</span>
+                </label>
+                <p class="text-[11px] text-slate-400 mt-1 pl-5">⚡ <strong>Unchecked</strong> = Instant ~1s sync (fast taxonomy matching & vector indexing). <strong>Checked</strong> = Deep local LLM reasoning (~15-30s/item).</p>
+              </div>
             </div>
           </div>
           <div class="pt-4 flex gap-2">
@@ -595,7 +598,7 @@
       const limit_prs = parseInt(document.getElementById('gh-limit-prs').value) || 5;
       const run_ai = document.getElementById('gh-run-ai').checked;
 
-      appendLog(`Starting GitHub sync for ${owner || '(default)'}/${repo || '(default)'}...`);
+      appendLog(`Starting GitHub sync for ${owner || '(default)'}/${repo || '(default)'} [Mode: ${run_ai ? 'Deep AI Analysis (~15s/item)' : '⚡ Fast Ingestion (<2s)'}]...`);
       document.getElementById('btn-gh-sync').disabled = true;
       try {
         const res = await fetch('/api/integrations/github/sync', {

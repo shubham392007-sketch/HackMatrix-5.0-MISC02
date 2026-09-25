@@ -1,4 +1,5 @@
 """Evidence Ingestion Service orchestrating the complete end-to-end evidence pipeline."""
+import re
 import traceback
 from typing import Any, Dict, List, Optional
 from backend.core.config import get_settings
@@ -250,6 +251,20 @@ class EvidenceIngestionService:
 
             except Exception as e:
                 logger.warning(f"AI extraction skipped or failed for evidence {ev_id}: {e}")
+        else:
+            # Fast heuristic extraction from title and content
+            try:
+                text_to_scan = f"{evidence.title} {evidence.content}".lower()
+                all_skills = self.taxonomy_service.list_all_skills()
+                for sk in all_skills:
+                    sk_name = sk["name"]
+                    # Exact word boundary match (e.g. 'python', 'fastapi', 'docker')
+                    if re.search(r'\b' + re.escape(sk_name.lower()) + r'\b', text_to_scan):
+                        self.evidence_repo.attach_skill(ev_id, sk["id"], 0.85)
+                        if sk.get("competency_id"):
+                            self.evidence_repo.attach_competency(ev_id, sk["competency_id"], 0.80)
+            except Exception as ex:
+                logger.warning(f"Heuristic extraction failed for {ev_id}: {ex}")
 
         # 3. Vector indexing in ChromaDB (only if employee is mapped)
         if evidence.employee_id:

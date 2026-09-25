@@ -40,6 +40,9 @@ class OllamaProvider:
             "stream": False,
             "options": {
                 "temperature": temperature,
+                "num_ctx": 2048,
+                "num_predict": 250,
+                "top_k": 20,
             }
         }
         if system:
