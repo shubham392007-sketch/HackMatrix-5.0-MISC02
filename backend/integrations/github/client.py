@@ -58,7 +58,10 @@ class GitHubClient:
                         "private": data.get("private"),
                     }
                 elif res.status_code == 404:
-                    raise GitHubIntegrationError(f"Repository {owner}/{repo} not found")
+                    msg = f"Repository {owner}/{repo} not found."
+                    if not self.token:
+                        msg += " If this repository is private, configure GITHUB_TOKEN in your .env or authenticate on /auth."
+                    raise GitHubIntegrationError(msg)
                 elif res.status_code == 401:
                     raise GitHubIntegrationError("Unauthorized: Token does not have repository access")
                 else:
