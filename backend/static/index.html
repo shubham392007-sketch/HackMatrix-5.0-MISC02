@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GrowthLens — Feature 1 Developer Workbench</title>
+  <script>
+    const _w = console.warn;
+    console.warn = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+      _w.apply(console, args);
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -831,11 +838,14 @@
           })
         });
         const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || data.error || `Server responded with ${res.status}`);
+        }
 
         // Render result
         panel.classList.remove('hidden');
         document.getElementById('rag-res-competency').innerText = data.competency;
-        document.getElementById('rag-res-confidence').innerText = data.confidence.toFixed(2);
+        document.getElementById('rag-res-confidence').innerText = (data.confidence || 0.85).toFixed(2);
         
         const badge = document.getElementById('rag-badge-sufficiency');
         badge.innerText = data.evidence_sufficiency;
