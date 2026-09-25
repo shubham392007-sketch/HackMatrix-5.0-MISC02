@@ -3,499 +3,1646 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Next-Action Recommendation Engine</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <title>GROWTHLENS — Continuous Talent Intelligence &amp; Retention Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    /* ── Reset & Globals ───────────────────────────────────── */
+    /* ── Design System Tokens ──────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #08090d;
-      --surface:   #12141c;
-      --card:      #191c28;
-      --border:    #252836;
-      --text:      #e4e6f0;
-      --muted:     #7c8094;
-      --yellow:    #f5a623;
-      --red:       #e74c5e;
-      --blue:      #5b8def;
-      --green:     #34d399;
-      --purple:    #a78bfa;
-      --radius:    16px;
-      --ease:      cubic-bezier(0.4, 0, 0.2, 1);
+      --bg: #090b10;
+      --surface: #10141f;
+      --card: #151926;
+      --card-hover: #191f30;
+      --elevated: #1e2438;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.14);
+      --text: #f1f4fc;
+      --text-muted: #848ea8;
+      --text-dim: #535d77;
+
+      /* Tailored Semantics */
+      --cyan: #06b6d4;
+      --blue: #3b82f6;
+      --indigo: #6366f1;
+      --purple: #a855f7;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #f43f5e;
+
+      --radius-lg: 16px;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
-    /* ── Animated gradient background ──────────────────────── */
-    body::before {
-      content: '';
+    /* Ambient Glow Background */
+    .ambient-glow {
       position: fixed;
       inset: 0;
+      pointer-events: none;
+      z-index: 0;
       background:
-        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(91,141,239,.08) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(167,139,250,.06) 0%, transparent 60%);
-      z-index: -1;
-      animation: bgShift 12s ease-in-out infinite alternate;
+        radial-gradient(circle 800px at 15% 0%, rgba(99, 102, 241, 0.06), transparent 70%),
+        radial-gradient(circle 700px at 85% 100%, rgba(6, 182, 212, 0.05), transparent 70%);
     }
 
-    @keyframes bgShift {
-      to { filter: hue-rotate(30deg); }
+    /* ── Sticky Navigation Header ──────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(9, 11, 16, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
     }
 
-    /* ── Header / Hero ─────────────────────────────────────── */
-    .hero {
-      text-align: center;
-      padding: 3.5rem 1.5rem 1rem;
-      max-width: 680px;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: .4rem;
-      font-size: .7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      color: var(--purple);
-      background: rgba(167,139,250,.1);
-      padding: .35rem .9rem;
-      border-radius: 100px;
-      margin-bottom: 1rem;
-    }
-
-    .hero h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -.03em;
-      line-height: 1.2;
-      background: linear-gradient(135deg, var(--text), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero p {
-      margin-top: .75rem;
-      color: var(--muted);
-      font-size: .92rem;
-      line-height: 1.6;
-    }
-
-    /* ── Stats Row ─────────────────────────────────────────── */
-    .stats {
-      display: flex;
-      gap: 1rem;
-      padding: 1rem 1.5rem 2rem;
-      max-width: 680px;
-      width: 100%;
-    }
-
-    .stat-card {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.15rem 1.25rem;
-      text-align: center;
-      transition: border-color .3s var(--ease);
-    }
-
-    .stat-card:hover { border-color: #3a3d4e; }
-
-    .stat-value {
-      font-size: 1.6rem;
-      font-weight: 700;
-    }
-
-    .stat-label {
-      font-size: .72rem;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--muted);
-      margin-top: .25rem;
-    }
-
-    .stat-card:nth-child(1) .stat-value { color: var(--red); }
-    .stat-card:nth-child(2) .stat-value { color: var(--yellow); }
-    .stat-card:nth-child(3) .stat-value { color: var(--green); }
-
-    /* ── Panel Container ───────────────────────────────────── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem;
-      max-width: 680px;
-      width: calc(100% - 3rem);
-      margin-bottom: 3rem;
-    }
-
-    .panel-header {
+    .nav-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0.75rem 1.75rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1.5rem;
+      gap: 1.5rem;
     }
 
-    .panel-title {
-      font-size: 1.15rem;
-      font-weight: 700;
+    .brand {
       display: flex;
       align-items: center;
-      gap: .5rem;
+      gap: 0.75rem;
+      text-decoration: none;
     }
 
-    .panel-subtitle {
-      font-size: .75rem;
-      color: var(--muted);
-    }
-
-    /* ── Loading skeleton ──────────────────────────────────── */
-    .skeleton {
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--cyan), var(--indigo));
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+    }
+
+    .brand-text h1 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 40%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text span {
+      display: block;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: -2px;
+    }
+
+    /* Clean Navigation Tabs in Header */
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s var(--ease);
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--elevated);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
       gap: 1rem;
     }
 
-    .skeleton-card {
-      height: 160px;
-      background: linear-gradient(90deg, var(--card) 25%, #1f2230 50%, var(--card) 75%);
-      background-size: 200% 100%;
-      border-radius: 12px;
-      animation: shimmer 1.4s ease-in-out infinite;
+    .learner-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.35rem 0.75rem;
     }
 
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
+    .learner-selector label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 700;
     }
 
-    /* ── Cards ─────────────────────────────────────────────── */
-    .rec-grid {
+    .learner-select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .learner-select option {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--green);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 0.35rem 0.75rem;
+      border-radius: 100px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* ── Main Container ────────────────────────────────────────── */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 1.5rem 1.75rem 4rem;
+    }
+
+    /* ── Compact Profile Strip ─────────────────────────────────── */
+    .profile-strip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.9rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .profile-user {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1e2538, #2a334d);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .user-titles h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .user-meta-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.15rem;
+    }
+
+    .tag-chip {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .tag-chip--accent {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #c7d2fe;
+    }
+
+    .quick-stats {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .q-stat {
+      text-align: right;
+    }
+
+    .q-stat-val {
+      font-size: 1.15rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .q-stat-lbl {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* ── Tab Panes ─────────────────────────────────────────────── */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s var(--ease);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 2-Column Unified Studio Layout ────────────────────────── */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .studio-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Clean Card Container */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-heading h3 {
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .status-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+    }
+
+    /* ── Left Column: Gauge & Survival Analytics ───────────────── */
+    .competency-chips-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .comp-chip {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+
+    .comp-chip:hover {
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+
+    .comp-chip.active {
+      background: rgba(99, 102, 241, 0.16);
+      border-color: var(--indigo);
+      color: #e0e7ff;
+    }
+
+    /* Compact Integrated Gauge Section */
+    .gauge-cockpit {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .gauge-svg-box {
+      position: relative;
+      width: 130px;
+      height: 130px;
+      flex-shrink: 0;
+    }
+
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .gauge-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.06);
+      stroke-width: 12;
+    }
+
+    .gauge-progress {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-dasharray: 376.99; /* 2 * PI * 60 */
+      stroke-dashoffset: 376.99;
+      transition: stroke-dashoffset 1s var(--ease), stroke 0.6s ease;
+    }
+
+    .gauge-inner-text {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .gauge-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+    }
+
+    .gauge-sublbl {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .gauge-meta-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+    }
+
+    .meta-row .lbl { color: var(--text-muted); }
+    .meta-row .val { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+    /* Clean Survival Curve Horizon Bars */
+    .survival-bars-container {
+      margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 0.65rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .horizon-bars-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+    }
+
+    .hbar-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hbar-card::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+    }
+
+    .hbar-card.safe::before { background: var(--green); }
+    .hbar-card.warn::before { background: var(--yellow); }
+    .hbar-card.danger::before { background: var(--red); }
+
+    .hbar-time {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .hbar-prob {
+      font-size: 0.98rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      margin: 0.15rem 0;
+    }
+
+    .hbar-status {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+    }
+
+    /* Key Risk Factors List */
+    .factors-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .factor-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      font-size: 0.76rem;
+    }
+
+    .factor-left {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .factor-desc {
+      color: var(--text-muted);
+    }
+
+    .badge-risk {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      color: var(--red);
+      background: rgba(244, 63, 94, 0.1);
+    }
+
+    .badge-protect {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      color: var(--green);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    /* ── Right Column: What-If Simulator Studio ────────────────── */
+    .sim-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+
+    .segmented-control {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+
+    .seg-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .seg-btn:hover {
+      border-color: var(--border-light);
+    }
+
+    .seg-btn.active {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.15);
+    }
+
+    .seg-icon {
+      font-size: 1.2rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .seg-title {
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .seg-weight {
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      font-family: monospace;
+      margin-top: 2px;
+    }
+
+    /* Clean Slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .clean-slider {
+      flex: 1;
+      height: 5px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--elevated);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    .clean-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--cyan);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--cyan);
+      transition: transform 0.15s ease;
+    }
+
+    .slider-score-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--cyan);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .clean-select {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.6rem 0.8rem;
+      outline: none;
+    }
+
+    .btn-run-sim {
+      width: 100%;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+      transition: all 0.2s var(--ease);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-run-sim:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 25px rgba(6, 182, 212, 0.45);
+    }
+
+    /* Counterfactual Impact Box */
+    .sim-impact-box {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: none;
+    }
+
+    .sim-impact-box.visible {
+      display: block;
+      animation: fadeIn 0.4s var(--ease);
+    }
+
+    .impact-header-banner {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+    }
+
+    .impact-headline {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .impact-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .impact-comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .comp-cell {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .comp-cell .cell-lbl {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+
+    .comp-cell .cell-val {
+      font-size: 1.15rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .btn-reset {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.55rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+
+    /* ── Tab 2: Competency Matrix Grid ─────────────────────────── */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .matrix-table th {
+      text-align: left;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .matrix-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .matrix-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .btn-mini-sim {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-mini-sim:hover {
+      border-color: var(--cyan);
+      background: rgba(6, 182, 212, 0.1);
+    }
+
+    /* ── Tab 3: Recommendations Cards ──────────────────────────── */
+    .recs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 1rem;
     }
 
     .rec-card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.35rem 1.5rem;
+      border-radius: var(--radius);
+      padding: 1.15rem;
       position: relative;
       overflow: hidden;
-      transition: border-color .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .rec-card::before {
       content: '';
       position: absolute;
-      top: 0; left: 0;
-      width: 4px; height: 100%;
-      border-radius: 12px 0 0 12px;
+      top: 0; left: 0; bottom: 0;
+      width: 4px;
     }
 
-    .rec-card--tutorial::before {
-      background: linear-gradient(180deg, var(--red), var(--yellow));
-    }
+    .rec-card.tutorial::before { background: linear-gradient(180deg, var(--red), var(--yellow)); }
+    .rec-card.mentor::before { background: linear-gradient(180deg, var(--blue), var(--green)); }
 
-    .rec-card--mentor::before {
-      background: linear-gradient(180deg, var(--blue), var(--green));
-    }
-
-    .rec-card:hover {
-      border-color: #3a3d4e;
-      box-shadow: 0 8px 30px rgba(0,0,0,.4);
-      transform: translateY(-2px);
-    }
-
-    /* Badge */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: .3rem;
-      font-size: .65rem;
-      font-weight: 600;
+    .rec-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      padding: .25rem .65rem;
-      border-radius: 100px;
-      margin-bottom: .65rem;
-    }
-
-    .badge--warn {
-      color: var(--yellow);
-      background: rgba(245,166,35,.1);
-    }
-
-    .badge--mentor {
-      color: var(--blue);
-      background: rgba(91,141,239,.1);
-    }
-
-    /* Card headings */
-    .rec-heading {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin-bottom: .4rem;
-    }
-
-    .rec-heading .highlight { color: var(--red); }
-
-    .rec-evidence {
-      font-size: .78rem;
-      color: var(--muted);
-      margin-bottom: .15rem;
-    }
-
-    .rec-evidence code {
-      background: rgba(91,141,239,.12);
-      color: var(--blue);
-      padding: .1rem .4rem;
+      letter-spacing: 0.06em;
+      padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: .74rem;
+      display: inline-block;
+      margin-bottom: 0.5rem;
     }
 
-    .rec-action-type {
-      font-size: .82rem;
-      color: var(--muted);
-      font-style: italic;
-      margin-bottom: 1rem;
-    }
-
-    /* CTA buttons */
-    .btn {
+    .btn-action-primary {
       display: inline-flex;
       align-items: center;
-      gap: .4rem;
-      padding: .7rem 1.3rem;
-      font-size: .82rem;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.76rem;
       font-weight: 600;
-      font-family: inherit;
-      border: none;
-      border-radius: 8px;
+      border-radius: 6px;
+      text-decoration: none;
       cursor: pointer;
-      text-decoration: none;
-      transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+      border: none;
+      transition: all 0.2s ease;
     }
 
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-
-    .btn--tutorial {
-      background: linear-gradient(135deg, #e74c5e, #f5a623);
+    .btn-action-primary.tutorial {
+      background: linear-gradient(135deg, #e11d48, #d97706);
       color: #fff;
     }
 
-    .btn--tutorial:hover {
-      box-shadow: 0 4px 20px rgba(231,76,94,.4);
-    }
-
-    .btn--mentor {
-      background: linear-gradient(135deg, #5b8def, #34d399);
+    .btn-action-primary.mentor {
+      background: linear-gradient(135deg, #2563eb, #059669);
       color: #fff;
     }
 
-    .btn--mentor:hover {
-      box-shadow: 0 4px 20px rgba(91,141,239,.4);
-    }
-
-    .btn--sent {
-      background: var(--green);
-      cursor: default;
-      opacity: .85;
-    }
-
-    .btn--sent:hover {
-      transform: none;
-      box-shadow: none;
-    }
-
-    /* ── Error ─────────────────────────────────────────────── */
-    .error-box {
-      color: var(--red);
-      background: rgba(231,76,94,.08);
-      padding: 1rem;
-      border-radius: 8px;
-      font-size: .88rem;
-    }
-
-    /* ── Empty ─────────────────────────────────────────────── */
-    .empty {
+    /* ── Footer ────────────────────────────────────────────────── */
+    footer {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 2rem 1.75rem;
       text-align: center;
-      color: var(--muted);
-      padding: 2rem 0;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
     }
 
-    /* ── Footer ────────────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      padding: 1.5rem;
-      color: var(--muted);
-      font-size: .72rem;
-    }
-
-    .footer a {
-      color: var(--blue);
-      text-decoration: none;
-    }
-
-    /* ── Responsive ────────────────────────────────────────── */
-    @media (max-width: 520px) {
-      .stats { flex-direction: column; }
-      .panel { padding: 1.25rem; }
-      .rec-card { padding: 1.1rem; }
-      .btn { width: 100%; justify-content: center; }
-    }
-
-    /* ── Fade-in animation ─────────────────────────────────── */
-    .fade-in {
-      animation: fadeIn .5s var(--ease) both;
-    }
-
-    .fade-in:nth-child(2) { animation-delay: .08s; }
-    .fade-in:nth-child(3) { animation-delay: .16s; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    footer a { color: var(--cyan); text-decoration: none; }
   </style>
 </head>
 <body>
+  <div class="ambient-glow"></div>
 
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-badge">🧠 HackMatrix 5.0 — MISC02</div>
-    <h1>Next-Action Recommendation Engine</h1>
-    <p>AI-driven skill-gap analysis with LSTM trajectory prediction. Personalised learning paths &amp; peer mentorship matching — all in real time.</p>
-  </div>
+  <!-- Header Navigation -->
+  <header>
+    <div class="nav-inner">
+      <a href="/" class="brand">
+        <div class="brand-mark">G</div>
+        <div class="brand-text">
+          <h1>GROWTHLENS</h1>
+          <span>Talent Retention AI</span>
+        </div>
+      </a>
 
-  <!-- Stats -->
-  <div class="stats" id="stats">
-    <div class="stat-card">
-      <div class="stat-value" id="stat-declining">—</div>
-      <div class="stat-label">Declining Skills</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-confidence">—</div>
-      <div class="stat-label">Model Confidence</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-actions">—</div>
-      <div class="stat-label">Suggested Actions</div>
-    </div>
-  </div>
+      <!-- Primary Segmented Tab Navigation -->
+      <nav class="nav-tabs">
+        <button class="tab-btn active" id="tabBtnStudio" onclick="switchTab('studio')">
+          ⚡ Retention &amp; Simulation
+        </button>
+        <button class="tab-btn" id="tabBtnMatrix" onclick="switchTab('matrix')">
+          📊 Competency Portfolio
+        </button>
+        <button class="tab-btn" id="tabBtnRecs" onclick="switchTab('recs')">
+          🎯 Action Playbook
+        </button>
+      </nav>
 
-  <!-- Recommendations Panel -->
-  <div class="panel" id="panel">
-    <div class="panel-header">
-      <div class="panel-title">🎯 Suggested Next Actions</div>
-      <div class="panel-subtitle">Learner: <strong>user_123</strong></div>
-    </div>
-    <div id="content">
-      <!-- loading skeleton -->
-      <div class="skeleton">
-        <div class="skeleton-card"></div>
-        <div class="skeleton-card"></div>
+      <!-- Right Controls: Learner Selector + Model Status -->
+      <div class="nav-actions">
+        <div class="learner-selector">
+          <label for="learnerSelect">Learner:</label>
+          <select id="learnerSelect" class="learner-select" onchange="onLearnerChange(this.value)">
+            <option value="L000001">L000001 — QA Engineer</option>
+            <option value="L000002">L000002 — Data Analyst</option>
+            <option value="L000003">L000003 — Software Engineer</option>
+            <option value="L000004">L000004 — Data Analyst</option>
+            <option value="L000005">L000005 — Support Engineer</option>
+            <option value="user_123">user_123 (Demo Alias)</option>
+          </select>
+        </div>
+
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span>Weibull AFT Active</span>
+        </div>
       </div>
     </div>
-  </div>
+  </header>
 
-  <div class="footer">
-    Built for <strong>HackMatrix 5.0</strong> · Powered by FastAPI &amp; LSTM · <a href="/docs" target="_blank">API Docs ↗</a>
-  </div>
+  <!-- Main Workspace -->
+  <main>
+    <!-- Learner Profile Strip -->
+    <div class="profile-strip">
+      <div class="profile-user">
+        <div class="user-avatar" id="avatarIcon">👤</div>
+        <div class="user-titles">
+          <h2 id="profileLearnerName">Learner L000001</h2>
+          <div class="user-meta-tags">
+            <span class="tag-chip tag-chip--accent" id="profileRole">QA Engineer</span>
+            <span class="tag-chip" id="profileDept">Marketing</span>
+            <span class="tag-chip" id="profileTenure">11 Months Tenure</span>
+          </div>
+        </div>
+      </div>
 
+      <div class="quick-stats">
+        <div class="q-stat">
+          <div class="q-stat-val" id="stripRiskScore" style="color: var(--red);">66.3%</div>
+          <div class="q-stat-lbl">90d Decay Risk</div>
+        </div>
+        <div class="q-stat">
+          <div class="q-stat-val" id="stripHalflife" style="color: var(--yellow);">62d</div>
+          <div class="q-stat-lbl">Expected Days to Decay</div>
+        </div>
+        <div class="q-stat">
+          <div class="q-stat-val" id="stripEvidenceCount" style="color: var(--cyan);">12</div>
+          <div class="q-stat-lbl">Verified Evidence Points</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 1: RETENTION & WHAT-IF STUDIO ───────────────────── -->
+    <div class="tab-content active" id="tabStudio">
+      <div class="studio-grid">
+        <!-- Left: Retention Analytics & Gauge -->
+        <div class="card">
+          <div class="card-top">
+            <div class="card-heading">
+              <span style="font-size: 1.1rem;">⏱️</span>
+              <h3>Skill Retention &amp; Survival Risk</h3>
+            </div>
+            <div class="status-tag" id="mainRiskBadge" style="background: rgba(244,63,94,0.12); color: var(--red);">
+              HIGH RISK
+            </div>
+          </div>
+
+          <!-- Active Competency Track Switcher -->
+          <div class="competency-chips-bar" id="competencyChipsBar">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Compact Cockpit: Circular Gauge + Metrics -->
+          <div class="gauge-cockpit">
+            <div class="gauge-svg-box">
+              <svg class="gauge-svg" viewBox="0 0 140 140">
+                <circle class="gauge-bg" cx="70" cy="70" r="60" />
+                <circle id="radialGaugeCircle" class="gauge-progress" cx="70" cy="70" r="60" style="stroke: var(--red);" />
+              </svg>
+              <div class="gauge-inner-text">
+                <div class="gauge-num" id="gaugeNumText" style="color: var(--red);">66%</div>
+                <div class="gauge-sublbl">Decay Risk</div>
+              </div>
+            </div>
+
+            <div class="gauge-meta-list">
+              <div class="meta-row">
+                <span class="lbl">Active Competency:</span>
+                <span class="val" id="activeCompName" style="color: #fff;">Communication</span>
+              </div>
+              <div class="meta-row">
+                <span class="lbl">Expected Days to Decay:</span>
+                <span class="val" id="activeExpectedDays" style="color: var(--yellow);">62 Days</span>
+              </div>
+              <div class="meta-row">
+                <span class="lbl">Model Confidence:</span>
+                <span class="val" id="activeConfidence" style="color: var(--cyan);">75%</span>
+              </div>
+              <div class="meta-row">
+                <span class="lbl">Action Urgency:</span>
+                <span class="val" id="activeUrgency" style="color: var(--red); font-size: 0.72rem;">Immediate Action</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Survival Function Probability Curve (30d, 60d, 90d, 180d) -->
+          <div class="survival-bars-container">
+            <div class="section-title">
+              <span>Parametric Survival Probabilities P(T &gt; t)</span>
+              <span>Retention Rate</span>
+            </div>
+            <div class="horizon-bars-grid">
+              <div class="hbar-card safe">
+                <div class="hbar-time">30 Days</div>
+                <div class="hbar-prob" id="hbar30">75.3%</div>
+                <div class="hbar-status">Retained</div>
+              </div>
+              <div class="hbar-card warn">
+                <div class="hbar-time">60 Days</div>
+                <div class="hbar-prob" id="hbar60">51.6%</div>
+                <div class="hbar-status">Retained</div>
+              </div>
+              <div class="hbar-card danger">
+                <div class="hbar-time">90 Days</div>
+                <div class="hbar-prob" id="hbar90">33.7%</div>
+                <div class="hbar-status">Retained</div>
+              </div>
+              <div class="hbar-card danger">
+                <div class="hbar-time">180 Days</div>
+                <div class="hbar-prob" id="hbar180">7.9%</div>
+                <div class="hbar-status">Retained</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Identified Risk Drivers -->
+          <div>
+            <div class="section-title">
+              <span>Primary Trajectory Drivers</span>
+              <span>Mathematical AFT Impact</span>
+            </div>
+            <div class="factors-list" id="factorsContainer">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: What-If Counterfactual Simulator -->
+        <div class="card" style="border-color: rgba(6, 182, 212, 0.25);">
+          <div class="card-top">
+            <div class="card-heading">
+              <span style="font-size: 1.1rem;">⚡</span>
+              <h3>What-If Counterfactual Simulator</h3>
+            </div>
+            <div class="status-tag" style="background: rgba(6, 182, 212, 0.12); color: var(--cyan);">
+              INTERACTIVE
+            </div>
+          </div>
+
+          <div class="sim-controls">
+            <!-- 1. Intervention Type Selector -->
+            <div>
+              <div class="section-title">
+                <span>1. Select Intervention Type</span>
+                <span id="actionWeightBadge" style="color: var(--cyan); font-family: monospace;">Weight: 0.85</span>
+              </div>
+              <div class="segmented-control">
+                <div class="seg-btn active" data-type="project_outcome" onclick="selectAction(this, 'project_outcome', '0.85')">
+                  <div class="seg-icon">🛠️</div>
+                  <div class="seg-title">Hands-on Project</div>
+                  <div class="seg-weight">Production Sprint</div>
+                </div>
+                <div class="seg-btn" data-type="assessment" onclick="selectAction(this, 'assessment', '1.00')">
+                  <div class="seg-icon">📝</div>
+                  <div class="seg-title">Formal Exam</div>
+                  <div class="seg-weight">Proctored Quiz</div>
+                </div>
+                <div class="seg-btn" data-type="course_completion" onclick="selectAction(this, 'course_completion', '0.55')">
+                  <div class="seg-icon">🎓</div>
+                  <div class="seg-title">Online Course</div>
+                  <div class="seg-weight">Guided Tutorial</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Target Score Slider -->
+            <div>
+              <div class="section-title">
+                <span>2. Target Performance Score</span>
+                <span style="color: var(--text-dim);">Standard Mastery: 80+</span>
+              </div>
+              <div class="slider-row">
+                <input type="range" id="scoreSlider" class="clean-slider" min="50" max="100" value="90" oninput="updateSliderScore(this.value)" />
+                <div class="slider-score-box" id="sliderScoreBox">90</div>
+              </div>
+            </div>
+
+            <!-- 3. Timing -->
+            <div>
+              <div class="section-title">3. Intervention Scheduling</div>
+              <select id="timingSelect" class="clean-select">
+                <option value="0">Immediate Deployment (Today)</option>
+                <option value="15">Schedule in 15 Days</option>
+                <option value="30">Schedule in 30 Days</option>
+              </select>
+            </div>
+
+            <button class="btn-run-sim" id="btnRunSim" onclick="executeSimulation()">
+              <span>⚡ Simulate Retention Impact</span>
+            </button>
+          </div>
+
+          <!-- Counterfactual Impact Breakdown -->
+          <div class="sim-impact-box" id="simImpactBox">
+            <div class="impact-header-banner">
+              <div>
+                <div class="impact-headline">
+                  <span>📉</span>
+                  <span id="impactReductionText">-62.2% Risk Reduction</span>
+                </div>
+                <div class="impact-sub" id="impactSubText">Arrests active decay and resets trajectory velocity.</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 1.15rem; font-weight: 800; font-family: monospace; color: var(--green);" id="impactDaysGained">
+                  +830 Days
+                </div>
+                <div style="font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase;">Lifespan Gained</div>
+              </div>
+            </div>
+
+            <div class="impact-comparison-grid">
+              <div class="comp-cell">
+                <div class="cell-lbl">Baseline 90d Risk</div>
+                <div class="cell-val" id="cellBaselineRisk" style="color: var(--red);">66.3%</div>
+              </div>
+              <div class="comp-cell" style="border-color: rgba(16, 185, 129, 0.4);">
+                <div class="cell-lbl">Simulated 90d Risk</div>
+                <div class="cell-val" id="cellSimulatedRisk" style="color: var(--green);">4.1%</div>
+              </div>
+            </div>
+
+            <button class="btn-reset" onclick="resetToBaseline()">
+              ↺ Reset to Current State
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 2: COMPETENCY PORTFOLIO MATRIX ──────────────────── -->
+    <div class="tab-content" id="tabMatrix">
+      <div class="card">
+        <div class="card-top">
+          <div class="card-heading">
+            <span style="font-size: 1.1rem;">📊</span>
+            <h3>Learner Competency Portfolio Matrix</h3>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Decay risk assessment across all tracked competencies</span>
+        </div>
+
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Competency Track</th>
+              <th>Risk Level</th>
+              <th>90-Day Decay Risk</th>
+              <th>Expected Days to Decay</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="matrixTableBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── TAB 3: ACTION RECOMMENDATIONS ───────────────────────── -->
+    <div class="tab-content" id="tabRecs">
+      <div class="card">
+        <div class="card-top">
+          <div class="card-heading">
+            <span style="font-size: 1.1rem;">🎯</span>
+            <h3>Next-Action Recommendations Playbook</h3>
+          </div>
+          <div class="status-tag" style="background: rgba(245,158,11,0.12); color: var(--yellow);">
+            LSTM TRIGGERED
+          </div>
+        </div>
+
+        <div class="recs-grid" id="recsGridContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <strong>GROWTHLENS Platform</strong> · Continuous Talent Intelligence · Powered by FastAPI &amp; Weibull Survival Analysis · <a href="/docs" target="_blank">OpenAPI Docs ↗</a>
+  </footer>
+
+  <!-- Clean Dashboard Script -->
   <script>
-    const API_BASE  = '';          // same origin
-    const LEARNER   = 'user_123';
-    const contentEl = document.getElementById('content');
+    const API_BASE = '';
+    let currentLearner = 'L000001';
+    let currentCompetencyId = null;
+    let selectedActionType = 'project_outcome';
+    let currentData = null;
 
-    async function loadRecommendations() {
-      try {
-        const res  = await fetch(`${API_BASE}/api/v1/learner/${LEARNER}/recommendations`);
-        if (!res.ok) throw new Error(`Server responded ${res.status}`);
-        const data = await res.json();
-        const recs = data.recommendations || [];
+    // ── Tab Navigation ──────────────────────────────────────────
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-        // Update stats
-        document.getElementById('stat-declining').textContent  = recs.length;
-        document.getElementById('stat-confidence').textContent = '85%';
-        document.getElementById('stat-actions').textContent    = recs.length;
-
-        if (recs.length === 0) {
-          contentEl.innerHTML = '<p class="empty">No action items right now — you\'re on track! 🚀</p>';
-          return;
-        }
-
-        contentEl.innerHTML = '<div class="rec-grid">' + recs.map((rec, i) => {
-          const isMentor = !!rec.mentor_suggestion;
-          const cardClass = isMentor ? 'rec-card--mentor' : 'rec-card--tutorial';
-          const badgeClass = isMentor ? 'badge--mentor' : 'badge--warn';
-          const badgeText  = isMentor ? '🤝 Mentorship Match' : '⚠️ Skill Warning';
-
-          let cta = '';
-          if (rec.external_link) {
-            cta = `<a href="${rec.external_link}" target="_blank" rel="noopener noreferrer" class="btn btn--tutorial">▶ Watch Recommended Tutorial</a>`;
-          }
-          if (rec.mentor_suggestion) {
-            cta = `<button class="btn btn--mentor" id="mentor-btn-${i}"
-                     onclick="requestMentorship('${rec.mentor_suggestion.mentor_id}', '${rec.competency}', ${i})">
-                     🤝 Request Peer Mentorship from ${rec.mentor_suggestion.mentor_name}
-                   </button>`;
-          }
-
-          return `
-            <div class="rec-card ${cardClass} fade-in">
-              <div class="badge ${badgeClass}">${badgeText}</div>
-              <h3 class="rec-heading"><span class="highlight">${rec.competency}</span> is declining</h3>
-              <p class="rec-evidence">Evidence Reference: <code>${rec.evidence_ref}</code></p>
-              <p class="rec-action-type">${rec.action}</p>
-              ${cta}
-            </div>`;
-        }).join('') + '</div>';
-
-      } catch (err) {
-        contentEl.innerHTML = `<div class="error-box">⚠ Unable to load recommendations: ${err.message}</div>`;
+      if (tabId === 'studio') {
+        document.getElementById('tabBtnStudio').classList.add('active');
+        document.getElementById('tabStudio').classList.add('active');
+      } else if (tabId === 'matrix') {
+        document.getElementById('tabBtnMatrix').classList.add('active');
+        document.getElementById('tabMatrix').classList.add('active');
+      } else if (tabId === 'recs') {
+        document.getElementById('tabBtnRecs').classList.add('active');
+        document.getElementById('tabRecs').classList.add('active');
       }
     }
 
-    async function requestMentorship(mentorId, competencyId, idx) {
-      const btn = document.getElementById(`mentor-btn-${idx}`);
+    // ── App Initialization ──────────────────────────────────────
+    async function init() {
+      await loadLearners();
+      await fetchRetention();
+      await fetchRecommendations();
+    }
+
+    async function loadLearners() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/learners?limit=12`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const sel = document.getElementById('learnerSelect');
+        if (json.learners && json.learners.length > 0) {
+          sel.innerHTML = json.learners.map(l =>
+            `<option value="${l.learner_id}">${l.learner_id} — ${l.role} (${l.department})</option>`
+          ).join('') + `<option value="user_123">user_123 (Demo Alias)</option>`;
+          sel.value = currentLearner;
+        }
+      } catch (e) {
+        console.warn('Learner load error:', e);
+      }
+    }
+
+    function onLearnerChange(id) {
+      currentLearner = id;
+      currentCompetencyId = null;
+      resetToBaseline();
+      fetchRetention();
+      fetchRecommendations();
+    }
+
+    // ── Retention Fetcher ───────────────────────────────────────
+    async function fetchRetention() {
+      try {
+        let url = `${API_BASE}/api/v1/learner/${currentLearner}/retention`;
+        if (currentCompetencyId) url += `?competency_id=${currentCompetencyId}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentData = data;
+
+        renderProfile(data);
+        renderRetentionAnalytics(data);
+        renderCompetencyChips(data);
+        renderRiskDrivers(data.key_risk_factors || []);
+        renderMatrixTable(data.competencies_overview || []);
+
+      } catch (err) {
+        console.error('Failed to fetch retention:', err);
+      }
+    }
+
+    // ── Render Profile Strip ────────────────────────────────────
+    function renderProfile(d) {
+      document.getElementById('profileLearnerName').textContent = `Learner ${d.learner_id} (${d.resolved_learner_id})`;
+      document.getElementById('stripRiskScore').textContent = `${d.risk_percentage}%`;
+      document.getElementById('stripHalflife').textContent = `${d.expected_days_to_decay}d`;
+      document.getElementById('stripEvidenceCount').textContent = d.evidence_count || 12;
+
+      const color = getRiskColor(d.risk_score);
+      document.getElementById('stripRiskScore').style.color = color;
+    }
+
+    // ── Render Retention Cockpit & Gauge ────────────────────────
+    function renderRetentionAnalytics(d) {
+      const risk = d.risk_score;
+      const pct = Math.round(d.risk_percentage);
+      const color = getRiskColor(risk);
+
+      // Radial SVG Gauge animation: radius=60 => circumference = 2 * PI * 60 = 376.99
+      const circle = document.getElementById('radialGaugeCircle');
+      const circumference = 376.99;
+      circle.style.strokeDashoffset = circumference - (risk * circumference);
+      circle.style.stroke = color;
+
+      document.getElementById('gaugeNumText').textContent = `${pct}%`;
+      document.getElementById('gaugeNumText').style.color = color;
+
+      const badge = document.getElementById('mainRiskBadge');
+      badge.textContent = `${d.risk_level} RISK`;
+      badge.style.color = color;
+      badge.style.background = hexToRgba(color, 0.12);
+
+      document.getElementById('activeCompName').textContent = d.competency_name;
+      document.getElementById('activeExpectedDays').textContent = `${d.expected_days_to_decay} Days`;
+      document.getElementById('activeConfidence').textContent = `${Math.round((d.confidence || 0.8) * 100)}%`;
+      document.getElementById('activeUrgency').textContent = d.urgency.split(' ')[0] + ' ' + (d.urgency.split(' ')[1] || 'Action');
+      document.getElementById('activeUrgency').style.color = color;
+
+      // Survival timeline
+      const surv = d.survival_probabilities || {};
+      document.getElementById('hbar30').textContent = `${(surv['30d'] * 100).toFixed(1)}%`;
+      document.getElementById('hbar60').textContent = `${(surv['60d'] * 100).toFixed(1)}%`;
+      document.getElementById('hbar90').textContent = `${(surv['90d'] * 100).toFixed(1)}%`;
+      document.getElementById('hbar180').textContent = `${(surv['180d'] * 100).toFixed(1)}%`;
+    }
+
+    // ── Competency Chips ────────────────────────────────────────
+    function renderCompetencyChips(d) {
+      const bar = document.getElementById('competencyChipsBar');
+      const comps = d.available_competencies || [];
+
+      bar.innerHTML = comps.map(c => {
+        const isActive = c.competency_id === d.competency_id;
+        return `
+          <button class="comp-chip ${isActive ? 'active' : ''}" onclick="selectTrack('${c.competency_id}')">
+            ${c.competency_name} (${c.evidence_count})
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectTrack(cid) {
+      currentCompetencyId = cid;
+      resetToBaseline();
+      fetchRetention();
+    }
+
+    // ── Key Risk Drivers ────────────────────────────────────────
+    function renderRiskDrivers(factors) {
+      const container = document.getElementById('factorsContainer');
+      if (!factors || factors.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-dim); font-size: 0.76rem; padding: 0.5rem 0;">No severe decay drivers detected.</div>';
+        return;
+      }
+
+      container.innerHTML = factors.map(f => {
+        const isRisk = f.impact === 'negative';
+        const badgeClass = isRisk ? 'badge-risk' : 'badge-protect';
+        const badgeText = isRisk ? 'Accelerates Decay' : 'Protective Factor';
+        const icon = isRisk ? '⚠️' : '🛡️';
+
+        return `
+          <div class="factor-row">
+            <div class="factor-left">
+              <span>${icon}</span>
+              <div>
+                <strong style="color: #fff;">${f.factor}</strong>
+                <div class="factor-desc">${f.description}</div>
+              </div>
+            </div>
+            <span class="${badgeClass}">${badgeText}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── Matrix Table (Tab 2) ────────────────────────────────────
+    function renderMatrixTable(overview) {
+      const tbody = document.getElementById('matrixTableBody');
+      if (!overview || overview.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No competencies available.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = overview.map(c => {
+        const color = getRiskColor(c.risk_score);
+        return `
+          <tr>
+            <td><strong style="color: #fff;">${c.competency_name}</strong></td>
+            <td><span class="status-tag" style="background: ${hexToRgba(color, 0.12)}; color: ${color};">${c.risk_level}</span></td>
+            <td><strong style="font-family: monospace; color: ${color};">${c.risk_percentage}%</strong></td>
+            <td><span style="font-family: monospace;">${c.expected_days_to_decay} Days</span></td>
+            <td>
+              <button class="btn-mini-sim" onclick="switchToStudioWithComp('${c.competency_id}')">
+                Simulate in Lab ↗
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function switchToStudioWithComp(cid) {
+      selectTrack(cid);
+      switchTab('studio');
+    }
+
+    // ── What-If Simulator Logic ─────────────────────────────────
+    function selectAction(el, type, weight) {
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedActionType = type;
+      document.getElementById('actionWeightBadge').textContent = `Weight: ${weight}`;
+    }
+
+    function updateSliderScore(val) {
+      document.getElementById('sliderScoreBox').textContent = val;
+    }
+
+    async function executeSimulation() {
+      const btn = document.getElementById('btnRunSim');
       btn.disabled = true;
-      btn.textContent = 'Sending…';
+      btn.innerHTML = '<span>⚡ Computing Counterfactual Trajectory…</span>';
+
+      const score = parseFloat(document.getElementById('scoreSlider').value);
+      const days = parseInt(document.getElementById('timingSelect').value, 10);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/learner/${currentLearner}/retention/simulate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            competency_id: currentData ? currentData.competency_id : null,
+            action_type: selectedActionType,
+            simulated_score: score,
+            days_from_now: days
+          })
+        });
+
+        if (!res.ok) throw new Error('Simulation endpoint failed');
+        const sim = await res.json();
+
+        // Render Impact Box
+        document.getElementById('simImpactBox').classList.add('visible');
+        document.getElementById('impactReductionText').textContent = `${sim.percentage_delta > 0 ? '+' : ''}${sim.percentage_delta}% Risk Reduction`;
+        document.getElementById('impactSubText').textContent = `Counterfactual ${selectedActionType} (Score: ${score}) successfully arrests decay.`;
+        document.getElementById('impactDaysGained').textContent = `+${sim.expected_days_gained} Days`;
+        document.getElementById('cellBaselineRisk').textContent = `${sim.original_risk_percentage}%`;
+        document.getElementById('cellSimulatedRisk').textContent = `${sim.new_risk_percentage}%`;
+
+        // Smoothly animate the left-hand radial gauge to the simulated value!
+        const simColor = getRiskColor(sim.new_risk);
+        const circle = document.getElementById('radialGaugeCircle');
+        const circumference = 376.99;
+        circle.style.strokeDashoffset = circumference - (sim.new_risk * circumference);
+        circle.style.stroke = simColor;
+
+        document.getElementById('gaugeNumText').textContent = `${Math.round(sim.new_risk_percentage)}%`;
+        document.getElementById('gaugeNumText').style.color = simColor;
+        document.getElementById('activeExpectedDays').textContent = `${sim.new_expected_days_to_decay} Days`;
+
+      } catch (e) {
+        alert('Simulation error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Simulate Retention Impact</span>';
+      }
+    }
+
+    function resetToBaseline() {
+      document.getElementById('simImpactBox').classList.remove('visible');
+      if (currentData) renderRetentionAnalytics(currentData);
+    }
+
+    // ── Recommendations (Tab 3) ─────────────────────────────────
+    async function fetchRecommendations() {
+      const container = document.getElementById('recsGridContainer');
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/learner/${currentLearner}/recommendations`);
+        if (!res.ok) throw new Error('Failed to load recommendations');
+        const json = await res.json();
+        const recs = json.recommendations || [];
+
+        if (recs.length === 0) {
+          container.innerHTML = '<div style="color: var(--text-dim); padding: 1.5rem 0;">No active skill decay alerts. Trajectory healthy! 🚀</div>';
+          return;
+        }
+
+        container.innerHTML = recs.map((r, i) => {
+          const isMentor = !!r.mentor_suggestion;
+          const cardClass = isMentor ? 'mentor' : 'tutorial';
+          const tagColor = isMentor ? 'var(--blue)' : 'var(--red)';
+          const tagBg = isMentor ? 'rgba(59,130,246,0.12)' : 'rgba(244,63,94,0.12)';
+          const tagText = isMentor ? '🤝 Mentorship Match' : '⚠️ Trajectory Decay Alert';
+
+          let cta = '';
+          if (r.external_link) {
+            cta = `<a href="${r.external_link}" target="_blank" rel="noopener noreferrer" class="btn-action-primary tutorial">▶ Watch Recommended Tutorial</a>`;
+          }
+          if (r.mentor_suggestion) {
+            cta = `<button class="btn-action-primary mentor" id="rec-btn-${i}" onclick="requestPeerMentor('${r.mentor_suggestion.mentor_id}', '${r.competency}', ${i})">🤝 Connect with ${r.mentor_suggestion.mentor_name}</button>`;
+          }
+
+          return `
+            <div class="rec-card ${cardClass}">
+              <div>
+                <span class="rec-tag" style="background: ${tagBg}; color: ${tagColor};">${tagText}</span>
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem;">${r.competency} is declining</h4>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem;">Action: ${r.action} (Evidence: <code>${r.evidence_ref || 'EV-REF'}</code>)</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${cta}
+                <button class="btn-mini-sim" onclick="switchToStudioWithComp('${r.competency}')">Simulate in Lab</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        container.innerHTML = `<div style="color: var(--red); font-size: 0.8rem;">Failed to fetch recommendations: ${err.message}</div>`;
+      }
+    }
+
+    async function requestPeerMentor(mentorId, comp, idx) {
+      const btn = document.getElementById(`rec-btn-${idx}`);
+      btn.disabled = true;
+      btn.textContent = 'Dispatching…';
 
       try {
         const res = await fetch(`${API_BASE}/api/v1/manager/mentorship/request`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            manager_id:    'mgr_1',
-            mentee_id:     LEARNER,
-            mentor_id:     mentorId,
-            competency_id: competencyId,
-          }),
+            manager_id: 'mgr_1',
+            mentee_id: currentLearner,
+            mentor_id: mentorId,
+            competency_id: comp
+          })
         });
         if (!res.ok) throw new Error('Request failed');
-        btn.textContent = '✓ Request Sent!';
-        btn.classList.add('btn--sent');
-      } catch {
-        btn.textContent = '✗ Failed — Retry';
+        btn.textContent = '✓ Request Dispatched';
+        btn.style.background = 'var(--green)';
+      } catch (e) {
+        btn.textContent = '✗ Retry';
         btn.disabled = false;
       }
     }
 
-    loadRecommendations();
+    // ── Utilities ───────────────────────────────────────────────
+    function getRiskColor(r) {
+      if (r < 0.30) return '#10b981'; // Green
+      if (r < 0.60) return '#f59e0b'; // Yellow
+      return '#f43f5e'; // Red
+    }
+
+    function hexToRgba(hex, alpha) {
+      let c;
+      if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+        c = hex.substring(1).split('');
+        if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+        c = '0x' + c.join('');
+        return `rgba(${[(c>>16)&255, (c>>8)&255, c&255].join(',')},${alpha})`;
+      }
+      return hex;
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
