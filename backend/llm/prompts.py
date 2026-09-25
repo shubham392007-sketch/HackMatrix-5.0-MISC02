@@ -8,10 +8,11 @@ CRITICAL RULES:
 2. If evidence is brief, extract only what is directly supported. Do not extrapolate wildly.
 3. Every confidence score must be a numerical float between 0.0 and 1.0.
 4. Output MUST be valid JSON matching the exact schema requested, with no markdown code fences or conversational prose.
+5. Be concise and return JSON immediately without preamble or internal thoughts.
 
 JSON Schema format:
 {
-  "evidence_summary": "Short 1-2 sentence factual summary of what the engineer did",
+  "evidence_summary": "Short 1 sentence factual summary",
   "skills": [
     {"name": "Skill Name", "confidence": 0.9}
   ],
@@ -20,7 +21,7 @@ JSON Schema format:
   ],
   "evidence_type": "commit | task | bug_fix | code_review | architectural_change",
   "evidence_strength": 0.85,
-  "reasoning": "Factual explanation of why these skills/competencies apply to this evidence"
+  "reasoning": "Direct concise justification"
 }
 """
 

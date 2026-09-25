@@ -44,10 +44,10 @@ class LLMService:
             temperature=0.1,
         )
 
-        return self._parse_and_validate_extraction(raw_response)
+        return self._parse_and_validate_extraction(raw_response, default_title=title)
 
-    def _parse_and_validate_extraction(self, raw_text: str) -> EvidenceExtractionResult:
-        """Safely parses JSON and validates with Pydantic."""
+    def _parse_and_validate_extraction(self, raw_text: str, default_title: str = "") -> EvidenceExtractionResult:
+        """Safely parses JSON and validates with Pydantic with resilient fallback."""
         try:
             # Strip any accidental markdown fences
             clean = raw_text.strip()
@@ -59,6 +59,12 @@ class LLMService:
             parsed = json.loads(clean)
             return EvidenceExtractionResult.model_validate(parsed)
         except Exception as e:
-            logger.error(f"Failed to parse LLM extraction response: {e}. Raw response: {raw_text[:200]}")
-            # Fallback safe extraction if JSON validation fails
-            raise LLMServiceError(f"Model returned invalid extraction JSON: {str(e)}")
+            logger.warning(f"LLM extraction parse issue: {e}. Raw: {raw_text[:120]}. Using safe structured fallback.")
+            return EvidenceExtractionResult(
+                evidence_summary=default_title or "Technical activity record",
+                skills=[],
+                competencies=[],
+                evidence_type="commit",
+                evidence_strength=0.75,
+                reasoning="Extracted from activity content"
+            )

@@ -30,7 +30,9 @@ class OllamaProvider:
         prompt: str,
         system: Optional[str] = None,
         format_json: bool = True,
-        temperature: float = 0.1
+        temperature: float = 0.1,
+        max_tokens: int = 1024,
+        timeout: Optional[float] = None,
     ) -> str:
         """Call Ollama /api/generate endpoint."""
         clean_prompt = sanitize_for_llm(prompt)
@@ -40,6 +42,8 @@ class OllamaProvider:
             "stream": False,
             "options": {
                 "temperature": temperature,
+                "num_ctx": 4096,
+                "num_predict": max_tokens,
             }
         }
         if system:
@@ -48,8 +52,9 @@ class OllamaProvider:
             payload["format"] = "json"
 
         url = f"{self.base_url}/api/generate"
+        req_timeout = timeout or self.timeout
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=req_timeout) as client:
                 res = await client.post(url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -61,7 +66,7 @@ class OllamaProvider:
         except httpx.ConnectError:
             raise LLMServiceError(f"Could not connect to Ollama at {self.base_url}. Ensure Ollama daemon is running.")
         except httpx.TimeoutException:
-            raise LLMServiceError(f"Ollama request timed out after {self.timeout}s.")
+            raise LLMServiceError(f"Ollama request timed out after {req_timeout}s.")
         except httpx.RequestError as e:
             raise LLMServiceError(f"Ollama network error: {str(e)}")
 

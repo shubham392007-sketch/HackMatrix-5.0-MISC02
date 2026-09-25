@@ -101,3 +101,42 @@ class EvidenceRepository:
             "skills": skills_res.data or [],
             "competencies": comp_res.data or []
         }
+
+    def get_batch_skills_and_competencies(self, evidence_ids: List[str]) -> dict[str, dict]:
+        """Fetch skills and competencies for a list of evidence IDs in 2 batch queries."""
+        if not evidence_ids:
+            return {}
+        result = {eid: {"skills": [], "competencies": []} for eid in evidence_ids}
+        try:
+            skills_res = (
+                self.client.table("evidence_skills")
+                .select("evidence_id, skill_id, extraction_confidence, skills(name)")
+                .in_("evidence_id", evidence_ids)
+                .execute()
+            )
+            for row in (skills_res.data or []):
+                eid = row.get("evidence_id")
+                if eid in result and row.get("skills"):
+                    name = row["skills"].get("name")
+                    if name and name not in result[eid]["skills"]:
+                        result[eid]["skills"].append(name)
+        except Exception as e:
+            logger.warning(f"Failed to fetch batch skills: {e}")
+
+        try:
+            comp_res = (
+                self.client.table("evidence_competencies")
+                .select("evidence_id, competency_id, extraction_confidence, competencies(name)")
+                .in_("evidence_id", evidence_ids)
+                .execute()
+            )
+            for row in (comp_res.data or []):
+                eid = row.get("evidence_id")
+                if eid in result and row.get("competencies"):
+                    name = row["competencies"].get("name")
+                    if name and name not in result[eid]["competencies"]:
+                        result[eid]["competencies"].append(name)
+        except Exception as e:
+            logger.warning(f"Failed to fetch batch competencies: {e}")
+
+        return result

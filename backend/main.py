@@ -73,12 +73,13 @@ def _error_code_to_status(error_code: str) -> int:
 
 
 import os
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees, auth
 
-# Register routers
+# Register core routers
 app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(employees.router, prefix="/api")
@@ -89,10 +90,20 @@ app.include_router(evidence.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(ingestion.router, prefix="/api")
 
+# Register recommendation router if available
+try:
+    from routers.recommendations import router as recommendations_router
+    app.include_router(recommendations_router)
+    logger.info("Recommendations router registered")
+except Exception as e:
+    logger.warning(f"Could not load recommendations router: {e}")
+
 # Mount static folder
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+root_static_dir = Path(__file__).resolve().parent.parent / "static"
 
 @app.get("/", include_in_schema=False)
 @app.get("/dev", include_in_schema=False)
@@ -111,3 +122,13 @@ async def serve_auth_page():
     if os.path.exists(auth_file):
         return FileResponse(auth_file)
     return {"message": "Auth page missing"}
+
+@app.get("/recommendations", include_in_schema=False)
+@app.get("/dashboard", include_in_schema=False)
+async def serve_recommendations_dashboard():
+    """Serves the Next-Action Recommendations Dashboard."""
+    rec_file = root_static_dir / "index.html"
+    if rec_file.exists():
+        return FileResponse(str(rec_file))
+    return {"message": "Recommendations dashboard missing"}
+

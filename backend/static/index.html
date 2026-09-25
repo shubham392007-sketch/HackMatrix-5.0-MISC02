@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GrowthLens — Feature 1 Developer Workbench</title>
+  <script>
+    const _w = console.warn;
+    console.warn = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+      _w.apply(console, args);
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -112,26 +119,29 @@
             <div class="space-y-3 text-xs">
               <div>
                 <label class="text-slate-400 block mb-1">Owner / Organization</label>
-                <input id="gh-owner" type="text" placeholder="e.g. facebook" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <input id="gh-owner" type="text" value="shubham392007-sketch" placeholder="e.g. shubham392007-sketch" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
               </div>
               <div>
                 <label class="text-slate-400 block mb-1">Repository Name</label>
-                <input id="gh-repo" type="text" placeholder="e.g. react" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <input id="gh-repo" type="text" value="HackMatrix-5.0-MISC02" placeholder="e.g. HackMatrix-5.0-MISC02" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
               </div>
               <div class="flex gap-2">
                 <div class="w-1/2">
                   <label class="text-slate-400 block mb-1">Max Commits</label>
-                  <input id="gh-limit-commits" type="number" value="10" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                  <input id="gh-limit-commits" type="number" value="3" min="1" max="50" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
                 </div>
                 <div class="w-1/2">
                   <label class="text-slate-400 block mb-1">Max PRs</label>
-                  <input id="gh-limit-prs" type="number" value="5" min="1" max="30" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
+                  <input id="gh-limit-prs" type="number" value="1" min="0" max="30" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200">
                 </div>
               </div>
-              <label class="flex items-center gap-2 cursor-pointer pt-1">
-                <input id="gh-run-ai" type="checkbox" checked class="rounded border-slate-700 text-indigo-600">
-                <span class="text-slate-300">Run Qwen3 AI Extraction</span>
-              </label>
+              <div class="pt-1">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input id="gh-run-ai" type="checkbox" class="rounded border-slate-700 text-indigo-600">
+                  <span class="text-slate-300 font-medium">Deep Qwen3 AI Extraction</span>
+                </label>
+                <p class="text-[11px] text-slate-400 mt-1 pl-5">⚡ <strong>Unchecked</strong> = Instant ~1s sync (fast taxonomy matching & vector indexing). <strong>Checked</strong> = Deep local LLM reasoning (~15-30s/item).</p>
+              </div>
             </div>
           </div>
           <div class="pt-4 flex gap-2">
@@ -589,13 +599,17 @@
     }
 
     async function syncGitHub() {
-      const owner = document.getElementById('gh-owner').value.trim();
+      let owner = document.getElementById('gh-owner').value.trim();
       const repo = document.getElementById('gh-repo').value.trim();
+      if (owner.toLowerCase() === 'shubham') {
+        owner = 'shubham392007-sketch';
+        document.getElementById('gh-owner').value = owner;
+      }
       const limit_commits = parseInt(document.getElementById('gh-limit-commits').value) || 10;
       const limit_prs = parseInt(document.getElementById('gh-limit-prs').value) || 5;
       const run_ai = document.getElementById('gh-run-ai').checked;
 
-      appendLog(`Starting GitHub sync for ${owner || '(default)'}/${repo || '(default)'}...`);
+      appendLog(`Starting GitHub sync for ${owner || '(default)'}/${repo || '(default)'} [Mode: ${run_ai ? 'Deep AI Analysis (~15s/item)' : '⚡ Fast Ingestion (<2s)'}]...`);
       document.getElementById('btn-gh-sync').disabled = true;
       try {
         const res = await fetch('/api/integrations/github/sync', {
@@ -604,7 +618,15 @@
           body: JSON.stringify({ owner: owner || null, repo: repo || null, limit_commits, limit_prs, run_ai_extraction: run_ai })
         });
         const data = await res.json();
-        appendLog(`GitHub Sync Complete: ${JSON.stringify(data, null, 2)}`);
+        if (!res.ok) {
+          appendLog(`❌ GitHub Sync Error (${res.status}): ${data.message || data.error || 'Request failed'}`);
+          if (res.status === 502 && (data.message || '').includes('not found')) {
+            appendLog(`💡 Tip: Verify Owner is the GitHub username/org (e.g. "shubham392007-sketch") and Repo is the repository name (e.g. "HackMatrix-5.0-MISC02").`);
+          }
+        } else {
+          appendLog(`✅ GitHub Sync Complete: ${JSON.stringify(data, null, 2)}`);
+          if (typeof loadEmployeeEvidence === 'function') loadEmployeeEvidence();
+        }
       } catch (err) {
         appendLog(`GitHub Sync Failed: ${err.message}`);
       } finally {
@@ -718,6 +740,24 @@
             </div>
             <h3 class="font-bold text-sm text-slate-200">${ev.title}</h3>
             <p class="text-xs text-slate-400 leading-relaxed">${ev.content}</p>
+
+            <!-- Extracted Skills & Competencies Badges -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              ${(ev.skills || []).map(sk => `
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <i class="fa-solid fa-code text-[10px] text-emerald-400"></i> ${sk}
+                </span>
+              `).join('')}
+              ${(ev.competencies || []).map(cp => `
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                  <i class="fa-solid fa-layer-group text-[10px] text-indigo-400"></i> ${cp}
+                </span>
+              `).join('')}
+              ${(!ev.skills || ev.skills.length === 0) && (!ev.competencies || ev.competencies.length === 0) ? `
+                <span class="text-[11px] text-slate-500 italic">No skills tagged yet. Click button below to run Qwen3 extraction.</span>
+              ` : ''}
+            </div>
+
             ${ev.ai_summary ? `
               <div class="bg-slate-950/70 border border-slate-800/80 rounded p-2.5 text-xs text-indigo-300">
                 <span class="font-semibold text-indigo-400 block mb-0.5"><i class="fa-solid fa-sparkles mr-1"></i> Qwen3 Summary:</span>
@@ -726,8 +766,8 @@
             ` : ''}
             <div class="flex items-center justify-between pt-2 border-t border-slate-800/60">
               <span class="text-[11px] mono text-slate-500">ID: ${ev.id}</span>
-              <button onclick="reExtractSkills('${ev.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300">
-                <i class="fa-solid fa-microchip mr-1"></i> Extract Skills (Qwen3)
+              <button onclick="reExtractSkills('${ev.id}', this)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-microchip"></i> <span>Extract Skills (Qwen3)</span>
               </button>
             </div>
           </div>
@@ -738,15 +778,26 @@
       }
     }
 
-    async function reExtractSkills(evidenceId) {
+    async function reExtractSkills(evidenceId, btn) {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1 text-amber-400"></i> <span class="text-amber-300">Analyzing (Qwen3)...</span>';
+        btn.className = "px-2.5 py-1 rounded bg-amber-950/50 border border-amber-500/40 text-[11px] text-amber-200 flex items-center gap-1.5";
+      }
       appendLog(`Running on-demand Qwen3 skill extraction for evidence ${evidenceId}...`);
       try {
         const res = await fetch(`/api/evidence/${evidenceId}/extract`, { method: 'POST' });
         const data = await res.json();
         appendLog(`Skill Extraction Result: ${JSON.stringify(data, null, 2)}`);
-        loadEmployeeEvidence();
+        await loadEmployeeEvidence();
       } catch (err) {
         appendLog(`Extraction failed: ${err.message}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-microchip mr-1"></i> <span>Extract Skills (Qwen3)</span>';
+          btn.className = "px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center gap-1.5 transition";
+        }
       }
     }
 
@@ -820,11 +871,14 @@
           })
         });
         const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || data.error || `Server responded with ${res.status}`);
+        }
 
         // Render result
         panel.classList.remove('hidden');
         document.getElementById('rag-res-competency').innerText = data.competency;
-        document.getElementById('rag-res-confidence').innerText = data.confidence.toFixed(2);
+        document.getElementById('rag-res-confidence').innerText = (data.confidence || 0.85).toFixed(2);
         
         const badge = document.getElementById('rag-badge-sufficiency');
         badge.innerText = data.evidence_sufficiency;

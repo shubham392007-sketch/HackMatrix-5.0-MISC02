@@ -173,6 +173,11 @@ class TaxonomyService:
         res = self.client.table("competencies").select("*").order("name").execute()
         return res.data or []
 
+    def list_all_skills(self) -> List[Dict[str, Any]]:
+        """Returns all skills from the taxonomy."""
+        res = self.client.table("skills").select("*").order("name").execute()
+        return res.data or []
+
     def list_skills_by_competency(self, competency_id: str) -> List[Dict[str, Any]]:
         """Returns skills linked to a competency."""
         res = self.client.table("skills").select("*").eq("competency_id", competency_id).order("name").execute()
