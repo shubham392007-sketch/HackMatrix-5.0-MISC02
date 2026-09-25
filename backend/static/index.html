@@ -740,6 +740,24 @@
             </div>
             <h3 class="font-bold text-sm text-slate-200">${ev.title}</h3>
             <p class="text-xs text-slate-400 leading-relaxed">${ev.content}</p>
+
+            <!-- Extracted Skills & Competencies Badges -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              ${(ev.skills || []).map(sk => `
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <i class="fa-solid fa-code text-[10px] text-emerald-400"></i> ${sk}
+                </span>
+              `).join('')}
+              ${(ev.competencies || []).map(cp => `
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                  <i class="fa-solid fa-layer-group text-[10px] text-indigo-400"></i> ${cp}
+                </span>
+              `).join('')}
+              ${(!ev.skills || ev.skills.length === 0) && (!ev.competencies || ev.competencies.length === 0) ? `
+                <span class="text-[11px] text-slate-500 italic">No skills tagged yet. Click button below to run Qwen3 extraction.</span>
+              ` : ''}
+            </div>
+
             ${ev.ai_summary ? `
               <div class="bg-slate-950/70 border border-slate-800/80 rounded p-2.5 text-xs text-indigo-300">
                 <span class="font-semibold text-indigo-400 block mb-0.5"><i class="fa-solid fa-sparkles mr-1"></i> Qwen3 Summary:</span>
@@ -748,8 +766,8 @@
             ` : ''}
             <div class="flex items-center justify-between pt-2 border-t border-slate-800/60">
               <span class="text-[11px] mono text-slate-500">ID: ${ev.id}</span>
-              <button onclick="reExtractSkills('${ev.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300">
-                <i class="fa-solid fa-microchip mr-1"></i> Extract Skills (Qwen3)
+              <button onclick="reExtractSkills('${ev.id}', this)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-microchip"></i> <span>Extract Skills (Qwen3)</span>
               </button>
             </div>
           </div>
@@ -760,15 +778,26 @@
       }
     }
 
-    async function reExtractSkills(evidenceId) {
+    async function reExtractSkills(evidenceId, btn) {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1 text-amber-400"></i> <span class="text-amber-300">Analyzing (Qwen3)...</span>';
+        btn.className = "px-2.5 py-1 rounded bg-amber-950/50 border border-amber-500/40 text-[11px] text-amber-200 flex items-center gap-1.5";
+      }
       appendLog(`Running on-demand Qwen3 skill extraction for evidence ${evidenceId}...`);
       try {
         const res = await fetch(`/api/evidence/${evidenceId}/extract`, { method: 'POST' });
         const data = await res.json();
         appendLog(`Skill Extraction Result: ${JSON.stringify(data, null, 2)}`);
-        loadEmployeeEvidence();
+        await loadEmployeeEvidence();
       } catch (err) {
         appendLog(`Extraction failed: ${err.message}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-microchip mr-1"></i> <span>Extract Skills (Qwen3)</span>';
+          btn.className = "px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 flex items-center gap-1.5 transition";
+        }
       }
     }
 
