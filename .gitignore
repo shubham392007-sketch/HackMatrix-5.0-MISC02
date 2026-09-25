@@ -45,4 +45,6 @@ chroma_data/
 
 # Logs
 *.log
-logs/
+# Datasets & Derived Data
+misc02_dataset/
+derived_data/
