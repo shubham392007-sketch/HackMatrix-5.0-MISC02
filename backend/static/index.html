@@ -599,8 +599,12 @@
     }
 
     async function syncGitHub() {
-      const owner = document.getElementById('gh-owner').value.trim();
+      let owner = document.getElementById('gh-owner').value.trim();
       const repo = document.getElementById('gh-repo').value.trim();
+      if (owner.toLowerCase() === 'shubham') {
+        owner = 'shubham392007-sketch';
+        document.getElementById('gh-owner').value = owner;
+      }
       const limit_commits = parseInt(document.getElementById('gh-limit-commits').value) || 10;
       const limit_prs = parseInt(document.getElementById('gh-limit-prs').value) || 5;
       const run_ai = document.getElementById('gh-run-ai').checked;

@@ -56,6 +56,10 @@ class EvidenceIngestionService:
         target_owner = owner or settings.github_repository_owner
         target_repo = repo or settings.github_repository_name
 
+        # Auto-resolve owner if user inputs display name or common alias
+        if target_owner and target_owner.strip().lower() in ["shubham", "shubham-sketch", "shubham392007", "shubham-392007sketch"]:
+            target_owner = "shubham392007-sketch"
+
         if not target_owner or not target_repo:
             raise GitHubIntegrationError("GitHub owner and repository must be specified or configured in .env")
 
