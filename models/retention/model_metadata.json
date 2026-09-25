@@ -1,0 +1,92 @@
+{
+  "model_type": "WeibullAFTFitter",
+  "c_index": 0.7938733212650083,
+  "features": [
+    "evidence_count_30d",
+    "evidence_count_90d",
+    "historical_mean",
+    "recent_vs_historical_change",
+    "slope_per_30d",
+    "source_diversity",
+    "maximum_evidence_gap",
+    "average_days_between_evidence",
+    "current_score"
+  ],
+  "feature_means": {
+    "evidence_count_30d": 2.4578938556839107,
+    "evidence_count_90d": 4.787108655616943,
+    "historical_mean": 62.92780232526742,
+    "recent_vs_historical_change": 1.362804293405499,
+    "slope_per_30d": 1.4323792880373023,
+    "source_diversity": 2.6530386740331493,
+    "maximum_evidence_gap": 47.221664155365815,
+    "average_days_between_evidence": 21.468521116512076,
+    "current_score": 64.93385903231207
+  },
+  "feature_scales": {
+    "evidence_count_30d": 1.1890636975916262,
+    "evidence_count_90d": 2.018767104085935,
+    "historical_mean": 11.119115083287548,
+    "recent_vs_historical_change": 7.388223639128348,
+    "slope_per_30d": 7.492636076046335,
+    "source_diversity": 0.5239544527464873,
+    "maximum_evidence_gap": 27.195817244259707,
+    "average_days_between_evidence": 12.774388643181963,
+    "current_score": 17.6803829462662
+  },
+  "coefficients": {
+    "average_days_between_evidence": {
+      "coef": 0.008909111369131771,
+      "exp(coef)": 1.0089489156208509,
+      "p": 0.5672979997555511
+    },
+    "current_score": {
+      "coef": 0.34117838614311885,
+      "exp(coef)": 1.4066041371702163,
+      "p": 6.415621979807117e-67
+    },
+    "evidence_count_30d": {
+      "coef": -0.004511080306274481,
+      "exp(coef)": 0.995499079333765,
+      "p": 0.69967689954451
+    },
+    "evidence_count_90d": {
+      "coef": -0.017512919002753622,
+      "exp(coef)": 0.982639540860137,
+      "p": 0.1793610669823258
+    },
+    "historical_mean": {
+      "coef": -0.3305269827024343,
+      "exp(coef)": 0.718544972868936,
+      "p": 3.325227013769659e-104
+    },
+    "maximum_evidence_gap": {
+      "coef": -0.05284657840262041,
+      "exp(coef)": 0.9485255256208798,
+      "p": 0.0002642455977444313
+    },
+    "recent_vs_historical_change": {
+      "coef": 0.43868840764938216,
+      "exp(coef)": 1.5506720345583962,
+      "p": 2.7648034244190117e-193
+    },
+    "slope_per_30d": {
+      "coef": 0.26573436918523285,
+      "exp(coef)": 1.3043885268770348,
+      "p": 0.0
+    },
+    "source_diversity": {
+      "coef": -0.02800982984029243,
+      "exp(coef)": 0.9723788084258778,
+      "p": 0.006551505769547633
+    },
+    "Intercept": {
+      "coef": 6.018383552638321,
+      "exp(coef)": 410.91383800915463,
+      "p": 0.0
+    }
+  },
+  "penalizer": 0.05,
+  "training_samples": 29865,
+  "test_samples": 54647
+}
