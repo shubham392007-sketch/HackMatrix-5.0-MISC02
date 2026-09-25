@@ -112,11 +112,11 @@
             <div class="space-y-3 text-xs">
               <div>
                 <label class="text-slate-400 block mb-1">Owner / Organization</label>
-                <input id="gh-owner" type="text" placeholder="e.g. facebook" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <input id="gh-owner" type="text" value="shubham392007-sketch" placeholder="e.g. shubham392007-sketch" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
               </div>
               <div>
                 <label class="text-slate-400 block mb-1">Repository Name</label>
-                <input id="gh-repo" type="text" placeholder="e.g. react" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <input id="gh-repo" type="text" value="HackMatrix-5.0-MISC02" placeholder="e.g. HackMatrix-5.0-MISC02" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
               </div>
               <div class="flex gap-2">
                 <div class="w-1/2">
@@ -604,7 +604,15 @@
           body: JSON.stringify({ owner: owner || null, repo: repo || null, limit_commits, limit_prs, run_ai_extraction: run_ai })
         });
         const data = await res.json();
-        appendLog(`GitHub Sync Complete: ${JSON.stringify(data, null, 2)}`);
+        if (!res.ok) {
+          appendLog(`❌ GitHub Sync Error (${res.status}): ${data.message || data.error || 'Request failed'}`);
+          if (res.status === 502 && (data.message || '').includes('not found')) {
+            appendLog(`💡 Tip: Verify Owner is the GitHub username/org (e.g. "shubham392007-sketch") and Repo is the repository name (e.g. "HackMatrix-5.0-MISC02").`);
+          }
+        } else {
+          appendLog(`✅ GitHub Sync Complete: ${JSON.stringify(data, null, 2)}`);
+          if (typeof loadEmployeeEvidence === 'function') loadEmployeeEvidence();
+        }
       } catch (err) {
         appendLog(`GitHub Sync Failed: ${err.message}`);
       } finally {
