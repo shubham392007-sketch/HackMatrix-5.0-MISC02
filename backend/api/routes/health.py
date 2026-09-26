@@ -51,21 +51,17 @@ async def health_check():
     
     # Check ChromaDB
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"http://{settings.chroma_host}:{settings.chroma_port}/api/v2/heartbeat")
-            if resp.status_code == 200:
-                health["services"]["chromadb"] = {"status": "healthy", "connected": True}
-            else:
-                health["services"]["chromadb"] = {"status": "unhealthy", "connected": False}
-                all_healthy = False
+        from backend.vectorstore.chroma_client import get_chroma_client
+        chroma = get_chroma_client()
+        hb = chroma.heartbeat()
+        health["services"]["chromadb"] = {"status": "healthy", "connected": True, "mode": "persistent", "heartbeat": hb}
     except Exception as e:
-        # ChromaDB may not be running yet - that's okay for early phases
         health["services"]["chromadb"] = {
             "status": "unavailable",
             "connected": False,
             "error": str(e),
-            "note": "ChromaDB server may not be started yet",
         }
+        all_healthy = False
     
     health["status"] = "healthy" if all_healthy else "degraded"
     return health
