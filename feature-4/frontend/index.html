@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrowthLens — Feature 4: Growth Intelligence & Manager Insights</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo">
+          <span class="logo-gl">GL</span>
+        </div>
+        <div class="brand-titles">
+          <h1>GrowthLens <span class="badge-feature">Feature 4</span></h1>
+          <p class="subtitle">Continuous Talent Intelligence & Manager Insights</p>
+        </div>
+      </div>
+
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab active" data-tab="tab-narrative" role="tab">
+          <span class="tab-icon">📄</span> 8.3 Growth Narrative
+        </button>
+        <button class="nav-tab" data-tab="tab-benchmark" role="tab">
+          <span class="tab-icon">📊</span> 8.4 Peer Benchmark
+        </button>
+        <button class="nav-tab" data-tab="tab-confidence" role="tab">
+          <span class="tab-icon">📉</span> 8.5 Confidence & Staleness
+        </button>
+        <button class="nav-tab" data-tab="tab-heatmap" role="tab">
+          <span class="tab-icon">👥</span> 8.6 Manager Team Heatmap
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <a href="/" class="btn btn-secondary btn-sm">← Back to Overview</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Global Filter Ribbon -->
+  <div class="filter-ribbon">
+    <div class="ribbon-container">
+      <div class="filter-group">
+        <label for="learnerSelect">Target Learner:</label>
+        <select id="learnerSelect" class="form-select">
+          <option value="shubham_pokale" selected>Shubham Pokale (Senior Backend Engineer)</option>
+          <option value="maya_sharma">Maya Sharma (Senior Data & Backend Engineer)</option>
+          <option value="alex_rivera">Alex Rivera (Lead RAG & Backend Engineer)</option>
+          <option value="siddhesh_pawar">Siddhesh Pawar (ML & Retention Systems Engineer)</option>
+          <option value="adwait_patil">Adwait Patil (Frontend & Systems Engineer)</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="compSelect">Competency:</label>
+        <select id="compSelect" class="form-select">
+          <option value="C05" selected>C05: Communication</option>
+          <option value="C01">C01: Python Programming</option>
+          <option value="C02">C02: Data Analysis</option>
+          <option value="C03">C03: Cloud Deployment</option>
+          <option value="C04">C04: SQL & Databases</option>
+          <option value="C06">C06: Stakeholder Management</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="periodPreset">Cycle:</label>
+        <select id="periodPreset" class="form-select">
+          <option value="Q2-Q3 2026" selected>Q2–Q3 2026 (May–Sep 2026)</option>
+          <option value="Q2 2026">Q2 2026 (Apr–Jun 2026)</option>
+          <option value="Q3 2026">Q3 2026 (Jul–Sep 2026)</option>
+          <option value="All Time">All Available Evidence</option>
+        </select>
+      </div>
+
+      <button id="btnRefreshAll" class="btn btn-primary btn-sm">
+        <span class="refresh-spinner" id="globalSpinner" style="display:none;">⏳</span> Refresh Insights
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+
+    <!-- TAB 1: 8.3 Auto-Generated Growth Narrative -->
+    <section id="tab-narrative" class="tab-pane active">
+      <div class="section-header">
+        <div>
+          <h2>Auto-Generated Growth Narrative & Manager Briefing</h2>
+          <p class="section-desc">Deterministic claim-first synthesis backed by verified evidence and local LLM reasoning.</p>
+        </div>
+        <div class="narrative-meta-pill">
+          <span class="status-dot green"></span>
+          <span id="narrativeStatusText">Grounded in Verified Telemetry</span>
+        </div>
+      </div>
+
+      <div class="narrative-grid">
+        <!-- Main Narrative Column -->
+        <div class="narrative-main card">
+          <div class="card-header">
+            <h3>Executive Growth Narrative</h3>
+            <span class="card-subtitle" id="narrativePeriodLabel">Q2–Q3 2026 Cycle</span>
+          </div>
+
+          <div class="card-body">
+            <div id="narrativeLoading" class="loading-state" style="display:none;">
+              <div class="spinner"></div>
+              <p>Synthesizing evidence-grounded prose...</p>
+            </div>
+            <div id="narrativeContent" class="markdown-prose">
+              <!-- Rendered Narrative HTML -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Manager Briefing & Actions Column -->
+        <div class="narrative-sidebar">
+          <div class="card briefing-card">
+            <div class="card-header">
+              <span class="card-icon">📋</span>
+              <h3>Manager 1-on-1 Briefing</h3>
+            </div>
+            <div class="card-body">
+              <div class="briefing-section">
+                <h4 class="text-success">★ Key Accomplishments</h4>
+                <ul id="keyAccomplishmentsList" class="briefing-list">
+                  <li>Loading accomplishments...</li>
+                </ul>
+              </div>
+
+              <div class="briefing-section">
+                <h4 class="text-warning">⚠ Areas for Manager Support</h4>
+                <ul id="areasForSupportList" class="briefing-list">
+                  <li>Loading support areas...</li>
+                </ul>
+              </div>
+
+              <div class="briefing-section">
+                <h4 class="text-accent">💬 Suggested 1-on-1 Discussion Topics</h4>
+                <ul id="suggestedTopicsList" class="briefing-list">
+                  <li>Loading conversation starters...</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="card evidence-summary-card">
+            <div class="card-header">
+              <span class="card-icon">🔗</span>
+              <h3>Verified Evidence Ledger</h3>
+              <span class="badge" id="evidenceCountBadge">0 records</span>
+            </div>
+            <div class="card-body">
+              <p class="helper-text">Click any evidence badge in the narrative to inspect telemetry details.</p>
+              <div id="evidenceList" class="evidence-ledger-list">
+                <!-- Evidence items populated via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 8.4 Peer-Percentile Growth Benchmarking -->
+    <section id="tab-benchmark" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Peer-Percentile Growth Benchmarking</h2>
+          <p class="section-desc">Privacy-safe aggregate growth velocity relative to peers starting at a comparable baseline.</p>
+        </div>
+        <div class="privacy-badge">
+          <span>🔒 k-Anonymity Protected</span>
+        </div>
+      </div>
+
+      <div class="benchmark-container">
+        <div class="card benchmark-card">
+          <div class="card-body">
+            <div id="benchmarkLoading" class="loading-state" style="display:none;">
+              <div class="spinner"></div>
+              <p>Computing empirical cumulative distribution...</p>
+            </div>
+
+            <div id="benchmarkContent" class="benchmark-display">
+              <div class="benchmark-hero">
+                <div class="percentile-circle" id="percentileCircle">
+                  <span class="percentile-number" id="percentileVal">--</span>
+                  <span class="percentile-label">th percentile</span>
+                </div>
+                <div class="benchmark-summary">
+                  <h3 id="benchmarkTitle">Relative Growth Velocity</h3>
+                  <p class="benchmark-tagline" id="benchmarkTierTag">Top 20% growth rate relative to peers</p>
+                  <div class="benchmark-pills">
+                    <span class="pill" id="cohortLevelPill">Baseline: Proficient (70–84)</span>
+                    <span class="pill" id="cohortSizePill">Cohort: 10–25 peers</span>
+                    <span class="pill pill-success">Aggregate-only</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Percentile Visual Spectrum Bar -->
+              <div class="spectrum-container">
+                <div class="spectrum-labels">
+                  <span>1st Percentile</span>
+                  <span>50th (Median)</span>
+                  <span>99th Percentile</span>
+                </div>
+                <div class="spectrum-track">
+                  <div class="spectrum-marker" id="spectrumMarker" style="left: 50%;">
+                    <div class="marker-pin"></div>
+                    <span class="marker-text" id="spectrumMarkerText">You</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="benchmark-disclaimer-box">
+                <p><strong>Note on Methodology:</strong> <span id="benchmarkMethodology">Empirical cumulative distribution over starting-level normalized growth rates in active period.</span></p>
+                <p class="disclaimer-text" id="benchmarkDisclaimer">Percentile reflects aggregate growth velocity relative to comparable peers during the evaluation window; it is not an employee capability or performance rating.</p>
+              </div>
+            </div>
+
+            <div id="benchmarkUnavailable" class="empty-state" style="display:none;">
+              <span class="empty-icon">🛡️</span>
+              <h3>Benchmarking Temporarily Restricted</h3>
+              <p id="benchmarkUnavailableReason">Insufficient peer cohort size (minimum k required for privacy protection).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: 8.5 Evidence Staleness & Confidence Decay Visualization -->
+    <section id="tab-confidence" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Evidence Staleness & Confidence Decay Visualization</h2>
+          <p class="section-desc">Uncertainty bands widen as evidence ages, strictly reusing the 4-factor confidence model.</p>
+        </div>
+        <div class="freshness-status-pill" id="globalFreshnessPill">
+          <span class="freshness-dot" id="freshnessDot"></span>
+          <span id="freshnessStateText">Fresh (92%)</span>
+        </div>
+      </div>
+
+      <div class="confidence-grid">
+        <!-- Main Interactive Chart Card -->
+        <div class="card chart-card">
+          <div class="card-header">
+            <h3>Skill Trajectory with Dynamic Uncertainty Envelope</h3>
+            <span class="card-subtitle">Narrow bands reflect fresh evidence; widening bands depict telemetric staleness</span>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrapper">
+              <svg id="trajectorySvg" viewBox="0 0 760 320" class="trajectory-svg">
+                <!-- Rendered dynamically via SVG in app.js -->
+              </svg>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-box observed"></span> Observed Evidence Score</span>
+              <span class="legend-item"><span class="legend-box projected"></span> Projected Future Trajectory</span>
+              <span class="legend-item"><span class="legend-box envelope"></span> Confidence Uncertainty Envelope (± width)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staleness Diagnostics Column -->
+        <div class="confidence-side">
+          <div class="card freshness-card">
+            <div class="card-header">
+              <span class="card-icon">⏱️</span>
+              <h3>Telemetry Freshness Meter</h3>
+            </div>
+            <div class="card-body">
+              <div class="meter-container">
+                <div class="meter-bar-wrapper">
+                  <div class="meter-bar" id="meterBar" style="width: 85%;"></div>
+                </div>
+                <div class="meter-stats">
+                  <span id="meterDaysText">15 days since last evidence</span>
+                  <span id="meterPctText">92% Fresh</span>
+                </div>
+              </div>
+
+              <div class="factors-breakdown">
+                <h4>4-Factor Confidence Decomposition</h4>
+                <div class="factor-row">
+                  <span>Practice Volume:</span>
+                  <strong id="factorVolume">4 milestones</strong>
+                </div>
+                <div class="factor-row">
+                  <span>Source Diversity:</span>
+                  <strong id="factorDiversity">3 distinct channels</strong>
+                </div>
+                <div class="factor-row">
+                  <span>Recency:</span>
+                  <strong id="factorRecency">15 days elapsed</strong>
+                </div>
+                <div class="factor-row">
+                  <span>Trajectory Stability:</span>
+                  <strong id="factorStability">+1.2 pts/mo</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Safeguard Box -->
+          <div class="safeguard-box">
+            <div class="safeguard-icon">🛡️</div>
+            <div class="safeguard-text">
+              <strong>Telemetry Staleness Safeguard:</strong>
+              <p id="safeguardNoteText">Confidence decay indicates telemetry staleness due to absence of logged signals; it does not constitute evidence of permanent skill decline.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: 8.6 Manager Team Skill Heatmap -->
+    <section id="tab-heatmap" class="tab-pane">
+      <div class="section-header">
+        <div>
+          <h2>Manager Team Skill Heatmap & Gap Analytics</h2>
+          <p class="section-desc">Department-level skill dynamics matrix with directional icons (↑, →, ↓, ?) and gap insights.</p>
+        </div>
+        <div class="team-filter">
+          <label for="heatmapTeamSelect">Department:</label>
+          <select id="heatmapTeamSelect" class="form-select">
+            <option value="Core Engineering" selected>Core Engineering</option>
+            <option value="Core Intelligence">Core Intelligence</option>
+            <option value="all">All Departments</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Heatmap Table Card -->
+      <div class="card heatmap-card">
+        <div class="card-body no-padding">
+          <div class="table-responsive">
+            <table class="heatmap-table" id="heatmapTable">
+              <thead>
+                <tr id="heatmapHeaderRow">
+                  <th class="sticky-col">Team Member</th>
+                  <th>Role</th>
+                  <!-- Competency columns populated dynamically -->
+                </tr>
+              </thead>
+              <tbody id="heatmapBody">
+                <!-- Member rows populated dynamically -->
+              </tbody>
+              <tfoot id="heatmapFooter">
+                <!-- Team aggregate row -->
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Skill Gap & Growth Insights Grid -->
+      <div class="insights-container">
+        <h3>Manager Team Skill Gap & Acceleration Insights</h3>
+        <div id="teamInsightsGrid" class="insights-grid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Evidence Drawer Modal / Slideout -->
+  <aside id="evidenceDrawer" class="evidence-drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <h3 id="drawerTitle">Evidence Details</h3>
+      <button id="btnCloseDrawer" class="btn-close">×</button>
+    </div>
+    <div class="drawer-body" id="drawerBody">
+      <!-- Populated when user clicks an evidence badge -->
+    </div>
+  </aside>
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
