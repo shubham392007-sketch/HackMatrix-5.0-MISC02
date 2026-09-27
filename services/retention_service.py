@@ -86,7 +86,7 @@ class RetentionService:
             self.learners_df = pd.DataFrame(sample_learners)
 
     def resolve_learner_id(self, learner_id: str) -> str:
-        """Resolve learner_id, with fallback for demo identifiers like user_123"""
+        """Resolve learner_id, with fallback mapping legacy IDs or demo identifiers to active primary learner."""
         if self.evidence_df is None or self.evidence_df.empty:
             return learner_id
 
@@ -94,8 +94,10 @@ class RetentionService:
         if learner_id in self.evidence_df['learner_id'].values:
             return learner_id
 
-        # Fallback mapping: 'user_123' or unknown IDs map to L000001
-        return "L000001"
+        # Fallback mapping: 'user_123', 'L000001', or unknown IDs map to first active learner
+        if self.learners_df is not None and not self.learners_df.empty:
+            return str(self.learners_df.iloc[0]['learner_id'])
+        return "shubham_pokale"
 
     def get_sample_learners(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Return a list of sample learners with metadata for UI dropdown/demo"""
