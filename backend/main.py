@@ -77,11 +77,14 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees, auth
+from backend.api.routes import health, github, jira, identities, evidence, rag, ingestion, employees, auth, ai, profile
 
 # Register core routers
+app.include_router(health.router)
 app.include_router(health.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(profile.router, prefix="/api")
 app.include_router(employees.router, prefix="/api")
 app.include_router(github.router, prefix="/api")
 app.include_router(jira.router, prefix="/api")

@@ -118,14 +118,51 @@ class RetentionService:
             return []
 
         comp_ids = sub['competency_id'].unique().tolist()
-        return [
-            {
+        results = []
+        for cid in comp_ids:
+            c_df = sub[sub['competency_id'] == cid].sort_values('timestamp')
+            ev_count = len(c_df)
+            if ev_count > 0:
+                last_row = c_df.iloc[-1]
+                first_row = c_df.iloc[0]
+                current_score = float(last_row.get('raw_score', 75.0))
+                # Trend calculation based on trajectory progression
+                if ev_count >= 2:
+                    score_diff = current_score - float(first_row.get('raw_score', current_score))
+                    if score_diff > 2.0:
+                        trend = "improving"
+                    elif score_diff < -2.0:
+                        trend = "declining"
+                    else:
+                        trend = "stagnating"
+                else:
+                    trend = "stagnating"
+
+                avg_weight = float(c_df['source_confidence_weight'].mean()) if 'source_confidence_weight' in c_df.columns else 0.85
+                confidence = min(98.0, max(45.0, (avg_weight * 70.0) + min(28.0, ev_count * 4.0)))
+
+                last_ts = last_row['timestamp']
+                last_evidence_date = last_ts.strftime('%Y-%m-%d') if hasattr(last_ts, 'strftime') else str(last_ts)[:10]
+                days_since = max(0, int((pd.Timestamp.now() - pd.to_datetime(last_ts)).days))
+            else:
+                current_score = 72.0
+                trend = "insufficient"
+                confidence = 50.0
+                last_evidence_date = "2026-09-01"
+                days_since = 14
+
+            results.append({
                 "competency_id": cid,
                 "competency_name": COMPETENCIES_MAP.get(cid, cid),
-                "evidence_count": int((sub['competency_id'] == cid).sum())
-            }
-            for cid in comp_ids
-        ]
+                "current_score": round(current_score, 1),
+                "score": round(current_score, 1),
+                "trend": trend,
+                "confidence": round(confidence, 1),
+                "evidence_count": ev_count,
+                "last_evidence_date": last_evidence_date,
+                "days_since_last": days_since
+            })
+        return results
 
     def get_learner_evidence(self, learner_id: str, competency_id: Optional[str] = None) -> List[Dict[str, Any]]:
         resolved_id = self.resolve_learner_id(learner_id)

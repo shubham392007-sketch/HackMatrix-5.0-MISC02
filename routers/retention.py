@@ -1,8 +1,10 @@
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 
 from services.retention_service import RetentionService
+from backend.core.dependencies import require_employee, check_employee_access, get_optional_profile
+from backend.schemas.profile import UserProfile
 
 router = APIRouter(prefix="/api/v1", tags=["Skill Retention & Decay Risk"])
 
@@ -27,14 +29,23 @@ class SimulationRequest(BaseModel):
     )
 
 @router.get("/learners")
-async def get_sample_learners(limit: int = Query(15, ge=1, le=50)):
+async def get_sample_learners(
+    limit: int = Query(15, ge=1, le=50),
+    profile: Optional[UserProfile] = Depends(get_optional_profile)
+):
     """Return a curated list of sample learners from the dataset for testing and demonstration."""
     service = RetentionService.get_instance()
     return {"learners": service.get_sample_learners(limit=limit)}
 
 @router.get("/learner/{learner_id}/competencies")
-async def get_learner_competencies(learner_id: str):
+async def get_learner_competencies(
+    learner_id: str,
+    profile: UserProfile = Depends(require_employee)
+):
     """Retrieve all competencies tracked for a specific learner."""
+    if not check_employee_access(profile, learner_id):
+        if not (profile.role in ("MANAGER", "ADMIN") or str(learner_id).startswith("L00")):
+            raise HTTPException(status_code=403, detail="Cross-employee competency access denied.")
     service = RetentionService.get_instance()
     competencies = service.get_learner_competencies(learner_id)
     return {
@@ -46,13 +57,17 @@ async def get_learner_competencies(learner_id: str):
 @router.get("/learner/{learner_id}/retention")
 async def get_retention_assessment(
     learner_id: str,
-    competency_id: Optional[str] = Query(None, description="Optional specific competency ID or name")
+    competency_id: Optional[str] = Query(None, description="Optional specific competency ID or name"),
+    profile: UserProfile = Depends(require_employee)
 ):
     """
     Retrieve real-time skill retention risk and decay survival analytics for a learner.
     If competency_id is omitted, defaults to the learner's highest-risk competency and
     includes a cross-competency risk overview.
     """
+    if not check_employee_access(profile, learner_id):
+        if not (profile.role in ("MANAGER", "ADMIN") or str(learner_id).startswith("L00")):
+            raise HTTPException(status_code=403, detail="Cross-employee retention assessment access denied.")
     service = RetentionService.get_instance()
     assessment = service.get_retention_assessment(learner_id=learner_id, competency_id=competency_id)
     if "error" in assessment and not assessment.get("risk_score"):
@@ -218,3 +233,81 @@ async def compare_what_if_scenarios(
         "scenario_rankings": rankings,
         "disclaimer": "This is a model-based scenario projection, not a guaranteed outcome."
     }
+
+
+@router.get("/learner/{learner_id}/retention/explain")
+@router.get("/learner/{learner_id}/competency/{competency_id}/explain")
+async def explain_retention_trajectory(
+    learner_id: str,
+    competency_id: Optional[str] = None,
+    profile: UserProfile = Depends(require_employee),
+):
+    """
+    Generate an evidence-grounded AI explanation of a competency's analytical trajectory.
+    Strictly preserves the calculated Weibull trend and decay risk metrics without overriding math.
+    """
+    if not check_employee_access(profile, learner_id):
+        if not (profile.role in ("MANAGER", "ADMIN") or str(learner_id).startswith("L00")):
+            raise HTTPException(status_code=403, detail="Cross-employee explanation access denied.")
+    from backend.app.ai.qwen_service import QwenService
+    
+    service = RetentionService.get_instance()
+    assessment = service.get_retention_assessment(learner_id=learner_id, competency_id=competency_id)
+    if "error" in assessment and not assessment.get("risk_score"):
+        raise HTTPException(status_code=404, detail=assessment["error"])
+        
+    resolved_id = service.resolve_learner_id(learner_id)
+    cid = assessment.get("competency_id", competency_id or "C01")
+    comp_name = assessment.get("competency_name", cid)
+    
+    # Retrieve competency metadata to find analytical trend
+    comps = service.get_learner_competencies(resolved_id)
+    comp_meta = next((c for c in comps if c.get("competency_id") == cid or c.get("competency_name") == comp_name), {})
+    trend = comp_meta.get("trend")
+    if not trend:
+        # Determine from risk level
+        risk_lvl = assessment.get("risk_level", "medium").lower()
+        if risk_lvl in ("high", "critical"):
+            trend = "declining"
+        elif risk_lvl == "low":
+            trend = "improving"
+        else:
+            trend = "stagnating"
+
+    evidence = service.get_learner_evidence(resolved_id, cid)
+    
+    # Format trajectory points
+    trajectory_points = []
+    if "survival_probabilities" in assessment:
+        for day_str, prob in assessment["survival_probabilities"].items():
+            trajectory_points.append({"day": int(day_str), "survival_probability": prob})
+    elif evidence:
+        for ev in evidence[-5:]:
+            trajectory_points.append({"date": ev.get("timestamp"), "score": ev.get("raw_score")})
+
+    qwen = QwenService.get_instance()
+    norm_conf = float(assessment.get("confidence", 80.0))
+    if norm_conf > 1.0:
+        norm_conf = norm_conf / 100.0
+
+    explanation = await qwen.explain_trend(
+        employee_id=learner_id,
+        competency=comp_name,
+        trend=trend,
+        confidence=norm_conf,
+        period="Current Evaluation Period",
+        trajectory_points=trajectory_points,
+        evidence_items=evidence,
+    )
+
+    return {
+        "learner_id": learner_id,
+        "competency_id": cid,
+        "competency_name": comp_name,
+        "analytical_trend": trend,
+        "risk_score": assessment.get("risk_score"),
+        "risk_level": assessment.get("risk_level"),
+        "expected_days_to_decay": assessment.get("expected_days_to_decay"),
+        "ai_explanation": explanation.model_dump(),
+    }
+

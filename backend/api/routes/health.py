@@ -30,7 +30,7 @@ async def health_check():
     
     # Check Ollama
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(2.0, connect=1.0)) as client:
             resp = await client.get(f"{settings.ollama_base_url}/api/tags")
             if resp.status_code == 200:
                 models = resp.json().get("models", [])
@@ -65,3 +65,46 @@ async def health_check():
     
     health["status"] = "healthy" if all_healthy else "degraded"
     return health
+
+
+@router.get("/health/database")
+async def health_database():
+    """Health check for Supabase / PostgreSQL database."""
+    supabase_health = await check_supabase_health()
+    return supabase_health
+
+
+@router.get("/health/ollama")
+async def health_ollama():
+    """Health check for Ollama local LLM runtime."""
+    settings = get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(2.0, connect=1.0)) as client:
+            resp = await client.get(f"{settings.ollama_base_url}/api/tags")
+            if resp.status_code == 200:
+                models = resp.json().get("models", [])
+                model_names = [m.get("name", "") for m in models]
+                has_model = any(settings.ollama_model in n for n in model_names)
+                return {
+                    "status": "healthy",
+                    "connected": True,
+                    "model_available": has_model,
+                    "target_model": settings.ollama_model,
+                    "available_models": model_names,
+                }
+            return {"status": "unhealthy", "connected": False, "status_code": resp.status_code}
+    except Exception as e:
+        return {"status": "unhealthy", "connected": False, "error": str(e)}
+
+
+@router.get("/health/chroma")
+async def health_chroma():
+    """Health check for ChromaDB vector store."""
+    try:
+        from backend.vectorstore.chroma_client import get_chroma_client
+        chroma = get_chroma_client()
+        hb = chroma.heartbeat()
+        return {"status": "healthy", "connected": True, "heartbeat": hb}
+    except Exception as e:
+        return {"status": "unavailable", "connected": False, "error": str(e)}
+

@@ -48,3 +48,10 @@ chroma_data/
 # Datasets & Derived Data
 misc02_dataset/
 derived_data/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/out/

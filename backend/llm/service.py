@@ -37,14 +37,18 @@ class LLMService:
             known_competencies=known_competencies,
         )
 
-        raw_response = await self.provider.generate(
-            prompt=prompt,
-            system=EVIDENCE_EXTRACTION_SYSTEM_PROMPT,
-            format_json=True,
-            temperature=0.1,
-        )
-
-        return self._parse_and_validate_extraction(raw_response, default_title=title)
+        try:
+            raw_response = await self.provider.generate(
+                prompt=prompt,
+                system=EVIDENCE_EXTRACTION_SYSTEM_PROMPT,
+                format_json=True,
+                temperature=0.1,
+                timeout=10.0,
+            )
+            return self._parse_and_validate_extraction(raw_response, default_title=title)
+        except Exception as e:
+            logger.warning(f"Ollama Qwen3 generation offline or unavailable ({e}). Using heuristic extraction.")
+            return self._parse_and_validate_extraction("", default_title=title)
 
     def _parse_and_validate_extraction(self, raw_text: str, default_title: str = "") -> EvidenceExtractionResult:
         """Safely parses JSON and validates with Pydantic with resilient fallback."""

@@ -40,9 +40,12 @@ app.add_middleware(
 
 # ── Feature 1: Evidence Extraction & RAG Pipeline ───────────────
 try:
-    from backend.api.routes import health, auth, employees, github, jira, identities, evidence, rag, ingestion
+    from backend.api.routes import health, auth, profile, employees, github, jira, identities, evidence, rag, ingestion, ai
+    app.include_router(health.router)
     app.include_router(health.router, prefix="/api")
+    app.include_router(ai.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
+    app.include_router(profile.router, prefix="/api")
     app.include_router(employees.router, prefix="/api")
     app.include_router(github.router, prefix="/api")
     app.include_router(jira.router, prefix="/api")
@@ -50,9 +53,17 @@ try:
     app.include_router(evidence.router, prefix="/api")
     app.include_router(rag.router, prefix="/api")
     app.include_router(ingestion.router, prefix="/api")
-    print("[GROWTHLENS] Feature 1 core routers registered at /api")
+    print("[GROWTHLENS] Feature 1 & Profile core routers registered at /api")
 except Exception as e:
     print(f"[GROWTHLENS] Note: Feature 1 routers could not be loaded: {e}")
+
+# ── Feature 2: Continuous Competency Trajectory & ML Engine ──────
+try:
+    from backend.feature2.api import router as feature2_router
+    app.include_router(feature2_router)
+    print("[GROWTHLENS] Feature 2 PyTorch LSTM Trajectory router registered at /api/v1")
+except Exception as e:
+    print(f"[GROWTHLENS] Note: Feature 2 router could not be loaded: {e}")
 
 # ── Router registration (Feature 2 & Recommendations) ────────────
 app.include_router(recommendations_router)

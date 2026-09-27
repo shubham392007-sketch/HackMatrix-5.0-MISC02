@@ -1,5 +1,5 @@
 """Authentication and Profile Onboarding Endpoints."""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Depends, Header
 from backend.core.auth import hash_password, verify_password, create_access_token, decode_access_token
@@ -199,3 +199,61 @@ async def get_my_profile(employee_id: str = Depends(get_current_employee_id)):
         "identities": identities_res.data or [],
         "integrations": integrations_res.data or [],
     }
+
+
+class UserRegistrationRequest(RegisterRequest):
+    role: str = "EMPLOYEE"
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+
+
+@router.post("/register-user")
+async def register_supabase_user(req: UserRegistrationRequest):
+    """
+    Creates an email-confirmed user directly via Supabase Auth Admin API.
+    Bypasses Supabase SMTP rate limit (429) and email confirmation round-trips.
+    The database trigger automatically provisions the public.profiles row.
+    """
+    client = get_supabase_client()
+    normalized_email = req.email.lower().strip()
+    user_role = req.role.upper().strip() if req.role else "EMPLOYEE"
+    if user_role not in ("EMPLOYEE", "MANAGER", "ADMIN"):
+        user_role = "EMPLOYEE"
+
+    try:
+        user_res = client.auth.admin.create_user({
+            "email": normalized_email,
+            "password": req.password,
+            "email_confirm": True,
+            "user_metadata": {
+                "full_name": req.name.strip(),
+                "role": user_role,
+            }
+        })
+        user = user_res.user
+
+        # Optional update to title / department if provided
+        if req.job_title or req.department:
+            upd = {}
+            if req.job_title:
+                upd["job_title"] = req.job_title.strip()
+            if req.department:
+                upd["department"] = req.department.strip()
+            try:
+                client.table("profiles").update(upd).eq("user_id", str(user.id)).execute()
+            except Exception:
+                pass
+
+        return {
+            "status": "success",
+            "user_id": str(user.id),
+            "email": normalized_email,
+            "role": user_role,
+            "message": "User registered and email confirmed successfully.",
+        }
+    except Exception as e:
+        error_msg = str(e)
+        if "already registered" in error_msg.lower() or "unique" in error_msg.lower() or "exists" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="A user with this email address already exists. Please log in.")
+        logger.error(f"Failed to create user via admin API: {e}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {error_msg}")

@@ -15,6 +15,7 @@ from backend.db.repositories.evidence import EvidenceRepository
 from backend.db.repositories.ingestion import IngestionRunRepository
 from backend.services.taxonomy import TaxonomyService
 from backend.llm.service import LLMService
+from backend.app.ai.qwen_service import QwenService
 from backend.vectorstore.repository import VectorEvidenceRepository
 
 logger = get_logger("services.ingestion")
@@ -32,6 +33,7 @@ class EvidenceIngestionService:
         ingestion_repo: Optional[IngestionRunRepository] = None,
         taxonomy_service: Optional[TaxonomyService] = None,
         llm_service: Optional[LLMService] = None,
+        qwen_service: Optional[QwenService] = None,
         vector_repo: Optional[VectorEvidenceRepository] = None,
     ):
         self.github_client = github_client or GitHubClient()
@@ -41,6 +43,7 @@ class EvidenceIngestionService:
         self.ingestion_repo = ingestion_repo or IngestionRunRepository()
         self.taxonomy_service = taxonomy_service or TaxonomyService()
         self.llm_service = llm_service or LLMService()
+        self.qwen_service = qwen_service or QwenService()
         self.vector_repo = vector_repo or VectorEvidenceRepository()
 
     async def sync_github(
@@ -222,11 +225,12 @@ class EvidenceIngestionService:
             try:
                 # Provide known competencies to constrain and guide Qwen3
                 known_comps = [c["name"] for c in self.taxonomy_service.list_all_competencies()]
-                extraction = await self.llm_service.extract_skills_from_evidence(
+                extraction = await self.qwen_service.extract_evidence(
                     source=evidence.source,
                     source_type=evidence.source_type,
                     title=evidence.title,
                     content=evidence.content,
+                    evidence_id=ev_id,
                     known_competencies=known_comps,
                 )
 
@@ -244,29 +248,39 @@ class EvidenceIngestionService:
                         self.evidence_repo.attach_skill(ev_id, sk_id, skill_cand.confidence)
                     if comp_id:
                         self.evidence_repo.attach_competency(ev_id, comp_id, skill_cand.confidence)
+                        if not primary_competency_name:
+                            comp_obj = self.taxonomy_service.get_competency_by_id(comp_id)
+                            if comp_obj:
+                                primary_competency_name = comp_obj["name"]
 
                 # Reconcile high-level competencies
-                for comp_cand in extraction.competencies:
-                    c_id = self.taxonomy_service.resolve_competency(comp_cand.name)
+                for comp_name in extraction.competency_candidates:
+                    c_id = self.taxonomy_service.resolve_competency(comp_name)
                     if c_id:
-                        self.evidence_repo.attach_competency(ev_id, c_id, comp_cand.confidence)
+                        self.evidence_repo.attach_competency(ev_id, c_id, extraction.confidence)
                         if not primary_competency_name:
-                            primary_competency_name = comp_cand.name
+                            comp_obj = self.taxonomy_service.get_competency_by_id(c_id)
+                            primary_competency_name = comp_obj["name"] if comp_obj else comp_name
 
             except Exception as e:
                 logger.warning(f"AI extraction skipped or failed for evidence {ev_id}: {e}")
-        else:
-            # Fast heuristic extraction from title and content
+
+        # Fast heuristic extraction from title and content if no primary competency resolved yet
+        if not primary_competency_name:
             try:
                 text_to_scan = f"{evidence.title} {evidence.content}".lower()
                 all_skills = self.taxonomy_service.list_all_skills()
                 for sk in all_skills:
                     sk_name = sk["name"]
-                    # Exact word boundary match (e.g. 'python', 'fastapi', 'docker')
+                    # Exact word boundary match (e.g. 'python', 'fastapi', 'docker', 'pandas')
                     if re.search(r'\b' + re.escape(sk_name.lower()) + r'\b', text_to_scan):
                         self.evidence_repo.attach_skill(ev_id, sk["id"], 0.85)
                         if sk.get("competency_id"):
                             self.evidence_repo.attach_competency(ev_id, sk["competency_id"], 0.80)
+                            if not primary_competency_name:
+                                comp_obj = self.taxonomy_service.get_competency_by_id(sk["competency_id"])
+                                if comp_obj:
+                                    primary_competency_name = comp_obj["name"]
             except Exception as ex:
                 logger.warning(f"Heuristic extraction failed for {ev_id}: {ex}")
 

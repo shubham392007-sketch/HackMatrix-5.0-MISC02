@@ -54,7 +54,8 @@ class OllamaProvider:
         url = f"{self.base_url}/api/generate"
         req_timeout = timeout or self.timeout
         try:
-            async with httpx.AsyncClient(timeout=req_timeout) as client:
+            client_timeout = httpx.Timeout(timeout=req_timeout, connect=5.0)
+            async with httpx.AsyncClient(timeout=client_timeout) as client:
                 res = await client.post(url, json=payload)
                 if res.status_code == 200:
                     data = res.json()

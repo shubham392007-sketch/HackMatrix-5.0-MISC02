@@ -4,21 +4,17 @@ import re
 from typing import List, Optional
 from backend.core.logging import get_logger
 from backend.core.exceptions import LLMServiceError
-from backend.llm.ollama_provider import OllamaProvider
+from backend.app.ai.qwen_service import QwenService
 from backend.rag.schemas import RetrievedEvidenceItem, JustificationResponse
-from backend.rag.prompts import (
-    JUSTIFICATION_SYSTEM_PROMPT,
-    build_justification_context,
-)
 
 logger = get_logger("rag.generator")
 
 
 class EvidenceJustificationGenerator:
-    """Generates evidence-backed development actions and justifications via Qwen3 8B."""
+    """Generates evidence-backed development actions and justifications via central Qwen3 8B service."""
 
-    def __init__(self, provider: Optional[OllamaProvider] = None):
-        self.provider = provider or OllamaProvider()
+    def __init__(self, qwen_service: Optional[QwenService] = None):
+        self.qwen_service = qwen_service or QwenService()
 
     async def generate_justification(
         self,
@@ -27,7 +23,7 @@ class EvidenceJustificationGenerator:
         retrieved_evidence: List[RetrievedEvidenceItem],
         query: Optional[str] = None,
     ) -> JustificationResponse:
-        """Executes the evidence justification prompt against Qwen3 8B."""
+        """Executes the evidence justification prompt against central Qwen3 8B service."""
         # Short-circuit if no evidence was retrieved
         if not retrieved_evidence:
             return JustificationResponse(
@@ -40,29 +36,20 @@ class EvidenceJustificationGenerator:
                 retrieved_evidence=[],
             )
 
-        context_str = build_justification_context(
+        output = await self.qwen_service.justify_competency(
             employee_id=employee_id,
             competency=competency,
-            evidence_items=[ev.model_dump() for ev in retrieved_evidence],
+            retrieved_evidence=[ev.model_dump() for ev in retrieved_evidence],
             user_query=query,
         )
 
-        try:
-            raw_response = await self.provider.generate(
-                prompt=context_str,
-                system=JUSTIFICATION_SYSTEM_PROMPT,
-                format_json=True,
-                temperature=0.1,
-                max_tokens=1024,
-                timeout=25.0,
-            )
-        except Exception as ex:
-            logger.warning(f"Ollama generation failed or timed out in justification: {ex}. Using grounded synthesis fallback.")
-            raw_response = ""
-
-        return self._validate_and_reconcile_response(
-            raw_response=raw_response,
-            competency=competency,
+        return JustificationResponse(
+            competency=output.competency,
+            action=output.action,
+            justification=output.justification,
+            evidence_refs=output.evidence_refs,
+            confidence=output.confidence,
+            evidence_sufficiency=output.evidence_sufficiency,
             retrieved_evidence=retrieved_evidence,
         )
 

@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ── GrowthLens Moonwood Design Tokens ──────────────────── */
+@theme inline {
+  /* Brand & Surface */
+  --color-lime: #DFE968;
+  --color-cream: #FBF1CF;
+  --color-blush: #F6C8D6;
+  --color-peach: #F3A878;
+  --color-cta: #F6BB84;
+  --color-ink: #1C1C1C;
+  --color-card: #FBF6DF;
+
+  /* Semantic Trends */
+  --color-improving: #4A7A4E;
+  --color-stagnating: #1C1C1C;
+  --color-declining: #C85A54;
+  --color-insufficient: #767676;
+
+  /* Typography */
+  --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-script: 'Yellowtail', 'Brush Script MT', cursive;
+
+  /* Borders & Radii */
+  --radius-pill: 999px;
+  --radius-card: 24px;
+  --radius-card-lg: 32px;
+}
+
+/* ── Global Styles ─────────────────────────────────────── */
+:root {
+  --bg-gradient: linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-primary);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* ── Organic Shape Utility ──────────────────────────────── */
+.organic-shape {
+  border-radius: 58% 42% 55% 45% / 45% 55% 45% 55%;
+}
+
+/* ── Scalloped Panel ────────────────────────────────────── */
+.scalloped-panel {
+  background: var(--color-card);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-card-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.scalloped-panel::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: repeating-radial-gradient(
+    circle at 12px 12px,
+    transparent 0,
+    transparent 10px,
+    var(--color-card) 10px,
+    var(--color-card) 12px
+  );
+}
+
+/* ── Card Styles ────────────────────────────────────────── */
+.gl-card {
+  background: var(--color-card);
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 3px 3px 0px var(--color-ink);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.gl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px var(--color-ink);
+}
+
+/* ── Pill Button ────────────────────────────────────────── */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-ink);
+  font-family: var(--font-primary);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px var(--color-ink);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out;
+}
+
+.pill-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0px var(--color-ink);
+}
+
+.pill-btn:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px var(--color-ink);
+}
+
+.pill-btn-primary {
+  background: var(--color-cta);
+  color: var(--color-ink);
+}
+
+.pill-btn-secondary {
+  background: #FBF1CF;
+  color: var(--color-ink);
+}
+
+.pill-btn-lime {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+.pill-btn-dark {
+  background: var(--color-ink);
+  color: #FBF1CF;
+}
+
+/* ── Pill Input ─────────────────────────────────────────── */
+.pill-input {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-ink);
+  background: #FBF1CF;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  outline: none;
+  box-shadow: 2px 2px 0px var(--color-ink);
+  transition: box-shadow 200ms ease-out;
+}
+
+.pill-input::placeholder {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: rgba(28, 28, 28, 0.5);
+}
+
+.pill-input:focus {
+  box-shadow: 0 0 0 2px var(--color-ink);
+}
+
+/* ── Trend Glyphs ───────────────────────────────────────── */
+.trend-improving { color: var(--color-improving); }
+.trend-stagnating { color: var(--color-stagnating); }
+.trend-declining { color: var(--color-declining); }
+.trend-insufficient { color: var(--color-insufficient); }
+
+/* ── Stagger Animation ──────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-item {
+  animation: fadeSlideUp 400ms ease-out both;
+}
+
+/* ── Custom Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(28, 28, 28, 0.2);
+  border-radius: 3px;
+}

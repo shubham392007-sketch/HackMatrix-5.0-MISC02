@@ -168,6 +168,13 @@ class TaxonomyService:
                 return comp["id"]
         return None
 
+    def get_competency_by_id(self, comp_id: str) -> Optional[Dict[str, Any]]:
+        """Returns a competency record by its ID."""
+        res = self.client.table("competencies").select("*").eq("id", comp_id).execute()
+        if res.data:
+            return res.data[0]
+        return None
+
     def list_all_competencies(self) -> List[Dict[str, Any]]:
         """Returns all competencies."""
         res = self.client.table("competencies").select("*").order("name").execute()

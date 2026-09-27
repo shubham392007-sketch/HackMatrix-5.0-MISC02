@@ -213,59 +213,51 @@ class NarrativeService:
         claims: List[NarrativeClaim],
         evidence: List[EvidenceReference]
     ) -> tuple[str, ManagerBriefing]:
-        """Tries Ollama LLM synthesis first; gracefully falls back to grounded synthesis."""
-        claims_summary = "\n".join([
-            f"- [{c.claim_id}] {c.competency_name} ({c.trend}): {c.claim_text} (Evidence: {', '.join(c.evidence_ids)})"
-            for c in claims
-        ])
-        evidence_summary = "\n".join([
-            f"- [{e.evidence_id}] on {e.timestamp}: score={e.raw_score} via {e.source_type} ({e.detail})"
-            for e in evidence
-        ])
-
-        system_prompt = (
-            "You are GrowthLens Intelligence. Generate an evidence-backed growth narrative and manager briefing. "
-            "CRITICAL: Ground all claims in the provided evidence. Cite evidence IDs [e.g. E001] for every factual statement. "
-            "Return valid JSON with keys: narrative_text, key_improvements, stagnating_areas, suggested_focus."
-        )
-
-        user_prompt = (
-            f"Learner ID: {learner_id}\n"
-            f"Period: {period.label} ({period.start_date} to {period.end_date})\n\n"
-            f"Verified Claims:\n{claims_summary}\n\n"
-            f"Evidence Records:\n{evidence_summary}\n\n"
-            "Produce an engaging, professional narrative and manager briefing."
-        )
-
+        """Synthesizes narrative via central QwenService with citation verification and fallback."""
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                res = await client.post(
-                    f"{self.ollama_base_url}/api/generate",
-                    json={
-                        "model": self.ollama_model,
-                        "prompt": user_prompt,
-                        "system": system_prompt,
-                        "stream": False,
-                        "format": "json"
-                    }
-                )
-                if res.status_code == 200:
-                    raw_text = res.json().get("response", "")
-                    clean = raw_text.strip()
-                    if clean.startswith("```"):
-                        clean = re.sub(r"^```(?:json)?", "", clean).strip()
-                    if clean.endswith("```"):
-                        clean = clean[:-3].strip()
-                    data = json.loads(clean)
-                    narrative_text = data.get("narrative_text", "")
-                    briefing = ManagerBriefing(
-                        key_improvements=data.get("key_improvements", []),
-                        stagnating_areas=data.get("stagnating_areas", []),
-                        suggested_focus=data.get("suggested_focus", [])
-                    )
-                    if narrative_text and briefing.key_improvements:
-                        return narrative_text, briefing
-        except Exception:
+            from backend.app.ai.qwen_service import QwenService
+            qwen = QwenService.get_instance()
+
+            comp_summary = [
+                {"name": c.competency_name, "trend": c.trend, "claim": c.claim_text}
+                for c in claims
+            ]
+            ev_list = [
+                {
+                    "id": e.evidence_id,
+                    "evidence_id": e.evidence_id,
+                    "detail": e.detail,
+                    "timestamp": e.timestamp,
+                    "score": e.raw_score,
+                    "source": e.source_type
+                }
+                for e in evidence
+            ]
+
+            display_name = learner_id.replace('_', ' ').title()
+            if self.retention_service.learners_df is not None and not self.retention_service.learners_df.empty:
+                match = self.retention_service.learners_df[self.retention_service.learners_df["learner_id"] == learner_id]
+                if not match.empty:
+                    display_name = str(match.iloc[0].get("name") or display_name)
+
+            result = await qwen.generate_growth_narrative(
+                employee_id=learner_id,
+                employee_name=display_name,
+                role="Software Engineer",
+                competencies_summary=comp_summary,
+                evidence_items=ev_list
+            )
+
+            briefing = ManagerBriefing(
+                key_improvements=result.key_improvements,
+                stagnating_areas=result.stagnating_areas,
+                suggested_focus=result.suggested_focus
+            )
+            if result.narrative:
+                return result.narrative, briefing
+
+        except Exception as e:
+            # Fallback to deterministic synthesis
             pass
 
         return self._generate_grounded_fallback(learner_id, period, claims, evidence)
