@@ -619,54 +619,175 @@
       gap: 1.15rem;
     }
 
-    .segmented-control {
+    /* Action Catalog Grid */
+    .action-catalog-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.65rem;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
 
-    .seg-btn {
+    .action-catalog-grid::-webkit-scrollbar {
+      width: 4px;
+    }
+    .action-catalog-grid::-webkit-scrollbar-thumb {
+      background: var(--elevated);
+      border-radius: 4px;
+    }
+
+    .action-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 0.75rem 0.5rem;
-      text-align: center;
+      padding: 0.75rem 0.85rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.2s var(--ease);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
     }
 
-    .seg-btn:hover {
+    .action-card:hover {
       border-color: var(--border-light);
+      transform: translateY(-1px);
     }
 
-    .seg-btn.active {
-      background: rgba(6, 182, 212, 0.12);
+    .action-card.active {
+      background: rgba(6, 182, 212, 0.1);
       border-color: var(--cyan);
-      box-shadow: 0 0 12px rgba(6, 182, 212, 0.15);
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.2);
     }
 
-    .seg-icon {
-      font-size: 1.2rem;
-      margin-bottom: 0.2rem;
+    .action-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.4rem;
+      margin-bottom: 0.35rem;
     }
 
-    .seg-title {
-      font-size: 0.74rem;
+    .action-card-title {
+      font-size: 0.78rem;
       font-weight: 700;
+      color: var(--text);
+      line-height: 1.25;
     }
 
-    .seg-weight {
+    .action-cat-pill {
+      font-size: 0.58rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .action-cat-pill.learning { background: rgba(59, 130, 246, 0.15); color: var(--blue); }
+    .action-cat-pill.review_activity { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+    .action-cat-pill.engineering_activity { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+
+    .action-card-desc {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin-bottom: 0.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .action-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       font-size: 0.62rem;
       color: var(--text-dim);
-      font-family: monospace;
-      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 0.35rem;
+    }
+
+    /* Simulation Parameter Grid */
+    .sim-param-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr 1fr;
+      gap: 0.75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .sim-param-grid { grid-template-columns: 1fr; }
+    }
+
+    .param-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .param-lbl {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .qty-stepper {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.2rem;
+    }
+
+    .qty-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .qty-btn:hover {
+      background: var(--card-hover);
+      color: var(--text);
+    }
+
+    .qty-display {
+      flex: 1;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
     }
 
     /* Clean Slider */
     .slider-row {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.75rem;
     }
 
     .clean-slider {
@@ -693,41 +814,48 @@
 
     .slider-score-box {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1rem;
+      font-size: 0.88rem;
       font-weight: 800;
       color: var(--cyan);
-      background: var(--card);
+      background: var(--elevated);
       border: 1px solid var(--border);
-      padding: 0.25rem 0.65rem;
+      padding: 0.2rem 0.5rem;
       border-radius: 6px;
-      min-width: 50px;
+      min-width: 44px;
       text-align: center;
     }
 
     .clean-select {
       width: 100%;
-      background: var(--card);
+      background: var(--elevated);
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
+      border-radius: 6px;
       color: var(--text);
       font-family: inherit;
-      font-size: 0.8rem;
-      padding: 0.6rem 0.8rem;
+      font-size: 0.78rem;
+      padding: 0.45rem 0.6rem;
       outline: none;
     }
 
+    /* Simulator Action Buttons */
+    .sim-btn-row {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
     .btn-run-sim {
-      width: 100%;
+      flex: 2;
       background: linear-gradient(135deg, var(--cyan), var(--blue));
       color: #fff;
       font-family: inherit;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       font-weight: 700;
       border: none;
-      border-radius: 10px;
-      padding: 0.85rem;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
       cursor: pointer;
-      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+      box-shadow: 0 4px 18px rgba(6, 182, 212, 0.3);
       transition: all 0.2s var(--ease);
       display: flex;
       align-items: center;
@@ -737,75 +865,351 @@
 
     .btn-run-sim:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 25px rgba(6, 182, 212, 0.45);
+      box-shadow: 0 6px 22px rgba(6, 182, 212, 0.45);
     }
 
-    /* Counterfactual Impact Box */
-    .sim-impact-box {
-      margin-top: 1.25rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      display: none;
+    .btn-compare-all {
+      flex: 1;
+      background: var(--elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.75rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
     }
 
-    .sim-impact-box.visible {
-      display: block;
-      animation: fadeIn 0.4s var(--ease);
+    .btn-compare-all:hover {
+      border-color: var(--border-light);
+      background: var(--card-hover);
     }
 
-    .impact-header-banner {
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.25);
+    /* ── Trajectory Comparison Chart ───────────────────────────── */
+    .trajectory-chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 0.9rem 1.15rem;
+      padding: 1rem 1.15rem;
+      margin-top: 1rem;
+      position: relative;
+    }
+
+    .chart-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 0.85rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
 
-    .impact-headline {
-      font-size: 1rem;
+    .chart-titles h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .chart-titles span {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    .chart-legend-row {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-size: 0.68rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--text-muted);
+    }
+
+    .legend-line-actual {
+      width: 18px;
+      height: 3px;
+      background: var(--cyan);
+      border-radius: 2px;
+    }
+
+    .legend-line-projected {
+      width: 18px;
+      height: 3px;
+      border-top: 3px dashed var(--green);
+    }
+
+    .legend-dot-intervention {
+      width: 8px;
+      height: 8px;
+      background: var(--purple);
+      transform: rotate(45deg);
+      box-shadow: 0 0 6px var(--purple);
+    }
+
+    .chart-svg-wrapper {
+      position: relative;
+      width: 100%;
+      height: 180px;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(16, 20, 31, 0.95);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.68rem;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+      display: none;
+      transform: translate(-50%, -120%);
+    }
+
+    /* ── Side-by-Side Reality Comparison ───────────────────────── */
+    .comparison-grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .comparison-grid-2col { grid-template-columns: 1fr; }
+    }
+
+    .reality-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem;
+      position: relative;
+    }
+
+    .reality-box.baseline {
+      border-left: 3px solid var(--red);
+    }
+
+    .reality-box.projected {
+      border-left: 3px solid var(--green);
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    .reality-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.65rem;
+    }
+
+    .reality-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .trend-pill {
+      font-size: 0.62rem;
       font-weight: 800;
-      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+    .trend-pill.declining { background: rgba(244, 63, 94, 0.15); color: var(--red); }
+    .trend-pill.stagnating { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
+    .trend-pill.improving { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+
+    .reality-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+      text-align: center;
+    }
+
+    .rm-cell {
+      background: var(--elevated);
+      border-radius: 6px;
+      padding: 0.45rem 0.25rem;
+    }
+
+    .rm-lbl {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+
+    .rm-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.92rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+
+    /* Impact Summary Strip */
+    .impact-summary-strip {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(16, 185, 129, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+
+    .impact-kpi-item {
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
 
-    .impact-sub {
-      font-size: 0.72rem;
+    .impact-kpi-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .impact-kpi-lbl {
+      font-size: 0.65rem;
       color: var(--text-muted);
-      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
-    .impact-comparison-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.65rem;
-      margin-bottom: 0.85rem;
-    }
-
-    .comp-cell {
+    /* ── Model Transparency & Explanations ─────────────────────── */
+    .transparency-accordion {
+      margin-top: 0.75rem;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 0.75rem;
-      text-align: center;
+      overflow: hidden;
     }
 
-    .comp-cell .cell-lbl {
-      font-size: 0.65rem;
+    .transparency-header {
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+    }
+
+    .transparency-header:hover {
+      background: var(--elevated);
+    }
+
+    .transparency-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .transparency-body {
+      padding: 0.75rem 0.85rem;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .transparency-body.open {
+      display: block;
+    }
+
+    .inputs-diff-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .inputs-diff-table th {
+      text-align: left;
+      font-size: 0.6rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
       color: var(--text-dim);
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid var(--border);
     }
 
-    .comp-cell .cell-val {
-      font-size: 1.15rem;
-      font-weight: 800;
+    .inputs-diff-table td {
+      padding: 0.45rem 0.5rem;
       font-family: 'JetBrains Mono', monospace;
-      margin-top: 2px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .transparency-meta-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      border-top: 1px dashed var(--border);
+      padding-top: 0.5rem;
+    }
+
+    .grounding-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(99, 102, 241, 0.12);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 4px;
+      padding: 0.15rem 0.45rem;
+      font-weight: 600;
+    }
+
+    /* ── Non-Causal Disclaimer & Limitations ───────────────────── */
+    .disclaimer-banner {
+      margin-top: 0.75rem;
+      background: rgba(245, 158, 11, 0.06);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.9rem;
+      font-size: 0.68rem;
+      color: #fde68a;
+      line-height: 1.45;
+    }
+
+    .disclaimer-banner strong {
+      color: var(--yellow);
+    }
+
+    .disclaimer-limitations {
+      margin-top: 0.4rem;
+      padding-left: 1.1rem;
+      color: var(--text-muted);
+      font-size: 0.64rem;
     }
 
     .btn-reset {
@@ -820,11 +1224,113 @@
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
+      margin-top: 0.75rem;
     }
 
     .btn-reset:hover {
       border-color: var(--border-light);
       color: var(--text);
+    }
+
+    /* ── Multi-Scenario Comparison Modal ───────────────────────── */
+    .compare-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .compare-modal-backdrop.open {
+      display: flex;
+      animation: fadeIn 0.25s var(--ease);
+    }
+
+    .compare-modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 900px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.75rem;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    .compare-modal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-modal-close {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-modal-close:hover {
+      border-color: var(--border-light);
+      color: #fff;
+    }
+
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .leaderboard-table th {
+      text-align: left;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .leaderboard-table td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .leaderboard-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .btn-apply-scenario {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-apply-scenario:hover {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: var(--cyan);
     }
 
     /* ── Tab 2: Competency Matrix Grid ─────────────────────────── */
@@ -1128,94 +1634,247 @@
         <div class="card" style="border-color: rgba(6, 182, 212, 0.25);">
           <div class="card-top">
             <div class="card-heading">
-              <span style="font-size: 1.1rem;">⚡</span>
-              <h3>What-If Counterfactual Simulator</h3>
+              <span style="font-size: 1.15rem;">⚡</span>
+              <div>
+                <h3>What-If Learning Path Simulator</h3>
+                <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 1px;">
+                  Model-estimated trajectory projection under counterfactual development actions
+                </div>
+              </div>
             </div>
             <div class="status-tag" style="background: rgba(6, 182, 212, 0.12); color: var(--cyan);">
-              INTERACTIVE
+              NON-CAUSAL PROJECTION
             </div>
           </div>
 
           <div class="sim-controls">
-            <!-- 1. Intervention Type Selector -->
+            <!-- 1. Dynamic Action Catalog Selector -->
             <div>
               <div class="section-title">
-                <span>1. Select Intervention Type</span>
-                <span id="actionWeightBadge" style="color: var(--cyan); font-family: monospace;">Weight: 0.85</span>
+                <span>1. Select Candidate Intervention Action</span>
+                <span id="actionWeightBadge" style="color: var(--cyan); font-family: monospace; font-size: 0.68rem;">Catalog: 5 Actions</span>
               </div>
-              <div class="segmented-control">
-                <div class="seg-btn active" data-type="project_outcome" onclick="selectAction(this, 'project_outcome', '0.85')">
-                  <div class="seg-icon">🛠️</div>
-                  <div class="seg-title">Hands-on Project</div>
-                  <div class="seg-weight">Production Sprint</div>
-                </div>
-                <div class="seg-btn" data-type="assessment" onclick="selectAction(this, 'assessment', '1.00')">
-                  <div class="seg-icon">📝</div>
-                  <div class="seg-title">Formal Exam</div>
-                  <div class="seg-weight">Proctored Quiz</div>
-                </div>
-                <div class="seg-btn" data-type="course_completion" onclick="selectAction(this, 'course_completion', '0.55')">
-                  <div class="seg-icon">🎓</div>
-                  <div class="seg-title">Online Course</div>
-                  <div class="seg-weight">Guided Tutorial</div>
-                </div>
+              <div class="action-catalog-grid" id="actionCatalogGrid">
+                <!-- Dynamically populated from /api/v1/what-if/actions -->
+                <div style="color: var(--text-dim); font-size: 0.75rem; padding: 1rem;">Loading actions…</div>
               </div>
             </div>
 
-            <!-- 2. Target Score Slider -->
+            <!-- 2. Simulation Parameter Inputs -->
             <div>
               <div class="section-title">
-                <span>2. Target Performance Score</span>
-                <span style="color: var(--text-dim);">Standard Mastery: 80+</span>
+                <span>2. Configure Scenario Parameters</span>
+                <span style="color: var(--text-dim); font-size: 0.68rem;">In-Memory Counterfactual</span>
               </div>
-              <div class="slider-row">
-                <input type="range" id="scoreSlider" class="clean-slider" min="50" max="100" value="90" oninput="updateSliderScore(this.value)" />
-                <div class="slider-score-box" id="sliderScoreBox">90</div>
+              <div class="sim-param-grid">
+                <!-- Quantity Stepper -->
+                <div class="param-group">
+                  <div class="param-lbl">
+                    <span>Quantity</span>
+                    <span id="paramQtyUnit" style="color: var(--cyan); font-size: 0.6rem; text-transform: none;">sessions</span>
+                  </div>
+                  <div class="qty-stepper">
+                    <button class="qty-btn" type="button" onclick="adjustSimQuantity(-1)">−</button>
+                    <div class="qty-display" id="simQuantityDisplay">1</div>
+                    <button class="qty-btn" type="button" onclick="adjustSimQuantity(1)">+</button>
+                  </div>
+                </div>
+
+                <!-- Hypothetical Performance Score Slider -->
+                <div class="param-group">
+                  <div class="param-lbl">
+                    <span>Performance Score</span>
+                    <span style="color: var(--text-dim); font-size: 0.6rem;">Mastery: 80+</span>
+                  </div>
+                  <div class="slider-row">
+                    <input type="range" id="scoreSlider" class="clean-slider" min="50" max="100" value="88" oninput="updateSliderScore(this.value)" />
+                    <div class="slider-score-box" id="sliderScoreBox">88</div>
+                  </div>
+                </div>
+
+                <!-- Intervention Scheduling Offset -->
+                <div class="param-group">
+                  <div class="param-lbl">
+                    <span>Scheduling Offset</span>
+                  </div>
+                  <select id="timingSelect" class="clean-select">
+                    <option value="0">Immediate (Today)</option>
+                    <option value="7">Schedule in +7 Days</option>
+                    <option value="14">Schedule in +14 Days</option>
+                    <option value="30">Schedule in +30 Days</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <!-- 3. Timing -->
-            <div>
-              <div class="section-title">3. Intervention Scheduling</div>
-              <select id="timingSelect" class="clean-select">
-                <option value="0">Immediate Deployment (Today)</option>
-                <option value="15">Schedule in 15 Days</option>
-                <option value="30">Schedule in 30 Days</option>
-              </select>
+            <!-- Simulator Actions: Run Single vs Compare All -->
+            <div class="sim-btn-row">
+              <button class="btn-run-sim" id="btnRunSim" onclick="executeSimulation()">
+                <span>⚡ Run What-If Simulation</span>
+              </button>
+              <button class="btn-compare-all" id="btnCompareAll" onclick="openComparisonModal()">
+                <span>⚖️ Compare All Actions</span>
+              </button>
             </div>
-
-            <button class="btn-run-sim" id="btnRunSim" onclick="executeSimulation()">
-              <span>⚡ Simulate Retention Impact</span>
-            </button>
           </div>
 
-          <!-- Counterfactual Impact Breakdown -->
+          <!-- Counterfactual Trajectory Comparison & Breakdown Box -->
           <div class="sim-impact-box" id="simImpactBox">
-            <div class="impact-header-banner">
-              <div>
-                <div class="impact-headline">
-                  <span>📉</span>
-                  <span id="impactReductionText">-62.2% Risk Reduction</span>
+            <!-- Trajectory Comparison Chart -->
+            <div class="trajectory-chart-card">
+              <div class="chart-header">
+                <div class="chart-titles">
+                  <h4>Trajectory Projection: Actual Evidence vs What-If</h4>
+                  <span id="chartSubtitle">Temporal sequence evaluated with active Weibull AFT model</span>
                 </div>
-                <div class="impact-sub" id="impactSubText">Arrests active decay and resets trajectory velocity.</div>
+                <div class="chart-legend-row">
+                  <div class="legend-item">
+                    <span class="legend-line-actual"></span>
+                    <span>Actual Evidence</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-line-projected"></span>
+                    <span>Projected Trajectory</span>
+                  </div>
+                  <div class="legend-item">
+                    <span class="legend-dot-intervention"></span>
+                    <span>Intervention</span>
+                  </div>
+                </div>
               </div>
-              <div style="text-align: right;">
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: monospace; color: var(--green);" id="impactDaysGained">
-                  +830 Days
+
+              <div class="chart-svg-wrapper" id="trajectorySvgWrapper">
+                <!-- SVG Trajectory Plot dynamically rendered -->
+              </div>
+              <div class="chart-tooltip" id="chartTooltip"></div>
+            </div>
+
+            <!-- Side-by-Side Reality Comparison -->
+            <div class="comparison-grid-2col">
+              <!-- Current Reality (Baseline) -->
+              <div class="reality-box baseline">
+                <div class="reality-header">
+                  <span class="reality-title">Current Reality (Baseline)</span>
+                  <span class="trend-pill declining" id="compBaselineTrend">Declining</span>
                 </div>
-                <div style="font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase;">Lifespan Gained</div>
+                <div class="reality-metrics">
+                  <div class="rm-cell">
+                    <div class="rm-lbl">90d Decay Risk</div>
+                    <div class="rm-val" id="cellBaselineRisk" style="color: var(--red);">66.3%</div>
+                  </div>
+                  <div class="rm-cell">
+                    <div class="rm-lbl">Expected Lifespan</div>
+                    <div class="rm-val" id="cellBaselineLifespan" style="color: var(--yellow);">62d</div>
+                  </div>
+                  <div class="rm-cell">
+                    <div class="rm-lbl">Freshness</div>
+                    <div class="rm-val" id="cellBaselineFreshness" style="color: var(--text-muted);">15%</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Projected Reality (What-If) -->
+              <div class="reality-box projected">
+                <div class="reality-header">
+                  <span class="reality-title">Projected Reality (What-If)</span>
+                  <span class="trend-pill improving" id="compProjectedTrend">Improving</span>
+                </div>
+                <div class="reality-metrics">
+                  <div class="rm-cell">
+                    <div class="rm-lbl">Projected 90d Risk</div>
+                    <div class="rm-val" id="cellSimulatedRisk" style="color: var(--green);">4.1%</div>
+                  </div>
+                  <div class="rm-cell">
+                    <div class="rm-lbl">Projected Lifespan</div>
+                    <div class="rm-val" id="cellSimulatedLifespan" style="color: var(--green);">892d</div>
+                  </div>
+                  <div class="rm-cell">
+                    <div class="rm-lbl">Projected Freshness</div>
+                    <div class="rm-val" id="cellSimulatedFreshness" style="color: var(--green);">92%</div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="impact-comparison-grid">
-              <div class="comp-cell">
-                <div class="cell-lbl">Baseline 90d Risk</div>
-                <div class="cell-val" id="cellBaselineRisk" style="color: var(--red);">66.3%</div>
+            <!-- Impact Summary Strip -->
+            <div class="impact-summary-strip">
+              <div class="impact-kpi-item">
+                <span>📉</span>
+                <div>
+                  <div class="impact-kpi-val" id="impactReductionText">-62.2%</div>
+                  <div class="impact-kpi-lbl">Risk Reduction</div>
+                </div>
               </div>
-              <div class="comp-cell" style="border-color: rgba(16, 185, 129, 0.4);">
-                <div class="cell-lbl">Simulated 90d Risk</div>
-                <div class="cell-val" id="cellSimulatedRisk" style="color: var(--green);">4.1%</div>
+              <div class="impact-kpi-item">
+                <span>⏱️</span>
+                <div>
+                  <div class="impact-kpi-val" id="impactDaysGained">+830 Days</div>
+                  <div class="impact-kpi-lbl">Lifespan Gained</div>
+                </div>
               </div>
+              <div class="impact-kpi-item">
+                <span>🔄</span>
+                <div>
+                  <div class="impact-kpi-val" id="impactFreshnessGain">+77.0%</div>
+                  <div class="impact-kpi-lbl">Freshness Boost</div>
+                </div>
+              </div>
+              <div class="impact-kpi-item">
+                <span>📈</span>
+                <div>
+                  <div class="impact-kpi-val" id="impactTrendShift" style="color: #fff; font-size: 0.88rem;">Shifted: Declining ➔ Improving</div>
+                  <div class="impact-kpi-lbl">Trajectory Momentum</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Model Transparency & Feature Inputs Explanations -->
+            <div class="transparency-accordion">
+              <div class="transparency-header" onclick="toggleTransparency()">
+                <div class="transparency-title">
+                  <span>🔍</span>
+                  <span>Model Grounding &amp; Feature Input Explanations</span>
+                </div>
+                <span id="transparencyChevron" style="font-size: 0.72rem; color: var(--text-dim); transition: transform 0.2s;">▼</span>
+              </div>
+              <div class="transparency-body" id="transparencyBody">
+                <table class="inputs-diff-table">
+                  <thead>
+                    <tr>
+                      <th>Model Feature Input</th>
+                      <th>Baseline Value</th>
+                      <th>Projected Value</th>
+                      <th>Mathematical Effect</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inputsDiffTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+                <div class="transparency-meta-strip">
+                  <div>
+                    <span>Simulation ID: </span><code id="simIdBadge" style="color: var(--cyan);">SIM-...</code>
+                  </div>
+                  <div>
+                    <span>Model Engine: </span><span id="simModelBadge" style="color: var(--text-muted);">WeibullAFTFitter-v1</span>
+                  </div>
+                  <div class="grounding-chip">
+                    <span>🛡️</span> Zero Database Mutation (In-Memory)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Non-Causal Disclaimer & Limitations Banner -->
+            <div class="disclaimer-banner">
+              <div>
+                <strong>⚠️ Non-Causal Projection Disclaimer:</strong>
+                <span id="simDisclaimerText">This trajectory is a model-estimated statistical projection based on historical patterns, not a guaranteed outcome.</span>
+              </div>
+              <ul class="disclaimer-limitations" id="simLimitationsList">
+                <li>Historical evidence patterns determine parametric decay rates.</li>
+                <li>Real-world skill retention depends on continuous practical application and deliberate practice.</li>
+              </ul>
             </div>
 
             <button class="btn-reset" onclick="resetToBaseline()">
@@ -1278,13 +1937,55 @@
     <strong>GROWTHLENS Platform</strong> · Continuous Talent Intelligence · Powered by FastAPI &amp; Weibull Survival Analysis · <a href="/docs" target="_blank">OpenAPI Docs ↗</a>
   </footer>
 
+  <!-- ── Multi-Scenario Comparison Modal ───────────────────────── -->
+  <div class="compare-modal-backdrop" id="compareModal" onclick="closeComparisonModal(event)">
+    <div class="compare-modal-content" onclick="event.stopPropagation()">
+      <div class="compare-modal-top">
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⚖️</span> Candidate Intervention Comparison Leaderboard
+          </h3>
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 3px;" id="compareModalSubtitle">
+            Evaluating all candidate development actions against active competency trajectory
+          </div>
+        </div>
+        <button class="btn-modal-close" onclick="closeComparisonModal()">✕</button>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Intervention Action</th>
+              <th>Category</th>
+              <th>Projected Trend</th>
+              <th>Projected 90d Risk</th>
+              <th>Net Risk Reduction</th>
+              <th>Lifespan Gained</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardTableBody">
+            <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Loading candidate scenario evaluations…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- Clean Dashboard Script -->
   <script>
     const API_BASE = '';
     let currentLearner = 'L000001';
     let currentCompetencyId = null;
-    let selectedActionType = 'project_outcome';
     let currentData = null;
+
+    // What-If State
+    let candidateActions = [];
+    let selectedActionId = 'peer_review_sessions';
+    let simQuantity = 2;
+    let lastSimulationResult = null;
 
     // ── Tab Navigation ──────────────────────────────────────────
     function switchTab(tabId) {
@@ -1307,6 +2008,7 @@
     async function init() {
       await loadLearners();
       await fetchRetention();
+      await fetchCandidateActions();
       await fetchRecommendations();
     }
 
@@ -1332,6 +2034,7 @@
       currentCompetencyId = null;
       resetToBaseline();
       fetchRetention();
+      fetchCandidateActions();
       fetchRecommendations();
     }
 
@@ -1345,6 +2048,7 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         currentData = data;
+        currentCompetencyId = data.competency_id;
 
         renderProfile(data);
         renderRetentionAnalytics(data);
@@ -1420,7 +2124,7 @@
     function selectTrack(cid) {
       currentCompetencyId = cid;
       resetToBaseline();
-      fetchRetention();
+      fetchRetention().then(() => fetchCandidateActions());
     }
 
     // ── Key Risk Drivers ────────────────────────────────────────
@@ -1483,66 +2187,533 @@
       switchTab('studio');
     }
 
-    // ── What-If Simulator Logic ─────────────────────────────────
-    function selectAction(el, type, weight) {
-      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
-      selectedActionType = type;
-      document.getElementById('actionWeightBadge').textContent = `Weight: ${weight}`;
+    // ── What-If Simulator: Action Catalog Management ────────────
+    async function fetchCandidateActions() {
+      const container = document.getElementById('actionCatalogGrid');
+      try {
+        let url = `${API_BASE}/api/v1/what-if/actions`;
+        if (currentCompetencyId) url += `?competency_id=${currentCompetencyId}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        candidateActions = data.actions || [];
+
+        renderActionCards();
+        document.getElementById('actionWeightBadge').textContent = `Catalog: ${candidateActions.length} Actions`;
+
+      } catch (err) {
+        console.warn('Could not load dynamic action catalog, using fallback list:', err);
+        renderActionCardsFallback();
+      }
+    }
+
+    function renderActionCards() {
+      const container = document.getElementById('actionCatalogGrid');
+      if (!candidateActions || candidateActions.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-dim); font-size: 0.72rem; padding: 0.5rem;">No actions available for this track.</div>';
+        return;
+      }
+
+      // Check if current selected action is in list, if not pick first
+      const exists = candidateActions.some(a => a.action_id === selectedActionId);
+      if (!exists && candidateActions.length > 0) {
+        selectedActionId = candidateActions[0].action_id;
+      }
+
+      container.innerHTML = candidateActions.map(a => {
+        const isActive = a.action_id === selectedActionId;
+        const catClass = a.category.toLowerCase();
+        const catLabel = a.category.replace('_', ' ');
+
+        return `
+          <div class="action-card ${isActive ? 'active' : ''}" id="act-card-${a.action_id}" onclick="selectCandidateAction('${a.action_id}')">
+            <div>
+              <div class="action-card-top">
+                <span class="action-card-title">${a.title}</span>
+                <span class="action-cat-pill ${catClass}">${catLabel}</span>
+              </div>
+              <div class="action-card-desc">${a.description}</div>
+            </div>
+            <div class="action-card-footer">
+              <span>⏱ ${a.typical_duration_days}d</span>
+              <span>Weight: ${a.source_confidence_weight.toFixed(2)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Update parameters with current selected action default
+      const currentAction = candidateActions.find(a => a.action_id === selectedActionId);
+      if (currentAction) {
+        applyActionDefaults(currentAction);
+      }
+    }
+
+    function renderActionCardsFallback() {
+      candidateActions = [
+        {
+          action_id: 'peer_review_sessions',
+          title: 'Take on Peer-Review Sessions',
+          description: 'Actively participate in collaborative technical peer reviews and code evaluations.',
+          category: 'review_activity',
+          source_confidence_weight: 0.85,
+          default_score: 85.0,
+          typical_duration_days: 7,
+          default_quantity: 2,
+          quantity_label: 'sessions'
+        },
+        {
+          action_id: 'author_relevant_pr',
+          title: 'Review or Author a Relevant PR',
+          description: 'Author and merge a high-impact pull request demonstrating production proficiency.',
+          category: 'engineering_activity',
+          source_confidence_weight: 0.85,
+          default_score: 90.0,
+          typical_duration_days: 10,
+          default_quantity: 1,
+          quantity_label: 'pull requests'
+        },
+        {
+          action_id: 'hands_on_assessment',
+          title: 'Complete Proctored Skill Assessment',
+          description: 'Take an objective benchmark evaluation under structured testing conditions.',
+          category: 'learning',
+          source_confidence_weight: 1.00,
+          default_score: 92.0,
+          typical_duration_days: 2,
+          default_quantity: 1,
+          quantity_label: 'assessments'
+        },
+        {
+          action_id: 'deep_dive_course',
+          title: 'Comprehensive Online Specialization',
+          description: 'Complete an accredited multi-module deep dive course with hands-on labs.',
+          category: 'learning',
+          source_confidence_weight: 0.55,
+          default_score: 85.0,
+          typical_duration_days: 30,
+          default_quantity: 1,
+          quantity_label: 'courses'
+        }
+      ];
+      renderActionCards();
+    }
+
+    function selectCandidateAction(actionId) {
+      selectedActionId = actionId;
+      document.querySelectorAll('.action-card').forEach(c => c.classList.remove('active'));
+      const activeEl = document.getElementById(`act-card-${actionId}`);
+      if (activeEl) activeEl.classList.add('active');
+
+      const action = candidateActions.find(a => a.action_id === actionId);
+      if (action) {
+        applyActionDefaults(action);
+      }
+    }
+
+    function applyActionDefaults(action) {
+      simQuantity = action.default_quantity || 1;
+      document.getElementById('simQuantityDisplay').textContent = simQuantity;
+      document.getElementById('paramQtyUnit').textContent = action.quantity_label || 'units';
+
+      const slider = document.getElementById('scoreSlider');
+      slider.value = Math.round(action.default_score || 85);
+      updateSliderScore(slider.value);
+    }
+
+    function adjustSimQuantity(delta) {
+      simQuantity = Math.max(1, Math.min(10, simQuantity + delta));
+      document.getElementById('simQuantityDisplay').textContent = simQuantity;
     }
 
     function updateSliderScore(val) {
-      document.getElementById('sliderScoreBox').textContent = val;
+      const box = document.getElementById('sliderScoreBox');
+      box.textContent = val;
+      const num = parseFloat(val);
+      if (num >= 90) box.style.color = 'var(--green)';
+      else if (num >= 75) box.style.color = 'var(--cyan)';
+      else box.style.color = 'var(--yellow)';
     }
 
+    // ── What-If Simulator: Execution Engine ──────────────────────
     async function executeSimulation() {
       const btn = document.getElementById('btnRunSim');
       btn.disabled = true;
-      btn.innerHTML = '<span>⚡ Computing Counterfactual Trajectory…</span>';
+      btn.innerHTML = '<span>⚡ Evaluating Trajectory (Weibull AFT)…</span>';
 
       const score = parseFloat(document.getElementById('scoreSlider').value);
       const days = parseInt(document.getElementById('timingSelect').value, 10);
+      const targetCid = currentCompetencyId || (currentData ? currentData.competency_id : null);
 
       try {
-        const res = await fetch(`${API_BASE}/api/v1/learner/${currentLearner}/retention/simulate`, {
+        const payload = {
+          action_id: selectedActionId,
+          competency_id: targetCid,
+          quantity: simQuantity,
+          hypothetical_score: score,
+          days_from_now: days
+        };
+
+        const res = await fetch(`${API_BASE}/api/v1/learner/${currentLearner}/what-if`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Simulation request failed (HTTP ${res.status})`);
+        }
+
+        const sim = await res.json();
+        lastSimulationResult = sim;
+
+        // Make impact box visible
+        const impactBox = document.getElementById('simImpactBox');
+        impactBox.classList.add('visible');
+        impactBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // 1. Render Trajectory Comparison SVG Plot
+        renderTrajectoryPlot(
+          sim.baseline.trajectory || [],
+          sim.projected.trajectory || [],
+          sim.scenario.action_name,
+          days
+        );
+
+        // 2. Render Side-by-Side Reality KPI Comparisons
+        renderRealityComparison(sim);
+
+        // 3. Render Impact Summary Strip
+        const pDelta = sim.comparison.percentage_delta;
+        document.getElementById('impactReductionText').textContent = `${pDelta > 0 ? '+' : ''}${pDelta}%`;
+        document.getElementById('impactDaysGained').textContent = `+${sim.comparison.expected_days_gained} Days`;
+        document.getElementById('impactFreshnessGain').textContent = `+${sim.comparison.freshness_delta.toFixed(1)}%`;
+
+        const prevTrend = sim.comparison.previous_trend;
+        const projTrend = sim.comparison.projected_trend;
+        document.getElementById('impactTrendShift').textContent = `Shifted: ${prevTrend.toUpperCase()} ➔ ${projTrend.toUpperCase()}`;
+
+        // 4. Animate left-hand cockpit gauge to the simulated value
+        animateGaugeToSimulated(sim.projected.decay_risk, sim.projected.decay_risk_percentage, sim.projected.expected_days_to_decay);
+
+        // 5. Render Model Feature Grounding & Transparency
+        renderModelExplanations(sim.model_explanation, sim.simulation_id, sim.model_version);
+
+        // 6. Update Non-Causal Disclaimers & Limitations
+        document.getElementById('simDisclaimerText').textContent = sim.disclaimer || 'Model-estimated scenario projection.';
+        if (sim.limitations && sim.limitations.length > 0) {
+          document.getElementById('simLimitationsList').innerHTML = sim.limitations.map(l => `<li>${l}</li>`).join('');
+        }
+
+      } catch (e) {
+        alert('Simulation notice: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Run What-If Simulation</span>';
+      }
+    }
+
+    function renderRealityComparison(sim) {
+      // Baseline Box
+      const bTrend = document.getElementById('compBaselineTrend');
+      bTrend.textContent = sim.baseline.trend.toUpperCase();
+      bTrend.className = `trend-pill ${sim.baseline.trend.toLowerCase()}`;
+      document.getElementById('cellBaselineRisk').textContent = `${sim.baseline.decay_risk_percentage}%`;
+      document.getElementById('cellBaselineLifespan').textContent = `${sim.baseline.expected_days_to_decay}d`;
+      document.getElementById('cellBaselineFreshness').textContent = `${Math.round(sim.baseline.freshness)}%`;
+
+      // Projected Box
+      const pTrend = document.getElementById('compProjectedTrend');
+      pTrend.textContent = sim.projected.trend.toUpperCase();
+      pTrend.className = `trend-pill ${sim.projected.trend.toLowerCase()}`;
+      document.getElementById('cellSimulatedRisk').textContent = `${sim.projected.decay_risk_percentage}%`;
+      document.getElementById('cellSimulatedLifespan').textContent = `${sim.projected.expected_days_to_decay}d`;
+      document.getElementById('cellSimulatedFreshness').textContent = `${Math.round(sim.projected.freshness)}%`;
+    }
+
+    function animateGaugeToSimulated(riskScore, riskPct, expectedDays) {
+      const simColor = getRiskColor(riskScore);
+      const circle = document.getElementById('radialGaugeCircle');
+      const circumference = 376.99;
+      circle.style.strokeDashoffset = circumference - (riskScore * circumference);
+      circle.style.stroke = simColor;
+
+      const numEl = document.getElementById('gaugeNumText');
+      numEl.textContent = `${Math.round(riskPct)}%`;
+      numEl.style.color = simColor;
+      document.getElementById('activeExpectedDays').textContent = `${expectedDays} Days`;
+    }
+
+    // ── High-Fidelity SVG Trajectory Plot Renderer ──────────────
+    function renderTrajectoryPlot(baselineTraj, projectedTraj, actionName, timingOffset) {
+      const container = document.getElementById('trajectorySvgWrapper');
+      if (!container) return;
+
+      const allPoints = projectedTraj && projectedTraj.length > 0 ? projectedTraj : baselineTraj;
+      if (!allPoints || allPoints.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 2rem;">Insufficient trajectory points to plot.</div>';
+        return;
+      }
+
+      const W = 620;
+      const H = 180;
+      const padL = 40;
+      const padR = 25;
+      const padT = 20;
+      const padB = 30;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      // Coordinate scaling
+      const n = allPoints.length;
+      const getX = (idx) => padL + (n > 1 ? (idx / (n - 1)) * plotW : plotW / 2);
+      const getY = (val) => padT + plotH - (Math.max(0, Math.min(100, val)) / 100) * plotH;
+
+      // Generate paths
+      let actualPathD = '';
+      let projectedPathD = '';
+      let interventionIdx = -1;
+
+      // Real historical points
+      const actualPoints = allPoints.filter(p => !p.is_counterfactual);
+      if (actualPoints.length > 0) {
+        actualPathD = actualPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(p.score)}`).join(' ');
+      }
+
+      // Projected trajectory path (starts from last actual point through counterfactuals)
+      const lastActualIdx = actualPoints.length - 1;
+      const cfPoints = allPoints.filter(p => p.is_counterfactual);
+
+      if (cfPoints.length > 0 && lastActualIdx >= 0) {
+        interventionIdx = lastActualIdx + 1;
+        projectedPathD = `M ${getX(lastActualIdx)} ${getY(actualPoints[lastActualIdx].score)} `;
+        for (let i = lastActualIdx + 1; i < n; i++) {
+          projectedPathD += `L ${getX(i)} ${getY(allPoints[i].score)} `;
+        }
+      }
+
+      // SVG Canvas Builder
+      let svgHtml = `
+        <svg viewBox="0 0 ${W} ${H}" class="chart-svg" preserveAspectRatio="none">
+          <!-- Horizontal Grid Lines -->
+          <line x1="${padL}" y1="${getY(25)}" x2="${W - padR}" y2="${getY(25)}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3,3" />
+          <line x1="${padL}" y1="${getY(50)}" x2="${W - padR}" y2="${getY(50)}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3,3" />
+          <line x1="${padL}" y1="${getY(75)}" x2="${W - padR}" y2="${getY(75)}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="3,3" />
+          <line x1="${padL}" y1="${getY(100)}" x2="${W - padR}" y2="${getY(100)}" stroke="rgba(255,255,255,0.1)" />
+
+          <!-- Y Axis Labels -->
+          <text x="${padL - 8}" y="${getY(25) + 3}" fill="var(--text-dim)" font-size="9" font-family="monospace" text-anchor="end">25%</text>
+          <text x="${padL - 8}" y="${getY(50) + 3}" fill="var(--text-dim)" font-size="9" font-family="monospace" text-anchor="end">50%</text>
+          <text x="${padL - 8}" y="${getY(75) + 3}" fill="var(--text-dim)" font-size="9" font-family="monospace" text-anchor="end">75%</text>
+          <text x="${padL - 8}" y="${getY(100) + 3}" fill="var(--text-dim)" font-size="9" font-family="monospace" text-anchor="end">100%</text>
+
+          <!-- Solid Cyan Line: Actual Historical Sequence -->
+          ${actualPathD ? `<path d="${actualPathD}" fill="none" stroke="var(--cyan)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+
+          <!-- Dashed Emerald Line: Projected Counterfactual Trajectory -->
+          ${projectedPathD ? `<path d="${projectedPathD}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-dasharray="6,4" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+      `;
+
+      // Vertical Marker at Intervention Event
+      if (interventionIdx !== -1) {
+        const intX = getX(interventionIdx);
+        svgHtml += `
+          <line x1="${intX}" y1="${padT - 5}" x2="${intX}" y2="${H - padB}" stroke="var(--purple)" stroke-width="1.8" stroke-dasharray="4,3" />
+          <rect x="${intX - 42}" y="${padT - 16}" width="84" height="15" rx="3" fill="rgba(168, 85, 247, 0.25)" stroke="var(--purple)" stroke-width="1" />
+          <text x="${intX}" y="${padT - 5}" fill="#e9d5ff" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">⚡ INTERVENTION</text>
+        `;
+      }
+
+      // Draw Interactive Points
+      allPoints.forEach((pt, i) => {
+        const cx = getX(i);
+        const cy = getY(pt.score);
+        const isCf = pt.is_counterfactual;
+
+        if (isCf) {
+          // Counterfactual Glowing Diamond Marker
+          svgHtml += `
+            <polygon points="${cx},${cy - 6} ${cx + 6},${cy} ${cx},${cy + 6} ${cx - 6},${cy}"
+              fill="var(--purple)" stroke="#fff" stroke-width="1.5"
+              style="cursor: pointer; filter: drop-shadow(0 0 6px rgba(168,85,247,0.8));"
+              onmouseenter="showPointTooltip(event, '${escapeHtml(pt.source)}', ${pt.score}, '${escapeHtml(pt.timestamp)}', true)"
+              onmouseleave="hidePointTooltip()" />
+          `;
+        } else {
+          // Actual Verified Evidence Circle
+          svgHtml += `
+            <circle cx="${cx}" cy="${cy}" r="4.5" fill="var(--card)" stroke="var(--cyan)" stroke-width="2.2"
+              style="cursor: pointer; transition: transform 0.15s ease;"
+              onmouseenter="showPointTooltip(event, '${escapeHtml(pt.source)}', ${pt.score}, '${escapeHtml(pt.timestamp)}', false)"
+              onmouseleave="hidePointTooltip()" />
+          `;
+        }
+
+        // X-Axis Sub-label
+        const dateStr = pt.timestamp ? pt.timestamp.split('T')[0] : `T${i+1}`;
+        const labelText = isCf ? `CF+${i - lastActualIdx}d` : dateStr.slice(5);
+        svgHtml += `
+          <text x="${cx}" y="${H - padB + 14}" fill="${isCf ? 'var(--purple)' : 'var(--text-dim)'}" font-size="8" font-family="monospace" text-anchor="middle">${labelText}</text>
+        `;
+      });
+
+      svgHtml += `</svg>`;
+      container.innerHTML = svgHtml;
+    }
+
+    function showPointTooltip(evt, source, score, ts, isCf) {
+      const tt = document.getElementById('chartTooltip');
+      if (!tt) return;
+      const typeLabel = isCf ? '<span style="color: var(--purple); font-weight: 700;">[WHAT-IF PROJECTION]</span>' : '<span style="color: var(--cyan); font-weight: 700;">[VERIFIED EVIDENCE]</span>';
+      tt.innerHTML = `
+        <div style="font-size: 0.65rem; margin-bottom: 2px;">${typeLabel} ${source}</div>
+        <div style="font-weight: 800; font-size: 0.85rem; color: #fff;">Performance Score: ${score.toFixed(1)}</div>
+        <div style="font-size: 0.62rem; color: var(--text-dim); margin-top: 2px;">${ts}</div>
+      `;
+      tt.style.display = 'block';
+
+      const rect = document.getElementById('trajectorySvgWrapper').getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const y = evt.clientY - rect.top;
+      tt.style.left = `${x}px`;
+      tt.style.top = `${y}px`;
+    }
+
+    function hidePointTooltip() {
+      const tt = document.getElementById('chartTooltip');
+      if (tt) tt.style.display = 'none';
+    }
+
+    // ── Model Explanations & Transparency Panel ─────────────────
+    function toggleTransparency() {
+      const body = document.getElementById('transparencyBody');
+      const chev = document.getElementById('transparencyChevron');
+      body.classList.toggle('open');
+      chev.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    function renderModelExplanations(explanation, simId, modelVer) {
+      document.getElementById('simIdBadge').textContent = simId || 'SIM-ACTIVE';
+      document.getElementById('simModelBadge').textContent = modelVer || 'WeibullAFTFitter-v1';
+
+      const tbody = document.getElementById('inputsDiffTableBody');
+      const inputs = (explanation && explanation.inputs_changed) || {};
+      const keys = Object.keys(inputs);
+
+      if (keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim);">No significant input feature delta detected.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = keys.map(k => {
+        const item = inputs[k];
+        const isBeneficial = item.delta < 0 ? (k.includes('days_since') || k.includes('risk')) : true;
+        const color = isBeneficial ? 'var(--green)' : 'var(--yellow)';
+        const sign = item.delta > 0 ? '+' : '';
+
+        return `
+          <tr>
+            <td><strong style="color: #fff;">${formatFeatureName(k)}</strong></td>
+            <td style="color: var(--text-muted);">${formatVal(item.baseline)}</td>
+            <td style="color: #fff;">${formatVal(item.projected)}</td>
+            <td style="color: ${color};">${sign}${formatVal(item.delta)} (${isBeneficial ? 'Protective' : 'Moderate'})</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function formatFeatureName(k) {
+      const map = {
+        'days_since_last_evidence': 'Days Since Evidence (Recency)',
+        'trajectory_velocity': 'Trajectory Velocity (Slope / 30d)',
+        'rolling_evidence_volume': 'Rolling Evidence Volume',
+        'mean_performance_score': 'Mean Competency Score'
+      };
+      return map[k] || k.replace(/_/g, ' ');
+    }
+
+    function formatVal(v) {
+      if (typeof v === 'number') {
+        return Math.abs(v) < 1 ? v.toFixed(3) : v.toFixed(1);
+      }
+      return v;
+    }
+
+    // ── Multi-Scenario Comparison Leaderboard Modal ─────────────
+    async function openComparisonModal() {
+      const modal = document.getElementById('compareModal');
+      const tbody = document.getElementById('leaderboardTableBody');
+      const subtitle = document.getElementById('compareModalSubtitle');
+
+      modal.classList.add('open');
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Simulating all candidate actions counterfactually…</td></tr>';
+
+      const targetCid = currentCompetencyId || (currentData ? currentData.competency_id : null);
+      if (currentData) {
+        subtitle.textContent = `Evaluating candidate development actions for ${currentData.competency_name || targetCid}`;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/learner/${currentLearner}/what-if/compare`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            competency_id: currentData ? currentData.competency_id : null,
-            action_type: selectedActionType,
-            simulated_score: score,
-            days_from_now: days
+            competency_id: targetCid,
+            action_ids: candidateActions.map(a => a.action_id),
+            hypothetical_score: 90.0,
+            days_from_now: 0
           })
         });
 
-        if (!res.ok) throw new Error('Simulation endpoint failed');
-        const sim = await res.json();
+        if (!res.ok) throw new Error('Multi-scenario comparison failed');
+        const data = await res.json();
+        const rankings = data.scenario_rankings || [];
 
-        // Render Impact Box
-        document.getElementById('simImpactBox').classList.add('visible');
-        document.getElementById('impactReductionText').textContent = `${sim.percentage_delta > 0 ? '+' : ''}${sim.percentage_delta}% Risk Reduction`;
-        document.getElementById('impactSubText').textContent = `Counterfactual ${selectedActionType} (Score: ${score}) successfully arrests decay.`;
-        document.getElementById('impactDaysGained').textContent = `+${sim.expected_days_gained} Days`;
-        document.getElementById('cellBaselineRisk').textContent = `${sim.original_risk_percentage}%`;
-        document.getElementById('cellSimulatedRisk').textContent = `${sim.new_risk_percentage}%`;
+        if (rankings.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">No scenarios could be evaluated.</td></tr>';
+          return;
+        }
 
-        // Smoothly animate the left-hand radial gauge to the simulated value!
-        const simColor = getRiskColor(sim.new_risk);
-        const circle = document.getElementById('radialGaugeCircle');
-        const circumference = 376.99;
-        circle.style.strokeDashoffset = circumference - (sim.new_risk * circumference);
-        circle.style.stroke = simColor;
+        tbody.innerHTML = rankings.map((s, idx) => {
+          const rankBadge = idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx+1}`;
+          const isSelected = s.action_id === selectedActionId;
 
-        document.getElementById('gaugeNumText').textContent = `${Math.round(sim.new_risk_percentage)}%`;
-        document.getElementById('gaugeNumText').style.color = simColor;
-        document.getElementById('activeExpectedDays').textContent = `${sim.new_expected_days_to_decay} Days`;
+          return `
+            <tr style="${isSelected ? 'background: rgba(6, 182, 212, 0.08);' : ''}">
+              <td><strong style="color: var(--cyan);">${rankBadge}</strong></td>
+              <td><strong style="color: #fff;">${s.title}</strong></td>
+              <td><span class="action-cat-pill ${s.category.toLowerCase()}">${s.category.replace('_', ' ')}</span></td>
+              <td><span class="trend-pill ${s.projected_trend.toLowerCase()}">${s.projected_trend.toUpperCase()}</span></td>
+              <td><span style="font-family: monospace; font-weight: 700; color: ${getRiskColor(s.projected_decay_risk)};">${s.projected_decay_risk_percentage}%</span></td>
+              <td><strong style="color: var(--green); font-family: monospace;">-${s.risk_reduction_percentage.toFixed(1)}%</strong></td>
+              <td><span style="font-family: monospace; color: var(--green);">+${s.expected_days_gained}d</span></td>
+              <td>
+                <button class="btn-apply-scenario" onclick="applyAndSimulateAction('${s.action_id}')">
+                  ${isSelected ? 'Active ✓' : 'Simulate ↗'}
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
 
-      } catch (e) {
-        alert('Simulation error: ' + e.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<span>⚡ Simulate Retention Impact</span>';
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--red); padding: 1.5rem;">Error loading scenario comparison: ${err.message}</td></tr>`;
       }
+    }
+
+    function closeComparisonModal(event) {
+      if (event && event.target && !event.target.classList.contains('compare-modal-backdrop') && !event.target.classList.contains('btn-modal-close')) {
+        return;
+      }
+      document.getElementById('compareModal').classList.remove('open');
+    }
+
+    function applyAndSimulateAction(actionId) {
+      closeComparisonModal();
+      selectCandidateAction(actionId);
+      executeSimulation();
     }
 
     function resetToBaseline() {
@@ -1640,6 +2811,16 @@
         return `rgba(${[(c>>16)&255, (c>>8)&255, c&255].join(',')},${alpha})`;
       }
       return hex;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     window.addEventListener('DOMContentLoaded', init);
