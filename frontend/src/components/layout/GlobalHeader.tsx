@@ -23,6 +23,7 @@ const employeeNav = [
 
 const managerNav = [
   { label: "DASHBOARD", href: "/manager/dashboard" },
+  { label: "TEAM GROWTH", href: "/manager/growth" },
   { label: "TEAM HEATMAP", href: "/manager/heatmap" },
   { label: "SKILLS", href: "/employee/skills" },
   { label: "SIMULATOR", href: "/employee/simulator" },

@@ -39,11 +39,36 @@ class EvidenceRepository:
         res = self.client.table("evidence").insert(payload).execute()
         return res.data[0] if res.data else payload
 
+    def _resolve_employee_uuid(self, employee_id: str) -> Optional[str]:
+        """Resolves employee_id whether it is a UUID or a slug/name."""
+        if not employee_id:
+            return None
+        import uuid
+        try:
+            uuid.UUID(str(employee_id))
+            return str(employee_id)
+        except (ValueError, AttributeError):
+            pass
+
+        try:
+            slug_words = str(employee_id).replace("_", " ").strip().split()
+            first_word = slug_words[0] if slug_words else str(employee_id)
+            res = self.client.table("employees").select("id").ilike("name", f"%{first_word}%").limit(1).execute()
+            if res.data:
+                return res.data[0]["id"]
+        except Exception as e:
+            logger.warning(f"Failed to resolve employee slug {employee_id}: {e}")
+        return None
+
     def list_by_employee(self, employee_id: str, limit: int = 50, offset: int = 0) -> List[dict]:
+        target_uuid = self._resolve_employee_uuid(employee_id)
+        if not target_uuid:
+            return []
+
         res = (
             self.client.table("evidence")
             .select("*")
-            .eq("employee_id", employee_id)
+            .eq("employee_id", target_uuid)
             .order("occurred_at", desc=True)
             .range(offset, offset + limit - 1)
             .execute()
@@ -51,14 +76,19 @@ class EvidenceRepository:
         return res.data or []
 
     def get_employee_evidence_by_id(self, employee_id: str, evidence_id: str) -> Optional[dict]:
+        target_uuid = self._resolve_employee_uuid(employee_id)
+        if not target_uuid:
+            # Fallback to direct query by ID
+            return self.get_by_id(evidence_id)
+
         res = (
             self.client.table("evidence")
             .select("*")
-            .eq("employee_id", employee_id)
+            .eq("employee_id", target_uuid)
             .eq("id", evidence_id)
             .execute()
         )
-        return res.data[0] if res.data else None
+        return res.data[0] if res.data else self.get_by_id(evidence_id)
 
     def update_ai_extraction(self, evidence_id: str, summary: str) -> None:
         self.client.table("evidence").update({

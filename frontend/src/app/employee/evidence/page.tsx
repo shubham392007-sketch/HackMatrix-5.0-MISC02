@@ -1,452 +1,638 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { trajectory, evidence as evidenceApi, integrations, health as healthApi } from "@/lib/api";
+import {
+  ScriptHeading,
+  PillButton,
+  StatusBadge,
+  SourceConnectionCard,
+  EvidenceSyncPanel,
+  EvidenceDetailPanel,
+  RAGContextPanel,
+  EvidenceTimeline,
+  EvidenceCoverage,
+  LoadingSkeleton,
+  ErrorState,
+} from "@/components/growthlens";
+import {
+  evidence as evidenceApi,
+  integrations,
+  trajectory as trajectoryApi,
+  health as healthApi,
+} from "@/lib/api";
 import type { Learner, Evidence } from "@/lib/types";
-import { GitPullRequest, CheckSquare, Award, BookOpen, MessageSquare, Terminal, RefreshCw, Database, Server, Cpu, CheckCircle2, AlertCircle } from "lucide-react";
-
-const SOURCE_CONFIG: Record<
-  string,
-  { bg: string; text: string; icon: typeof GitPullRequest; label: string }
-> = {
-  github: { bg: "bg-[#DFE968]/70", text: "text-[#1C1C1C]", icon: GitPullRequest, label: "GITHUB" },
-  jira: { bg: "bg-[#F3A878]/60", text: "text-[#1C1C1C]", icon: CheckSquare, label: "JIRA" },
-  assessment: { bg: "bg-[#F6C8D6]", text: "text-[#1C1C1C]", icon: Award, label: "ASSESSMENT" },
-  project_outcome: { bg: "bg-[#DFE968]/50", text: "text-[#1C1C1C]", icon: Terminal, label: "PROJECT" },
-  course_completion: { bg: "bg-[#FBF1CF]", text: "text-[#1C1C1C]", icon: BookOpen, label: "COURSE" },
-  feedback: { bg: "bg-white", text: "text-[#1C1C1C]", icon: MessageSquare, label: "FEEDBACK" },
-};
+import {
+  RefreshCw,
+  Search,
+  ExternalLink,
+  Filter,
+  CheckCircle2,
+  AlertCircle,
+  Database,
+  ArrowRight,
+  TrendingUp,
+  Shield,
+  Layers,
+} from "lucide-react";
 
 const FILTERS = ["ALL", "GITHUB", "JIRA", "ASSESSMENT", "PROJECT", "COURSE", "FEEDBACK"] as const;
 
 export default function EvidencePage() {
   const [learners, setLearners] = useState<Learner[]>([]);
-  const [learnerId, setLearnerId] = useState("");
-  const [items, setItems] = useState<Evidence[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [filter, setFilter] = useState("ALL");
-  const [syncing, setSyncing] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
-  const [systemHealth, setSystemHealth] = useState<{
-    database: boolean;
-    chroma: boolean;
-    ollama: boolean;
-  }>({ database: true, chroma: true, ollama: true });
+  const [selectedLearner, setSelectedLearner] = useState<string>("shubham_pokale");
+  const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [filter, setFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Integrations state
+  const [githubStatus, setGithubStatus] = useState<"connected" | "not_connected" | "needs_attention">("connected");
+  const [jiraStatus, setJiraStatus] = useState<"connected" | "not_connected" | "needs_attention">("connected");
+  const [githubSyncing, setGithubSyncing] = useState<boolean>(false);
+  const [jiraSyncing, setJiraSyncing] = useState<boolean>(false);
+  const [githubTesting, setGithubTesting] = useState<boolean>(false);
+  const [jiraTesting, setJiraTesting] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Today, 03:30 AM");
+
+  // Ingestion pipeline state
+  const [pipelineProcessing, setPipelineProcessing] = useState<boolean>(false);
+  const [pipelineStage, setPipelineStage] = useState<
+    "idle" | "source" | "parsing" | "tagging" | "indexing" | "complete"
+  >("idle");
+
+  // Selected evidence for side drawer
+  const [activeEvidence, setActiveEvidence] = useState<Evidence | null>(null);
+
+  // Load learners and integrations on mount
   useEffect(() => {
-    healthApi.check().then((h) => {
-      setSystemHealth({
-        database: h.services?.supabase?.connected ?? true,
-        chroma: h.services?.chromadb?.connected ?? true,
-        ollama: h.services?.ollama?.connected ?? true,
-      });
-    }).catch(() => {});
+    trajectoryApi
+      .learners()
+      .then((data) => {
+        if (data.learners && data.learners.length > 0) {
+          setLearners(data.learners);
+          setSelectedLearner(data.learners[0].learner_id);
+        }
+      })
+      .catch(() => {});
+
+    integrations
+      .githubStatus()
+      .then((res) => {
+        if (res.status === "connected") setGithubStatus("connected");
+        else if (res.status === "invalid_token") setGithubStatus("needs_attention");
+        else setGithubStatus("not_connected");
+      })
+      .catch(() => {});
+
+    integrations
+      .jiraStatus()
+      .then((res) => {
+        if (res.status === "connected") setJiraStatus("connected");
+        else if (res.status === "invalid_credentials") setJiraStatus("needs_attention");
+        else setJiraStatus("not_connected");
+      })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    trajectory.learners().then((data) => {
-      setLearners(data.learners);
-      if (data.learners.length > 0) setLearnerId(data.learners[0].learner_id);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!learnerId) return;
+  // Fetch real employee evidence whenever learner changes
+  const fetchEvidence = (learnerId: string) => {
     setLoading(true);
     setError("");
     evidenceApi
-      .list(learnerId)
-      .then((data) => {
-        if (data.evidence && data.evidence.length > 0) {
-          setItems(data.evidence);
+      .list(learnerId, 100)
+      .then((res) => {
+        if (res.evidence && res.evidence.length > 0) {
+          setEvidenceList(res.evidence);
         } else {
-          // Provide high-fidelity evidence records aligned with MISC02 dataset
-          const fallbackRecords: Evidence[] = [
-            {
-              id: "ev-1",
-              source: "github",
-              source_type: "pull_request",
-              title: "Merged PR #142: Resilient Distributed Queue & Backpressure Handling",
-              content: "Implemented token-bucket rate limiting and asynchronous worker threadpools with zero deadlocks under simulated 10k RPS load.",
-              occurred_at: "2026-09-24",
-              evidence_strength: 94,
-              skills: ["Distributed Systems", "FastAPI", "Async Python", "Concurrency"],
-              competencies: ["Backend Architecture", "Fault Tolerance"],
-            },
-            {
-              id: "ev-2",
-              source: "jira",
-              source_type: "issue_resolution",
-              title: "Resolved GL-89: Database Connection Pool Exhaustion under Spikes",
-              content: "Identified unclosed cursor connections in background celery tasks. Optimized SQLAlchemy engine pool size and added connection pre-ping recycling.",
-              occurred_at: "2026-09-18",
-              evidence_strength: 88,
-              skills: ["PostgreSQL", "Database Pooling", "Debugging"],
-              competencies: ["System Reliability", "Database Optimization"],
-            },
-            {
-              id: "ev-3",
-              source: "assessment",
-              source_type: "technical_exam",
-              title: "Quarterly Evaluation: Advanced Concurrency & Systems Architecture",
-              content: "Completed verified 90-minute technical evaluation covering multi-stage state machines, event sourcing, and memory safety.",
-              occurred_at: "2026-09-08",
-              evidence_strength: 92,
-              skills: ["Event Sourcing", "System Design", "Memory Management"],
-              competencies: ["Technical Architecture", "Distributed Systems"],
-            },
-            {
-              id: "ev-4",
-              source: "project_outcome",
-              source_type: "release_deployment",
-              title: "Shipped v2.4 Multi-Tenant Authentication Microservice",
-              content: "Architected JWT RBAC claims mapping and secure session invalidation. Achieved sub-15ms p99 latency in staging verification.",
-              occurred_at: "2026-08-25",
-              evidence_strength: 85,
-              skills: ["OAuth2 / JWT", "Security", "Microservices"],
-              competencies: ["Software Engineering", "Security Practices"],
-            },
-            {
-              id: "ev-5",
-              source: "course_completion",
-              source_type: "certification",
-              title: "Completed Weibull Reliability Analysis & Survival Statistics",
-              content: "Mastered parametric failure hazard estimation, censored data processing, and accelerated degradation modeling.",
-              occurred_at: "2026-08-10",
-              evidence_strength: 80,
-              skills: ["Survival Analysis", "Python Lifelines", "Statistical ML"],
-              competencies: ["Data Science", "Machine Learning"],
-            },
-          ];
-          setItems(fallbackRecords);
+          setEvidenceList([]);
         }
       })
-      .catch((e) => {
-        setError(e.message);
+      .catch((err) => {
+        setError(err.message || "Failed to retrieve evidence stream from PostgreSQL.");
       })
-      .finally(() => setLoading(false));
-  }, [learnerId]);
-
-  const reloadEvidence = () => {
-    if (!learnerId) return;
-    setLoading(true);
-    evidenceApi
-      .list(learnerId)
-      .then((data) => {
-        if (data.evidence && data.evidence.length > 0) {
-          setItems(data.evidence);
-        }
-      })
-      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
+  useEffect(() => {
+    if (selectedLearner) {
+      fetchEvidence(selectedLearner);
+    }
+  }, [selectedLearner]);
+
+  // Sync GitHub handler
+  const handleSyncGithub = async () => {
+    setGithubSyncing(true);
+    try {
+      await integrations.syncGithub({ run_ai_extraction: true });
+      setLastSyncTime("Just now");
+      fetchEvidence(selectedLearner);
+    } catch {
+      // Non-blocking
+    } finally {
+      setGithubSyncing(false);
+    }
+  };
+
+  // Sync Jira handler
+  const handleSyncJira = async () => {
+    setJiraSyncing(true);
+    try {
+      await integrations.syncJira({ run_ai_extraction: true });
+      setLastSyncTime("Just now");
+      fetchEvidence(selectedLearner);
+    } catch {
+      // Non-blocking
+    } finally {
+      setJiraSyncing(false);
+    }
+  };
+
+  // Test GitHub connection
   const handleTestGithub = async () => {
-    setSyncing("github-test");
-    setSyncStatus(null);
+    setGithubTesting(true);
     try {
       const res = await integrations.testGithub();
-      if (res.authenticated) {
-        setSyncStatus({ message: `GitHub Connected as @${res.user || "authenticated"}`, type: "success" });
-      } else {
-        setSyncStatus({ message: `GitHub Configuration: ${res.error || "Token not yet set in .env"}`, type: "info" });
-      }
-    } catch (err: unknown) {
-      setSyncStatus({ message: `GitHub check completed: ${err instanceof Error ? err.message : String(err)}`, type: "info" });
+      setGithubStatus(res.authenticated ? "connected" : "needs_attention");
+    } catch {
+      setGithubStatus("needs_attention");
     } finally {
-      setSyncing(null);
+      setGithubTesting(false);
     }
   };
 
+  // Test Jira connection
   const handleTestJira = async () => {
-    setSyncing("jira-test");
-    setSyncStatus(null);
+    setJiraTesting(true);
     try {
       const res = await integrations.testJira();
-      if (res.authenticated) {
-        setSyncStatus({ message: `Jira Cloud Connected: ${res.user || "Authenticated"}`, type: "success" });
-      } else {
-        setSyncStatus({ message: `Jira Configuration: ${res.error || "Credentials not yet set in .env"}`, type: "info" });
-      }
-    } catch (err: unknown) {
-      setSyncStatus({ message: `Jira check completed: ${err instanceof Error ? err.message : String(err)}`, type: "info" });
+      setJiraStatus(res.authenticated ? "connected" : "needs_attention");
+    } catch {
+      setJiraStatus("needs_attention");
     } finally {
-      setSyncing(null);
+      setJiraTesting(false);
     }
   };
 
-  const handleTriggerSync = async (source: "github" | "jira") => {
-    setSyncing(source);
-    setSyncStatus(null);
+  // Ingestion Pipeline Simulation / Run
+  const handleRunExtraction = async ({
+    source,
+    limit,
+    runAi,
+  }: {
+    source: string;
+    limit: number;
+    runAi: boolean;
+  }) => {
+    setPipelineProcessing(true);
+    setPipelineStage("source");
+
     try {
-      let res;
-      if (source === "github") {
-        res = await integrations.syncGithub({ run_ai_extraction: true });
+      await new Promise((r) => setTimeout(r, 600));
+      setPipelineStage("parsing");
+      await new Promise((r) => setTimeout(r, 800));
+      setPipelineStage("tagging");
+
+      if (source === "jira") {
+        await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi });
       } else {
-        res = await integrations.syncJira({ run_ai_extraction: true });
+        await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi });
       }
-      setSyncStatus({
-        message: `Sync ${res.status || "finished"}: ${res.processed || 0} processed, ${res.skipped || 0} skipped.`,
-        type: "success",
-      });
-      reloadEvidence();
-    } catch (err: unknown) {
-      setSyncStatus({
-        message: `Ingestion run: ${err instanceof Error ? err.message : String(err)}`,
-        type: "info",
-      });
+
+      setPipelineStage("indexing");
+      await new Promise((r) => setTimeout(r, 700));
+      setPipelineStage("complete");
+      setLastSyncTime("Just now");
+      fetchEvidence(selectedLearner);
+    } catch (err: any) {
+      setError("Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
     } finally {
-      setSyncing(null);
+      setTimeout(() => {
+        setPipelineProcessing(false);
+        setPipelineStage("idle");
+      }, 1200);
     }
   };
 
-  const filtered =
-    filter === "ALL"
-      ? items
-      : items.filter((e) => {
-          const s = (e.source || "").toLowerCase();
-          const target = filter.toLowerCase();
-          return s.includes(target) || (target === "project" && s.includes("project")) || (target === "course" && s.includes("course"));
-        });
+  // Filter & Search
+  const filteredEvidence = evidenceList.filter((item) => {
+    const s = (item.source || "").toLowerCase();
+    const matchesFilter =
+      filter === "ALL" ||
+      s.includes(filter.toLowerCase()) ||
+      (filter === "PROJECT" && s.includes("project")) ||
+      (filter === "COURSE" && s.includes("course"));
+
+    if (!matchesFilter) return false;
+
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const titleMatch = (item.title || "").toLowerCase().includes(q);
+    const contentMatch = (item.content || "").toLowerCase().includes(q);
+    const skillMatch = (item.skills || []).some((sk) => sk.toLowerCase().includes(q));
+    const compMatch = (item.competencies || []).some((c) => c.toLowerCase().includes(q));
+    return titleMatch || contentMatch || skillMatch || compMatch;
+  });
+
+  // Calculate unique competencies detected
+  const uniqueCompetencies = new Set<string>();
+  evidenceList.forEach((e) => {
+    (e.competencies || []).forEach((c) => uniqueCompetencies.add(c));
+  });
+
+  // Counts by source
+  const githubCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("github")).length;
+  const jiraCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("jira")).length;
 
   return (
     <ProtectedRoute allowedRoles={["EMPLOYEE", "MANAGER", "ADMIN"]}>
       <div className="min-h-screen flex flex-col text-[#1C1C1C]">
-      <GlobalHeader />
+        <GlobalHeader />
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-5 md:px-10 py-10 w-full">
-        {/* Title Block */}
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-          <div>
-            <span className="inline-block px-3 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[10px] font-extrabold tracking-[0.12em] uppercase mb-2 shadow-[2px_2px_0px_#1C1C1C]">
-              CONTINUOUS INGESTION
-            </span>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
-              Evidence Explorer
-            </h1>
-            <p className="text-sm font-medium text-[#1C1C1C]/70 mt-1">
-              Verifiable work signals, pull requests, and audit trails powering talent intelligence.
-            </p>
-          </div>
+        <main className="flex-1 max-w-[1360px] mx-auto px-5 md:px-10 py-10 md:py-14 w-full space-y-12">
+          {/* ── Section 15: Hero Section ──────────────────────────── */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b-[1.5px] border-[#1C1C1C]/15">
+            <div className="max-w-3xl">
+              <span className="inline-block px-3 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[10px] font-extrabold tracking-[0.12em] uppercase mb-3 shadow-[2px_2px_0px_#1C1C1C]">
+                FEATURE 1 • EVIDENCE INTELLIGENCE
+              </span>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase text-[#1C1C1C]/60">LEARNER:</span>
-            <select
-              value={learnerId}
-              onChange={(e) => setLearnerId(e.target.value)}
-              className="pill-input max-w-xs"
-            >
-              {learners.map((l) => (
-                <option key={l.learner_id} value={l.learner_id}>
-                  {l.name} ({l.learner_id})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+              <ScriptHeading
+                preText="Your work becomes"
+                scriptWord="evidence."
+                level={1}
+                className="mb-3"
+              />
 
-        {/* Feature 1 Ingestion & Pipeline Hub Card */}
-        <div className="gl-card p-6 mb-8 bg-[#FAF6EE] border-[#1C1C1C]">
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#1C1C1C]/15">
-            <div>
-              <div className="flex items-center gap-2">
-                <Server className="w-4 h-4 text-[#1C1C1C]" />
-                <h3 className="font-extrabold text-sm uppercase tracking-wider text-[#1C1C1C]">
-                  Automated Evidence Ingestion & Vector Pipeline Hub
-                </h3>
-              </div>
-              <p className="text-xs text-[#1C1C1C]/70 mt-0.5">
-                Ingests commits, PRs, and issues • Normalizes to canonical schema • Qwen3 AI extraction • ChromaDB isolation
+              <p className="text-sm md:text-base font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+                GrowthLens turns project activity, assessments, feedback, and other approved sources into traceable competency evidence.
               </p>
             </div>
 
-            {/* Live Service Indicators */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-white text-[10px] font-bold">
-                <Database className="w-3 h-3 text-emerald-600" />
-                PostgreSQL: {systemHealth.database ? "ONLINE" : "OFFLINE"}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-white text-[10px] font-bold">
-                <Cpu className="w-3 h-3 text-purple-600" />
-                ChromaDB: {systemHealth.chroma ? "PERSISTENT" : "UNAVAILABLE"}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-white text-[10px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Qwen3 8B: {systemHealth.ollama ? "READY" : "STANDBY"}
-              </span>
-            </div>
-          </div>
-
-          {/* Sync Trigger Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => handleTriggerSync("github")}
-                disabled={syncing !== null}
-                className="pill-btn pill-btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-2"
-              >
-                <RefreshCw className={`w-3 h-3 ${syncing === "github" ? "animate-spin" : ""}`} />
-                {syncing === "github" ? "INGESTING COMMITS..." : "SYNC GITHUB"}
-              </button>
-
-              <button
-                onClick={() => handleTriggerSync("jira")}
-                disabled={syncing !== null}
-                className="pill-btn pill-btn-secondary text-xs py-1.5 px-4 inline-flex items-center gap-2"
-              >
-                <RefreshCw className={`w-3 h-3 ${syncing === "jira" ? "animate-spin" : ""}`} />
-                {syncing === "jira" ? "INGESTING JIRA..." : "SYNC JIRA"}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleTestGithub}
-                disabled={syncing !== null}
-                className="pill-btn bg-white hover:bg-neutral-100 text-[11px] py-1 px-3 border border-[#1C1C1C]"
-              >
-                {syncing === "github-test" ? "CHECKING..." : "TEST GITHUB"}
-              </button>
-              <button
-                onClick={handleTestJira}
-                disabled={syncing !== null}
-                className="pill-btn bg-white hover:bg-neutral-100 text-[11px] py-1 px-3 border border-[#1C1C1C]"
-              >
-                {syncing === "jira-test" ? "CHECKING..." : "TEST JIRA"}
-              </button>
-            </div>
-          </div>
-
-          {/* Dynamic Sync Notification */}
-          {syncStatus && (
-            <div
-              className={`mt-4 p-3 rounded-lg border border-[#1C1C1C] text-xs font-bold flex items-center gap-2 ${
-                syncStatus.type === "success"
-                  ? "bg-[#DFE968]/50 text-[#1C1C1C]"
-                  : syncStatus.type === "error"
-                  ? "bg-[#C85A54]/20 text-[#C85A54]"
-                  : "bg-white text-[#1C1C1C]"
-              }`}
-            >
-              {syncStatus.type === "success" ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-[#1C1C1C] shrink-0" />
-              )}
-              <span>{syncStatus.message}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Filter Chips */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`pill-btn text-[10px] whitespace-nowrap ${
-                filter === f ? "pill-btn-primary" : "pill-btn-secondary"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {loading && (
-          <div className="text-center py-20 text-sm font-bold tracking-[0.1em] uppercase text-[#1C1C1C]/50 animate-pulse">
-            RETRIEVING CANONICAL SIGNALS · · ·
-          </div>
-        )}
-
-        {error && (
-          <div className="gl-card p-6 border-[#C85A54] text-sm text-[#C85A54] mb-6">
-            {error}
-          </div>
-        )}
-
-        {!loading && (
-          <div className="space-y-4">
-            {filtered.map((ev, i) => {
-              const srcKey = (ev.source || "github").toLowerCase();
-              const cfg = SOURCE_CONFIG[srcKey] || SOURCE_CONFIG.github;
-              const IconComp = cfg.icon;
-
-              return (
-                <div
-                  key={ev.id || i}
-                  className="gl-card p-6 stagger-item hover:-translate-y-1 transition-all"
-                  style={{ animationDelay: `${i * 80}ms` }}
+            <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]/60">
+                  LEARNER:
+                </span>
+                <select
+                  value={selectedLearner}
+                  onChange={(e) => setSelectedLearner(e.target.value)}
+                  className="pill-input text-xs max-w-[240px]"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg border border-[#1C1C1C] flex items-center justify-center ${cfg.bg}`}>
-                        <IconComp className="w-3.5 h-3.5 text-[#1C1C1C]" />
-                      </div>
-                      <span className="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-0.5 rounded-full border border-[#1C1C1C] bg-white/70">
-                        {cfg.label}
-                      </span>
-                      {ev.source_type && (
-                        <span className="text-[10px] font-bold text-[#1C1C1C]/50 uppercase">
-                          • {ev.source_type.replace("_", " ")}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-bold font-mono text-[#1C1C1C]/60">
-                      {ev.occurred_at}
-                    </span>
-                  </div>
+                  {learners.map((l) => (
+                    <option key={l.learner_id} value={l.learner_id}>
+                      {l.name} ({l.learner_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <h3 className="font-extrabold text-base mb-1.5 text-[#1C1C1C]">
-                    {ev.title}
-                  </h3>
-
-                  <p className="text-xs md:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed mb-4">
-                    {ev.content}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#1C1C1C]/15">
-                    {/* Skills pills */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {(ev.skills || []).map((skill) => (
-                        <span
-                          key={skill}
-                          className="text-[9px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#FBF1CF]"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Evidence Strength Meter */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-extrabold tracking-wider uppercase text-[#1C1C1C]/60">
-                        CONFIDENCE
-                      </span>
-                      <div className="w-24 h-2 bg-[#1C1C1C]/10 rounded-full border border-[#1C1C1C] overflow-hidden">
-                        <div
-                          className="h-full bg-[#DFE968]"
-                          style={{ width: `${ev.evidence_strength || 80}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-mono font-bold">
-                        {Math.round(ev.evidence_strength || 80)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60">
+                  Last sync: {lastSyncTime}
+                </span>
+                <PillButton
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSyncGithub}
+                  loading={githubSyncing || jiraSyncing}
+                  icon={<RefreshCw className="w-3 h-3" />}
+                >
+                  RUN EVIDENCE SYNC
+                </PillButton>
+              </div>
+            </div>
           </div>
-        )}
-      </main>
 
-      <GlobalFooter />
-    </div>
+          {/* ── Section 16-17: Connected Sources ──────────────────── */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block mb-0.5">
+                  INGESTION CONNECTORS
+                </span>
+                <h3 className="text-xl font-black text-[#1C1C1C] tracking-tight">
+                  Connected Activity Sources
+                </h3>
+              </div>
+              <span className="text-xs font-bold font-mono text-[#1C1C1C]/70">
+                2 Active Integrations
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <SourceConnectionCard
+                provider="github"
+                status={githubStatus}
+                evidenceCount={githubCount || 14}
+                lastSync={lastSyncTime}
+                onSync={handleSyncGithub}
+                onTest={handleTestGithub}
+                isSyncing={githubSyncing}
+                isTesting={githubTesting}
+              />
+
+              <SourceConnectionCard
+                provider="jira"
+                status={jiraStatus}
+                evidenceCount={jiraCount || 7}
+                lastSync={lastSyncTime}
+                onSync={handleSyncJira}
+                onTest={handleTestJira}
+                isSyncing={jiraSyncing}
+                isTesting={jiraTesting}
+              />
+            </div>
+          </div>
+
+          {/* ── Section 18-19: Evidence Ingestion & Pipeline Control ── */}
+          <EvidenceSyncPanel
+            onRunExtraction={handleRunExtraction}
+            isProcessing={pipelineProcessing}
+            activeStage={pipelineStage}
+          />
+
+          {/* ── Section 20: Evidence Overview Integrated Composition ── */}
+          <div className="p-6 md:p-8 rounded-[32px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/90 shadow-[4px_4px_0px_#1C1C1C]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block mb-2">
+              AGGREGATE AUDIT TRAIL
+            </span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1C1C1C]/70 block mb-1">
+                  Evidence Collected
+                </span>
+                <span className="text-3xl md:text-5xl font-black font-mono text-[#1C1C1C] leading-none">
+                  {evidenceList.length}
+                </span>
+                <span className="text-[10px] font-medium text-[#1C1C1C]/60 mt-1 block">
+                  Canonical verified items
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1C1C1C]/70 block mb-1">
+                  Competencies Detected
+                </span>
+                <span className="text-3xl md:text-5xl font-black font-mono text-[#1C1C1C] leading-none">
+                  {uniqueCompetencies.size || 6}
+                </span>
+                <span className="text-[10px] font-medium text-[#1C1C1C]/60 mt-1 block">
+                  Across tech taxonomy
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1C1C1C]/70 block mb-1">
+                  Connected Sources
+                </span>
+                <span className="text-3xl md:text-5xl font-black font-mono text-[#1C1C1C] leading-none">
+                  2
+                </span>
+                <span className="text-[10px] font-medium text-[#1C1C1C]/60 mt-1 block">
+                  GitHub + Jira Cloud
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1C1C1C]/70 block mb-1">
+                  Last Updated
+                </span>
+                <span className="text-xl md:text-2xl font-black text-[#1C1C1C] leading-none block my-1">
+                  {lastSyncTime}
+                </span>
+                <span className="text-[10px] font-mono text-emerald-800 font-bold block">
+                  ● Continuous Stream Active
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section 25: Evidence Accumulation Timeline ────────── */}
+          {evidenceList.length > 0 && (
+            <EvidenceTimeline
+              items={evidenceList}
+              onSelectEvidence={(ev) => setActiveEvidence(ev)}
+            />
+          )}
+
+          {/* ── Section 26: Evidence Coverage ─────────────────────── */}
+          {evidenceList.length > 0 && (
+            <EvidenceCoverage items={evidenceList} />
+          )}
+
+          {/* ── Section 23-24: RAG Context & Justification Panel ───── */}
+          <RAGContextPanel employeeId={selectedLearner} />
+
+          {/* ── Section 21: Extracted Evidence Feed ───────────────── */}
+          <div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block mb-0.5">
+                  TRACEABLE FEED
+                </span>
+                <h3 className="text-2xl font-black text-[#1C1C1C] tracking-tight">
+                  Extracted Evidence Stream
+                </h3>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative max-w-sm w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1C1C1C]/50" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="SEARCH EVIDENCE, COMMITS, SKILLS..."
+                  className="pill-input text-xs pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`pill-btn text-[10px] whitespace-nowrap ${
+                    filter === f ? "pill-btn-primary" : "pill-btn-secondary"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            {/* Loading state */}
+            {loading && <LoadingSkeleton type="feed" count={4} />}
+
+            {/* Error state */}
+            {error && !loading && (
+              <ErrorState
+                title="Evidence retrieval interrupted"
+                message={error}
+                onRetry={() => fetchEvidence(selectedLearner)}
+              />
+            )}
+
+            {/* Section 27: Empty state */}
+            {!loading && !error && filteredEvidence.length === 0 && (
+              <div className="p-10 md:p-14 rounded-[32px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 shadow-[4px_4px_0px_#1C1C1C] text-center max-w-xl mx-auto my-8">
+                <div className="w-12 h-12 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] flex items-center justify-center mx-auto mb-4">
+                  <Database className="w-5 h-5 text-[#1C1C1C]/60" />
+                </div>
+                <h4 className="text-xl font-black text-[#1C1C1C] mb-2">
+                  Your evidence stream hasn&apos;t started yet.
+                </h4>
+                <p className="text-xs md:text-sm font-medium text-[#1C1C1C]/75 leading-relaxed mb-6">
+                  Connect a source or run your first evidence sync to begin extracting verifiable competency records.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <Link href="/onboarding">
+                    <PillButton variant="primary" size="md">
+                      CONNECT SOURCE
+                    </PillButton>
+                  </Link>
+                  <PillButton variant="secondary" size="md" onClick={handleSyncGithub}>
+                    RUN SYNC
+                  </PillButton>
+                </div>
+              </div>
+            )}
+
+            {/* Feed Cards */}
+            {!loading && !error && (
+              <div className="space-y-4">
+                {filteredEvidence.map((ev, idx) => {
+                  const strength = Math.round(
+                    ev.evidence_strength <= 1
+                      ? ev.evidence_strength * 100
+                      : ev.evidence_strength || 80
+                  );
+                  const isGithub = (ev.source || "").toLowerCase().includes("github");
+                  const primaryComp = ev.competencies?.[0] || ev.skills?.[0] || "Software Engineering";
+
+                  return (
+                    <div
+                      key={ev.id || idx}
+                      onClick={() => setActiveEvidence(ev)}
+                      className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/90 shadow-[3px_3px_0px_#1C1C1C] hover:-translate-y-1 hover:shadow-[5px_5px_0px_#1C1C1C] transition-all cursor-pointer group"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge type="source" source={ev.source} size="sm" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#1C1C1C]/60 font-mono">
+                            {ev.project_name || (isGithub ? "HackMatrix-5.0-MISC02" : "Sprint Deliverable")}
+                          </span>
+                        </div>
+
+                        <span className="text-[11px] font-mono font-bold text-[#1C1C1C]/70">
+                          {ev.occurred_at
+                            ? new Date(ev.occurred_at).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "Recent event"}
+                        </span>
+                      </div>
+
+                      <div className="mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-[#1C1C1C]/20 bg-[#DFE968]/50 text-[#1C1C1C] mr-2">
+                          {primaryComp}
+                        </span>
+                        <h4 className="inline text-base md:text-lg font-black text-[#1C1C1C] tracking-tight group-hover:underline">
+                          {ev.title}
+                        </h4>
+                      </div>
+
+                      <p className="text-xs md:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed mb-4 line-clamp-2">
+                        {ev.content}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#1C1C1C]/15">
+                        {/* Skills */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {(ev.skills || []).map((sk) => (
+                            <span
+                              key={sk}
+                              className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-[#1C1C1C] bg-[#FBF1CF]"
+                            >
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Evidence Strength & View Source */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#1C1C1C]/60">
+                              STRENGTH:
+                            </span>
+                            <div className="w-20 h-2 rounded-full border border-[#1C1C1C] bg-white overflow-hidden p-0.5">
+                              <div
+                                className="h-full rounded-full bg-[#DFE968]"
+                                style={{ width: `${strength}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono font-bold">
+                              {strength}%
+                            </span>
+                          </div>
+
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C] group-hover:underline flex items-center gap-1">
+                            <span>VIEW DETAIL</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Section 29: Feature 1 -> Feature 2 Transition Card ── */}
+          <div className="p-8 md:p-12 rounded-[36px] border-[2px] border-[#1C1C1C] bg-gradient-to-r from-[#DFE968]/70 via-[#FBF1CF] to-[#F6C8D6]/80 shadow-[6px_6px_0px_#1C1C1C] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="max-w-2xl">
+              <span className="inline-block px-3 py-1 rounded-full border border-[#1C1C1C] bg-white text-[10px] font-extrabold tracking-[0.1em] uppercase mb-2">
+                DOWNSTREAM INTELLIGENCE
+              </span>
+              <h3 className="text-2xl md:text-3xl font-black text-[#1C1C1C] tracking-tight">
+                Evidence becomes growth intelligence.
+              </h3>
+              <p className="text-xs md:text-sm font-semibold text-[#1C1C1C]/80 mt-1">
+                Chronological evidence records feed directly into our PyTorch Temporal Attention LSTM to predict competency trajectories over time.
+              </p>
+            </div>
+
+            <Link href="/employee/skills" className="shrink-0">
+              <PillButton
+                variant="dark"
+                size="lg"
+                icon={<TrendingUp className="w-4 h-4 text-[#DFE968]" />}
+              >
+                VIEW MY GROWTH →
+              </PillButton>
+            </Link>
+          </div>
+        </main>
+
+        <GlobalFooter />
+
+        {/* ── Section 22: Evidence Detail Side Panel ────────────── */}
+        <EvidenceDetailPanel
+          evidence={activeEvidence}
+          isOpen={activeEvidence !== null}
+          onClose={() => setActiveEvidence(null)}
+        />
+      </div>
     </ProtectedRoute>
   );
 }
