@@ -42,6 +42,18 @@ app.add_middleware(
 app.include_router(recommendations_router)
 app.include_router(retention_router)
 
+# ── Feature 4 registration ───────────────────────────────────────
+try:
+    import importlib.util
+    feat4_mount_path = BASE_DIR / "feature-4" / "mount.py"
+    if feat4_mount_path.exists():
+        spec = importlib.util.spec_from_file_location("feat4_mount", feat4_mount_path)
+        feat4_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(feat4_module)
+        feat4_module.mount_feature_4(app)
+except Exception as e:
+    print(f"[GROWTHLENS] Info: Feature 4 mount optional: {e}")
+
 # ── Static files & dashboard ─────────────────────────────────────
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
@@ -49,3 +61,4 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 async def root():
     """Serve the dashboard UI."""
     return FileResponse(str(BASE_DIR / "static" / "index.html"))
+
