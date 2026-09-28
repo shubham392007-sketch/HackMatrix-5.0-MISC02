@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("user_id", u.id)
+        .or(`id.eq.${u.id},user_id.eq.${u.id}`)
         .maybeSingle();
 
       if (data && !error) {
@@ -214,6 +214,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         }
         return { error, emailConfirmationRequired: false };
+      }
+
+      // Supabase returns an empty identities array if the user already exists (enumeration prevention)
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          error: new Error("An account with this email already exists. Please log in."),
+          emailConfirmationRequired: false,
+        };
       }
 
       // If email confirmation is enabled, Supabase returns data.user without data.session
