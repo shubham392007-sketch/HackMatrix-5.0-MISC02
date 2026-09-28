@@ -49,7 +49,7 @@ export default function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C]">
-      <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-16">
+      <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-20 min-h-[5rem]">
         {/* Brand Logo */}
         <Link
           href={
@@ -59,10 +59,10 @@ export default function GlobalHeader() {
                   : (role === "MANAGER" ? "/manager/dashboard" : "/employee/dashboard"))
               : "/"
           }
-          className="flex items-center gap-1 group"
+          className="flex items-center gap-1 group py-1"
         >
           <span
-            className="text-3xl md:text-4xl leading-none text-[#1C1C1C] select-none tracking-tight"
+            className="text-4xl sm:text-5xl md:text-[3.25rem] leading-none text-[#1C1C1C] select-none tracking-tight font-normal inline-block transition-transform group-hover:scale-[1.02]"
             style={{ fontFamily: "'Yellowtail', cursive" }}
           >
             GrowthLens

@@ -22,14 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full`} data-scroll-behavior="smooth">
+    <html lang="en" className={`${poppins.variable} bg-[#FBF1CF]`} data-scroll-behavior="smooth">
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Yellowtail&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col font-[var(--font-primary)]">
+      <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

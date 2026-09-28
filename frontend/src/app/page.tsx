@@ -21,12 +21,12 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen flex flex-col text-[#1C1C1C]">
+    <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
       <GlobalHeader />
 
-      <main className="flex-1">
+      <main className="flex-1 w-full">
         {/* ── HERO SECTION (Matching Pedyssey 3-Column Layout) ─────────────── */}
-        <section className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20 lg:pt-14 lg:pb-28">
+        <section className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20 lg:pt-14 lg:pb-28 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
             
             {/* LEFT COLUMN: 2 Cards (Top Left -3°, Bottom Left -2°) */}
@@ -80,7 +80,7 @@ export default function LandingPage() {
             {/* CENTER COLUMN: Hero Headline, Description & CTAs */}
             <div className="lg:col-span-6 text-center space-y-6 order-1 lg:order-2 px-2">
               <h2
-                className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-[#1C1C1C] select-none tracking-tight leading-none pb-2 drop-shadow-sm"
+                className="text-7xl sm:text-8xl md:text-9xl lg:text-[10.5rem] xl:text-[12rem] text-[#1C1C1C] select-none tracking-tight leading-none pb-4 drop-shadow-sm font-normal"
                 style={{ fontFamily: "'Yellowtail', cursive" }}
               >
                 GrowthLens

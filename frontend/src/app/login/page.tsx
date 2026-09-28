@@ -71,7 +71,7 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col text-[#1C1C1C]">
+    <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
       <GlobalHeader />
       
       <main className="flex-grow flex items-center justify-center py-12 px-6">
@@ -151,7 +151,7 @@ function LoginFormContent() {
               className="w-full max-w-md h-full bg-gradient-to-tr from-[#DFE968] via-[#FBF1CF] to-[#F3A878] border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center p-8 text-center overflow-hidden shadow-[4px_4px_0_0_#1C1C1C]"
               style={{ borderRadius: '45% 55% 45% 55% / 58% 42% 55% 45%' }}
             >
-               <h2 className="text-5xl md:text-6xl text-[#1C1C1C] mb-4" style={{ fontFamily: "'Yellowtail', cursive", transform: 'rotate(-4deg)' }}>
+               <h2 className="text-6xl md:text-7xl lg:text-8xl text-[#1C1C1C] mb-4 font-normal tracking-tight" style={{ fontFamily: "'Yellowtail', cursive", transform: 'rotate(-4deg)' }}>
                 GrowthLens
               </h2>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#1C1C1C]/80 max-w-[240px]">

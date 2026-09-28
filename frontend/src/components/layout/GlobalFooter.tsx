@@ -13,14 +13,14 @@ export default function GlobalFooter() {
   }
 
   return (
-    <footer className="mt-auto border-t-[1.5px] border-[#1C1C1C] bg-transparent pt-16 pb-10 px-6 md:px-12 text-[#1C1C1C]">
+    <footer className="mt-auto border-t-[1.5px] border-[#1C1C1C] bg-transparent pt-16 pb-10 px-6 md:px-12 text-[#1C1C1C] w-full">
       <div className="max-w-[1400px] mx-auto">
         {/* Top Header Row with Logo & CTAs */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-12 border-b border-[#1C1C1C]/20">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span
-                className="text-5xl md:text-6xl leading-none text-[#1C1C1C]"
+                className="text-6xl sm:text-7xl md:text-8xl leading-none text-[#1C1C1C] font-normal tracking-tight inline-block"
                 style={{ fontFamily: "'Yellowtail', cursive" }}
               >
                 GrowthLens
