@@ -155,6 +155,23 @@ class Feature1EvidenceAdapter:
                     logger.warning(f"Could not load CSV evidence dataset: {e}")
         return self._df_cache
 
+    def _resolve_uuid(self, employee_id: str) -> Optional[str]:
+        """Resolves employee_id (UUID, username, or identifier) into a valid UUID string if present."""
+        if not employee_id:
+            return None
+        import uuid
+        try:
+            uuid.UUID(str(employee_id))
+            return str(employee_id)
+        except (ValueError, AttributeError):
+            pass
+        try:
+            from backend.db.repositories.evidence import EvidenceRepository
+            repo = EvidenceRepository()
+            return repo._resolve_employee_uuid(str(employee_id))
+        except Exception:
+            return None
+
     def get_employee_competencies(self, employee_id: str) -> List[str]:
         """Returns all competency IDs tracked for a given employee."""
         competencies = set()
@@ -167,18 +184,20 @@ class Feature1EvidenceAdapter:
                 competencies.update(matched["competency_id"].dropna().unique().tolist())
 
         # 2. From Supabase PostgreSQL DB
-        try:
-            from backend.db.client import get_supabase_client
-            supabase = get_supabase_client()
-            ev_res = supabase.table("evidence").select("id").eq("employee_id", employee_id).execute()
-            if ev_res.data:
-                ev_ids = [r["id"] for r in ev_res.data]
-                if ev_ids:
-                    junction = supabase.table("evidence_competencies").select("competency_id").in_("evidence_id", ev_ids).execute()
-                    for j in junction.data:
-                        competencies.add(j["competency_id"])
-        except Exception:
-            pass
+        resolved_uuid = self._resolve_uuid(employee_id)
+        if resolved_uuid:
+            try:
+                from backend.db.client import get_supabase_client
+                supabase = get_supabase_client()
+                ev_res = supabase.table("evidence").select("id").eq("employee_id", resolved_uuid).execute()
+                if ev_res.data:
+                    ev_ids = [r["id"] for r in ev_res.data]
+                    if ev_ids:
+                        junction = supabase.table("evidence_competencies").select("competency_id").in_("evidence_id", ev_ids).execute()
+                        for j in junction.data:
+                            competencies.add(j["competency_id"])
+            except Exception:
+                pass
 
         # If empty but learner ID starts with L, fallback to standard competencies
         if not competencies and str(employee_id).startswith("L"):
@@ -200,19 +219,21 @@ class Feature1EvidenceAdapter:
                 evidence_list.append(self.from_csv_row(row.to_dict()))
 
         # 2. From Supabase PostgreSQL DB
-        try:
-            from backend.db.client import get_supabase_client
-            supabase = get_supabase_client()
-            junction = supabase.table("evidence_competencies").select("evidence_id, competencies(name)").eq("competency_id", competency_id).execute()
-            if junction.data:
-                ev_ids = [j["evidence_id"] for j in junction.data]
-                comp_name = junction.data[0].get("competencies", {}).get("name", competency_id) if junction.data[0].get("competencies") else competency_id
-                if ev_ids:
-                    db_ev = supabase.table("evidence").select("*").eq("employee_id", employee_id).in_("id", ev_ids).execute()
-                    for row in db_ev.data:
-                        evidence_list.append(self.from_db_record(row, competency_id, comp_name))
-        except Exception:
-            pass
+        resolved_uuid = self._resolve_uuid(employee_id)
+        if resolved_uuid:
+            try:
+                from backend.db.client import get_supabase_client
+                supabase = get_supabase_client()
+                junction = supabase.table("evidence_competencies").select("evidence_id, competencies(name)").eq("competency_id", competency_id).execute()
+                if junction.data:
+                    ev_ids = [j["evidence_id"] for j in junction.data]
+                    comp_name = junction.data[0].get("competencies", {}).get("name", competency_id) if junction.data[0].get("competencies") else competency_id
+                    if ev_ids:
+                        db_ev = supabase.table("evidence").select("*").eq("employee_id", resolved_uuid).in_("id", ev_ids).execute()
+                        for row in db_ev.data:
+                            evidence_list.append(self.from_db_record(row, competency_id, comp_name))
+            except Exception:
+                pass
 
         return evidence_list
 
@@ -232,23 +253,25 @@ class Feature1EvidenceAdapter:
                 grouped[comp_id].append(self.from_csv_row(row.to_dict()))
 
         # 2. From Supabase PostgreSQL DB
-        try:
-            from backend.db.client import get_supabase_client
-            supabase = get_supabase_client()
-            db_ev_res = supabase.table("evidence").select("*").eq("employee_id", employee_id).execute()
-            if db_ev_res.data:
-                ev_map = {r["id"]: r for r in db_ev_res.data}
-                ev_ids = list(ev_map.keys())
-                if ev_ids:
-                    junction = supabase.table("evidence_competencies").select("evidence_id, competency_id, competencies(name)").in_("evidence_id", ev_ids).execute()
-                    for j in junction.data:
-                        cid = j.get("competency_id")
-                        eid = j.get("evidence_id")
-                        cname = j.get("competencies", {}).get("name", cid) if j.get("competencies") else cid
-                        if eid in ev_map and cid:
-                            grouped[cid].append(self.from_db_record(ev_map[eid], cid, cname))
-        except Exception as e:
-            logger.warning(f"Error fetching grouped employee evidence from DB: {e}")
+        resolved_uuid = self._resolve_uuid(employee_id)
+        if resolved_uuid:
+            try:
+                from backend.db.client import get_supabase_client
+                supabase = get_supabase_client()
+                db_ev_res = supabase.table("evidence").select("*").eq("employee_id", resolved_uuid).execute()
+                if db_ev_res.data:
+                    ev_map = {r["id"]: r for r in db_ev_res.data}
+                    ev_ids = list(ev_map.keys())
+                    if ev_ids:
+                        junction = supabase.table("evidence_competencies").select("evidence_id, competency_id, competencies(name)").in_("evidence_id", ev_ids).execute()
+                        for j in junction.data:
+                            cid = j.get("competency_id")
+                            eid = j.get("evidence_id")
+                            cname = j.get("competencies", {}).get("name", cid) if j.get("competencies") else cid
+                            if eid in ev_map and cid:
+                                grouped[cid].append(self.from_db_record(ev_map[eid], cid, cname))
+            except Exception as e:
+                logger.warning(f"Error fetching grouped employee evidence from DB: {e}")
 
         # If learner starts with L and no evidence found yet, ensure default competency buckets
         if not grouped and str(employee_id).startswith("L"):

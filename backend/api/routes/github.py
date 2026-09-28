@@ -53,7 +53,7 @@ async def get_github_status(profile: Optional[UserProfile] = Depends(get_optiona
 
     # 2. Check active user integration in table if unauthenticated request
     try:
-        active_rec = db_client.table("user_integrations").select("*").eq("provider", "github").eq("is_active", True).limit(1).execute()
+        active_rec = db_client.table("user_integrations").select("*").eq("provider", "github").eq("is_active", True).order("updated_at", desc=True).limit(1).execute()
         if active_rec.data:
             cfg = active_rec.data[0]
             return IntegrationStatusResponse(
@@ -102,10 +102,53 @@ async def sync_github_activity(
     target_emp = req.target_employee_id or (profile.id if profile else None)
     user_id = profile.user_id if profile else None
 
+    # Determine user_id from target_emp if not directly authenticated
+    db_client = get_supabase_client()
+    if not user_id and target_emp:
+        try:
+            emp_check = db_client.table("employees").select("user_id").eq("id", target_emp).execute()
+            if emp_check.data and emp_check.data[0].get("user_id"):
+                user_id = emp_check.data[0]["user_id"]
+            else:
+                prof_check = db_client.table("profiles").select("user_id").eq("id", target_emp).execute()
+                if prof_check.data and prof_check.data[0].get("user_id"):
+                    user_id = prof_check.data[0]["user_id"]
+        except Exception:
+            pass
+
+    target_owner = req.owner
+    target_repo = req.repo
+
+    # If owner/repo omitted, check user_integrations for this user_id or most recent active record
+    if not target_owner or not target_repo:
+        try:
+            query = db_client.table("user_integrations").select("*").eq("provider", "github").eq("is_active", True)
+            if user_id:
+                query = query.eq("user_id", user_id)
+            res = query.order("updated_at", desc=True).limit(1).execute()
+            if res.data:
+                cfg = res.data[0]
+                if not target_owner and cfg.get("repository_owner"):
+                    target_owner = cfg["repository_owner"]
+                if not target_repo and cfg.get("repository_name"):
+                    target_repo = cfg["repository_name"]
+        except Exception:
+            pass
+
+    # Clean combined "owner/repo" if present
+    if target_repo and "/" in target_repo:
+        parts = [p.strip() for p in target_repo.split("/", 1)]
+        target_owner = parts[0]
+        target_repo = parts[1]
+    elif target_owner and "/" in target_owner:
+        parts = [p.strip() for p in target_owner.split("/", 1)]
+        target_owner = parts[0]
+        target_repo = parts[1]
+
     service = EvidenceIngestionService()
     result = await service.sync_github(
-        owner=req.owner,
-        repo=req.repo,
+        owner=target_owner,
+        repo=target_repo,
         limit_commits=req.limit_commits,
         limit_prs=req.limit_prs,
         run_ai=req.run_ai_extraction,

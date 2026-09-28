@@ -1,4 +1,5 @@
-from supabase import create_client, Client
+import httpx
+from supabase import create_client, Client, ClientOptions
 from backend.core.config import get_settings
 from backend.core.logging import get_logger
 
@@ -12,11 +13,14 @@ def get_supabase_client(force_new: bool = False) -> Client:
     global _supabase_client
     if _supabase_client is None or force_new:
         settings = get_settings()
+        http_client = httpx.Client(http2=False, timeout=60.0)
+        options = ClientOptions(httpx_client=http_client, postgrest_client_timeout=60)
         _supabase_client = create_client(
             settings.supabase_url,
             settings.supabase_service_role_key,
+            options=options,
         )
-        logger.info("Supabase client initialized")
+        logger.info("Supabase client initialized with resilient HTTP/1.1 connection pool")
     return _supabase_client
 
 
@@ -35,7 +39,7 @@ def execute_with_retry(query_fn, max_retries: int = 2):
         except Exception as e:
             last_err = e
             err_str = str(e).lower()
-            if "eof" in err_str or "ssl" in err_str or "connection" in err_str or "closed" in err_str:
+            if "eof" in err_str or "ssl" in err_str or "connection" in err_str or "closed" in err_str or "disconnected" in err_str or "protocol" in err_str:
                 logger.warning(f"Supabase connection dropped on attempt {attempt + 1}, reconnecting: {e}")
                 reset_supabase_client()
                 continue

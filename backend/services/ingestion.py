@@ -62,6 +62,30 @@ class EvidenceIngestionService:
         target_repo = repo or settings.github_repository_name
         active_client = self.github_client
 
+        # Handle cases where repo or owner contains combined "owner/repo"
+        if target_repo and "/" in target_repo:
+            parts = [p.strip() for p in target_repo.split("/", 1)]
+            target_owner = parts[0]
+            target_repo = parts[1]
+        elif target_owner and "/" in target_owner:
+            parts = [p.strip() for p in target_owner.split("/", 1)]
+            target_owner = parts[0]
+            target_repo = parts[1]
+
+        # If user_id is missing, try to resolve from target_employee_id
+        user_gh_username = None
+        user_gh_email = None
+        if not user_id and target_employee_id:
+            try:
+                from backend.db.client import get_supabase_client
+                c = get_supabase_client()
+                emp = c.table("employees").select("user_id, email").eq("id", target_employee_id).execute()
+                if emp.data:
+                    user_id = emp.data[0].get("user_id")
+                    user_gh_email = emp.data[0].get("email")
+            except Exception:
+                pass
+
         # If user_id is provided, check user_integrations for personal token & repo
         if user_id:
             try:
@@ -75,12 +99,23 @@ class EvidenceIngestionService:
                         target_owner = cfg["repository_owner"]
                     if not repo and cfg.get("repository_name"):
                         target_repo = cfg["repository_name"]
+                    user_gh_username = cfg.get("external_username")
                     if cfg.get("encrypted_credentials"):
                         creds = decrypt_credentials(cfg["encrypted_credentials"])
                         if creds.get("token"):
                             active_client = GitHubClient(token=creds["token"])
             except Exception as e:
                 logger.warning(f"Could not load custom user github credentials: {e}")
+
+        # Re-check owner/repo after user_integrations extraction
+        if target_repo and "/" in target_repo:
+            parts = [p.strip() for p in target_repo.split("/", 1)]
+            target_owner = parts[0]
+            target_repo = parts[1]
+        elif target_owner and "/" in target_owner:
+            parts = [p.strip() for p in target_owner.split("/", 1)]
+            target_owner = parts[0]
+            target_repo = parts[1]
 
         # Auto-resolve owner if user inputs display name or common alias
         if target_owner and target_owner.strip().lower() in ["shubham", "shubham-sketch", "shubham392007", "shubham-392007sketch"]:
@@ -95,6 +130,18 @@ class EvidenceIngestionService:
             canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
         elif user_id:
             canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
+        # Register or update identity mapping for this canonical employee and github username
+        if canonical_emp_id and user_gh_username:
+            try:
+                self.identity_resolver.map_identity(
+                    canonical_emp_id,
+                    "github",
+                    external_username=user_gh_username,
+                    external_email=user_gh_email,
+                )
+            except Exception as map_err:
+                logger.debug(f"Could not automatically map github identity: {map_err}")
 
         run_id = self.ingestion_repo.start_run(
             source="github",
@@ -125,11 +172,28 @@ class EvidenceIngestionService:
                     if rec_type == "commit":
                         author_usr = (raw_item.get("author") or {}).get("login")
                         author_email = (raw_item.get("commit", {}).get("author") or {}).get("email")
-                        emp_id = self.identity_resolver.resolve_github_employee(author_usr, author_email) or canonical_emp_id
+                        emp_id = None
+                        if canonical_emp_id:
+                            # Prioritize attributing to the user running the sync if author matches user or owner
+                            if user_gh_username and author_usr and author_usr.lower() == user_gh_username.lower():
+                                emp_id = canonical_emp_id
+                            elif target_owner and author_usr and author_usr.lower() == target_owner.lower():
+                                emp_id = canonical_emp_id
+                            elif user_gh_email and author_email and author_email.lower() == user_gh_email.lower():
+                                emp_id = canonical_emp_id
+                        if not emp_id:
+                            emp_id = self.identity_resolver.resolve_github_employee(author_usr, author_email) or canonical_emp_id
                         evidence = normalize_github_commit(raw_item, target_owner, target_repo, emp_id)
                     else:
                         pr_user = (raw_item.get("user") or {}).get("login")
-                        emp_id = self.identity_resolver.resolve_github_employee(pr_user) or canonical_emp_id
+                        emp_id = None
+                        if canonical_emp_id:
+                            if user_gh_username and pr_user and pr_user.lower() == user_gh_username.lower():
+                                emp_id = canonical_emp_id
+                            elif target_owner and pr_user and pr_user.lower() == target_owner.lower():
+                                emp_id = canonical_emp_id
+                        if not emp_id:
+                            emp_id = self.identity_resolver.resolve_github_employee(pr_user) or canonical_emp_id
                         evidence = normalize_github_pr(raw_item, target_owner, target_repo, emp_id)
                     normalized_candidates.append(evidence)
                     candidate_refs.append(evidence.source_reference)
@@ -218,6 +282,19 @@ class EvidenceIngestionService:
         instance_url = settings.jira_base_url
         active_client = self.jira_client
 
+        # If user_id is missing, try to resolve from target_employee_id
+        user_jira_email = None
+        if not user_id and target_employee_id:
+            try:
+                from backend.db.client import get_supabase_client
+                c = get_supabase_client()
+                emp = c.table("employees").select("user_id, email").eq("id", target_employee_id).execute()
+                if emp.data:
+                    user_id = emp.data[0].get("user_id")
+                    user_jira_email = emp.data[0].get("email")
+            except Exception:
+                pass
+
         if user_id:
             try:
                 from backend.db.client import get_supabase_client
@@ -233,6 +310,7 @@ class EvidenceIngestionService:
                     if cfg.get("encrypted_credentials"):
                         creds = decrypt_credentials(cfg["encrypted_credentials"])
                         if creds.get("api_token") and creds.get("email"):
+                            user_jira_email = creds["email"]
                             active_client = JiraClient(
                                 base_url=instance_url,
                                 email=creds["email"],
@@ -249,6 +327,17 @@ class EvidenceIngestionService:
             canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
         elif user_id:
             canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
+        # Register or update identity mapping for Jira
+        if canonical_emp_id and user_jira_email:
+            try:
+                self.identity_resolver.map_identity(
+                    canonical_emp_id,
+                    "jira",
+                    external_email=user_jira_email,
+                )
+            except Exception as map_err:
+                logger.debug(f"Could not automatically map jira identity: {map_err}")
 
         run_id = self.ingestion_repo.start_run(
             source="jira",
@@ -275,7 +364,12 @@ class EvidenceIngestionService:
                     assignee = fields.get("assignee") or {}
                     email = assignee.get("emailAddress")
                     uname = assignee.get("displayName") or assignee.get("accountId")
-                    emp_id = self.identity_resolver.resolve_jira_employee(email=email, username=uname) or canonical_emp_id
+                    emp_id = None
+                    if canonical_emp_id:
+                        if user_jira_email and email and email.lower() == user_jira_email.lower():
+                            emp_id = canonical_emp_id
+                    if not emp_id:
+                        emp_id = self.identity_resolver.resolve_jira_employee(email=email, username=uname) or canonical_emp_id
                     evidence = normalize_jira_issue(issue, instance_url, target_proj, emp_id)
                     normalized_candidates.append(evidence)
                     candidate_refs.append(evidence.source_reference)

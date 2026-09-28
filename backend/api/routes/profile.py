@@ -27,6 +27,75 @@ logger = get_logger("api.profile")
 router = APIRouter(prefix="/profile", tags=["User Profiles & Workspaces"])
 
 
+def parse_repo_owner_name(raw_owner: Optional[str], raw_name: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Cleanly extracts owner and repository name, handling accidental combined 'owner/repo' strings."""
+    owner = raw_owner.strip() if raw_owner else None
+    name = raw_name.strip() if raw_name else None
+    if name and "/" in name:
+        parts = [p.strip() for p in name.split("/", 1)]
+        owner = parts[0]
+        name = parts[1]
+    elif owner and "/" in owner:
+        parts = [p.strip() for p in owner.split("/", 1)]
+        owner = parts[0]
+        name = parts[1]
+    return owner, name
+
+
+def save_user_integration(client, record: dict) -> dict:
+    """Safely insert or update user_integrations record without reliance on composite unique constraints."""
+    user_id = record.get("user_id")
+    provider = record.get("provider")
+    existing = client.table("user_integrations").select("id").eq("user_id", user_id).eq("provider", provider).execute()
+    if existing.data:
+        rec_id = existing.data[0]["id"]
+        res = client.table("user_integrations").update(record).eq("id", rec_id).execute()
+        return res.data[0] if res.data else record
+    else:
+        res = client.table("user_integrations").insert(record).execute()
+        return res.data[0] if res.data else record
+
+
+def save_integration_identity(
+    client,
+    employee_identifier: str,
+    provider: str,
+    external_username: Optional[str] = None,
+    external_email: Optional[str] = None,
+) -> None:
+    """Safely map external identity to an employee in integration_identities."""
+    if not employee_identifier:
+        return
+    from backend.db.repositories.evidence import EvidenceRepository
+    repo = EvidenceRepository()
+    emp_uuid = repo._resolve_employee_uuid(str(employee_identifier)) or str(employee_identifier)
+
+    # Check if mapping already exists for this provider and username/email
+    query = client.table("integration_identities").select("id").eq("provider", provider)
+    if external_username:
+        query = query.eq("external_username", external_username)
+    elif external_email:
+        query = query.eq("external_email", external_email)
+    else:
+        return
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "employee_id": emp_uuid,
+        "provider": provider,
+        "external_username": external_username,
+        "external_email": external_email,
+        "updated_at": now_iso,
+    }
+    payload = {k: v for k, v in payload.items() if v is not None}
+
+    existing = query.execute()
+    if existing.data:
+        client.table("integration_identities").update(payload).eq("id", existing.data[0]["id"]).execute()
+    else:
+        client.table("integration_identities").insert(payload).execute()
+
+
 @router.get("/me", response_model=UserProfile)
 async def get_my_profile(profile: UserProfile = Depends(get_current_profile)):
     """Retrieve the authenticated user's profile and organization metadata."""
@@ -147,11 +216,12 @@ async def validate_github_credentials(req: ValidateGitHubRequest):
         rate_limit = conn.get("rate_limit_remaining")
         repo_valid = None
 
-        if req.repository_owner and req.repository_name:
+        v_owner, v_repo = parse_repo_owner_name(req.repository_owner, req.repository_name)
+        if not v_owner and username:
+            v_owner = username
+        if v_owner and v_repo:
             try:
-                repo_res = client.validate_repository(
-                    req.repository_owner.strip(), req.repository_name.strip()
-                )
+                repo_res = client.validate_repository(v_owner, v_repo)
                 repo_valid = repo_res.get("valid", False)
             except Exception:
                 repo_valid = False
@@ -288,12 +358,17 @@ async def complete_profile_onboarding(
         except Exception:
             status = "error"
 
+        # Clean owner/repo
+        owner, repo_name = parse_repo_owner_name(req.github.repository_owner, req.github.repository_name)
+        if not username and owner:
+            username = owner
+
         # Encrypt credentials at rest
         encrypted_data = encrypt_credentials({
             "token": token,
             "username": username,
-            "repository_owner": req.github.repository_owner.strip() if req.github.repository_owner else None,
-            "repository_name": req.github.repository_name.strip() if req.github.repository_name else None,
+            "repository_owner": owner,
+            "repository_name": repo_name,
         })
 
         gh_record = {
@@ -302,21 +377,20 @@ async def complete_profile_onboarding(
             "provider": "github",
             "encrypted_credentials": encrypted_data,
             "external_username": username,
-            "repository_owner": req.github.repository_owner.strip() if req.github.repository_owner else None,
-            "repository_name": req.github.repository_name.strip() if req.github.repository_name else None,
+            "repository_owner": owner,
+            "repository_name": repo_name,
             "connection_status": status,
             "last_validated_at": now_iso,
             "updated_at": now_iso,
         }
         try:
-            client.table("user_integrations").upsert(gh_record, on_conflict="user_id,provider").execute()
+            save_user_integration(client, gh_record)
             if username:
-                client.table("integration_identities").upsert({
-                    "employee_id": profile.id,
-                    "provider": "github",
-                    "external_username": username,
-                    "updated_at": now_iso,
-                }, on_conflict="employee_id,provider").execute()
+                save_integration_identity(client, profile.id, "github", external_username=username)
+                try:
+                    client.table("profiles").update({"github_username": username}).eq("id", profile.id).execute()
+                except Exception:
+                    pass
         except Exception as e:
             logger.error(f"Error saving GitHub integration: {e}")
 
@@ -325,8 +399,8 @@ async def complete_profile_onboarding(
             is_active=True,
             connection_status=status,
             external_username=username,
-            repository_owner=req.github.repository_owner,
-            repository_name=req.github.repository_name,
+            repository_owner=owner,
+            repository_name=repo_name,
             token_masked=mask_token(token),
             last_validated_at=datetime.now(timezone.utc),
         )
@@ -365,13 +439,8 @@ async def complete_profile_onboarding(
             "updated_at": now_iso,
         }
         try:
-            client.table("user_integrations").upsert(jira_record, on_conflict="user_id,provider").execute()
-            client.table("integration_identities").upsert({
-                "employee_id": profile.id,
-                "provider": "jira",
-                "external_email": email,
-                "updated_at": now_iso,
-            }, on_conflict="employee_id,provider").execute()
+            save_user_integration(client, jira_record)
+            save_integration_identity(client, profile.id, "jira", external_email=email)
         except Exception as e:
             logger.error(f"Error saving Jira integration: {e}")
 
@@ -470,11 +539,16 @@ async def update_github_integration(
             if not username:
                 username = existing.data[0].get("external_username")
 
+    # Clean owner/repo name
+    owner, repo_name = parse_repo_owner_name(setup.repository_owner, setup.repository_name)
+    if not username and owner:
+        username = owner
+
     encrypted_data = encrypt_credentials({
         "token": token,
         "username": username,
-        "repository_owner": setup.repository_owner.strip() if setup.repository_owner else None,
-        "repository_name": setup.repository_name.strip() if setup.repository_name else None,
+        "repository_owner": owner,
+        "repository_name": repo_name,
     })
 
     gh_record = {
@@ -483,33 +557,32 @@ async def update_github_integration(
         "provider": "github",
         "encrypted_credentials": encrypted_data,
         "external_username": username,
-        "repository_owner": setup.repository_owner.strip() if setup.repository_owner else None,
-        "repository_name": setup.repository_name.strip() if setup.repository_name else None,
+        "repository_owner": owner,
+        "repository_name": repo_name,
         "connection_status": status,
         "is_active": True,
         "last_validated_at": now_iso,
         "updated_at": now_iso,
     }
-    client.table("user_integrations").upsert(gh_record, on_conflict="user_id,provider").execute()
+    save_user_integration(client, gh_record)
 
     if username:
         try:
-            client.table("integration_identities").upsert({
-                "employee_id": profile.id,
-                "provider": "github",
-                "external_username": username,
-                "updated_at": now_iso,
-            }, on_conflict="employee_id,provider").execute()
+            save_integration_identity(client, profile.id, "github", external_username=username)
+            try:
+                client.table("profiles").update({"github_username": username}).eq("id", profile.id).execute()
+            except Exception:
+                pass
         except Exception as e:
-            logger.warning(f"Could not upsert github identity: {e}")
+            logger.warning(f"Could not save github identity: {e}")
 
     return UserIntegrationSummary(
         provider="github",
         is_active=True,
         connection_status=status,
         external_username=username,
-        repository_owner=setup.repository_owner,
-        repository_name=setup.repository_name,
+        repository_owner=owner,
+        repository_name=repo_name,
         token_masked=mask_token(token),
         last_validated_at=datetime.now(timezone.utc),
     )
@@ -570,18 +643,13 @@ async def update_jira_integration(
         "last_validated_at": now_iso,
         "updated_at": now_iso,
     }
-    client.table("user_integrations").upsert(jira_record, on_conflict="user_id,provider").execute()
+    save_user_integration(client, jira_record)
 
     if email:
         try:
-            client.table("integration_identities").upsert({
-                "employee_id": profile.id,
-                "provider": "jira",
-                "external_email": email,
-                "updated_at": now_iso,
-            }, on_conflict="employee_id,provider").execute()
+            save_integration_identity(client, profile.id, "jira", external_email=email)
         except Exception as e:
-            logger.warning(f"Could not upsert jira identity: {e}")
+            logger.warning(f"Could not save jira identity: {e}")
 
     return UserIntegrationSummary(
         provider="jira",
