@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import TrendBadge from "@/components/ui/TrendBadge";
 import ConfidenceBadge from "@/components/ui/ConfidenceBadge";
@@ -331,7 +330,6 @@ export default function NarrativePage() {
           </div>
         )}
       </main>
-      <GlobalFooter />
     </div>
     </ProtectedRoute>
   );

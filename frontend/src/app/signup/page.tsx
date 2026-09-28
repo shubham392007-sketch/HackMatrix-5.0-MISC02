@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { User, Users, ArrowRight, AlertCircle, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -339,8 +338,6 @@ export default function SignupPage() {
           </div>
         </div>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }

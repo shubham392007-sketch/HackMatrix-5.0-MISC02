@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   ScriptHeading,
@@ -327,8 +326,6 @@ function SkillDetailContent() {
             </>
           )}
         </main>
-
-        <GlobalFooter />
       </div>
     </ProtectedRoute>
   );

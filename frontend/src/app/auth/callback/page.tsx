@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { CheckCircle2, AlertCircle, ArrowRight, Sparkles, RefreshCw } from 'lucide-react';
 
 function CallbackContent() {
@@ -203,7 +202,6 @@ export default function AuthCallbackPage() {
           <CallbackContent />
         </Suspense>
       </main>
-      <GlobalFooter />
     </div>
   );
 }

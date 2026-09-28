@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import TrendBadge from "@/components/ui/TrendBadge";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { intelligence } from "@/lib/api";
@@ -142,7 +141,6 @@ export default function ManagerDashboard() {
           </div>
         )}
       </main>
-      <GlobalFooter />
     </div>
     </ProtectedRoute>
   );

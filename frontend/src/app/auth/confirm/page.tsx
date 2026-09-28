@@ -4,7 +4,6 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { Mail, CheckCircle2, AlertCircle, ArrowRight, Loader2, KeyRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -184,7 +183,6 @@ export default function ConfirmPage() {
           <ConfirmForm />
         </Suspense>
       </main>
-      <GlobalFooter />
     </div>
   );
 }

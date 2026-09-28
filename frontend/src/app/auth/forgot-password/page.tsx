@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { ArrowRight, AlertCircle, CheckCircle2, Loader2, KeyRound } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -122,8 +121,6 @@ export default function ForgotPasswordPage() {
           )}
         </div>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }

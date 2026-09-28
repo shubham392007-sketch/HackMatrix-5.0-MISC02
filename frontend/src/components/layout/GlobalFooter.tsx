@@ -1,7 +1,17 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 export default function GlobalFooter() {
+  const pathname = usePathname();
+
+  // Make sure the footer appears only on the home page of the website and nowhere else
+  if (pathname !== "/") {
+    return null;
+  }
+
   return (
     <footer className="mt-auto border-t-[1.5px] border-[#1C1C1C] bg-transparent pt-16 pb-10 px-6 md:px-12 text-[#1C1C1C]">
       <div className="max-w-[1400px] mx-auto">

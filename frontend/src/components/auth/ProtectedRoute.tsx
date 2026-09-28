@@ -4,7 +4,6 @@ import React, { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import { ShieldAlert } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -42,7 +41,6 @@ export default function ProtectedRoute({
             </p>
           </div>
         </main>
-        <GlobalFooter />
       </div>
     );
   }
@@ -75,7 +73,6 @@ export default function ProtectedRoute({
             </div>
           </div>
         </main>
-        <GlobalFooter />
       </div>
     );
   }

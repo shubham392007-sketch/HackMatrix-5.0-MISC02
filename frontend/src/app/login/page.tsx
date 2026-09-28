@@ -4,7 +4,6 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -162,8 +161,6 @@ function LoginFormContent() {
           </div>
         </div>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }

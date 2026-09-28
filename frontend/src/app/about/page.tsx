@@ -1,5 +1,4 @@
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 
 export default function AboutPage() {
   const steps = [
@@ -97,7 +96,6 @@ export default function AboutPage() {
           </div>
         </section>
       </main>
-      <GlobalFooter />
     </>
   );
 }

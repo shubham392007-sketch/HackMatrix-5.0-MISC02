@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { intelligence } from "@/lib/api";
 import type { TeamHeatmap, TrendDirection } from "@/lib/types";
@@ -169,7 +168,6 @@ export default function HeatmapPage() {
           </div>
         )}
       </main>
-      <GlobalFooter />
     </div>
     </ProtectedRoute>
   );

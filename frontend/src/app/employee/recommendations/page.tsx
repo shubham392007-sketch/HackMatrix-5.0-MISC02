@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { trajectory, recommendations } from "@/lib/api";
 import type { Learner, Recommendation } from "@/lib/types";
@@ -236,8 +235,6 @@ export default function RecommendationsPage() {
           </div>
         )}
       </main>
-
-      <GlobalFooter />
     </div>
     </ProtectedRoute>
   );

@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import {
   ArrowRight,
   ArrowLeft,
@@ -797,8 +796,6 @@ function OnboardingContent() {
           </div>
         </div>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }
@@ -817,7 +814,6 @@ export default function OnboardingPage() {
               </p>
             </div>
           </main>
-          <GlobalFooter />
         </div>
       }
     >

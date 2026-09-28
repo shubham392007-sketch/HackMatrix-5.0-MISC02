@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import CompetencyCard from "@/components/ui/CompetencyCard";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { trajectory } from "@/lib/api";
@@ -147,7 +146,6 @@ export default function EmployeeDashboard() {
           </>
         )}
       </main>
-      <GlobalFooter />
     </div>
     </ProtectedRoute>
   );

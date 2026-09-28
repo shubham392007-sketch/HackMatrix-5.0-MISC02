@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import GlobalFooter from '@/components/layout/GlobalFooter';
 import { ArrowRight, AlertCircle, CheckCircle2, Loader2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -145,8 +144,6 @@ export default function ResetPasswordPage() {
           )}
         </div>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }

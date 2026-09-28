@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
-import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   ScriptHeading,
@@ -623,8 +622,6 @@ export default function EvidencePage() {
             </Link>
           </div>
         </main>
-
-        <GlobalFooter />
 
         {/* ── Section 22: Evidence Detail Side Panel ────────────── */}
         <EvidenceDetailPanel
