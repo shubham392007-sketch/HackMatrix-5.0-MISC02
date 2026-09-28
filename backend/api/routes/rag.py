@@ -22,6 +22,7 @@ async def semantic_evidence_search(req: RAGSearchRequest):
 
 
 @router.post("/justify", response_model=JustificationResponse)
+@router.post("/justification", response_model=JustificationResponse)
 async def justify_competency(req: JustificationRequest):
     """
     Execute the full Evidence Justification Engine:
@@ -32,3 +33,4 @@ async def justify_competency(req: JustificationRequest):
     """
     service = RAGService()
     return await service.justify_competency(req)
+
