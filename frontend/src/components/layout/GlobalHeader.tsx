@@ -49,7 +49,7 @@ export default function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C]">
-      <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-20 min-h-[5rem]">
+      <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-24 min-h-[5.75rem]">
         {/* Brand Logo */}
         <Link
           href={
@@ -62,8 +62,11 @@ export default function GlobalHeader() {
           className="flex items-center gap-1 group py-1"
         >
           <span
-            className="text-4xl sm:text-5xl md:text-[3.25rem] leading-none text-[#1C1C1C] select-none tracking-tight font-normal inline-block transition-transform group-hover:scale-[1.02]"
-            style={{ fontFamily: "'Yellowtail', cursive" }}
+            className="leading-none text-[#1C1C1C] select-none tracking-tight font-normal inline-block transition-transform group-hover:scale-[1.03]"
+            style={{
+              fontFamily: "'Yellowtail', cursive",
+              fontSize: "clamp(3rem, 6vw, 4.5rem)",
+            }}
           >
             GrowthLens
           </span>

@@ -20,8 +20,11 @@ export default function GlobalFooter() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span
-                className="text-6xl sm:text-7xl md:text-8xl leading-none text-[#1C1C1C] font-normal tracking-tight inline-block"
-                style={{ fontFamily: "'Yellowtail', cursive" }}
+                className="leading-none text-[#1C1C1C] font-normal tracking-tight inline-block"
+                style={{
+                  fontFamily: "'Yellowtail', cursive",
+                  fontSize: "clamp(4.5rem, 10vw, 9rem)",
+                }}
               >
                 GrowthLens
               </span>

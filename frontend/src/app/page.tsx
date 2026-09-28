@@ -78,10 +78,13 @@ export default function LandingPage() {
             </div>
 
             {/* CENTER COLUMN: Hero Headline, Description & CTAs */}
-            <div className="lg:col-span-6 text-center space-y-6 order-1 lg:order-2 px-2">
+            <div className="lg:col-span-6 text-center space-y-6 order-1 lg:order-2 px-2 flex flex-col items-center">
               <h2
-                className="text-7xl sm:text-8xl md:text-9xl lg:text-[10.5rem] xl:text-[12rem] text-[#1C1C1C] select-none tracking-tight leading-none pb-4 drop-shadow-sm font-normal"
-                style={{ fontFamily: "'Yellowtail', cursive" }}
+                className="text-[#1C1C1C] select-none tracking-tight leading-[0.88] pb-4 drop-shadow-sm font-normal whitespace-nowrap"
+                style={{
+                  fontFamily: "'Yellowtail', cursive",
+                  fontSize: "clamp(5.5rem, 15vw, 15rem)",
+                }}
               >
                 GrowthLens
               </h2>
