@@ -34,7 +34,7 @@ class OllamaClient:
         self,
         base_url: Optional[str] = None,
         model: Optional[str] = None,
-        timeout: float = 30.0,
+        timeout: float = 120.0,
     ):
         settings = get_settings()
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
@@ -147,7 +147,7 @@ class OllamaClient:
         messages: List[BaseMessage],
         temperature: float = 0.1,
         max_tokens: int = 1024,
-        timeout: float = 20.0,
+        timeout: float = 120.0,
     ) -> str:
         """Resilient direct HTTP call to Ollama /api/chat endpoint."""
         ollama_msgs = []
@@ -160,6 +160,7 @@ class OllamaClient:
             "messages": ollama_msgs,
             "stream": False,
             "format": "json",
+            "think": False,
             "options": {
                 "temperature": temperature,
                 "num_ctx": 4096,
@@ -167,7 +168,7 @@ class OllamaClient:
             },
         }
 
-        client_timeout = httpx.Timeout(timeout=timeout, connect=2.0)
+        client_timeout = httpx.Timeout(timeout=timeout, connect=5.0)
         async with httpx.AsyncClient(timeout=client_timeout) as client:
             res = await client.post(f"{self.base_url}/api/chat", json=payload)
             if res.status_code == 200:

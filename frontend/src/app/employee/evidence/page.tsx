@@ -204,7 +204,7 @@ export default function EvidencePage() {
   const handleSyncGithub = async () => {
     setGithubSyncing(true);
     try {
-      await integrations.syncGithub({ run_ai_extraction: true });
+      await integrations.syncGithub({ run_ai_extraction: false });
       setLastSyncTime("Just now");
       if (selectedLearner) fetchEvidence(selectedLearner);
       loadIntegrations();
@@ -219,7 +219,7 @@ export default function EvidencePage() {
   const handleSyncJira = async () => {
     setJiraSyncing(true);
     try {
-      await integrations.syncJira({ run_ai_extraction: true });
+      await integrations.syncJira({ run_ai_extraction: false });
       setLastSyncTime("Just now");
       if (selectedLearner) fetchEvidence(selectedLearner);
       loadIntegrations();

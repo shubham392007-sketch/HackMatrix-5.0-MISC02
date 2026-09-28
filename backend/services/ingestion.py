@@ -135,8 +135,9 @@ class EvidenceIngestionService:
                         skipped += 1
                         continue
 
-                    # Process, extract and index
-                    await self._process_single_evidence(evidence, run_ai)
+                    # Process, extract and index (cap synchronous LLM extraction to first 2 to prevent request timeout)
+                    should_ai = run_ai and (processed < 2)
+                    await self._process_single_evidence(evidence, should_ai)
                     processed += 1
 
                 except Exception as ex:
@@ -257,7 +258,8 @@ class EvidenceIngestionService:
                         skipped += 1
                         continue
 
-                    await self._process_single_evidence(evidence, run_ai)
+                    should_ai = run_ai and (processed < 2)
+                    await self._process_single_evidence(evidence, should_ai)
                     processed += 1
 
                 except Exception as ex:
