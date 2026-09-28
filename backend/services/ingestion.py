@@ -154,15 +154,28 @@ class EvidenceIngestionService:
                 failed=failed,
             )
 
-            # Update last_sync_at in user_integrations if user initiated
-            if user_id and status in ("completed", "partial"):
+            # Update last_sync_at in user_integrations upon sync completion
+            if status in ("completed", "partial"):
                 try:
                     from datetime import datetime, timezone
                     from backend.db.client import get_supabase_client
-                    get_supabase_client().table("user_integrations").update({
-                        "last_sync_at": datetime.now(timezone.utc).isoformat(),
-                        "connection_status": "connected",
-                    }).eq("user_id", user_id).eq("provider", "github").execute()
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    db = get_supabase_client()
+                    if user_id:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("user_id", user_id).eq("provider", "github").execute()
+                    elif canonical_emp_id:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("user_id", canonical_emp_id).eq("provider", "github").execute()
+                    else:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("provider", "github").execute()
                 except Exception as e:
                     logger.debug(f"Failed updating user_integrations sync time: {e}")
 
@@ -276,15 +289,28 @@ class EvidenceIngestionService:
                 failed=failed,
             )
 
-            # Update last_sync_at in user_integrations if user initiated
-            if user_id and status in ("completed", "partial"):
+            # Update last_sync_at in user_integrations upon sync completion
+            if status in ("completed", "partial"):
                 try:
                     from datetime import datetime, timezone
                     from backend.db.client import get_supabase_client
-                    get_supabase_client().table("user_integrations").update({
-                        "last_sync_at": datetime.now(timezone.utc).isoformat(),
-                        "connection_status": "connected",
-                    }).eq("user_id", user_id).eq("provider", "jira").execute()
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    db = get_supabase_client()
+                    if user_id:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("user_id", user_id).eq("provider", "jira").execute()
+                    elif canonical_emp_id:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("user_id", canonical_emp_id).eq("provider", "jira").execute()
+                    else:
+                        db.table("user_integrations").update({
+                            "last_sync_at": now_iso,
+                            "connection_status": "connected",
+                        }).eq("provider", "jira").execute()
                 except Exception as e:
                     logger.debug(f"Failed updating user_integrations sync time: {e}")
 

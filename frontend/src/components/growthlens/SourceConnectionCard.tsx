@@ -76,7 +76,9 @@ export default function SourceConnectionCard({
 
         <div className="p-3 rounded-xl border border-[#1C1C1C]/20 bg-[#FBF1CF]/60 mb-5 flex items-center justify-between text-xs font-semibold">
           <span className="text-[#1C1C1C]/70">Last Synchronized:</span>
-          <span className="font-mono text-[#1C1C1C] font-bold">{lastSync}</span>
+          <span className="font-mono text-[#1C1C1C] font-bold">
+            {isSyncing ? "Syncing in progress..." : lastSync}
+          </span>
         </div>
       </div>
 
@@ -86,7 +88,7 @@ export default function SourceConnectionCard({
           size="sm"
           loading={isSyncing}
           onClick={onSync}
-          icon={<RefreshCw className="w-3 h-3" />}
+          icon={<RefreshCw className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`} />}
         >
           {isSyncing ? "SYNCING..." : "SYNC NOW"}
         </PillButton>

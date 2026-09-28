@@ -425,6 +425,7 @@ async def get_my_integrations(profile: UserProfile = Depends(get_current_profile
                 project_key=r.get("project_key"),
                 token_masked=masked,
                 last_validated_at=r.get("last_validated_at"),
+                last_sync_at=r.get("last_sync_at"),
             )
         return summary
     except Exception as e:

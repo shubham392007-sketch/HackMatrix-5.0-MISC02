@@ -29,10 +29,11 @@ async def get_github_status(profile: Optional[UserProfile] = Depends(get_optiona
     details = {}
     status = "not_configured"
 
-    # Check if user has individual integration configured in user_integrations
+    db_client = get_supabase_client()
+
+    # 1. Check if user has individual integration configured in user_integrations
     if profile:
         try:
-            db_client = get_supabase_client()
             res = db_client.table("user_integrations").select("*").eq("user_id", profile.user_id).eq("provider", "github").execute()
             if res.data:
                 cfg = res.data[0]
@@ -50,11 +51,36 @@ async def get_github_status(profile: Optional[UserProfile] = Depends(get_optiona
         except Exception:
             pass
 
+    # 2. Check active user integration in table if unauthenticated request
+    try:
+        active_rec = db_client.table("user_integrations").select("*").eq("provider", "github").eq("is_active", True).limit(1).execute()
+        if active_rec.data:
+            cfg = active_rec.data[0]
+            return IntegrationStatusResponse(
+                provider="github",
+                configured=True,
+                status=cfg.get("connection_status", "connected"),
+                details={
+                    "username": cfg.get("external_username") or settings.github_repository_owner,
+                    "repository_owner": cfg.get("repository_owner") or settings.github_repository_owner,
+                    "repository_name": cfg.get("repository_name") or settings.github_repository_name,
+                    "last_sync_at": cfg.get("last_sync_at"),
+                }
+            )
+    except Exception:
+        pass
+
     if configured:
         try:
             conn = client.test_connection()
             status = "connected" if conn.get("authenticated") else "invalid_token"
             details = conn
+            try:
+                sync_res = db_client.table("ingestion_runs").select("completed_at").eq("source", "github").eq("status", "completed").order("completed_at", desc=True).limit(1).execute()
+                if sync_res.data and sync_res.data[0].get("completed_at"):
+                    details["last_sync_at"] = sync_res.data[0]["completed_at"]
+            except Exception:
+                pass
         except Exception as e:
             status = "error"
             details = {"error": str(e)}

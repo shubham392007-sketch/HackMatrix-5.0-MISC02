@@ -59,7 +59,9 @@ export default function EvidencePage() {
   const [jiraSyncing, setJiraSyncing] = useState<boolean>(false);
   const [githubTesting, setGithubTesting] = useState<boolean>(false);
   const [jiraTesting, setJiraTesting] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("Not synced yet");
+  const [githubRawSync, setGithubRawSync] = useState<string | null>(null);
+  const [jiraRawSync, setJiraRawSync] = useState<string | null>(null);
+  const [, setTimerTick] = useState<number>(0);
 
   // Ingestion pipeline state
   const [pipelineProcessing, setPipelineProcessing] = useState<boolean>(false);
@@ -70,11 +72,43 @@ export default function EvidencePage() {
   // Selected evidence for side drawer
   const [activeEvidence, setActiveEvidence] = useState<Evidence | null>(null);
 
+  // Helper for dynamic relative time formatting
+  const formatRelativeTime = (isoString?: string | null): string => {
+    if (!isoString) return "Never";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "Never";
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return "Just now";
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) return "Just now";
+    if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? "" : "s"} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+    if (diffDays === 1) return "Yesterday";
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Live timer tick every 30s to keep relative times strictly fresh
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimerTick((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Load real user integrations
   const loadIntegrations = async () => {
     try {
       let count = 0;
-      let latestSync: string | null = null;
 
       // 1. Fetch user specific integrations configured during onboarding
       let userInts: Record<string, any> = {};
@@ -88,22 +122,24 @@ export default function EvidencePage() {
         setGithubStatus(userInts.github.connection_status === "connected" ? "connected" : "needs_attention");
         count++;
         if (userInts.github.last_sync_at || userInts.github.last_validated_at) {
-          latestSync = userInts.github.last_sync_at || userInts.github.last_validated_at;
+          setGithubRawSync(userInts.github.last_sync_at || userInts.github.last_validated_at);
         }
       } else {
         try {
           const gh = await integrations.githubStatus();
-          if (gh.status === "connected") {
+          if (gh.status === "connected" || gh.configured) {
             setGithubStatus("connected");
             count++;
-            if (gh.details?.last_sync_at) latestSync = gh.details.last_sync_at as string;
+            if (gh.details?.last_sync_at) {
+              setGithubRawSync(gh.details.last_sync_at as string);
+            }
           } else if (gh.status === "invalid_token") {
             setGithubStatus("needs_attention");
           } else {
             setGithubStatus("not_connected");
           }
         } catch {
-          setGithubStatus("not_connected");
+          // Non-blocking
         }
       }
 
@@ -111,22 +147,16 @@ export default function EvidencePage() {
         setJiraStatus(userInts.jira.connection_status === "connected" ? "connected" : "needs_attention");
         count++;
         if (userInts.jira.last_sync_at || userInts.jira.last_validated_at) {
-          const jSync = userInts.jira.last_sync_at || userInts.jira.last_validated_at;
-          if (!latestSync || new Date(jSync) > new Date(latestSync)) {
-            latestSync = jSync;
-          }
+          setJiraRawSync(userInts.jira.last_sync_at || userInts.jira.last_validated_at);
         }
       } else {
         try {
           const jr = await integrations.jiraStatus();
-          if (jr.status === "connected") {
+          if (jr.status === "connected" || jr.configured) {
             setJiraStatus("connected");
             count++;
             if (jr.details?.last_sync_at) {
-              const jSync = jr.details.last_sync_at as string;
-              if (!latestSync || new Date(jSync) > new Date(latestSync)) {
-                latestSync = jSync;
-              }
+              setJiraRawSync(jr.details.last_sync_at as string);
             }
           } else if (jr.status === "invalid_credentials") {
             setJiraStatus("needs_attention");
@@ -134,22 +164,11 @@ export default function EvidencePage() {
             setJiraStatus("not_connected");
           }
         } catch {
-          setJiraStatus("not_connected");
+          // Non-blocking
         }
       }
 
       setActiveIntegrationsCount(count);
-      if (latestSync) {
-        const d = new Date(latestSync);
-        setLastSyncTime(
-          d.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        );
-      }
     } catch {
       // Non-blocking
     }
@@ -203,13 +222,18 @@ export default function EvidencePage() {
   // Sync GitHub handler
   const handleSyncGithub = async () => {
     setGithubSyncing(true);
+    setGithubStatus("syncing");
     try {
       await integrations.syncGithub({ run_ai_extraction: false });
-      setLastSyncTime("Just now");
-      if (selectedLearner) fetchEvidence(selectedLearner);
-      loadIntegrations();
-    } catch {
-      // Non-blocking
+      setGithubRawSync(new Date().toISOString());
+      setGithubStatus("connected");
+      if (selectedLearner) {
+        await fetchEvidence(selectedLearner);
+      }
+      await loadIntegrations();
+    } catch (err) {
+      console.error("GitHub sync failed:", err);
+      setGithubStatus(githubCount > 0 ? "connected" : "needs_attention");
     } finally {
       setGithubSyncing(false);
     }
@@ -218,13 +242,18 @@ export default function EvidencePage() {
   // Sync Jira handler
   const handleSyncJira = async () => {
     setJiraSyncing(true);
+    setJiraStatus("syncing");
     try {
       await integrations.syncJira({ run_ai_extraction: false });
-      setLastSyncTime("Just now");
-      if (selectedLearner) fetchEvidence(selectedLearner);
-      loadIntegrations();
-    } catch {
-      // Non-blocking
+      setJiraRawSync(new Date().toISOString());
+      setJiraStatus("connected");
+      if (selectedLearner) {
+        await fetchEvidence(selectedLearner);
+      }
+      await loadIntegrations();
+    } catch (err) {
+      console.error("Jira sync failed:", err);
+      setJiraStatus(jiraCount > 0 ? "connected" : "needs_attention");
     } finally {
       setJiraSyncing(false);
     }
@@ -235,10 +264,14 @@ export default function EvidencePage() {
     setGithubTesting(true);
     try {
       const res = await integrations.testGithub();
-      setGithubStatus(res.authenticated ? "connected" : "needs_attention");
-      loadIntegrations();
+      if (res.authenticated) {
+        setGithubStatus("connected");
+        await loadIntegrations();
+      } else {
+        setGithubStatus(githubCount > 0 ? "connected" : "needs_attention");
+      }
     } catch {
-      setGithubStatus("needs_attention");
+      setGithubStatus(githubCount > 0 ? "connected" : "needs_attention");
     } finally {
       setGithubTesting(false);
     }
@@ -249,10 +282,14 @@ export default function EvidencePage() {
     setJiraTesting(true);
     try {
       const res = await integrations.testJira();
-      setJiraStatus(res.authenticated ? "connected" : "needs_attention");
-      loadIntegrations();
+      if (res.authenticated) {
+        setJiraStatus("connected");
+        await loadIntegrations();
+      } else {
+        setJiraStatus(jiraCount > 0 ? "connected" : "needs_attention");
+      }
     } catch {
-      setJiraStatus("needs_attention");
+      setJiraStatus(jiraCount > 0 ? "connected" : "needs_attention");
     } finally {
       setJiraTesting(false);
     }
@@ -335,6 +372,14 @@ export default function EvidencePage() {
   const githubCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("github")).length;
   const jiraCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("jira")).length;
 
+  const latestRawSync = [githubRawSync, jiraRawSync]
+    .filter(Boolean)
+    .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0] || null;
+
+  const overallLastSync = (githubSyncing || jiraSyncing)
+    ? "Syncing in progress..."
+    : formatRelativeTime(latestRawSync);
+
   return (
     <ProtectedRoute allowedRoles={["EMPLOYEE", "MANAGER", "ADMIN"]}>
       <div className="min-h-screen flex flex-col text-[#1C1C1C]">
@@ -389,7 +434,7 @@ export default function EvidencePage() {
 
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60">
-                  Last sync: {lastSyncTime}
+                  Last sync: {overallLastSync}
                 </span>
                 <PillButton
                   variant="primary"
@@ -423,9 +468,9 @@ export default function EvidencePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SourceConnectionCard
                 provider="github"
-                status={githubStatus}
+                status={githubSyncing ? "syncing" : (githubStatus === "connected" || githubCount > 0 ? "connected" : githubStatus)}
                 evidenceCount={githubCount}
-                lastSync={lastSyncTime}
+                lastSync={githubSyncing ? "Syncing in progress..." : formatRelativeTime(githubRawSync)}
                 onSync={handleSyncGithub}
                 onTest={handleTestGithub}
                 isSyncing={githubSyncing}
@@ -434,9 +479,9 @@ export default function EvidencePage() {
 
               <SourceConnectionCard
                 provider="jira"
-                status={jiraStatus}
+                status={jiraSyncing ? "syncing" : (jiraStatus === "connected" || jiraCount > 0 ? "connected" : jiraStatus)}
                 evidenceCount={jiraCount}
-                lastSync={lastSyncTime}
+                lastSync={jiraSyncing ? "Syncing in progress..." : formatRelativeTime(jiraRawSync)}
                 onSync={handleSyncJira}
                 onTest={handleTestJira}
                 isSyncing={jiraSyncing}
@@ -503,7 +548,7 @@ export default function EvidencePage() {
                   Last Updated
                 </span>
                 <span className="text-xl md:text-2xl font-black text-[#1C1C1C] leading-none block my-1">
-                  {lastSyncTime}
+                  {overallLastSync}
                 </span>
                 <span className="text-[10px] font-mono text-emerald-800 font-bold block">
                   ● Continuous Stream Active

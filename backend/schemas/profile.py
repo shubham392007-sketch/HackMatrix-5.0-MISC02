@@ -136,6 +136,7 @@ class UserIntegrationSummary(BaseModel):
     project_key: Optional[str] = None
     token_masked: Optional[str] = None
     last_validated_at: Optional[datetime] = None
+    last_sync_at: Optional[datetime] = None
 
 
 class OnboardingCompletionResponse(BaseModel):
