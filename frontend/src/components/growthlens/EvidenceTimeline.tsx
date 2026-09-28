@@ -11,6 +11,31 @@ interface EvidenceTimelineProps {
   className?: string;
 }
 
+function inferCompetency(item: Evidence): string {
+  if (item.competencies && item.competencies.length > 0) return item.competencies[0];
+  if (item.skills && item.skills.length > 0) return item.skills[0];
+  const text = `${item.title || ""} ${item.content || ""}`.toLowerCase();
+  if (/ui|ux|page|layout|frontend|css|style|tailwind|header|footer|badge|button|indicator|collis/.test(text)) {
+    return "Technical Communication & Collaboration";
+  }
+  if (/fix|debug|test|error|defect|timeout|resolve|assert|mismatch/.test(text)) {
+    return "Quality Assurance & Testing";
+  }
+  if (/rag|vector|chroma|analytics|trajectory|lstm|embed|data|pandas|dataframe|feature2|ml\b/.test(text)) {
+    return "Data Processing & Analytics";
+  }
+  if (/postgres|supabase|sql|database|db|pool|migrat|rls/.test(text)) {
+    return "Database Systems & Storage";
+  }
+  if (/deploy|docker|ci|cd|config|ingestion|sync|pipeline|env/.test(text)) {
+    return "DevOps & Cloud Infrastructure";
+  }
+  if (/api|router|fastapi|backend|endpoint|auth|jwt|server|pydantic/.test(text)) {
+    return "Backend Engineering & API Development";
+  }
+  return "Engineering Practice";
+}
+
 export default function EvidenceTimeline({
   items,
   onSelectEvidence,
@@ -52,7 +77,7 @@ export default function EvidenceTimeline({
             const dateStr = item.occurred_at
               ? new Date(item.occurred_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
               : `Event ${idx + 1}`;
-            const primaryComp = item.competencies?.[0] || item.skills?.[0] || "Backend";
+            const primaryComp = inferCompetency(item);
 
             return (
               <div
@@ -108,11 +133,9 @@ export default function EvidenceTimeline({
                     {item.title}
                   </h4>
                   <div className="flex gap-1">
-                    {(item.competencies || []).slice(0, 1).map((c) => (
-                      <span key={c} className="text-[9px] font-bold text-[#1C1C1C]/70">
-                        {c}
-                      </span>
-                    ))}
+                    <span className="text-[9px] font-bold text-[#1C1C1C]/70">
+                      {inferCompetency(item)}
+                    </span>
                   </div>
                 </div>
               </div>

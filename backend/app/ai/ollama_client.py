@@ -81,17 +81,13 @@ class OllamaClient:
                 sanitized_messages.append(HumanMessage(content=clean_content))
 
         try:
-            chat_model = ChatOllama(
-                model=self.model,
-                base_url=self.base_url,
+            # Primary: Direct HTTP call to Ollama native /api/chat with num_ctx=4096 and think=False for fast responses
+            raw_text = await self._http_fallback_generate(
+                messages=sanitized_messages,
                 temperature=temperature,
-                num_predict=max_tokens,
-                format="json",
-                client_kwargs={"timeout": op_timeout},
+                max_tokens=max_tokens,
+                timeout=op_timeout,
             )
-            response = await asyncio.wait_for(chat_model.ainvoke(sanitized_messages), timeout=op_timeout)
-            raw_text = str(response.content)
-
             latency_ms = int((time.perf_counter() - start_time) * 1000)
             logger.info(
                 f"Ollama Qwen3 operation succeeded: {operation}",
@@ -106,15 +102,19 @@ class OllamaClient:
             return raw_text
 
         except Exception as e:
-            # Fall back to direct HTTP client for resiliency
-            logger.warning(f"ChatOllama direct invoke encountered {e}, falling back to resilient HTTP chat...")
+            # Secondary fallback to ChatOllama wrapper
+            logger.warning(f"Direct Ollama HTTP invoke encountered {e}, trying ChatOllama fallback...")
             try:
-                raw_text = await self._http_fallback_generate(
-                    messages=sanitized_messages,
+                chat_model = ChatOllama(
+                    model=self.model,
+                    base_url=self.base_url,
                     temperature=temperature,
-                    max_tokens=max_tokens,
-                    timeout=op_timeout,
+                    num_predict=max_tokens,
+                    format="json",
+                    client_kwargs={"timeout": op_timeout},
                 )
+                response = await asyncio.wait_for(chat_model.ainvoke(sanitized_messages), timeout=op_timeout)
+                raw_text = str(response.content)
                 latency_ms = int((time.perf_counter() - start_time) * 1000)
                 logger.info(
                     f"Ollama Qwen3 fallback operation succeeded: {operation}",

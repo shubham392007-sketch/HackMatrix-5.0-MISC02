@@ -140,35 +140,49 @@ export default function RAGContextPanel({
       </div>
 
       {/* Query Bar with Competency Selector */}
-      <form onSubmit={handleJustify} className="mb-6 flex flex-col sm:flex-row gap-3">
-        <select
-          value={competency}
-          onChange={(e) => setCompetency(e.target.value)}
-          className="pill-input text-xs sm:w-64 bg-white"
-        >
-          {COMPETENCY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+      <form onSubmit={handleJustify} className="mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          <div className="md:col-span-4 lg:col-span-4">
+            <select
+              value={competency}
+              onChange={(e) => setCompetency(e.target.value)}
+              className="pill-input text-xs bg-white w-full cursor-pointer"
+            >
+              {COMPETENCY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="ASK: E.G. 'SYNC TIMEOUTS', 'ASYNC PIPELINES', 'WEIBULL'..."
-          className="pill-input flex-1 text-xs bg-white"
-        />
-        <PillButton
-          type="submit"
-          variant="primary"
-          size="md"
-          loading={loading}
-          icon={<Search className="w-3.5 h-3.5" />}
-        >
-          {loading ? "SEARCHING..." : "QUERY CONTEXT"}
-        </PillButton>
+          <div className="md:col-span-5 lg:col-span-6 min-w-0">
+            <div className="relative w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1C1C1C]/40 pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="ASK: E.G. 'SYNC TIMEOUTS', 'ASYNC PIPELINES', 'WEIBULL'..."
+                className="pill-input text-xs bg-white w-full !pl-11"
+                style={{ paddingLeft: "2.75rem" }}
+              />
+            </div>
+          </div>
+
+          <div className="md:col-span-3 lg:col-span-2">
+            <PillButton
+              type="submit"
+              variant="primary"
+              size="md"
+              className="w-full justify-center"
+              loading={loading}
+              icon={<Search className="w-3.5 h-3.5" />}
+            >
+              {loading ? "SEARCHING..." : "QUERY CONTEXT"}
+            </PillButton>
+          </div>
+        </div>
       </form>
 
       {/* Retrieved Context Results */}

@@ -403,14 +403,15 @@ class EvidenceIngestionService:
             except Exception as e:
                 logger.warning(f"AI extraction skipped or failed for evidence {ev_id}: {e}")
 
-        # Fast heuristic extraction from title and content if no primary competency resolved yet
+        # Comprehensive heuristic & semantic competency detection
         if not primary_competency_name:
             try:
                 text_to_scan = f"{evidence.title} {evidence.content}".lower()
                 all_skills = self.taxonomy_service.list_all_skills()
+
+                # 1. Direct taxonomy skill scan
                 for sk in all_skills:
                     sk_name = sk["name"]
-                    # Exact word boundary match (e.g. 'python', 'fastapi', 'docker', 'pandas')
                     if re.search(r'\b' + re.escape(sk_name.lower()) + r'\b', text_to_scan):
                         self.evidence_repo.attach_skill(ev_id, sk["id"], 0.85)
                         if sk.get("competency_id"):
@@ -419,8 +420,55 @@ class EvidenceIngestionService:
                                 comp_obj = self.taxonomy_service.get_competency_by_id(sk["competency_id"])
                                 if comp_obj:
                                     primary_competency_name = comp_obj["name"]
+
+                # 2. Competency classification rules across full tech taxonomy
+                comp_rules = [
+                    (
+                        "Quality Assurance & Testing",
+                        [r"\bfix\b", r"\btest\b", r"\bdebug\b", r"\btimeout\b", r"\berror\b", r"\bdefect\b", r"\bresolve\b", r"\bassert\b", r"\bmismatch\b"],
+                        ["Defect Debugging", "Integration Testing"]
+                    ),
+                    (
+                        "Data Processing & Analytics",
+                        [r"\brag\b", r"\bvector\b", r"\bchromadb\b", r"\banalytics\b", r"\btrajectory\b", r"\bfeature2\b", r"\bml\b", r"\bembed\b", r"\bpandas\b", r"\bdataframe\b", r"\blstm\b", r"\bweibull\b", r"\bdecay\b"],
+                        ["Data Pipelines", "RAG", "Vector Embeddings"]
+                    ),
+                    (
+                        "Technical Communication & Collaboration",
+                        [r"\bui\b", r"\bux\b", r"\bpages\b", r"\blayout\b", r"\bfrontend\b", r"\bdocs\b", r"\breadme\b", r"\bbadge\b", r"\bindicator\b", r"\bprofile\b", r"\bgithub\b", r"\bjira\b", r"\bcollision\b"],
+                        ["Technical Documentation", "GitHub", "Jira"]
+                    ),
+                    (
+                        "Database Systems & Storage",
+                        [r"\bpostgres\b", r"\bsupabase\b", r"\bsql\b", r"\bdatabase\b", r"\bpool\b", r"\bquery\b", r"\bmigrat\b", r"\brls\b"],
+                        ["PostgreSQL", "Supabase", "Database Migrations"]
+                    ),
+                    (
+                        "DevOps & Cloud Infrastructure",
+                        [r"\bdeploy\b", r"\bdocker\b", r"\bci/cd\b", r"\bconfig\b", r"\bingestion\b", r"\bsync\b", r"\bdeduplication\b", r"\bpipeline\b", r"\benv\b"],
+                        ["Docker", "CI/CD", "Environment Configuration"]
+                    ),
+                    (
+                        "Backend Engineering & API Development",
+                        [r"\bapi\b", r"\brouter\b", r"\bbackend\b", r"\bfastapi\b", r"\bauth\b", r"\bendpoint\b", r"\bmiddleware\b", r"\buvicorn\b", r"\bpydantic\b"],
+                        ["FastAPI", "API Design", "Authentication"]
+                    ),
+                ]
+
+                for comp_name, patterns, associated_skills in comp_rules:
+                    if any(re.search(pat, text_to_scan) for pat in patterns):
+                        c_id = self.taxonomy_service.resolve_competency(comp_name)
+                        if c_id:
+                            self.evidence_repo.attach_competency(ev_id, c_id, 0.85)
+                            if not primary_competency_name:
+                                primary_competency_name = comp_name
+                        for sk_name in associated_skills:
+                            sk_match = next((s for s in all_skills if s["name"].lower() == sk_name.lower()), None)
+                            if sk_match:
+                                self.evidence_repo.attach_skill(ev_id, sk_match["id"], 0.80)
+
             except Exception as ex:
-                logger.warning(f"Heuristic extraction failed for {ev_id}: {ex}")
+                logger.warning(f"Comprehensive competency extraction failed for {ev_id}: {ex}")
 
         # 3. Vector indexing in ChromaDB (only if employee is mapped)
         if evidence.employee_id:

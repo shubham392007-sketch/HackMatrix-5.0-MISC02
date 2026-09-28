@@ -638,13 +638,14 @@ export default function EvidencePage() {
 
               {/* Search Bar */}
               <div className="relative max-w-sm w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1C1C1C]/50" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1C1C1C]/50 pointer-events-none z-10" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="SEARCH EVIDENCE, COMMITS, SKILLS..."
-                  className="pill-input text-xs pl-10"
+                  className="pill-input text-xs w-full !pl-11"
+                  style={{ paddingLeft: "2.85rem" }}
                 />
               </div>
             </div>
