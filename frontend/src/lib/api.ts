@@ -101,7 +101,58 @@ export const evidence = {
 
 export const profile = {
   me: () => request<any>("/api/profile/me"),
+  update: (data: {
+    full_name?: string;
+    job_title?: string;
+    department?: string;
+    avatar_url?: string;
+    onboarding_completed?: boolean;
+  }) =>
+    request<any>("/api/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   integrations: () => request<Record<string, any>>("/api/profile/integrations"),
+  updateGithub: (data: {
+    token: string;
+    username?: string;
+    repository_owner?: string;
+    repository_name?: string;
+  }) =>
+    request<any>("/api/profile/integrations/github", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  updateJira: (data: {
+    base_url: string;
+    email: string;
+    api_token: string;
+    project_key?: string;
+  }) =>
+    request<any>("/api/profile/integrations/jira", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  disconnect: (provider: string) =>
+    request<{ success: boolean; message: string }>(`/api/profile/integrations/${provider}`, {
+      method: "DELETE",
+    }),
+  validateGithub: (data: { token: string; repository_owner?: string; repository_name?: string }) =>
+    request<{ valid: boolean; username?: string; message: string; rate_limit_remaining?: number }>(
+      "/api/profile/validate/github",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
+  validateJira: (data: { base_url: string; email: string; api_token: string; project_key?: string }) =>
+    request<{ valid: boolean; display_name?: string; message: string }>(
+      "/api/profile/validate/jira",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
 };
 
 export const integrations = {

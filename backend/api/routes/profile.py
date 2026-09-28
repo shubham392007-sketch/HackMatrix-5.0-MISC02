@@ -14,6 +14,8 @@ from backend.schemas.profile import (
     CompleteOnboardingRequest,
     OnboardingCompletionResponse,
     UserIntegrationSummary,
+    GitHubIntegrationSetup,
+    JiraIntegrationSetup,
 )
 from backend.core.security import encrypt_credentials, decrypt_credentials, mask_token
 from backend.integrations.github.client import GitHubClient
@@ -431,3 +433,179 @@ async def get_my_integrations(profile: UserProfile = Depends(get_current_profile
     except Exception as e:
         logger.error(f"Error fetching user integrations: {e}")
         return {}
+
+
+@router.put("/integrations/github", response_model=UserIntegrationSummary)
+async def update_github_integration(
+    setup: GitHubIntegrationSetup,
+    profile: UserProfile = Depends(get_current_profile),
+):
+    """Save or update GitHub credentials and target repo settings for the user."""
+    client = get_supabase_client()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    token = setup.token.strip() if setup.token else ""
+    username = setup.username.strip() if setup.username else None
+
+    # Test connection if token provided
+    status = "connected"
+    if token and not token.startswith("***"):
+        gh_client = GitHubClient(token=token)
+        try:
+            gh_res = gh_client.test_connection()
+            status = "connected" if gh_res.get("authenticated") else "invalid_credentials"
+            if not username and gh_res.get("username"):
+                username = gh_res.get("username")
+        except Exception:
+            status = "error"
+    else:
+        # If token was left as masked/existing, retain existing credentials
+        existing = client.table("user_integrations").select("*").eq("user_id", profile.user_id).eq("provider", "github").execute()
+        if existing.data and existing.data[0].get("encrypted_credentials"):
+            try:
+                dec = decrypt_credentials(existing.data[0]["encrypted_credentials"])
+                token = dec.get("token", "")
+            except Exception:
+                pass
+            status = existing.data[0].get("connection_status", "connected")
+            if not username:
+                username = existing.data[0].get("external_username")
+
+    encrypted_data = encrypt_credentials({
+        "token": token,
+        "username": username,
+        "repository_owner": setup.repository_owner.strip() if setup.repository_owner else None,
+        "repository_name": setup.repository_name.strip() if setup.repository_name else None,
+    })
+
+    gh_record = {
+        "user_id": profile.user_id,
+        "profile_id": profile.id,
+        "provider": "github",
+        "encrypted_credentials": encrypted_data,
+        "external_username": username,
+        "repository_owner": setup.repository_owner.strip() if setup.repository_owner else None,
+        "repository_name": setup.repository_name.strip() if setup.repository_name else None,
+        "connection_status": status,
+        "is_active": True,
+        "last_validated_at": now_iso,
+        "updated_at": now_iso,
+    }
+    client.table("user_integrations").upsert(gh_record, on_conflict="user_id,provider").execute()
+
+    if username:
+        try:
+            client.table("integration_identities").upsert({
+                "employee_id": profile.id,
+                "provider": "github",
+                "external_username": username,
+                "updated_at": now_iso,
+            }, on_conflict="employee_id,provider").execute()
+        except Exception as e:
+            logger.warning(f"Could not upsert github identity: {e}")
+
+    return UserIntegrationSummary(
+        provider="github",
+        is_active=True,
+        connection_status=status,
+        external_username=username,
+        repository_owner=setup.repository_owner,
+        repository_name=setup.repository_name,
+        token_masked=mask_token(token),
+        last_validated_at=datetime.now(timezone.utc),
+    )
+
+
+@router.put("/integrations/jira", response_model=UserIntegrationSummary)
+async def update_jira_integration(
+    setup: JiraIntegrationSetup,
+    profile: UserProfile = Depends(get_current_profile),
+):
+    """Save or update Jira Cloud credentials and project settings for the user."""
+    client = get_supabase_client()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    base_url = setup.base_url.strip() if setup.base_url else ""
+    email = setup.email.strip() if setup.email else ""
+    api_token = setup.api_token.strip() if setup.api_token else ""
+    project_key = setup.project_key.strip() if setup.project_key else None
+
+    status = "connected"
+    if api_token and not api_token.startswith("***"):
+        jira_client = JiraClient(base_url=base_url, email=email, api_token=api_token)
+        try:
+            jira_res = jira_client.test_connection()
+            status = "connected" if jira_res.get("authenticated") else "invalid_credentials"
+        except Exception:
+            status = "error"
+    else:
+        existing = client.table("user_integrations").select("*").eq("user_id", profile.user_id).eq("provider", "jira").execute()
+        if existing.data and existing.data[0].get("encrypted_credentials"):
+            try:
+                dec = decrypt_credentials(existing.data[0]["encrypted_credentials"])
+                api_token = dec.get("api_token", "")
+            except Exception:
+                pass
+            status = existing.data[0].get("connection_status", "connected")
+            if not base_url:
+                base_url = dec.get("base_url", "")
+            if not email:
+                email = dec.get("email", "")
+
+    encrypted_jira = encrypt_credentials({
+        "base_url": base_url,
+        "email": email,
+        "api_token": api_token,
+        "project_key": project_key,
+    })
+
+    jira_record = {
+        "user_id": profile.user_id,
+        "profile_id": profile.id,
+        "provider": "jira",
+        "encrypted_credentials": encrypted_jira,
+        "external_username": email,
+        "base_url": base_url,
+        "project_key": project_key,
+        "connection_status": status,
+        "is_active": True,
+        "last_validated_at": now_iso,
+        "updated_at": now_iso,
+    }
+    client.table("user_integrations").upsert(jira_record, on_conflict="user_id,provider").execute()
+
+    if email:
+        try:
+            client.table("integration_identities").upsert({
+                "employee_id": profile.id,
+                "provider": "jira",
+                "external_email": email,
+                "updated_at": now_iso,
+            }, on_conflict="employee_id,provider").execute()
+        except Exception as e:
+            logger.warning(f"Could not upsert jira identity: {e}")
+
+    return UserIntegrationSummary(
+        provider="jira",
+        is_active=True,
+        connection_status=status,
+        external_username=email,
+        base_url=base_url,
+        project_key=project_key,
+        token_masked=mask_token(api_token),
+        last_validated_at=datetime.now(timezone.utc),
+    )
+
+
+@router.delete("/integrations/{provider}")
+async def disconnect_integration(
+    provider: str,
+    profile: UserProfile = Depends(get_current_profile),
+):
+    """Disconnect and deactivate an integration provider for the current user."""
+    client = get_supabase_client()
+    try:
+        client.table("user_integrations").delete().eq("user_id", profile.user_id).eq("provider", provider).execute()
+        client.table("integration_identities").delete().eq("employee_id", profile.id).eq("provider", provider).execute()
+        return {"success": True, "message": f"{provider} disconnected successfully"}
+    except Exception as e:
+        logger.error(f"Error disconnecting {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to disconnect {provider}: {str(e)}")

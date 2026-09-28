@@ -96,20 +96,24 @@ export default function GlobalHeader() {
         <div className="hidden sm:flex items-center gap-3">
           {authenticated && profile ? (
             <div className="flex items-center gap-3">
-              {/* User Identity Pill */}
-              <div className="flex items-center gap-2 bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-3 py-1 shadow-[2px_2px_0_0_#1C1C1C]">
+              {/* User Identity Pill - Clickable link to Profile */}
+              <Link
+                href="/employee/profile"
+                className="flex items-center gap-2 bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-3 py-1 shadow-[2px_2px_0_0_#1C1C1C] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1C1C1C] transition-all cursor-pointer group"
+                title="View & Edit Profile / Integrations"
+              >
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border border-[#1C1C1C] ${role === 'MANAGER' ? 'bg-[#F6C8D6]' : 'bg-[#DFE968]'}`}>
                   {profile.full_name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="text-left pr-1">
-                  <p className="text-[11px] font-black leading-tight truncate max-w-[120px]">
+                  <p className="text-[11px] font-black leading-tight truncate max-w-[120px] group-hover:underline">
                     {profile.full_name?.split(" ")[0]}
                   </p>
                   <span className="text-[9px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block leading-none">
                     {role || "EMPLOYEE"}
                   </span>
                 </div>
-              </div>
+              </Link>
 
               {/* View Switcher if Manager */}
               {role === "MANAGER" && (
@@ -165,10 +169,19 @@ export default function GlobalHeader() {
         <div className="lg:hidden bg-[#FBF1CF] border-t border-[#1C1C1C] px-5 py-4 space-y-2">
           {authenticated && profile && (
             <div className="pb-3 mb-2 border-b border-[#1C1C1C]/20 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black">{profile.full_name}</p>
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{role}</span>
-              </div>
+              <Link
+                href="/employee/profile"
+                onClick={() => setMobileOpen(false)}
+                className="hover:underline flex items-center gap-2"
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border border-[#1C1C1C] ${role === 'MANAGER' ? 'bg-[#F6C8D6]' : 'bg-[#DFE968]'}`}>
+                  {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-xs font-black">{profile.full_name}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{role} • Settings</span>
+                </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-xs font-black uppercase text-red-600 flex items-center gap-1"
