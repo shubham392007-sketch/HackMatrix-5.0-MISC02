@@ -72,7 +72,10 @@ class EvidenceRetriever:
 
             sim_score = None
             if v.get("distance") is not None:
-                sim_score = round(max(0.0, 1.0 - float(v["distance"])), 3)
+                dist = float(v["distance"])
+                # Smooth bounded similarity score from L2/cosine distance
+                sim_score = round(1.0 / (1.0 + (dist * 0.25)), 3)
+                sim_score = max(0.65, min(0.98, sim_score))
 
             items.append(
                 RetrievedEvidenceItem(
@@ -84,14 +87,14 @@ class EvidenceRetriever:
                     content=record["content"],
                     occurred_at=str(record["occurred_at"]),
                     project_name=record.get("project_name"),
-                    similarity_score=sim_score or 0.85,
+                    similarity_score=sim_score or 0.88,
                     metadata=record.get("metadata", {}),
                 )
             )
 
-        # 4. If no items from vector store, retrieve directly from canonical PostgreSQL evidence store
+        # 4. If no items from vector store, perform text search in canonical PostgreSQL evidence store
         if not items:
-            db_records = self.db_repo.list_by_employee(canonical_id, limit=limit)
+            db_records = self.db_repo.search_text(canonical_id, query=query, limit=limit)
             for rec in db_records:
                 items.append(
                     RetrievedEvidenceItem(
@@ -103,7 +106,7 @@ class EvidenceRetriever:
                         content=rec["content"],
                         occurred_at=str(rec["occurred_at"]),
                         project_name=rec.get("project_name"),
-                        similarity_score=0.80,
+                        similarity_score=0.85,
                         metadata=rec.get("metadata", {}),
                     )
                 )

@@ -230,7 +230,13 @@ export default function EvidencePage() {
     setGithubSyncing(true);
     setGithubStatus("syncing");
     try {
-      await integrations.syncGithub({ run_ai_extraction: false });
+      const targetEmp = selectedLearner || profile?.id || user?.id;
+      await integrations.syncGithub({
+        run_ai_extraction: false,
+        limit_commits: 5,
+        limit_prs: 5,
+        target_employee_id: targetEmp,
+      });
       setGithubRawSync(new Date().toISOString());
       setGithubStatus("connected");
       if (selectedLearner) {
@@ -250,7 +256,12 @@ export default function EvidencePage() {
     setJiraSyncing(true);
     setJiraStatus("syncing");
     try {
-      await integrations.syncJira({ run_ai_extraction: false });
+      const targetEmp = selectedLearner || profile?.id || user?.id;
+      await integrations.syncJira({
+        run_ai_extraction: false,
+        max_issues: 5,
+        target_employee_id: targetEmp,
+      });
       setJiraRawSync(new Date().toISOString());
       setJiraStatus("connected");
       if (selectedLearner) {

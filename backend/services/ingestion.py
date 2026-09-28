@@ -117,9 +117,11 @@ class EvidenceIngestionService:
             raw_records = [("commit", c) for c in raw_commits] + [("pr", p) for p in raw_prs]
             found = len(raw_records)
 
+            # Pre-normalize candidates to batch check duplicates
+            normalized_candidates = []
+            candidate_refs = []
             for rec_type, raw_item in raw_records:
                 try:
-                    # Normalize
                     if rec_type == "commit":
                         author_usr = (raw_item.get("author") or {}).get("login")
                         author_email = (raw_item.get("commit", {}).get("author") or {}).get("email")
@@ -129,9 +131,17 @@ class EvidenceIngestionService:
                         pr_user = (raw_item.get("user") or {}).get("login")
                         emp_id = self.identity_resolver.resolve_github_employee(pr_user) or canonical_emp_id
                         evidence = normalize_github_pr(raw_item, target_owner, target_repo, emp_id)
+                    normalized_candidates.append(evidence)
+                    candidate_refs.append(evidence.source_reference)
+                except Exception as norm_ex:
+                    logger.warning(f"Error normalizing raw item: {norm_ex}")
 
-                    # Deduplication check
-                    if self.evidence_repo.exists_by_reference(evidence.source, evidence.source_reference):
+            existing_refs = self.evidence_repo.get_existing_references("github", candidate_refs)
+
+            for evidence in normalized_candidates:
+                try:
+                    # Fast in-memory deduplication check
+                    if evidence.source_reference in existing_refs:
                         skipped += 1
                         continue
 
@@ -256,6 +266,9 @@ class EvidenceIngestionService:
             raw_issues = active_client.search_issues(project_key=target_proj, max_results=max_issues)
             found = len(raw_issues)
 
+            # Pre-normalize candidates to batch check duplicates
+            normalized_candidates = []
+            candidate_refs = []
             for issue in raw_issues:
                 try:
                     fields = issue.get("fields", {}) or {}
@@ -263,11 +276,18 @@ class EvidenceIngestionService:
                     email = assignee.get("emailAddress")
                     uname = assignee.get("displayName") or assignee.get("accountId")
                     emp_id = self.identity_resolver.resolve_jira_employee(email=email, username=uname) or canonical_emp_id
-
                     evidence = normalize_jira_issue(issue, instance_url, target_proj, emp_id)
+                    normalized_candidates.append(evidence)
+                    candidate_refs.append(evidence.source_reference)
+                except Exception as norm_ex:
+                    logger.warning(f"Error normalizing Jira issue: {norm_ex}")
 
-                    # Deduplication check
-                    if self.evidence_repo.exists_by_reference(evidence.source, evidence.source_reference):
+            existing_refs = self.evidence_repo.get_existing_references("jira", candidate_refs)
+
+            for evidence in normalized_candidates:
+                try:
+                    # Fast in-memory deduplication check
+                    if evidence.source_reference in existing_refs:
                         skipped += 1
                         continue
 

@@ -18,6 +18,37 @@ class EvidenceRepository:
         res = self.client.table("evidence").select("id").eq("source", source).eq("source_reference", source_reference).execute()
         return len(res.data) > 0
 
+    def get_existing_references(self, source: str, source_references: List[str]) -> set:
+        """Batch check existing references in a single query to eliminate N round trips."""
+        if not source_references:
+            return set()
+        try:
+            res = self.client.table("evidence").select("source_reference").eq("source", source).in_("source_reference", source_references).execute()
+            return {r["source_reference"] for r in (res.data or []) if r.get("source_reference")}
+        except Exception as e:
+            logger.warning(f"Batch reference check failed: {e}")
+            return set()
+
+    def search_text(self, employee_id: str, query: str, limit: int = 5) -> List[dict]:
+        """Perform text matching against employee evidence title and content."""
+        target_uuid = self._resolve_employee_uuid(employee_id) or str(employee_id)
+        tokens = [t.strip().lower() for t in query.split() if len(t.strip()) > 2]
+        all_records = self.list_by_employee(target_uuid, limit=100)
+        if not tokens:
+            return all_records[:limit]
+
+        matched = []
+        for r in all_records:
+            t = (r.get("title") or "").lower()
+            c = (r.get("content") or "").lower()
+            match_count = sum(1 for tok in tokens if tok in t or tok in c)
+            if match_count > 0:
+                matched.append((match_count, r))
+
+        matched.sort(key=lambda x: x[0], reverse=True)
+        results = [m[1] for m in matched]
+        return (results if results else all_records)[:limit]
+
     def create(self, evidence: CanonicalEvidence) -> dict:
         payload = {
             "id": evidence.evidence_id,

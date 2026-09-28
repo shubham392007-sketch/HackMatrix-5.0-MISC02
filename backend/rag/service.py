@@ -40,10 +40,15 @@ class RAGService:
         """Execute employee-isolated semantic evidence retrieval."""
         canonical_id = self._resolve_employee(req.employee_id)
 
+        # Treat "all", empty, or generic competency as None to search across full evidence taxonomy
+        effective_comp = None
+        if req.competency and req.competency.strip().lower() not in ("all", "all competencies", "any", "none", "", "general engineering"):
+            effective_comp = req.competency.strip()
+
         items = self.retriever.retrieve(
             employee_id=canonical_id,
             query=req.query,
-            competency=req.competency,
+            competency=effective_comp,
             limit=req.limit,
         )
 
@@ -66,23 +71,30 @@ class RAGService:
         canonical_id = self._resolve_employee(req.employee_id)
         inquiry = req.request_context or req.question or ""
 
+        effective_comp = None
+        if req.competency and req.competency.strip().lower() not in ("all", "all competencies", "any", "none", "", "general engineering"):
+            effective_comp = req.competency.strip()
+
         # Construct contextual search query
-        search_query = f"Evidence of work, commits, tasks, issues, and problem solving related to {req.competency}"
-        if inquiry:
-            search_query += f". {inquiry}"
+        if effective_comp:
+            search_query = f"{inquiry} in relation to {effective_comp}" if inquiry else f"Evidence of work, commits, and problem solving related to {effective_comp}"
+        else:
+            search_query = inquiry or "Engineering contributions, features, commits, pull requests, and technical problem solving"
 
         # Retrieve relevant evidence with strict employee filter
         retrieved_evidence = self.retriever.retrieve(
             employee_id=canonical_id,
             query=search_query,
-            competency=req.competency,
+            competency=effective_comp,
             limit=6,
         )
+
+        target_competency_name = effective_comp or "Software Engineering & Architecture"
 
         # Generate evidence-grounded justification
         response = await self.generator.generate_justification(
             employee_id=canonical_id,
-            competency=req.competency,
+            competency=target_competency_name,
             retrieved_evidence=retrieved_evidence,
             query=inquiry,
         )
