@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import GlobalHeader from '@/components/layout/GlobalHeader';
 import GlobalFooter from '@/components/layout/GlobalFooter';
 import {
@@ -27,8 +27,10 @@ import { useAuth } from '@/context/AuthContext';
 
 type Step = 1 | 2 | 3 | 4;
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isConfirmed = searchParams.get('confirmed') === 'true';
   const { user, profile, refreshProfile, loading: authLoading } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -72,13 +74,17 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace('/login');
+      router.replace('/login?redirect=/onboarding');
     }
     if (profile?.onboarding_completed) {
       router.replace(profile.role === 'MANAGER' ? '/manager/dashboard' : '/employee/dashboard');
     }
-    if (profile?.full_name && !fullName) {
-      setFullName(profile.full_name);
+    if (!fullName) {
+      if (profile?.full_name) {
+        setFullName(profile.full_name);
+      } else if (user?.user_metadata?.full_name) {
+        setFullName(user.user_metadata.full_name);
+      }
     }
   }, [user, profile, authLoading, router, fullName]);
 
@@ -287,6 +293,20 @@ export default function OnboardingPage() {
               </p>
             </div>
 
+            {isConfirmed && (
+              <div className="p-4 rounded-2xl bg-[#D3E8D5] border-[1.5px] border-[#1C1C1C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
+                <CheckCircle2 className="w-5 h-5 text-green-800 flex-shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed space-y-0.5">
+                  <p className="font-extrabold uppercase tracking-wide text-green-950">
+                    Email Confirmed Successfully!
+                  </p>
+                  <p className="font-medium text-green-900">
+                    Welcome to GrowthLens. Please configure your profile information and connect your GitHub & Jira credentials below. All features will be unlocked once onboarding is saved.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {generalError && (
               <div className="p-4 rounded-2xl bg-[#F6C8D6] border-[1.5px] border-[#1C1C1C] flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-[#1C1C1C] flex-shrink-0 mt-0.5" />
@@ -348,7 +368,7 @@ export default function OnboardingPage() {
                 <div className="pt-4 flex justify-end">
                   <button
                     type="button"
-                    disabled={!jobTitle.trim()}
+                    disabled={!jobTitle.trim() || !fullName.trim()}
                     onClick={() => setCurrentStep(2)}
                     className="pill-btn pill-btn-primary flex items-center gap-2 text-xs font-black uppercase tracking-wider py-3.5 px-6 disabled:opacity-50"
                   >
@@ -782,3 +802,27 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col justify-between text-[#1C1C1C]">
+          <GlobalHeader />
+          <main className="flex-1 flex items-center justify-center p-6">
+            <div className="gl-card max-w-sm w-full p-8 border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-col items-center gap-4 text-center">
+              <div className="w-10 h-10 rounded-full border-3 border-[#1C1C1C] border-t-[#DFE968] animate-spin" />
+              <p className="text-xs font-extrabold tracking-[0.14em] uppercase text-[#1C1C1C]">
+                LOADING ONBOARDING PORTAL ···
+              </p>
+            </div>
+          </main>
+          <GlobalFooter />
+        </div>
+      }
+    >
+      <OnboardingContent />
+    </Suspense>
+  );
+}
+

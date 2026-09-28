@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup } = useAuth();
+  const { signup, verifyOtp, resendConfirmation } = useAuth();
 
   const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
   const [fullName, setFullName] = useState('');
@@ -19,7 +19,14 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Confirmation state
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +47,7 @@ export default function SignupPage() {
     try {
       const { error, emailConfirmationRequired } = await signup(email, password, fullName, role);
       if (error) {
-        if (error.message.includes("User already registered")) {
+        if (error.message.includes("already exists") || error.message.includes("already registered")) {
           setErrorMessage("An account with this email already exists. Please log in.");
         } else {
           setErrorMessage(error.message || "Could not complete registration.");
@@ -53,11 +60,58 @@ export default function SignupPage() {
         setConfirmationSent(true);
         setLoading(false);
       } else {
-        router.push('/onboarding');
+        router.push('/onboarding?confirmed=true');
       }
     } catch {
       setErrorMessage("A network error occurred during registration. Please try again.");
       setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError(null);
+    if (!otpCode.trim()) {
+      setOtpError("Please enter your 6-digit verification code.");
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const { error } = await verifyOtp(email, otpCode);
+      if (error) {
+        setOtpError(error.message || "Invalid or expired confirmation code.");
+        setVerifyingOtp(false);
+        return;
+      }
+      router.push('/onboarding?confirmed=true');
+    } catch {
+      setOtpError("Could not verify code. Please try again.");
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0) return;
+    setOtpError(null);
+    try {
+      const { error } = await resendConfirmation(email);
+      if (error) {
+        setOtpError(error.message || "Failed to resend confirmation email.");
+      } else {
+        setResendMessage("A new confirmation email has been dispatched to your inbox.");
+        setResendCooldown(60);
+        const timer = setInterval(() => {
+          setResendCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } catch {
+      setOtpError("Could not dispatch confirmation email.");
     }
   };
 
@@ -69,21 +123,82 @@ export default function SignupPage() {
         <div className="container mx-auto max-w-6xl flex flex-col lg:flex-row-reverse items-center gap-16">
           <div className="flex-1 w-full max-w-md mx-auto">
             {confirmationSent ? (
-              <div className="gl-card p-8 border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] rounded-3xl text-center space-y-5">
-                <div className="w-14 h-14 rounded-full bg-[#DFE968] border border-[#1C1C1C] mx-auto flex items-center justify-center shadow-[2px_2px_0_0_#1C1C1C]">
-                  <Mail className="w-7 h-7 text-[#1C1C1C]" />
+              <div className="gl-card p-8 md:p-10 border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] rounded-3xl text-center space-y-6 shadow-[4px_4px_0_0_#1C1C1C]">
+                <div className="w-16 h-16 rounded-full bg-[#DFE968] border border-[#1C1C1C] mx-auto flex items-center justify-center shadow-[2px_2px_0_0_#1C1C1C]">
+                  <Mail className="w-8 h-8 text-[#1C1C1C]" />
                 </div>
-                <h2 className="text-2xl font-black uppercase tracking-tight">Verify Your Work Email</h2>
-                <p className="text-sm font-medium leading-relaxed text-gray-700">
-                  We sent a confirmation link to <span className="font-bold underline">{email}</span>. Click the link in the message to activate your account.
-                </p>
-                <div className="pt-4">
-                  <Link
-                    href="/login"
-                    className="pill-btn pill-btn-primary w-full flex justify-center items-center gap-2 text-xs font-black uppercase py-3.5"
+                
+                <div className="space-y-2">
+                  <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Check Your Inbox</h2>
+                  <p className="text-xs font-medium leading-relaxed text-gray-700">
+                    We sent a confirmation link to <span className="font-extrabold underline text-black">{email}</span>.
+                    Click the link in the email to activate your account and proceed to profile setup.
+                  </p>
+                </div>
+
+                {otpError && (
+                  <div className="p-3.5 rounded-2xl bg-[#F6C8D6] border-[1.5px] border-[#1C1C1C] flex items-start gap-2.5 text-left">
+                    <AlertCircle className="w-4 h-4 text-[#1C1C1C] flex-shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold leading-relaxed">{otpError}</p>
+                  </div>
+                )}
+
+                {resendMessage && (
+                  <div className="p-3.5 rounded-2xl bg-[#D3E8D5] border-[1.5px] border-[#1C1C1C] flex items-start gap-2.5 text-left">
+                    <CheckCircle2 className="w-4 h-4 text-green-800 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-green-900 leading-relaxed">{resendMessage}</p>
+                  </div>
+                )}
+
+                {/* Inline OTP Code Verification */}
+                <form onSubmit={handleVerifyOtp} className="space-y-3 pt-2 text-left border-t border-[#1C1C1C]/15">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-800 ml-2">
+                    Or Enter 6-Digit Code From Email
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={8}
+                      className="pill-input flex-1 bg-[#FBF1CF] border-[#1C1C1C] font-mono font-black text-center text-sm tracking-[0.25em]"
+                      placeholder="123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.trim())}
+                    />
+                    <button
+                      type="submit"
+                      disabled={verifyingOtp || !otpCode.trim()}
+                      className="pill-btn pill-btn-primary px-5 py-2.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {verifyingOtp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "VERIFY"}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="pt-2 border-t border-[#1C1C1C]/15 flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleResendEmail}
+                    disabled={resendCooldown > 0}
+                    className="text-xs font-extrabold uppercase tracking-wider text-gray-700 hover:text-black underline disabled:opacity-40"
                   >
-                    RETURN TO SIGN IN <ArrowRight className="w-4 h-4" />
-                  </Link>
+                    {resendCooldown > 0
+                      ? `Resend available in ${resendCooldown}s`
+                      : "Didn't receive email? Resend confirmation"}
+                  </button>
+
+                  <div className="flex items-center justify-center gap-4 text-xs font-bold text-gray-600 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmationSent(false)}
+                      className="hover:text-black underline"
+                    >
+                      Edit details
+                    </button>
+                    <span>·</span>
+                    <Link href="/login" className="hover:text-black underline">
+                      Sign in
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (

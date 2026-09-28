@@ -37,9 +37,9 @@ export default function GlobalHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = authenticated
-    ? role === "MANAGER"
-      ? managerNav
-      : employeeNav
+    ? (!profile?.onboarding_completed
+        ? [{ label: "SETUP PROFILE & INTEGRATIONS", href: "/onboarding" }]
+        : (role === "MANAGER" ? managerNav : employeeNav))
     : publicNav;
 
   const handleLogout = async () => {
@@ -52,7 +52,13 @@ export default function GlobalHeader() {
       <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-16">
         {/* Brand Logo */}
         <Link
-          href={authenticated ? (role === "MANAGER" ? "/manager/dashboard" : "/employee/dashboard") : "/"}
+          href={
+            authenticated
+              ? (!profile?.onboarding_completed
+                  ? "/onboarding"
+                  : (role === "MANAGER" ? "/manager/dashboard" : "/employee/dashboard"))
+              : "/"
+          }
           className="flex items-center gap-1 group"
         >
           <span

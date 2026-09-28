@@ -31,6 +31,12 @@ interface AuthContextType {
     fullName: string,
     role: "EMPLOYEE" | "MANAGER"
   ) => Promise<{ error: Error | null; emailConfirmationRequired: boolean }>;
+  verifyOtp: (
+    email: string,
+    token: string,
+    type?: "signup" | "email"
+  ) => Promise<{ error: Error | null }>;
+  resendConfirmation: (email: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -173,77 +179,105 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     setLoading(true);
     const cleanEmail = email.trim();
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const emailRedirectTo = `${origin}/auth/callback`;
+
     try {
-      // 1. Primary: Use backend admin registration to bypass Supabase SMTP 429 rate-limiting
-      try {
-        const resp = await fetch("/api/auth/register-user", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fullName.trim(),
-            email: cleanEmail,
-            password,
-            role: role.toUpperCase(),
-          }),
-        });
-
-        if (resp.ok) {
-          // Immediately sign in with the new confirmed user
-          const signInRes = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-
-          if (signInRes.data.session && signInRes.data.user) {
-            setSession(signInRes.data.session);
-            setUser(signInRes.data.user);
-            const p = await fetchProfile(signInRes.data.user, signInRes.data.session);
-            setProfile(p);
-            return { error: null, emailConfirmationRequired: false };
-          }
-        } else {
-          const errData = await resp.json().catch(() => ({}));
-          if (resp.status === 400 && errData.detail?.includes("already exists")) {
-            return { error: new Error(errData.detail), emailConfirmationRequired: false };
-          }
-        }
-      } catch (backendErr) {
-        console.warn("Backend registration fallback to direct Supabase Auth:", backendErr);
-      }
-
-      // 2. Fallback: Direct Supabase client sign up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
+          emailRedirectTo,
           data: {
             full_name: fullName.trim(),
             role: role.toUpperCase(),
           },
         },
       });
+
       if (error) {
+        if (
+          error.message?.includes("User already registered") ||
+          error.message?.includes("already exists")
+        ) {
+          return {
+            error: new Error("An account with this email already exists. Please log in."),
+            emailConfirmationRequired: false,
+          };
+        }
         if (error.message?.includes("rate limit") || (error as any).status === 429) {
           return {
-            error: new Error("Supabase email rate limit reached. Please try logging in or wait a few minutes."),
+            error: new Error(
+              "Email rate limit reached for Supabase SMTP. Please check your inbox if you recently signed up, or wait a few moments."
+            ),
             emailConfirmationRequired: false,
           };
         }
         return { error, emailConfirmationRequired: false };
       }
 
+      // If email confirmation is enabled, Supabase returns data.user without data.session
       const emailConfirmationRequired = !data.session;
+
       if (data.session && data.user) {
         setSession(data.session);
         setUser(data.user);
         const p = await fetchProfile(data.user, data.session);
         setProfile(p);
       }
+
       return { error: null, emailConfirmationRequired };
     } catch (e: any) {
       return { error: e, emailConfirmationRequired: false };
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (
+    email: string,
+    token: string,
+    type: "signup" | "email" = "signup"
+  ) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: token.trim(),
+        type,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      if (data.session && data.user) {
+        setSession(data.session);
+        setUser(data.user);
+        const p = await fetchProfile(data.user, data.session);
+        setProfile(p);
+      }
+      return { error: null };
+    } catch (e: any) {
+      return { error: e };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async (email: string) => {
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${origin}/auth/callback`,
+        },
+      });
+      return { error };
+    } catch (e: any) {
+      return { error: e };
     }
   };
 
@@ -277,6 +311,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authenticated: !!session && !!user,
         login,
         signup,
+        verifyOtp,
+        resendConfirmation,
         logout,
         refreshProfile,
       }}
