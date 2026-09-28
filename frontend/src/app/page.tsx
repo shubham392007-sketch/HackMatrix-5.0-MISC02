@@ -122,10 +122,10 @@ export default function LandingPage() {
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  href="#features"
+                  href="/features"
                   className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1C1C1C]/5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
                 >
-                  HOW IT WORKS
+                  EXPLORE ALL FEATURES →
                 </Link>
               </div>
             </div>
@@ -496,6 +496,23 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Deep Dive Action Banner */}
+          <div className="mt-14 text-center flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/features"
+              className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-[3px_3px_0px_#1C1C1C]"
+            >
+              DEEP DIVE THE 4 CORE ENGINES
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/about"
+              className="bg-white border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#FBF6DF] transition-all shadow-[2px_2px_0px_#1C1C1C]"
+            >
+              READ OUR MANIFESTO
+            </Link>
           </div>
         </section>
       </main>

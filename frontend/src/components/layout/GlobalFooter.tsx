@@ -7,8 +7,9 @@ import { ArrowRight } from "lucide-react";
 export default function GlobalFooter() {
   const pathname = usePathname();
 
-  // Make sure the footer appears only on the home page of the website and nowhere else
-  if (pathname !== "/") {
+  // Render footer on marketing and informational pages
+  const isMarketingPage = pathname === "/" || pathname === "/features" || pathname === "/about";
+  if (!isMarketingPage) {
     return null;
   }
 

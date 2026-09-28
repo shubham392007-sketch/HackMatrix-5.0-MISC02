@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const publicNav = [
   { label: "HOME", href: "/" },
-  { label: "FEATURES", href: "/#features" },
+  { label: "FEATURES", href: "/features" },
   { label: "ABOUT", href: "/about" },
 ];
 
