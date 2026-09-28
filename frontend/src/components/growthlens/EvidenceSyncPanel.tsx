@@ -1,7 +1,6 @@
 "use client";
-
 import React, { useState } from "react";
-import { Terminal, Cpu, Database, Play, CheckCircle2, ArrowRight, Loader2, Sparkles, Layers } from "lucide-react";
+import { Terminal, Cpu, Database, Play, CheckCircle2, ArrowRight, Loader2, Sparkles, Layers, AlertCircle, X } from "lucide-react";
 import PillButton from "./PillButton";
 
 export interface SyncResultInfo {
@@ -16,6 +15,8 @@ interface EvidenceSyncPanelProps {
   isProcessing: boolean;
   activeStage?: "idle" | "source" | "parsing" | "tagging" | "indexing" | "complete";
   syncResult?: SyncResultInfo | null;
+  errorMessage?: string | null;
+  onDismissError?: () => void;
   className?: string;
 }
 
@@ -24,6 +25,8 @@ export default function EvidenceSyncPanel({
   isProcessing,
   activeStage = "idle",
   syncResult = null,
+  errorMessage = null,
+  onDismissError,
   className = "",
 }: EvidenceSyncPanelProps) {
   const [selectedSource, setSelectedSource] = useState<string>("all");
@@ -194,7 +197,9 @@ export default function EvidenceSyncPanel({
                 </span>
                 <span className="text-[11px] font-semibold text-[#1C1C1C]/80">
                   {syncResult
-                    ? `Processed ${syncResult.processed ?? 0} record(s), ${syncResult.skipped ?? 0} up-to-date. Canonical records indexed in ChromaDB.`
+                    ? syncResult.processed && syncResult.processed > 0
+                      ? `Ingested ${syncResult.processed} new record(s) with AI skill tags; ${syncResult.skipped ?? 0} records verified up-to-date in ChromaDB.`
+                      : `All ${syncResult.skipped ?? syncResult.found ?? 0} recent item(s) are already canonical and indexed in ChromaDB.`
                     : "Canonical evidence records parsed, verified with Qwen3, and indexed in ChromaDB."}
                 </span>
               </div>
@@ -202,6 +207,33 @@ export default function EvidenceSyncPanel({
             <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-white text-[#1C1C1C]">
               SYNCED
             </span>
+          </div>
+        )}
+
+        {/* Extraction Error / Warning Banner */}
+        {errorMessage && (
+          <div className="p-4 rounded-2xl border-[1.5px] border-[#DC2626] bg-[#FFEAEA] shadow-[2px_2px_0px_#DC2626] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-[#DC2626] shrink-0" />
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-[#991B1B] block">
+                  Extraction Pipeline Notice
+                </span>
+                <span className="text-[11px] font-semibold text-[#1C1C1C]">
+                  {errorMessage}
+                </span>
+              </div>
+            </div>
+            {onDismissError && (
+              <button
+                type="button"
+                onClick={onDismissError}
+                className="p-1 rounded-full hover:bg-black/10 transition-colors"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4 text-[#1C1C1C]" />
+              </button>
+            )}
           </div>
         )}
 

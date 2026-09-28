@@ -68,6 +68,7 @@ export default function EvidencePage() {
   const [pipelineStage, setPipelineStage] = useState<
     "idle" | "source" | "parsing" | "tagging" | "indexing" | "complete"
   >("idle");
+  const [pipelineError, setPipelineError] = useState<string>("");
   const [syncResult, setSyncResult] = useState<{
     found?: number;
     processed?: number;
@@ -324,7 +325,7 @@ export default function EvidencePage() {
   }) => {
     setPipelineProcessing(true);
     setPipelineStage("source");
-    setError("");
+    setPipelineError("");
     setSyncResult(null);
 
     try {
@@ -380,7 +381,7 @@ export default function EvidencePage() {
       if (selectedLearner) fetchEvidence(selectedLearner);
       loadIntegrations();
     } catch (err: any) {
-      setError(err?.message || "Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
+      setPipelineError(err?.message || "Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
     } finally {
       setTimeout(() => {
         setPipelineProcessing(false);
@@ -543,6 +544,8 @@ export default function EvidencePage() {
             isProcessing={pipelineProcessing}
             activeStage={pipelineStage}
             syncResult={syncResult}
+            errorMessage={pipelineError}
+            onDismissError={() => setPipelineError("")}
           />
 
           {/* ── Section 20: Evidence Overview Integrated Composition ── */}
