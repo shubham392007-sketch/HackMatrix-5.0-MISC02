@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/context/AuthContext";
 import {
   ScriptHeading,
   PillButton,
@@ -20,8 +21,8 @@ import {
 import {
   evidence as evidenceApi,
   integrations,
+  profile as profileApi,
   trajectory as trajectoryApi,
-  health as healthApi,
 } from "@/lib/api";
 import type { Learner, Evidence } from "@/lib/types";
 import {
@@ -41,22 +42,24 @@ import {
 const FILTERS = ["ALL", "GITHUB", "JIRA", "ASSESSMENT", "PROJECT", "COURSE", "FEEDBACK"] as const;
 
 export default function EvidencePage() {
+  const { user, profile } = useAuth();
   const [learners, setLearners] = useState<Learner[]>([]);
-  const [selectedLearner, setSelectedLearner] = useState<string>("shubham_pokale");
+  const [selectedLearner, setSelectedLearner] = useState<string>("");
   const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [filter, setFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Integrations state
-  const [githubStatus, setGithubStatus] = useState<"connected" | "not_connected" | "needs_attention">("connected");
-  const [jiraStatus, setJiraStatus] = useState<"connected" | "not_connected" | "needs_attention">("connected");
+  // Real integrations state
+  const [githubStatus, setGithubStatus] = useState<"connected" | "not_connected" | "needs_attention">("not_connected");
+  const [jiraStatus, setJiraStatus] = useState<"connected" | "not_connected" | "needs_attention">("not_connected");
+  const [activeIntegrationsCount, setActiveIntegrationsCount] = useState<number>(0);
   const [githubSyncing, setGithubSyncing] = useState<boolean>(false);
   const [jiraSyncing, setJiraSyncing] = useState<boolean>(false);
   const [githubTesting, setGithubTesting] = useState<boolean>(false);
   const [jiraTesting, setJiraTesting] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("Today, 03:30 AM");
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Not synced yet");
 
   // Ingestion pipeline state
   const [pipelineProcessing, setPipelineProcessing] = useState<boolean>(false);
@@ -67,49 +70,123 @@ export default function EvidencePage() {
   // Selected evidence for side drawer
   const [activeEvidence, setActiveEvidence] = useState<Evidence | null>(null);
 
-  // Load learners and integrations on mount
-  useEffect(() => {
-    trajectoryApi
-      .learners()
-      .then((data) => {
-        if (data.learners && data.learners.length > 0) {
-          setLearners(data.learners);
-          setSelectedLearner(data.learners[0].learner_id);
+  // Load real user integrations
+  const loadIntegrations = async () => {
+    try {
+      let count = 0;
+      let latestSync: string | null = null;
+
+      // 1. Fetch user specific integrations configured during onboarding
+      let userInts: Record<string, any> = {};
+      try {
+        userInts = await profileApi.integrations();
+      } catch {
+        userInts = {};
+      }
+
+      if (userInts && userInts.github && userInts.github.is_active) {
+        setGithubStatus(userInts.github.connection_status === "connected" ? "connected" : "needs_attention");
+        count++;
+        if (userInts.github.last_sync_at || userInts.github.last_validated_at) {
+          latestSync = userInts.github.last_sync_at || userInts.github.last_validated_at;
         }
-      })
-      .catch(() => {});
+      } else {
+        try {
+          const gh = await integrations.githubStatus();
+          if (gh.status === "connected") {
+            setGithubStatus("connected");
+            count++;
+            if (gh.details?.last_sync_at) latestSync = gh.details.last_sync_at as string;
+          } else if (gh.status === "invalid_token") {
+            setGithubStatus("needs_attention");
+          } else {
+            setGithubStatus("not_connected");
+          }
+        } catch {
+          setGithubStatus("not_connected");
+        }
+      }
 
-    integrations
-      .githubStatus()
-      .then((res) => {
-        if (res.status === "connected") setGithubStatus("connected");
-        else if (res.status === "invalid_token") setGithubStatus("needs_attention");
-        else setGithubStatus("not_connected");
-      })
-      .catch(() => {});
+      if (userInts && userInts.jira && userInts.jira.is_active) {
+        setJiraStatus(userInts.jira.connection_status === "connected" ? "connected" : "needs_attention");
+        count++;
+        if (userInts.jira.last_sync_at || userInts.jira.last_validated_at) {
+          const jSync = userInts.jira.last_sync_at || userInts.jira.last_validated_at;
+          if (!latestSync || new Date(jSync) > new Date(latestSync)) {
+            latestSync = jSync;
+          }
+        }
+      } else {
+        try {
+          const jr = await integrations.jiraStatus();
+          if (jr.status === "connected") {
+            setJiraStatus("connected");
+            count++;
+            if (jr.details?.last_sync_at) {
+              const jSync = jr.details.last_sync_at as string;
+              if (!latestSync || new Date(jSync) > new Date(latestSync)) {
+                latestSync = jSync;
+              }
+            }
+          } else if (jr.status === "invalid_credentials") {
+            setJiraStatus("needs_attention");
+          } else {
+            setJiraStatus("not_connected");
+          }
+        } catch {
+          setJiraStatus("not_connected");
+        }
+      }
 
-    integrations
-      .jiraStatus()
-      .then((res) => {
-        if (res.status === "connected") setJiraStatus("connected");
-        else if (res.status === "invalid_credentials") setJiraStatus("needs_attention");
-        else setJiraStatus("not_connected");
-      })
-      .catch(() => {});
-  }, []);
+      setActiveIntegrationsCount(count);
+      if (latestSync) {
+        const d = new Date(latestSync);
+        setLastSyncTime(
+          d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        );
+      }
+    } catch {
+      // Non-blocking
+    }
+  };
+
+  // Sync learner selection with authenticated user profile
+  useEffect(() => {
+    loadIntegrations();
+
+    if (profile?.role === "EMPLOYEE") {
+      // For employee role, lock strictly to the logged-in profile
+      setSelectedLearner(profile.id || user?.id || "");
+    } else {
+      // For managers / admins, load learners list
+      trajectoryApi
+        .learners()
+        .then((data) => {
+          if (data.learners && data.learners.length > 0) {
+            setLearners(data.learners);
+            setSelectedLearner(profile?.id || data.learners[0].learner_id);
+          }
+        })
+        .catch(() => {
+          if (profile?.id) setSelectedLearner(profile.id);
+        });
+    }
+  }, [profile, user]);
 
   // Fetch real employee evidence whenever learner changes
   const fetchEvidence = (learnerId: string) => {
+    if (!learnerId) return;
     setLoading(true);
     setError("");
     evidenceApi
       .list(learnerId, 100)
       .then((res) => {
-        if (res.evidence && res.evidence.length > 0) {
-          setEvidenceList(res.evidence);
-        } else {
-          setEvidenceList([]);
-        }
+        setEvidenceList(res.evidence || []);
       })
       .catch((err) => {
         setError(err.message || "Failed to retrieve evidence stream from PostgreSQL.");
@@ -129,7 +206,8 @@ export default function EvidencePage() {
     try {
       await integrations.syncGithub({ run_ai_extraction: true });
       setLastSyncTime("Just now");
-      fetchEvidence(selectedLearner);
+      if (selectedLearner) fetchEvidence(selectedLearner);
+      loadIntegrations();
     } catch {
       // Non-blocking
     } finally {
@@ -143,7 +221,8 @@ export default function EvidencePage() {
     try {
       await integrations.syncJira({ run_ai_extraction: true });
       setLastSyncTime("Just now");
-      fetchEvidence(selectedLearner);
+      if (selectedLearner) fetchEvidence(selectedLearner);
+      loadIntegrations();
     } catch {
       // Non-blocking
     } finally {
@@ -157,6 +236,7 @@ export default function EvidencePage() {
     try {
       const res = await integrations.testGithub();
       setGithubStatus(res.authenticated ? "connected" : "needs_attention");
+      loadIntegrations();
     } catch {
       setGithubStatus("needs_attention");
     } finally {
@@ -170,6 +250,7 @@ export default function EvidencePage() {
     try {
       const res = await integrations.testJira();
       setJiraStatus(res.authenticated ? "connected" : "needs_attention");
+      loadIntegrations();
     } catch {
       setJiraStatus("needs_attention");
     } finally {
@@ -191,29 +272,36 @@ export default function EvidencePage() {
     setPipelineStage("source");
 
     try {
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 400));
       setPipelineStage("parsing");
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
       setPipelineStage("tagging");
 
       if (source === "jira") {
         await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi });
-      } else {
+      } else if (source === "github") {
         await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi });
+      } else {
+        // all connected sources
+        await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi });
+        if (jiraStatus === "connected") {
+          await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi });
+        }
       }
 
       setPipelineStage("indexing");
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 500));
       setPipelineStage("complete");
       setLastSyncTime("Just now");
-      fetchEvidence(selectedLearner);
+      if (selectedLearner) fetchEvidence(selectedLearner);
+      loadIntegrations();
     } catch (err: any) {
       setError("Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
     } finally {
       setTimeout(() => {
         setPipelineProcessing(false);
         setPipelineStage("idle");
-      }, 1200);
+      }, 1000);
     }
   };
 
@@ -243,7 +331,7 @@ export default function EvidencePage() {
     (e.competencies || []).forEach((c) => uniqueCompetencies.add(c));
   });
 
-  // Counts by source
+  // Real Counts by source
   const githubCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("github")).length;
   const jiraCount = evidenceList.filter((e) => (e.source || "").toLowerCase().includes("jira")).length;
 
@@ -273,22 +361,31 @@ export default function EvidencePage() {
             </div>
 
             <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]/60">
-                  LEARNER:
-                </span>
-                <select
-                  value={selectedLearner}
-                  onChange={(e) => setSelectedLearner(e.target.value)}
-                  className="pill-input text-xs max-w-[240px]"
-                >
-                  {learners.map((l) => (
-                    <option key={l.learner_id} value={l.learner_id}>
-                      {l.name} ({l.learner_id})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {profile?.role === "EMPLOYEE" ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#1C1C1C] bg-white shadow-[2px_2px_0px_#1C1C1C]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]">
+                    {profile.full_name || "Employee"} • Verified Profile
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]/60">
+                    LEARNER:
+                  </span>
+                  <select
+                    value={selectedLearner}
+                    onChange={(e) => setSelectedLearner(e.target.value)}
+                    className="pill-input text-xs max-w-[240px]"
+                  >
+                    {learners.map((l) => (
+                      <option key={l.learner_id} value={l.learner_id}>
+                        {l.name} ({l.learner_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60">
@@ -319,7 +416,7 @@ export default function EvidencePage() {
                 </h3>
               </div>
               <span className="text-xs font-bold font-mono text-[#1C1C1C]/70">
-                2 Active Integrations
+                {activeIntegrationsCount} Active {activeIntegrationsCount === 1 ? "Integration" : "Integrations"}
               </span>
             </div>
 
@@ -327,7 +424,7 @@ export default function EvidencePage() {
               <SourceConnectionCard
                 provider="github"
                 status={githubStatus}
-                evidenceCount={githubCount || 14}
+                evidenceCount={githubCount}
                 lastSync={lastSyncTime}
                 onSync={handleSyncGithub}
                 onTest={handleTestGithub}
@@ -338,7 +435,7 @@ export default function EvidencePage() {
               <SourceConnectionCard
                 provider="jira"
                 status={jiraStatus}
-                evidenceCount={jiraCount || 7}
+                evidenceCount={jiraCount}
                 lastSync={lastSyncTime}
                 onSync={handleSyncJira}
                 onTest={handleTestJira}
@@ -378,7 +475,7 @@ export default function EvidencePage() {
                   Competencies Detected
                 </span>
                 <span className="text-3xl md:text-5xl font-black font-mono text-[#1C1C1C] leading-none">
-                  {uniqueCompetencies.size || 6}
+                  {uniqueCompetencies.size}
                 </span>
                 <span className="text-[10px] font-medium text-[#1C1C1C]/60 mt-1 block">
                   Across tech taxonomy
@@ -390,10 +487,14 @@ export default function EvidencePage() {
                   Connected Sources
                 </span>
                 <span className="text-3xl md:text-5xl font-black font-mono text-[#1C1C1C] leading-none">
-                  2
+                  {activeIntegrationsCount}
                 </span>
                 <span className="text-[10px] font-medium text-[#1C1C1C]/60 mt-1 block">
-                  GitHub + Jira Cloud
+                  {activeIntegrationsCount === 0
+                    ? "None Connected"
+                    : activeIntegrationsCount === 1
+                    ? "1 Active Source"
+                    : "GitHub + Jira Cloud"}
                 </span>
               </div>
 
@@ -425,7 +526,7 @@ export default function EvidencePage() {
           )}
 
           {/* ── Section 23-24: RAG Context & Justification Panel ───── */}
-          <RAGContextPanel employeeId={selectedLearner} />
+          <RAGContextPanel employeeId={selectedLearner || profile?.id || ""} />
 
           {/* ── Section 21: Extracted Evidence Feed ───────────────── */}
           <div>

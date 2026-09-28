@@ -8,6 +8,7 @@ class RAGSearchRequest(BaseModel):
     query: str = Field(..., description="Semantic query text")
     competency: Optional[str] = Field(default=None, description="Optional competency filter")
     limit: int = Field(default=5, ge=1, le=20, description="Max evidence items to retrieve")
+    top_k: Optional[int] = Field(default=None, description="Alias for limit")
 
 
 class RetrievedEvidenceItem(BaseModel):
@@ -36,6 +37,10 @@ class JustificationRequest(BaseModel):
     request_context: Optional[str] = Field(
         default=None,
         description="Optional specific inquiry, e.g. 'Identify strengths and recommended next development steps'"
+    )
+    question: Optional[str] = Field(
+        default=None,
+        description="Alias for request_context sent from frontend RAG panel"
     )
 
 

@@ -9,12 +9,14 @@ class GitHubSyncRequest(BaseModel):
     limit_commits: int = Field(default=15, ge=1, le=100)
     limit_prs: int = Field(default=10, ge=1, le=50)
     run_ai_extraction: bool = Field(default=True, description="Whether to trigger Qwen3 skill extraction")
+    target_employee_id: Optional[str] = Field(default=None, description="Specific employee ID to associate evidence with")
 
 
 class JiraSyncRequest(BaseModel):
     project_key: Optional[str] = Field(default=None, description="Jira project key (e.g. 'DEV')")
     max_issues: int = Field(default=20, ge=1, le=100)
     run_ai_extraction: bool = Field(default=True, description="Whether to trigger Qwen3 skill extraction")
+    target_employee_id: Optional[str] = Field(default=None, description="Specific employee ID to associate evidence with")
 
 
 class IdentityMapRequest(BaseModel):

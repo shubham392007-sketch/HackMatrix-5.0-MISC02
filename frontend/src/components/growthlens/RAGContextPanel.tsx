@@ -20,13 +20,21 @@ export default function RAGContextPanel({
   const [competency, setCompetency] = useState(defaultCompetency);
   const [loading, setLoading] = useState(false);
   const [justification, setJustification] = useState<{
-    action: string;
+    action: string | null;
     justification: string;
     evidence_refs: string[];
     evidence_sufficiency: string;
   } | null>(null);
   const [searchResults, setSearchResults] = useState<
-    Array<{ content: string; score: number; metadata: Record<string, any> }>
+    Array<{
+      evidence_id: string;
+      title: string;
+      content: string;
+      source: string;
+      occurred_at: string;
+      similarity_score?: number;
+      metadata?: Record<string, any>;
+    }>
   >([]);
   const [hasQueried, setHasQueried] = useState(false);
 
@@ -42,35 +50,33 @@ export default function RAGContextPanel({
         query
       );
       setJustification({
-        action: res.action,
+        action: res.action || null,
         justification: res.justification,
         evidence_refs: res.evidence_refs || [],
         evidence_sufficiency: res.evidence_sufficiency,
       });
 
       // Also retrieve semantic context
-      const searchRes = await evidenceApi.search(employeeId, query);
-      setSearchResults(searchRes.results || []);
+      const searchRes = await evidenceApi.search(employeeId, query, competency);
+      const items = (searchRes.evidence || []).map((ev) => ({
+        evidence_id: ev.evidence_id,
+        title: ev.title,
+        content: ev.content,
+        source: ev.source,
+        occurred_at: ev.occurred_at,
+        similarity_score: ev.similarity_score,
+        metadata: ev.metadata,
+      }));
+      setSearchResults(items);
     } catch {
-      // Graceful fallback with bounded local explanation
+      // True authentic fallback: No fake/dummy records
       setJustification({
-        action: `Reinforce ${competency} with targeted milestone deliverables`,
-        justification: `Retrieved verifiable signals demonstrating consistent problem solving and technical implementation for ${competency}. Evidence demonstrates active proficiency.`,
-        evidence_refs: ["EV-0142", "EV-0089"],
-        evidence_sufficiency: "sufficient",
+        action: null,
+        justification: "No relevant evidence could be retrieved for this query. Please ensure your GitHub repository or Jira workspace is synced.",
+        evidence_refs: [],
+        evidence_sufficiency: "insufficient",
       });
-      setSearchResults([
-        {
-          content: "Engineered resilient distributed queuing and backpressure handling in production endpoints.",
-          score: 0.88,
-          metadata: { source: "github", date: "2026-09-24" },
-        },
-        {
-          content: "Resolved database connection pool exhaustion and optimized query execution plans.",
-          score: 0.82,
-          metadata: { source: "jira", date: "2026-09-18" },
-        },
-      ]);
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
@@ -105,7 +111,7 @@ export default function RAGContextPanel({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ASK: E.G. 'WHAT DEMONSTRATES ADVANCED ASYNC OR FAULT TOLERANCE?'"
+          placeholder="ASK: E.G. 'WHAT DEMONSTRATES ASYNC HANDLING OR ARCHITECTURE PATTERNS?'"
           className="pill-input flex-1 text-xs"
         />
         <PillButton
@@ -128,9 +134,17 @@ export default function RAGContextPanel({
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C] flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-purple-700" />
-                  Why This Evidence Matters (Local Qwen3 8B Explanation)
+                  Why This Evidence Matters (Grounded LLM Explanation)
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#1C1C1C] bg-white text-emerald-800">
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#1C1C1C] ${
+                    justification.evidence_sufficiency === "sufficient"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : justification.evidence_sufficiency === "limited"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
                   {justification.evidence_sufficiency} evidence
                 </span>
               </div>
@@ -140,14 +154,18 @@ export default function RAGContextPanel({
               </blockquote>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#1C1C1C]/15 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-[#1C1C1C]/70">Grounded Actions:</span>
-                  <span className="font-bold text-[#1C1C1C]">{justification.action}</span>
-                </div>
+                {justification.action && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-[#1C1C1C]/70">Grounded Actions:</span>
+                    <span className="font-bold text-[#1C1C1C]">{justification.action}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1 font-mono text-[11px] text-[#1C1C1C]/60">
                   <span>Cited Refs:</span>
                   <span className="font-bold text-[#1C1C1C]">
-                    {justification.evidence_refs.join(", ") || "EV-0142"}
+                    {justification.evidence_refs.length > 0
+                      ? justification.evidence_refs.join(", ")
+                      : "No direct reference"}
                   </span>
                 </div>
               </div>
@@ -165,26 +183,46 @@ export default function RAGContextPanel({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {searchResults.map((res, i) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-[20px] border border-[#1C1C1C] bg-white shadow-[2px_2px_0px_#1C1C1C] flex flex-col justify-between"
-                >
-                  <p className="text-xs font-semibold text-[#1C1C1C] leading-relaxed mb-3">
-                    {res.content}
-                  </p>
-                  <div className="flex items-center justify-between pt-2 border-t border-[#1C1C1C]/10 text-[10px] font-bold">
-                    <span className="uppercase text-[#1C1C1C]/60">
-                      {res.metadata?.source || "GITHUB"} • {res.metadata?.date || "RECENT"}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full border border-[#1C1C1C] bg-[#DFE968]/70 font-mono text-[#1C1C1C]">
-                      Context Match {Math.round((res.score || 0.84) * 100)}%
-                    </span>
+            {searchResults.length === 0 ? (
+              <div className="p-6 rounded-[20px] border border-dashed border-[#1C1C1C]/30 bg-white/50 text-center">
+                <p className="text-xs font-semibold text-[#1C1C1C]/60">
+                  No matching evidence records found for this query in your verified data stream.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {searchResults.map((res, i) => (
+                  <div
+                    key={res.evidence_id || i}
+                    className="p-4 rounded-[20px] border border-[#1C1C1C] bg-white shadow-[2px_2px_0px_#1C1C1C] flex flex-col justify-between"
+                  >
+                    <div>
+                      <h5 className="text-xs font-black text-[#1C1C1C] mb-1 line-clamp-1">
+                        {res.title}
+                      </h5>
+                      <p className="text-xs font-medium text-[#1C1C1C]/80 leading-relaxed mb-3 line-clamp-2">
+                        {res.content}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#1C1C1C]/10 text-[10px] font-bold">
+                      <span className="uppercase text-[#1C1C1C]/60 font-mono">
+                        {res.source} •{" "}
+                        {res.occurred_at
+                          ? new Date(res.occurred_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "RECENT"}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full border border-[#1C1C1C] bg-[#DFE968]/70 font-mono text-[#1C1C1C]">
+                        Match {Math.round((res.similarity_score || 0.84) * 100)}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

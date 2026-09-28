@@ -27,15 +27,21 @@ class RAGService:
         self.generator = generator or EvidenceJustificationGenerator()
         self.client = get_supabase_client()
 
+    def _resolve_employee(self, raw_id: str) -> str:
+        """Resolves target employee ID across employees, user_id, and profiles."""
+        from backend.db.repositories.evidence import EvidenceRepository
+        repo = EvidenceRepository()
+        resolved = repo._resolve_employee_uuid(raw_id)
+        if resolved:
+            return resolved
+        return raw_id
+
     def search_evidence(self, req: RAGSearchRequest) -> RAGSearchResponse:
         """Execute employee-isolated semantic evidence retrieval."""
-        # Verify employee existence
-        emp_res = self.client.table("employees").select("id").eq("id", req.employee_id).execute()
-        if not emp_res.data:
-            raise CrossEmployeeAccessError(f"Employee with ID '{req.employee_id}' not found.")
+        canonical_id = self._resolve_employee(req.employee_id)
 
         items = self.retriever.retrieve(
-            employee_id=req.employee_id,
+            employee_id=canonical_id,
             query=req.query,
             competency=req.competency,
             limit=req.limit,
@@ -57,19 +63,17 @@ class RAGService:
         4. Validates and reconciles evidence references.
         5. Persists recommendation and evidence links in Supabase for traceability.
         """
-        # Verify employee
-        emp_res = self.client.table("employees").select("id, name").eq("id", req.employee_id).execute()
-        if not emp_res.data:
-            raise CrossEmployeeAccessError(f"Employee with ID '{req.employee_id}' not found.")
+        canonical_id = self._resolve_employee(req.employee_id)
+        inquiry = req.request_context or req.question or ""
 
         # Construct contextual search query
         search_query = f"Evidence of work, commits, tasks, issues, and problem solving related to {req.competency}"
-        if req.request_context:
-            search_query += f". {req.request_context}"
+        if inquiry:
+            search_query += f". {inquiry}"
 
         # Retrieve relevant evidence with strict employee filter
         retrieved_evidence = self.retriever.retrieve(
-            employee_id=req.employee_id,
+            employee_id=canonical_id,
             query=search_query,
             competency=req.competency,
             limit=6,
@@ -77,32 +81,33 @@ class RAGService:
 
         # Generate evidence-grounded justification
         response = await self.generator.generate_justification(
-            employee_id=req.employee_id,
+            employee_id=canonical_id,
             competency=req.competency,
             retrieved_evidence=retrieved_evidence,
-            query=req.request_context,
+            query=inquiry,
         )
 
         # Persist recommendation record in Supabase
         try:
+            from backend.db.client import execute_with_retry
             rec_payload = {
-                "employee_id": req.employee_id,
+                "employee_id": canonical_id,
                 "competency_name": req.competency,
                 "action": response.action,
                 "justification": response.justification,
                 "confidence": response.confidence,
                 "evidence_sufficiency": response.evidence_sufficiency,
-                "metadata": {"query": req.request_context}
+                "metadata": {"query": inquiry}
             }
-            rec_res = self.client.table("recommendations").insert(rec_payload).execute()
+            rec_res = execute_with_retry(lambda: self.client.table("recommendations").insert(rec_payload).execute())
             if rec_res.data:
                 rec_id = rec_res.data[0]["id"]
                 # Link each evidence reference
                 for ev_ref in response.evidence_refs:
-                    self.client.table("recommendation_evidence").insert({
+                    execute_with_retry(lambda: self.client.table("recommendation_evidence").insert({
                         "recommendation_id": rec_id,
                         "evidence_id": ev_ref,
-                    }).execute()
+                    }).execute())
         except Exception as e:
             logger.error(f"Failed to persist recommendation audit: {e}")
 

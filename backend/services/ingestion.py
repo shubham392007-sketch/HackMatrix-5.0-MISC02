@@ -53,11 +53,34 @@ class EvidenceIngestionService:
         limit_commits: int = 15,
         limit_prs: int = 10,
         run_ai: bool = True,
+        target_employee_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Synchronizes GitHub commits and pull requests."""
         settings = get_settings()
         target_owner = owner or settings.github_repository_owner
         target_repo = repo or settings.github_repository_name
+        active_client = self.github_client
+
+        # If user_id is provided, check user_integrations for personal token & repo
+        if user_id:
+            try:
+                from backend.db.client import get_supabase_client
+                from backend.core.security import decrypt_credentials
+                client = get_supabase_client()
+                int_res = client.table("user_integrations").select("*").eq("user_id", user_id).eq("provider", "github").execute()
+                if int_res.data:
+                    cfg = int_res.data[0]
+                    if not owner and cfg.get("repository_owner"):
+                        target_owner = cfg["repository_owner"]
+                    if not repo and cfg.get("repository_name"):
+                        target_repo = cfg["repository_name"]
+                    if cfg.get("encrypted_credentials"):
+                        creds = decrypt_credentials(cfg["encrypted_credentials"])
+                        if creds.get("token"):
+                            active_client = GitHubClient(token=creds["token"])
+            except Exception as e:
+                logger.warning(f"Could not load custom user github credentials: {e}")
 
         # Auto-resolve owner if user inputs display name or common alias
         if target_owner and target_owner.strip().lower() in ["shubham", "shubham-sketch", "shubham392007", "shubham-392007sketch"]:
@@ -66,9 +89,16 @@ class EvidenceIngestionService:
         if not target_owner or not target_repo:
             raise GitHubIntegrationError("GitHub owner and repository must be specified or configured in .env")
 
+        # Canonical employee resolution
+        canonical_emp_id = None
+        if target_employee_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
+        elif user_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
         run_id = self.ingestion_repo.start_run(
             source="github",
-            metadata={"owner": target_owner, "repo": target_repo}
+            metadata={"owner": target_owner, "repo": target_repo, "employee_id": canonical_emp_id}
         )
         logger.info(f"Started GitHub sync run {run_id} for {target_owner}/{target_repo}")
 
@@ -80,9 +110,9 @@ class EvidenceIngestionService:
 
         try:
             # 1. Fetch raw commits
-            raw_commits = self.github_client.get_commits(target_owner, target_repo, per_page=limit_commits)
+            raw_commits = active_client.get_commits(target_owner, target_repo, per_page=limit_commits)
             # 2. Fetch raw PRs
-            raw_prs = self.github_client.get_pull_requests(target_owner, target_repo, per_page=limit_prs)
+            raw_prs = active_client.get_pull_requests(target_owner, target_repo, per_page=limit_prs)
 
             raw_records = [("commit", c) for c in raw_commits] + [("pr", p) for p in raw_prs]
             found = len(raw_records)
@@ -93,11 +123,11 @@ class EvidenceIngestionService:
                     if rec_type == "commit":
                         author_usr = (raw_item.get("author") or {}).get("login")
                         author_email = (raw_item.get("commit", {}).get("author") or {}).get("email")
-                        emp_id = self.identity_resolver.resolve_github_employee(author_usr, author_email)
+                        emp_id = self.identity_resolver.resolve_github_employee(author_usr, author_email) or canonical_emp_id
                         evidence = normalize_github_commit(raw_item, target_owner, target_repo, emp_id)
                     else:
                         pr_user = (raw_item.get("user") or {}).get("login")
-                        emp_id = self.identity_resolver.resolve_github_employee(pr_user)
+                        emp_id = self.identity_resolver.resolve_github_employee(pr_user) or canonical_emp_id
                         evidence = normalize_github_pr(raw_item, target_owner, target_repo, emp_id)
 
                     # Deduplication check
@@ -114,7 +144,7 @@ class EvidenceIngestionService:
                     failed += 1
 
             status = "completed" if failed == 0 else ("partial" if processed > 0 else "failed")
-            return self.ingestion_repo.complete_run(
+            run_result = self.ingestion_repo.complete_run(
                 run_id=run_id,
                 status=status,
                 found=found,
@@ -122,6 +152,20 @@ class EvidenceIngestionService:
                 skipped=skipped,
                 failed=failed,
             )
+
+            # Update last_sync_at in user_integrations if user initiated
+            if user_id and status in ("completed", "partial"):
+                try:
+                    from datetime import datetime, timezone
+                    from backend.db.client import get_supabase_client
+                    get_supabase_client().table("user_integrations").update({
+                        "last_sync_at": datetime.now(timezone.utc).isoformat(),
+                        "connection_status": "connected",
+                    }).eq("user_id", user_id).eq("provider", "github").execute()
+                except Exception as e:
+                    logger.debug(f"Failed updating user_integrations sync time: {e}")
+
+            return run_result
 
         except Exception as e:
             error_summary = f"{type(e).__name__}: {str(e)}"
@@ -141,18 +185,50 @@ class EvidenceIngestionService:
         project_key: Optional[str] = None,
         max_issues: int = 20,
         run_ai: bool = True,
+        target_employee_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Synchronizes Jira project issues."""
         settings = get_settings()
         target_proj = project_key or settings.jira_project_key
         instance_url = settings.jira_base_url
+        active_client = self.jira_client
+
+        if user_id:
+            try:
+                from backend.db.client import get_supabase_client
+                from backend.core.security import decrypt_credentials
+                client = get_supabase_client()
+                int_res = client.table("user_integrations").select("*").eq("user_id", user_id).eq("provider", "jira").execute()
+                if int_res.data:
+                    cfg = int_res.data[0]
+                    if not project_key and cfg.get("project_key"):
+                        target_proj = cfg["project_key"]
+                    if cfg.get("base_url"):
+                        instance_url = cfg["base_url"]
+                    if cfg.get("encrypted_credentials"):
+                        creds = decrypt_credentials(cfg["encrypted_credentials"])
+                        if creds.get("api_token") and creds.get("email"):
+                            active_client = JiraClient(
+                                base_url=instance_url,
+                                email=creds["email"],
+                                api_token=creds["api_token"],
+                            )
+            except Exception as e:
+                logger.warning(f"Could not load custom user jira credentials: {e}")
 
         if not target_proj or not instance_url:
             raise JiraIntegrationError("Jira project_key and base_url must be specified or configured in .env")
 
+        canonical_emp_id = None
+        if target_employee_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
+        elif user_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
         run_id = self.ingestion_repo.start_run(
             source="jira",
-            metadata={"project": target_proj, "instance": instance_url}
+            metadata={"project": target_proj, "instance": instance_url, "employee_id": canonical_emp_id}
         )
         logger.info(f"Started Jira sync run {run_id} for project {target_proj}")
 
@@ -163,7 +239,7 @@ class EvidenceIngestionService:
         error_summary = None
 
         try:
-            raw_issues = self.jira_client.search_issues(project_key=target_proj, max_results=max_issues)
+            raw_issues = active_client.search_issues(project_key=target_proj, max_results=max_issues)
             found = len(raw_issues)
 
             for issue in raw_issues:
@@ -172,7 +248,7 @@ class EvidenceIngestionService:
                     assignee = fields.get("assignee") or {}
                     email = assignee.get("emailAddress")
                     uname = assignee.get("displayName") or assignee.get("accountId")
-                    emp_id = self.identity_resolver.resolve_jira_employee(email=email, username=uname)
+                    emp_id = self.identity_resolver.resolve_jira_employee(email=email, username=uname) or canonical_emp_id
 
                     evidence = normalize_jira_issue(issue, instance_url, target_proj, emp_id)
 
@@ -189,7 +265,7 @@ class EvidenceIngestionService:
                     failed += 1
 
             status = "completed" if failed == 0 else ("partial" if processed > 0 else "failed")
-            return self.ingestion_repo.complete_run(
+            run_result = self.ingestion_repo.complete_run(
                 run_id=run_id,
                 status=status,
                 found=found,
@@ -197,6 +273,20 @@ class EvidenceIngestionService:
                 skipped=skipped,
                 failed=failed,
             )
+
+            # Update last_sync_at in user_integrations if user initiated
+            if user_id and status in ("completed", "partial"):
+                try:
+                    from datetime import datetime, timezone
+                    from backend.db.client import get_supabase_client
+                    get_supabase_client().table("user_integrations").update({
+                        "last_sync_at": datetime.now(timezone.utc).isoformat(),
+                        "connection_status": "connected",
+                    }).eq("user_id", user_id).eq("provider", "jira").execute()
+                except Exception as e:
+                    logger.debug(f"Failed updating user_integrations sync time: {e}")
+
+            return run_result
 
         except Exception as e:
             error_summary = f"{type(e).__name__}: {str(e)}"

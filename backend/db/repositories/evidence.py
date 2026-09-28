@@ -40,16 +40,66 @@ class EvidenceRepository:
         return res.data[0] if res.data else payload
 
     def _resolve_employee_uuid(self, employee_id: str) -> Optional[str]:
-        """Resolves employee_id whether it is a UUID or a slug/name."""
+        """Resolves employee_id whether it is an employees.id, profiles.id / user_id, or slug/name."""
         if not employee_id:
             return None
         import uuid
+        is_uuid = False
         try:
             uuid.UUID(str(employee_id))
-            return str(employee_id)
+            is_uuid = True
         except (ValueError, AttributeError):
-            pass
+            is_uuid = False
 
+        if is_uuid:
+            str_id = str(employee_id)
+            # 1. Direct match on employees.id
+            try:
+                emp = self.client.table("employees").select("id").eq("id", str_id).execute()
+                if emp.data:
+                    return str(emp.data[0]["id"])
+            except Exception as e:
+                logger.debug(f"Direct employee id check failed: {e}")
+
+            # 2. Check if it matches employees.user_id (Supabase auth user id)
+            try:
+                emp_by_user = self.client.table("employees").select("id").eq("user_id", str_id).execute()
+                if emp_by_user.data:
+                    return str(emp_by_user.data[0]["id"])
+            except Exception as e:
+                logger.debug(f"User ID employee check failed: {e}")
+
+            # 3. Check profiles table (auth user profile)
+            try:
+                prof = self.client.table("profiles").select("id, user_id, full_name, email").eq("id", str_id).execute()
+                if not prof.data:
+                    prof = self.client.table("profiles").select("id, user_id, full_name, email").eq("user_id", str_id).execute()
+                if prof.data:
+                    p = prof.data[0]
+                    # Find employee matching email or user_id
+                    emp_match = self.client.table("employees").select("id").or_(f"user_id.eq.{p['user_id']},email.eq.{p['email']}").execute()
+                    if emp_match.data:
+                        # Link user_id if missing
+                        target_id = emp_match.data[0]["id"]
+                        self.client.table("employees").update({"user_id": p["user_id"]}).eq("id", target_id).execute()
+                        return str(target_id)
+                    else:
+                        # Auto-create employee record so evidence and vectors can be cleanly attached
+                        new_emp = self.client.table("employees").insert({
+                            "user_id": p["user_id"],
+                            "name": p.get("full_name") or p["email"].split("@")[0],
+                            "email": p["email"],
+                            "role": "Software Engineer",
+                            "department": "Engineering",
+                        }).execute()
+                        if new_emp.data:
+                            return str(new_emp.data[0]["id"])
+            except Exception as e:
+                logger.warning(f"Profile to employee lookup failed: {e}")
+
+            return str_id
+
+        # 4. Resolve slug / display name (e.g. 'shubham_pokale')
         try:
             slug_words = str(employee_id).replace("_", " ").strip().split()
             first_word = slug_words[0] if slug_words else str(employee_id)

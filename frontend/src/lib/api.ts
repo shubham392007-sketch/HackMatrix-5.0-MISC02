@@ -51,30 +51,57 @@ export const evidence = {
       `/api/evidence/${employeeId}?limit=${limit}&offset=${offset}`
     ),
 
-  search: (employeeId: string, query: string) =>
+  search: (employeeId: string, query: string, competency?: string) =>
     request<{
-      results: Array<{
+      employee_id: string;
+      query: string;
+      retrieved_count: number;
+      evidence: Array<{
+        evidence_id: string;
+        source: string;
+        source_type: string;
+        source_reference: string;
+        title: string;
         content: string;
+        occurred_at: string;
+        project_name?: string;
+        similarity_score?: number;
         metadata: Record<string, unknown>;
-        score: number;
       }>;
     }>(`/api/rag/search`, {
       method: "POST",
-      body: JSON.stringify({ employee_id: employeeId, query, top_k: 5 }),
+      body: JSON.stringify({ employee_id: employeeId, query, competency, limit: 5 }),
     }),
 
   justify: (employeeId: string, competency: string, question: string) =>
     request<{
       competency: string;
-      action: string;
+      action?: string | null;
       justification: string;
       evidence_refs: string[];
       confidence: number;
       evidence_sufficiency: string;
+      retrieved_evidence?: Array<{
+        evidence_id: string;
+        source: string;
+        source_type: string;
+        source_reference: string;
+        title: string;
+        content: string;
+        occurred_at: string;
+        project_name?: string;
+        similarity_score?: number;
+        metadata: Record<string, unknown>;
+      }>;
     }>(`/api/rag/justify`, {
       method: "POST",
-      body: JSON.stringify({ employee_id: employeeId, competency, question }),
+      body: JSON.stringify({ employee_id: employeeId, competency, question, request_context: question }),
     }),
+};
+
+export const profile = {
+  me: () => request<any>("/api/profile/me"),
+  integrations: () => request<Record<string, any>>("/api/profile/integrations"),
 };
 
 export const integrations = {
