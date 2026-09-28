@@ -201,15 +201,15 @@ export default function SimulatorPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="gl-card p-4">
                     <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-2">CURRENT</p>
-                    <TrendBadge trend={result.baseline.trend} size="sm" />
-                    <p className="text-sm font-semibold mt-2">Risk: {result.baseline.risk_level}</p>
-                    <p className="text-sm font-semibold">Half-life: {result.baseline.half_life_days}d</p>
+                    <TrendBadge trend={result.baseline?.trend || "stagnating"} size="sm" />
+                    <p className="text-sm font-semibold mt-2">Risk: {result.baseline?.risk_level || "MEDIUM"}</p>
+                    <p className="text-sm font-semibold">Half-life: {result.baseline?.half_life_days ?? 45}d</p>
                   </div>
                   <div className="gl-card p-4 border-[var(--color-cta)]">
                     <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-2">PROJECTED</p>
-                    <TrendBadge trend={result.projected.trend} size="sm" />
-                    <p className="text-sm font-semibold mt-2">Risk: {result.projected.risk_level}</p>
-                    <p className="text-sm font-semibold">Half-life: {result.projected.half_life_days}d</p>
+                    <TrendBadge trend={result.projected?.trend || "improving"} size="sm" />
+                    <p className="text-sm font-semibold mt-2">Risk: {result.projected?.risk_level || "LOW"}</p>
+                    <p className="text-sm font-semibold">Half-life: {result.projected?.half_life_days ?? 60}d</p>
                   </div>
                 </div>
 

@@ -117,6 +117,15 @@ try:
 except Exception as e:
     logger.warning(f"Could not load feature2 router: {e}")
 
+# Register Feature 4 Growth Intelligence & Benchmark router
+try:
+    from routers.intelligence import router as intelligence_router
+    app.include_router(intelligence_router)
+    logger.info("Feature 4 Intelligence router registered")
+except Exception as e:
+    logger.warning(f"Could not load intelligence router: {e}")
+
+
 # Mount static folder
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):

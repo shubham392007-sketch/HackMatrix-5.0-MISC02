@@ -216,6 +216,47 @@ class Feature1EvidenceAdapter:
 
         return evidence_list
 
+    def get_all_employee_evidence_grouped(
+        self, employee_id: str
+    ) -> Dict[str, List[CanonicalCompetencyEvidence]]:
+        """Retrieves and standardizes all chronological evidence for an employee across all competencies in minimal DB queries."""
+        from collections import defaultdict
+        grouped: Dict[str, List[CanonicalCompetencyEvidence]] = defaultdict(list)
+
+        # 1. From CSV dataset
+        df = self._get_csv_df()
+        if df is not None and not df.empty:
+            matched = df[df["learner_id"] == str(employee_id)]
+            for _, row in matched.iterrows():
+                comp_id = str(row.get("competency_id", "C01"))
+                grouped[comp_id].append(self.from_csv_row(row.to_dict()))
+
+        # 2. From Supabase PostgreSQL DB
+        try:
+            from backend.db.client import get_supabase_client
+            supabase = get_supabase_client()
+            db_ev_res = supabase.table("evidence").select("*").eq("employee_id", employee_id).execute()
+            if db_ev_res.data:
+                ev_map = {r["id"]: r for r in db_ev_res.data}
+                ev_ids = list(ev_map.keys())
+                if ev_ids:
+                    junction = supabase.table("evidence_competencies").select("evidence_id, competency_id, competencies(name)").in_("evidence_id", ev_ids).execute()
+                    for j in junction.data:
+                        cid = j.get("competency_id")
+                        eid = j.get("evidence_id")
+                        cname = j.get("competencies", {}).get("name", cid) if j.get("competencies") else cid
+                        if eid in ev_map and cid:
+                            grouped[cid].append(self.from_db_record(ev_map[eid], cid, cname))
+        except Exception as e:
+            logger.warning(f"Error fetching grouped employee evidence from DB: {e}")
+
+        # If learner starts with L and no evidence found yet, ensure default competency buckets
+        if not grouped and str(employee_id).startswith("L"):
+            for default_cid in ["C01", "C02", "C03", "C04", "C05"]:
+                grouped[default_cid] = []
+
+        return dict(grouped)
+
     def get_all_employee_evidence(self, employee_id: str) -> List[CanonicalCompetencyEvidence]:
         """Retrieves all evidence across all competencies for an employee."""
         competencies = self.get_employee_competencies(employee_id)
@@ -223,3 +264,4 @@ class Feature1EvidenceAdapter:
         for comp_id in competencies:
             all_ev.extend(self.get_employee_competency_evidence(employee_id, comp_id))
         return all_ev
+

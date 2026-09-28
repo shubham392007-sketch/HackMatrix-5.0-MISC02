@@ -47,12 +47,14 @@ class Feature2InferenceService:
         employee_id: str,
         competency_id: str,
         persist: bool = True,
+        evidence_list: Optional[List[CanonicalCompetencyEvidence]] = None,
     ) -> TrajectoryPrediction:
         """
         Calculates the authoritative trajectory prediction for a single competency of an employee.
         """
         # 1. Fetch chronological evidence from Feature 1 sources (DB + dataset)
-        evidence_list = self.adapter.get_employee_competency_evidence(employee_id, competency_id)
+        if evidence_list is None:
+            evidence_list = self.adapter.get_employee_competency_evidence(employee_id, competency_id)
 
         # 2. Normalize and order chronologically
         clean_evidence = EvidencePreprocessor.sort_chronologically(
@@ -183,49 +185,78 @@ class Feature2InferenceService:
         Evaluates and returns all competency trajectories for an employee independently.
         Never collapses into a single aggregate score.
         """
-        competency_ids = self.adapter.get_employee_competencies(employee_id)
+        # Fetch all evidence grouped in 2 fast queries
+        evidence_by_comp = self.adapter.get_all_employee_evidence_grouped(employee_id)
+        competency_ids = sorted(list(evidence_by_comp.keys()))
+
+        if not competency_ids:
+            competency_ids = self.adapter.get_employee_competencies(employee_id)
+
         if not competency_ids:
             logger.info(f"No registered competencies found for employee {employee_id}")
             return []
 
         predictions = []
         for comp_id in competency_ids:
-            pred = self.predict_competency_trajectory(employee_id, comp_id, persist=persist)
+            ev_list = evidence_by_comp.get(comp_id, [])
+            pred = self.predict_competency_trajectory(
+                employee_id, comp_id, persist=False, evidence_list=ev_list
+            )
             predictions.append(pred)
+
+        # Batch persist all predictions in a single call if requested
+        if persist and predictions:
+            self._persist_predictions_batch(predictions)
 
         return predictions
 
+
+    def _prediction_to_dict(self, prediction: TrajectoryPrediction) -> dict:
+        """Converts a TrajectoryPrediction to Supabase row format."""
+        return {
+            "employee_id": prediction.employee_id,
+            "organization_id": prediction.organization_id,
+            "competency_id": prediction.competency_id,
+            "competency_name": prediction.competency_name,
+            "trend": prediction.trend.value,
+            "improving_probability": prediction.probabilities.improving,
+            "stagnating_probability": prediction.probabilities.stagnating,
+            "declining_probability": prediction.probabilities.declining,
+            "confidence": prediction.confidence,
+            "freshness_state": prediction.freshness.value,
+            "days_since_last_evidence": prediction.days_since_last_evidence,
+            "evidence_count": prediction.evidence_count,
+            "last_evidence_at": prediction.last_evidence_at.isoformat() if prediction.last_evidence_at else None,
+            "first_evidence_at": prediction.first_evidence_at.isoformat() if prediction.first_evidence_at else None,
+            "insufficient_evidence": prediction.insufficient_evidence,
+            "model_version": prediction.model_version,
+            "supporting_evidence_ids": prediction.supporting_evidence_ids,
+            "supporting_evidence_titles": prediction.supporting_evidence_titles,
+            "explanation": prediction.explanation,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     def _persist_prediction(self, prediction: TrajectoryPrediction) -> None:
-        """Upserts trajectory prediction into Supabase PostgreSQL."""
+        """Upserts single trajectory prediction into Supabase PostgreSQL."""
         try:
             supabase = get_supabase_client()
-            record = {
-                "employee_id": prediction.employee_id,
-                "organization_id": prediction.organization_id,
-                "competency_id": prediction.competency_id,
-                "competency_name": prediction.competency_name,
-                "trend": prediction.trend.value,
-                "improving_probability": prediction.probabilities.improving,
-                "stagnating_probability": prediction.probabilities.stagnating,
-                "declining_probability": prediction.probabilities.declining,
-                "confidence": prediction.confidence,
-                "freshness_state": prediction.freshness.value,
-                "days_since_last_evidence": prediction.days_since_last_evidence,
-                "evidence_count": prediction.evidence_count,
-                "last_evidence_at": prediction.last_evidence_at.isoformat() if prediction.last_evidence_at else None,
-                "first_evidence_at": prediction.first_evidence_at.isoformat() if prediction.first_evidence_at else None,
-                "insufficient_evidence": prediction.insufficient_evidence,
-                "model_version": prediction.model_version,
-                "supporting_evidence_ids": prediction.supporting_evidence_ids,
-                "supporting_evidence_titles": prediction.supporting_evidence_titles,
-                "explanation": prediction.explanation,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-
-            # Upsert on conflict (employee_id, competency_id)
+            record = self._prediction_to_dict(prediction)
             supabase.table("competency_trajectories").upsert(
                 record, on_conflict="employee_id,competency_id"
             ).execute()
             logger.debug(f"Persisted trajectory for {prediction.employee_id}:{prediction.competency_id}")
         except Exception as e:
             logger.error(f"Failed to persist trajectory to Supabase: {e}")
+
+    def _persist_predictions_batch(self, predictions: List[TrajectoryPrediction]) -> None:
+        """Upserts multiple trajectory predictions in a single network request."""
+        try:
+            supabase = get_supabase_client()
+            records = [self._prediction_to_dict(p) for p in predictions]
+            supabase.table("competency_trajectories").upsert(
+                records, on_conflict="employee_id,competency_id"
+            ).execute()
+            logger.info(f"Batch-persisted {len(records)} trajectories for {predictions[0].employee_id}")
+        except Exception as e:
+            logger.error(f"Failed to batch-persist trajectories: {e}")
+

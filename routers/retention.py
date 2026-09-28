@@ -108,6 +108,28 @@ async def simulate_retention_intervention(
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
+    # Provide frontend compatibility wrapper
+    if "baseline" not in result:
+        orig_risk = float(result.get("original_risk", 0.5))
+        result["baseline"] = {
+            "trend": "stagnating" if orig_risk > 0.4 else "improving",
+            "risk_score": orig_risk,
+            "risk_level": "HIGH" if orig_risk > 0.6 else ("MEDIUM" if orig_risk > 0.3 else "LOW"),
+            "half_life_days": int(result.get("original_expected_days", 45)),
+        }
+    if "projected" not in result:
+        new_risk = float(result.get("new_risk", 0.3))
+        surv_probs = result.get("simulated_survival_probabilities", [0.95, 0.88, 0.80, 0.72, 0.60, 0.48, 0.35])
+        days = [15, 30, 45, 60, 90, 120, 180]
+        curve = [{"day": d, "probability": p} for d, p in zip(days, surv_probs)]
+        result["projected"] = {
+            "trend": "improving" if new_risk < float(result.get("original_risk", 0.5)) else "stagnating",
+            "risk_score": new_risk,
+            "risk_level": result.get("new_risk_level", "LOW"),
+            "half_life_days": int(result.get("new_expected_days_to_decay", 60)),
+            "projected_curve": curve,
+        }
+
     return result
 
 

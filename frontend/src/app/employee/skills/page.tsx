@@ -61,6 +61,18 @@ export default function EmployeeSkillsPage() {
   const [competencyTimeline, setCompetencyTimeline] = useState<any[]>([]);
   const [benchmark, setBenchmark] = useState<PeerBenchmarkType | null>(null);
 
+  // Helper for human-readable learner display name
+  const getLearnerDisplayName = (l: Learner) => {
+    if (l.name && l.name.trim()) return l.name;
+    if (l.learner_id) {
+      return l.learner_id
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
+    return "Employee";
+  };
+
   // Load learners on mount
   useEffect(() => {
     trajectoryApi
@@ -68,7 +80,10 @@ export default function EmployeeSkillsPage() {
       .then((data) => {
         if (data.learners && data.learners.length > 0) {
           setLearners(data.learners);
-          setSelectedLearner(data.learners[0].learner_id);
+          const hasCurrent = data.learners.some((l) => l.learner_id === selectedLearner);
+          if (!hasCurrent) {
+            setSelectedLearner(data.learners[0].learner_id);
+          }
         }
       })
       .catch(() => {});
@@ -83,7 +98,13 @@ export default function EmployeeSkillsPage() {
       .then((res) => {
         if (Array.isArray(res) && res.length > 0) {
           setTrajectories(res);
-          setSelectedCompetencyId(res[0].competency_id);
+          setSelectedCompetencyId((prev) => {
+            if (prev && res.some((t) => t.competency_id === prev)) {
+              return prev;
+            }
+            const active = res.find((t) => !t.insufficient_evidence) || res[0];
+            return active.competency_id;
+          });
         } else {
           setTrajectories([]);
         }
@@ -226,7 +247,7 @@ export default function EmployeeSkillsPage() {
                 >
                   {learners.map((l) => (
                     <option key={l.learner_id} value={l.learner_id}>
-                      {l.name} ({l.learner_id})
+                      {getLearnerDisplayName(l)} ({l.learner_id})
                     </option>
                   ))}
                 </select>
@@ -272,7 +293,7 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="improving" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {countImproving}
+                  {loading ? "···" : countImproving}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Positive acceleration
@@ -288,7 +309,7 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="stagnating" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {countStagnating}
+                  {loading ? "···" : countStagnating}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Consistent plateau
@@ -304,7 +325,7 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="declining" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {countDeclining}
+                  {loading ? "···" : countDeclining}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Needs reinforcement
@@ -320,7 +341,7 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="insufficient" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {countNeedEvidence}
+                  {loading ? "···" : countNeedEvidence}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Under 3 observations
