@@ -170,6 +170,7 @@ export const integrations = {
     limit_commits?: number;
     limit_prs?: number;
     run_ai_extraction?: boolean;
+    target_employee_id?: string;
   } = {}) =>
     request<Record<string, unknown>>(`/api/integrations/github/sync`, {
       method: "POST",
@@ -187,6 +188,7 @@ export const integrations = {
     project_key?: string;
     max_issues?: number;
     run_ai_extraction?: boolean;
+    target_employee_id?: string;
   } = {}) =>
     request<Record<string, unknown>>(`/api/integrations/jira/sync`, {
       method: "POST",

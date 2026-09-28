@@ -68,6 +68,12 @@ export default function EvidencePage() {
   const [pipelineStage, setPipelineStage] = useState<
     "idle" | "source" | "parsing" | "tagging" | "indexing" | "complete"
   >("idle");
+  const [syncResult, setSyncResult] = useState<{
+    found?: number;
+    processed?: number;
+    skipped?: number;
+    source?: string;
+  } | null>(null);
 
   // Selected evidence for side drawer
   const [activeEvidence, setActiveEvidence] = useState<Evidence | null>(null);
@@ -307,6 +313,8 @@ export default function EvidencePage() {
   }) => {
     setPipelineProcessing(true);
     setPipelineStage("source");
+    setError("");
+    setSyncResult(null);
 
     try {
       await new Promise((r) => setTimeout(r, 400));
@@ -314,31 +322,59 @@ export default function EvidencePage() {
       await new Promise((r) => setTimeout(r, 600));
       setPipelineStage("tagging");
 
+      let totalFound = 0;
+      let totalProcessed = 0;
+      let totalSkipped = 0;
+
+      const targetEmp = selectedLearner || profile?.id || user?.id;
+
       if (source === "jira") {
-        await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi });
+        if (jiraStatus !== "connected") {
+          throw new Error("Jira is not connected. Configure your Jira credentials in your Profile or Settings before extracting Jira tickets.");
+        }
+        const res = await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        totalFound += (res as any)?.records_found || 0;
+        totalProcessed += (res as any)?.records_processed || 0;
+        totalSkipped += (res as any)?.records_skipped || 0;
       } else if (source === "github") {
-        await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi });
+        const res = await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        totalFound += (res as any)?.records_found || 0;
+        totalProcessed += (res as any)?.records_processed || 0;
+        totalSkipped += (res as any)?.records_skipped || 0;
       } else {
         // all connected sources
-        await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi });
+        const res = await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        totalFound += (res as any)?.records_found || 0;
+        totalProcessed += (res as any)?.records_processed || 0;
+        totalSkipped += (res as any)?.records_skipped || 0;
+
         if (jiraStatus === "connected") {
-          await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi });
+          const jRes = await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+          totalFound += (jRes as any)?.records_found || 0;
+          totalProcessed += (jRes as any)?.records_processed || 0;
+          totalSkipped += (jRes as any)?.records_skipped || 0;
         }
       }
 
       setPipelineStage("indexing");
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 600));
       setPipelineStage("complete");
+      setSyncResult({
+        found: totalFound,
+        processed: totalProcessed,
+        skipped: totalSkipped,
+        source: source.toUpperCase(),
+      });
       setLastSyncTime("Just now");
       if (selectedLearner) fetchEvidence(selectedLearner);
       loadIntegrations();
     } catch (err: any) {
-      setError("Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
+      setError(err?.message || "Pipeline execution encountered an issue. Records were saved to PostgreSQL.");
     } finally {
       setTimeout(() => {
         setPipelineProcessing(false);
         setPipelineStage("idle");
-      }, 1000);
+      }, 4000);
     }
   };
 
@@ -495,6 +531,7 @@ export default function EvidencePage() {
             onRunExtraction={handleRunExtraction}
             isProcessing={pipelineProcessing}
             activeStage={pipelineStage}
+            syncResult={syncResult}
           />
 
           {/* ── Section 20: Evidence Overview Integrated Composition ── */}

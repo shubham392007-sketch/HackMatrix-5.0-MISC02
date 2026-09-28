@@ -4,10 +4,18 @@ import React, { useState } from "react";
 import { Terminal, Cpu, Database, Play, CheckCircle2, ArrowRight, Loader2, Sparkles, Layers } from "lucide-react";
 import PillButton from "./PillButton";
 
+export interface SyncResultInfo {
+  found?: number;
+  processed?: number;
+  skipped?: number;
+  source?: string;
+}
+
 interface EvidenceSyncPanelProps {
   onRunExtraction: (params: { source: string; limit: number; runAi: boolean }) => Promise<void>;
   isProcessing: boolean;
   activeStage?: "idle" | "source" | "parsing" | "tagging" | "indexing" | "complete";
+  syncResult?: SyncResultInfo | null;
   className?: string;
 }
 
@@ -15,6 +23,7 @@ export default function EvidenceSyncPanel({
   onRunExtraction,
   isProcessing,
   activeStage = "idle",
+  syncResult = null,
   className = "",
 }: EvidenceSyncPanelProps) {
   const [selectedSource, setSelectedSource] = useState<string>("all");
@@ -174,6 +183,28 @@ export default function EvidenceSyncPanel({
           </div>
         </div>
 
+        {/* Extraction Completion Notification Banner */}
+        {activeStage === "complete" && (
+          <div className="p-4 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#DFE968] shadow-[2px_2px_0px_#1C1C1C] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-900 shrink-0" />
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] block">
+                  Pipeline Extraction Succeeded
+                </span>
+                <span className="text-[11px] font-semibold text-[#1C1C1C]/80">
+                  {syncResult
+                    ? `Processed ${syncResult.processed ?? 0} record(s), ${syncResult.skipped ?? 0} up-to-date. Canonical records indexed in ChromaDB.`
+                    : "Canonical evidence records parsed, verified with Qwen3, and indexed in ChromaDB."}
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-white text-[#1C1C1C]">
+              SYNCED
+            </span>
+          </div>
+        )}
+
         {/* Action Button */}
         <div className="flex justify-end">
           <PillButton
@@ -181,9 +212,13 @@ export default function EvidenceSyncPanel({
             variant="primary"
             size="md"
             loading={isProcessing}
-            icon={<Play className="w-3.5 h-3.5 fill-current" />}
+            icon={activeStage === "complete" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
           >
-            {isProcessing ? "PROCESSING EXTRACTION PIPELINE..." : "RUN EXTRACTION →"}
+            {isProcessing
+              ? "PROCESSING EXTRACTION PIPELINE..."
+              : activeStage === "complete"
+              ? "EXTRACTION COMPLETE ✓"
+              : "RUN EXTRACTION →"}
           </PillButton>
         </div>
       </form>

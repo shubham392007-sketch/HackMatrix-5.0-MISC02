@@ -19,7 +19,7 @@ async def execute_with_structured_retry(
     schema: Type[T],
     operation_name: str,
     temperature: float = 0.1,
-    timeout: float = 25.0,
+    timeout: float = 60.0,
 ) -> T:
     """
     Executes prompt with a 2-stage retry mechanism:
