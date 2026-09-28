@@ -109,6 +109,14 @@ try:
 except Exception as e:
     logger.warning(f"Could not load retention router: {e}")
 
+# Register Feature 2 Competency Trajectories & ML router
+try:
+    from backend.feature2.api import router as feature2_router
+    app.include_router(feature2_router)
+    logger.info("Feature 2 Trajectory & ML router registered")
+except Exception as e:
+    logger.warning(f"Could not load feature2 router: {e}")
+
 # Mount static folder
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
