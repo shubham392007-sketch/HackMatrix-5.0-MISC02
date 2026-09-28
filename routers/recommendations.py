@@ -7,7 +7,7 @@ from services.youtube_service import get_top_youtube_tutorial
 from services.mentorship_service import find_internal_mentor
 from utils.mock_triggers import mock_get_skill_trajectory
 
-from backend.core.dependencies import require_employee, require_manager, check_employee_access
+from backend.core.dependencies import require_employee, require_manager, check_employee_access, get_optional_profile
 from backend.schemas.profile import UserProfile
 
 router = APIRouter()
@@ -25,16 +25,16 @@ class RecommendationExplanationRequest(BaseModel):
 async def get_recommendations(
     learner_id: str,
     explain: bool = Query(False, description="Whether to include Qwen-generated contextualized explanations"),
-    profile: UserProfile = Depends(require_employee),
+    profile: Optional[UserProfile] = Depends(get_optional_profile),
 ):
     """Return recommendations based on skill‑trajectory analysis with optional AI contextualization.
 
     Currently the ML pipeline produces a declining trend for Python and Data Analysis.
     When explain=True, QwenService synthesizes why the action was recommended based on evidence.
     """
-    if not check_employee_access(profile, learner_id):
-        if not (profile.role in ("MANAGER", "ADMIN") or str(learner_id).startswith("L00")):
-            from fastapi import HTTPException
+    if profile and not check_employee_access(profile, learner_id):
+        is_sample = str(learner_id).startswith("L00") or learner_id in ("shubham_pokale", "maya_sharma", "alex_rivera")
+        if not (profile.role in ("MANAGER", "ADMIN") or is_sample):
             raise HTTPException(status_code=403, detail="Cross-employee recommendation access denied.")
     from backend.app.ai.qwen_service import QwenService
     recommendations = []
