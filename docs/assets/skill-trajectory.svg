@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" width="100%" height="360" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .chart-bg { fill: #181818; rx: 16px; stroke: #2C2C2C; stroke-width: 1.5; }
+      .grid-line { stroke: #2A2A2A; stroke-width: 1; stroke-dasharray: 4 4; }
+      .axis-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; fill: #7E7E7E; }
+      .title-text { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; fill: #FFFFFF; }
+      .legend-text { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; }
+      
+      /* Trajectory Curves with Animated Drawing */
+      .curve-improving {
+        stroke: #DFE968;
+        stroke-width: 3.5;
+        fill: none;
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawLine 4s ease-in-out forwards infinite;
+      }
+      .curve-stagnating {
+        stroke: #9CA3AF;
+        stroke-width: 2.5;
+        stroke-dasharray: 6 6;
+        fill: none;
+      }
+      .curve-declining {
+        stroke: #FF6B6B;
+        stroke-width: 3.5;
+        fill: none;
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawLine 4s ease-in-out forwards infinite 0.5s;
+      }
+      @keyframes drawLine {
+        0% { stroke-dashoffset: 1000; }
+        60%, 100% { stroke-dashoffset: 0; }
+      }
+
+      /* Pulsing Confidence Area */
+      .confidence-band {
+        fill: rgba(223, 233, 104, 0.08);
+        animation: bandPulse 3s ease-in-out infinite alternate;
+      }
+      @keyframes bandPulse {
+        from { opacity: 0.05; }
+        to { opacity: 0.20; }
+      }
+
+      /* Animated Leading Tracer Beads */
+      .tracer-dot {
+        animation: tracerPulse 1.5s ease-in-out infinite;
+      }
+      @keyframes tracerPulse {
+        0%, 100% { r: 5; opacity: 1; }
+        50% { r: 8; opacity: 0.7; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background Surface -->
+  <rect class="chart-bg" x="2" y="2" width="916" height="356" />
+
+  <!-- Title & Model Attribution -->
+  <text class="title-text" x="32" y="32">LONGITUDINAL COMPETENCY TRAJECTORY ENGINE</text>
+  <text class="axis-text" x="520" y="32" fill="#DFE968">PyTorch Attention Bi-LSTM (80.47% Acc) + Weibull AFT</text>
+
+  <!-- Horizontal Grid Lines -->
+  <line class="grid-line" x1="70" y1="70" x2="860" y2="70" />
+  <text class="axis-text" x="35" y="74">100</text>
+  
+  <line class="grid-line" x1="70" y1="130" x2="860" y2="130" />
+  <text class="axis-text" x="35" y="134">75</text>
+  
+  <line class="grid-line" x1="70" y1="190" x2="860" y2="190" />
+  <text class="axis-text" x="35" y="194">50</text>
+  
+  <line class="grid-line" x1="70" y1="250" x2="860" y2="250" />
+  <text class="axis-text" x="35" y="254">25</text>
+
+  <line class="grid-line" x1="70" y1="310" x2="860" y2="310" />
+  <text class="axis-text" x="35" y="314">0</text>
+
+  <!-- X-Axis Labels (Timeline) -->
+  <text class="axis-text" x="80" y="335">T0: Ingest Baseline</text>
+  <text class="axis-text" x="270" y="335">T+30d: Sprint Milestone</text>
+  <text class="axis-text" x="480" y="335">T+60d: PR Review Cohort</text>
+  <text class="axis-text" x="690" y="335">T+90d: Architecture Eval</text>
+
+  <!-- Confidence Band (Improving Skill) -->
+  <polygon class="confidence-band" points="80,220 270,170 480,120 780,75 780,115 480,165 270,210 80,240" />
+
+  <!-- 1. Improving Trajectory (Distributed Systems) -->
+  <!-- D: M 80,230 Q 270,190 480,140 T 780,95 -->
+  <path class="curve-improving" d="M 80 230 C 220 210, 380 160, 480 140 C 580 120, 680 95, 780 95" />
+
+  <!-- 2. Stagnating Trajectory (PostgreSQL Indexing) -->
+  <path class="curve-stagnating" d="M 80 170 C 220 165, 450 175, 780 170" />
+
+  <!-- 3. Declining Trajectory (Kubernetes Networking - Decay Risk) -->
+  <!-- Starts high, drops sharply, triggers Weibull threshold -->
+  <path class="curve-declining" d="M 80 110 C 220 120, 400 180, 520 230 C 600 260, 700 285, 780 295" />
+
+  <!-- Observation Points on Improving Path -->
+  <circle cx="80" cy="230" r="5" fill="#1C1C1C" stroke="#DFE968" stroke-width="2.5" />
+  <circle cx="270" cy="190" r="5" fill="#1C1C1C" stroke="#DFE968" stroke-width="2.5" />
+  <circle cx="480" cy="140" r="5" fill="#1C1C1C" stroke="#DFE968" stroke-width="2.5" />
+  <circle class="tracer-dot" cx="780" cy="95" fill="#DFE968" />
+
+  <!-- Declining Event Marker: Half-Life Inflection -->
+  <circle cx="520" cy="230" r="6" fill="#FF6B6B" />
+  <rect x="535" y="215" width="130" height="24" rx="4" fill="#3D1A1A" stroke="#FF6B6B" stroke-width="1" />
+  <text font-family="'JetBrains Mono', monospace" font-size="10" fill="#FF8F80" x="542" y="231">⚠️ Half-Life Alert (42d)</text>
+
+  <!-- Interactive Legends -->
+  <g transform="translate(620, 50)">
+    <rect x="0" y="0" width="14" height="4" rx="2" fill="#DFE968" />
+    <text class="legend-text" x="22" y="7" fill="#DFE968">Improving (Score 84.5 ↑)</text>
+    
+    <rect x="0" y="20" width="14" height="4" rx="2" fill="#9CA3AF" />
+    <text class="legend-text" x="22" y="27" fill="#D1D5DB">Stagnating (Score 62.0 →)</text>
+    
+    <rect x="0" y="40" width="14" height="4" rx="2" fill="#FF6B6B" />
+    <text class="legend-text" x="22" y="47" fill="#FF8F80">Declining (Score 34.0 ↓)</text>
+  </g>
+
+  <!-- Disclaimer footnote -->
+  <text class="axis-text" x="32" y="348" font-size="9" fill="#5E5E5E">
+    *Illustrative conceptual representation of continuous PyTorch Attention Bi-LSTM &amp; Weibull parametric survival inference.
+  </text>
+</svg>

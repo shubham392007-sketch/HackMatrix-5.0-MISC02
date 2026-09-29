@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 70" width="100%" height="70" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .term-bg {
+        fill: #1C1C1C;
+        rx: 12px;
+        stroke: #DFE968;
+        stroke-width: 1.5;
+      }
+      .dot-red { fill: #FF5F56; }
+      .dot-yellow { fill: #FFBD2E; }
+      .dot-green { fill: #27C93F; }
+      .term-prompt {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        font-weight: 700;
+        fill: #DFE968;
+      }
+      .term-text {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        font-weight: 500;
+        fill: #FBF1CF;
+      }
+      .cursor {
+        fill: #DFE968;
+        animation: blink 0.8s infinite;
+      }
+      @keyframes blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+      }
+      .line {
+        opacity: 0;
+      }
+      .line-1 {
+        animation: cycleText 16s infinite 0s;
+      }
+      .line-2 {
+        animation: cycleText 16s infinite 4s;
+      }
+      .line-3 {
+        animation: cycleText 16s infinite 8s;
+      }
+      .line-4 {
+        animation: cycleText 16s infinite 12s;
+      }
+      @keyframes cycleText {
+        0% { opacity: 0; transform: translateY(4px); }
+        3% { opacity: 1; transform: translateY(0); }
+        22% { opacity: 1; transform: translateY(0); }
+        25% { opacity: 0; transform: translateY(-4px); }
+        100% { opacity: 0; }
+      }
+    </style>
+  </defs>
+
+  <!-- Terminal Background Window -->
+  <rect class="term-bg" x="2" y="2" width="846" height="66" />
+
+  <!-- Window Controls -->
+  <circle class="dot-red" cx="24" cy="35" r="5.5" />
+  <circle class="dot-yellow" cx="42" cy="35" r="5.5" />
+  <circle class="dot-green" cx="60" cy="35" r="5.5" />
+
+  <!-- Prompt Identifier -->
+  <text class="term-prompt" x="88" y="41">growthlens://talent-intelligence&gt;</text>
+
+  <!-- Animated Rotating Phrases -->
+  <g class="line line-1">
+    <text class="term-text" x="420" y="41">Continuous Telemetry Ingestion (GitHub + Jira + Assessments)</text>
+  </g>
+  <g class="line line-2">
+    <text class="term-text" x="420" y="41">Deep Longitudinal Trajectories (PyTorch Attention Bi-LSTM)</text>
+  </g>
+  <g class="line line-3">
+    <text class="term-text" x="420" y="41">Parametric Weibull Hazard &amp; 180-Day Skill Decay Modeling</text>
+  </g>
+  <g class="line line-4">
+    <text class="term-text" x="420" y="41">100% On-Premise Sovereignty (Local Ollama &amp; ChromaDB RAG)</text>
+  </g>
+
+  <!-- Blinking Cursor -->
+  <rect class="cursor" x="820" y="27" width="9" height="18" rx="2" />
+</svg>

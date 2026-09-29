@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 340" width="100%" height="340" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .canvas-bg { fill: #161616; rx: 16px; stroke: #2E2E2E; stroke-width: 1.5; }
+      .node-card { fill: #202020; stroke: #383838; stroke-width: 1.5; rx: 12px; }
+      .node-card-active { fill: #242818; stroke: #DFE968; stroke-width: 2; rx: 12px; }
+      .title-text { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; fill: #FFFFFF; }
+      .sub-text { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 500; fill: #A5A5A5; }
+      .code-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; fill: #1C1C1C; }
+      .badge-bg { fill: #DFE968; rx: 4px; }
+      .badge-bg-cream { fill: #FBF1CF; rx: 4px; }
+      .badge-bg-coral { fill: #FF8F80; rx: 4px; }
+      
+      /* Animated Connection Paths */
+      .flow-path {
+        stroke: #3E3E3E;
+        stroke-width: 2;
+        fill: none;
+      }
+      .flow-pulse {
+        stroke: #DFE968;
+        stroke-width: 2.5;
+        stroke-dasharray: 8 16;
+        fill: none;
+        animation: flowDash 3s linear infinite;
+      }
+      .flow-pulse-alt {
+        stroke: #FFBD2E;
+        stroke-width: 2.5;
+        stroke-dasharray: 8 16;
+        fill: none;
+        animation: flowDash 2.4s linear infinite;
+      }
+      @keyframes flowDash {
+        to { stroke-dashoffset: -48; }
+      }
+
+      /* Glowing Nodes */
+      .pulse-circle {
+        animation: pulseEffect 2s ease-in-out infinite;
+      }
+      @keyframes pulseEffect {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.15); opacity: 1; }
+      }
+    </style>
+  </defs>
+
+  <!-- Canvas Surface -->
+  <rect class="canvas-bg" x="2" y="2" width="916" height="336" />
+
+  <!-- Section Header -->
+  <text class="title-text" x="28" y="32" font-size="14" fill="#DFE968">GROWTHLENS CONTINUOUS DATA PIPELINE &amp; INFERENCE TOPOLOGY</text>
+  <text class="sub-text" x="650" y="32">⚡ Live Zero-Exfiltration Edge Topology</text>
+
+  <!-- STATIC & ANIMATED CONNECTION WIRES -->
+  <!-- Layer 1 to Layer 2 -->
+  <path class="flow-path" d="M 180 90 L 260 170" />
+  <path class="flow-pulse" d="M 180 90 L 260 170" />
+  <path class="flow-path" d="M 180 170 L 260 170" />
+  <path class="flow-pulse" d="M 180 170 L 260 170" />
+  <path class="flow-path" d="M 180 250 L 260 170" />
+  <path class="flow-pulse" d="M 180 250 L 260 170" />
+
+  <!-- Layer 2 to Layer 3 (Dual ML) -->
+  <path class="flow-path" d="M 410 145 L 480 110" />
+  <path class="flow-pulse" d="M 410 145 L 480 110" />
+  <path class="flow-path" d="M 410 195 L 480 230" />
+  <path class="flow-pulse-alt" d="M 410 195 L 480 230" />
+
+  <!-- Layer 3 to Layer 4 (Inference -> Outputs) -->
+  <path class="flow-path" d="M 640 110 L 710 120" />
+  <path class="flow-pulse" d="M 640 110 L 710 120" />
+  <path class="flow-path" d="M 640 230 L 710 220" />
+  <path class="flow-pulse-alt" d="M 640 230 L 710 220" />
+
+  <!-- LAYER 1: MULTI-MODAL INGESTION NODES -->
+  <g transform="translate(30, 60)">
+    <rect class="node-card" width="150" height="58" />
+    <circle cx="20" cy="22" r="8" fill="#24292E" stroke="#58A6FF" stroke-width="1.5" />
+    <text class="title-text" x="35" y="26">GitHub Commits</text>
+    <text class="sub-text" x="20" y="44">Code Diffs &amp; PR Merges</text>
+  </g>
+
+  <g transform="translate(30, 140)">
+    <rect class="node-card" width="150" height="58" />
+    <circle cx="20" cy="22" r="8" fill="#0052CC" stroke="#4C9AFF" stroke-width="1.5" />
+    <text class="title-text" x="35" y="26">Jira Sprint Velocity</text>
+    <text class="sub-text" x="20" y="44">Task Complexity &amp; Bugs</text>
+  </g>
+
+  <g transform="translate(30, 220)">
+    <rect class="node-card" width="150" height="58" />
+    <circle cx="20" cy="22" r="8" fill="#6B46C1" stroke="#B794F4" stroke-width="1.5" />
+    <text class="title-text" x="35" y="26">Skills Assessments</text>
+    <text class="sub-text" x="20" y="44">Rubrics &amp; Certifications</text>
+  </g>
+
+  <!-- LAYER 2: IDENTITY RESOLUTION & FEATURE EXTRACTOR -->
+  <g transform="translate(250, 120)">
+    <rect class="node-card" width="165" height="100" />
+    <rect class="badge-bg" x="14" y="12" width="70" height="16" />
+    <text class="code-badge" x="19" y="24">FEATURE 1</text>
+    <text class="title-text" x="14" y="46">Telemetry Adapter</text>
+    <text class="sub-text" x="14" y="64">• Identity Disambiguation</text>
+    <text class="sub-text" x="14" y="78">• Automated Secret Scrub</text>
+    <text class="sub-text" x="14" y="92">• 8D Tensor Normalization</text>
+  </g>
+
+  <!-- LAYER 3: DUAL DEEP LEARNING & SURVIVAL ENGINE -->
+  <g transform="translate(475, 65)">
+    <rect class="node-card-active" width="170" height="90" />
+    <rect class="badge-bg" x="14" y="12" width="85" height="16" />
+    <text class="code-badge" x="18" y="24">PYTORCH LSTM</text>
+    <text class="title-text" x="14" y="46">CompetencyLSTM</text>
+    <text class="sub-text" x="14" y="64">Temporal Attention Mask</text>
+    <text class="sub-text" x="14" y="78" fill="#DFE968">Acc: 80.5% | Macro F1: 0.81</text>
+  </g>
+
+  <g transform="translate(475, 185)">
+    <rect class="node-card-active" width="170" height="90" />
+    <rect class="badge-bg-coral" x="14" y="12" width="90" height="16" />
+    <text class="code-badge" x="18" y="24">WEIBULL AFT</text>
+    <text class="title-text" x="14" y="46">Survival Decay Engine</text>
+    <text class="sub-text" x="14" y="64">30/60/90/180-Day Hazard</text>
+    <text class="sub-text" x="14" y="78" fill="#FF8F80">C-Index: 0.794 | Brier: 0.14</text>
+  </g>
+
+  <!-- LAYER 4: ACTIONABLE TALENT INTELLIGENCE OUTPUTS -->
+  <g transform="translate(705, 80)">
+    <rect class="node-card" width="180" height="75" />
+    <rect class="badge-bg-cream" x="14" y="12" width="85" height="16" />
+    <text class="code-badge" x="18" y="24">FEATURE 2 &amp; 3</text>
+    <text class="title-text" x="14" y="44">What-If &amp; Actions</text>
+    <text class="sub-text" x="14" y="60">YouTube Video Deep-Links</text>
+    <text class="sub-text" x="14" y="72">ACID Peer Mentorship</text>
+  </g>
+
+  <g transform="translate(705, 185)">
+    <rect class="node-card" width="180" height="75" />
+    <rect class="badge-bg-cream" x="14" y="12" width="75" height="16" />
+    <text class="code-badge" x="18" y="24">FEATURE 4</text>
+    <text class="title-text" x="14" y="44">Local Qwen 2.5 8B</text>
+    <text class="sub-text" x="14" y="60">Manager Executive Briefs</text>
+    <text class="sub-text" x="14" y="72">Team Skill Heatmaps</text>
+  </g>
+</svg>

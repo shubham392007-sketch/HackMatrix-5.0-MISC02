@@ -9,6 +9,10 @@
   <em>Empirical, telemetry-backed talent intelligence replacing static performance reviews with deep learning trajectories, survival analysis, and on-premise generative synthesis.</em>
 </p>
 
+<p align="center">
+  <img src="docs/assets/growthlens-typing.svg" alt="GrowthLens Capabilities Terminal" width="100%" />
+</p>
+
 <div align="center">
 
 [![HackMatrix 5.0](https://img.shields.io/badge/HackMatrix%205.0-Track%20MISC02-DFE968?style=for-the-badge&logo=target&logoColor=1C1C1C)](https://github.com/shubham392007-sketch/HackMatrix-5.0-MISC02)
@@ -130,6 +134,10 @@ Feature 2 represents the analytical core of GrowthLens. It abandons arbitrary ag
 - **Parametric Weibull Survival Modeling**: Utilizes accelerated failure time (AFT) hazard modeling to calculate half-life decay curves and empirical failure probabilities at 30, 60, 90, and 180 days.
 - **What-If Counterfactual Simulator**: Allows engineers and engineering leadership to simulate prospective training interventions, certifications, or project outcomes. The simulator appends an in-memory synthetic event (`is_counterfactual=True`), re-evaluates the neural network and survival model, and computes the risk delta without ever writing to the production database.
 
+<p align="center">
+  <img src="docs/assets/skill-trajectory.svg" alt="Animated Competency Trajectory Progression" width="100%" />
+</p>
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -163,6 +171,10 @@ Feature 3 translates diagnostic trajectory insights into immediate, high-impact 
 - **Algorithmic Peer Mentorship Matching**: Identifies organizational peers who have demonstrated `improving` trajectories with high confidence in the exact competencies where a target employee is `declining` or `stagnating`.
 - **ACID Transaction Persistence**: Mentorship workflows and pairing requests are managed in a dedicated transactional SQLite store (`backend/data/mentorship_pairings.db`) with compound indexing to guarantee zero double-bookings or concurrent pairing conflicts.
 
+<p align="center">
+  <img src="docs/assets/recommendation-flow.svg" alt="Animated Next-Action Recommendation & Mentorship Engine Flow" width="100%" />
+</p>
+
 ```mermaid
 flowchart TD
     Risk[Feature 2 Trajectory & Decay Risk] --> Engine[Growth Action Engine]
@@ -190,6 +202,10 @@ Feature 4 provides macro-level observability for engineering leadership while pr
 - **Organizational Skill Heatmaps**: Aggregates team-level competencies into a high-density, interactive matrix displaying real-time trajectory glyphs (`↑` improving, `→` stagnating, `↓` declining) and highlighting organizational single-points-of-failure (bus factors).
 - **Privacy-Preserving Peer Benchmarking**: Provides k-anonymized cohort comparisons (e.g. *"Performing in the 82nd percentile among engineers with similar tenure"*) without exposing identifiable peer records.
 
+<p align="center">
+  <img src="docs/assets/talent-analytics.svg" alt="Animated Talent Intelligence, Team Heatmaps & Privacy Benchmarking" width="100%" />
+</p>
+
 ```mermaid
 flowchart TD
     EmpTrajectories[Employee Competency Trajectories] --> Agg[Team Aggregation Engine]
@@ -206,6 +222,10 @@ flowchart TD
 ## 4. System Architecture & Data Flow
 
 GrowthLens is built upon a high-performance, decoupled micro-architecture where real-time client requests are cleanly separated from analytical and deep learning inference:
+
+<p align="center">
+  <img src="docs/assets/architecture-flow.svg" alt="Animated Continuous Data Pipeline & Inference Topology" width="100%" />
+</p>
 
 ```mermaid
 flowchart TB
@@ -664,6 +684,10 @@ GrowthLens is styled using the **Moonwood Editorial Design System**, blending ed
 ## 14. Core Engineering Team & Contributors
 
 GrowthLens was researched, architected, and built for **HackMatrix 5.0** by the following engineering team:
+
+<p align="center">
+  <img src="docs/images/developers_banner.png" alt="GrowthLens Engineering Core" width="100%" />
+</p>
 
 | Contributor | Role & Specialization | Contact & Profiles |
 |---|---|---|

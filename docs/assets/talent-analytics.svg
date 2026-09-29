@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="100%" height="320" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .panel-bg { fill: #1A1A1A; rx: 12px; stroke: #2E2E2E; stroke-width: 1.5; }
+      .header-text { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; fill: #FFFFFF; }
+      .label-text { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 500; fill: #A3A3A3; }
+      .mono-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+      
+      /* Table Grid styling */
+      .cell-improving { fill: #1D3320; stroke: #34D399; stroke-width: 1; }
+      .cell-stagnating { fill: #262626; stroke: #525252; stroke-width: 1; }
+      .cell-declining { fill: #381A1A; stroke: #F87171; stroke-width: 1; }
+      
+      .pulse-glyph {
+        animation: glyphBlink 2.5s ease-in-out infinite;
+      }
+      @keyframes glyphBlink {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; transform: scale(1.1); }
+      }
+
+      /* Animated Percentile Marker */
+      .marker-pulse {
+        animation: markerGlow 1.8s ease-in-out infinite alternate;
+      }
+      @keyframes markerGlow {
+        from { transform: translateY(0); fill: #DFE968; }
+        to { transform: translateY(-4px); fill: #FFFFFF; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background Surface -->
+  <rect fill="#141414" stroke="#262626" stroke-width="1.5" rx="16" x="2" y="2" width="916" height="316" />
+
+  <!-- Section Title -->
+  <text class="header-text" x="28" y="32" font-size="14" fill="#DFE968">FEATURE 4: TALENT INTELLIGENCE, TEAM HEATMAPS &amp; PRIVACY BENCHMARKS</text>
+  <text font-family="'JetBrains Mono', monospace" font-size="11" fill="#71717A" x="650" y="32">⚡ Local LLM Synthesis (Qwen 2.5 8B)</text>
+
+  <!-- PANEL 1: EMPLOYEE NARRATIVE BRIEFING (LOCAL LLM) -->
+  <g transform="translate(30, 60)">
+    <rect class="panel-bg" width="270" height="235" />
+    <rect fill="#DFE968" rx="4" x="14" y="14" width="75" height="18" />
+    <text font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#1C1C1C" x="18" y="27">QWEN 2.5 8B</text>
+    <text class="header-text" x="14" y="54">Executive Growth Story</text>
+    
+    <text class="label-text" x="14" y="78">"Over Q3, Maya Sharma demonstrated</text>
+    <text class="label-text" x="14" y="94">accelerated mastery in distributed systems</text>
+    <text font-family="'JetBrains Mono', monospace" font-size="10" fill="#DFE968" x="14" y="112">[EVD-9821] with 35% latency gains,</text>
+    <text class="label-text" x="14" y="128">while Kubernetes networking requires</text>
+    <text class="label-text" x="14" y="144">targeted reinforcement."</text>
+    
+    <line x1="14" y1="162" x2="256" y2="162" stroke="#2E2E2E" stroke-width="1" />
+    <text font-family="'Space Grotesk', sans-serif" font-size="11" font-weight="700" fill="#FFFFFF" x="14" y="182">Manager Action Briefing:</text>
+    <text class="label-text" x="14" y="200">• Recommend Redis clustering deep-dive</text>
+    <text class="label-text" x="14" y="216">• Schedule peer pairing with Siddhesh</text>
+  </g>
+
+  <!-- PANEL 2: MANAGER TEAM SKILL HEATMAP -->
+  <g transform="translate(325, 60)">
+    <rect class="panel-bg" width="310" height="235" />
+    <text class="header-text" x="14" y="26">Team Skill Heatmap Matrix</text>
+    <text class="label-text" x="14" y="44">Team: Core Infrastructure &amp; Backend</text>
+
+    <!-- Heatmap Table -->
+    <!-- Column Headers -->
+    <text class="mono-text" font-size="9" fill="#71717A" x="80" y="72">Python</text>
+    <text class="mono-text" font-size="9" fill="#71717A" x="135" y="72">K8s</text>
+    <text class="mono-text" font-size="9" fill="#71717A" x="185" y="72">Postgres</text>
+    <text class="mono-text" font-size="9" fill="#71717A" x="245" y="72">SysDesign</text>
+
+    <!-- Row 1: Shubham P. -->
+    <text class="label-text" x="14" y="98">Shubham P.</text>
+    <rect class="cell-improving" x="80" y="85" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="93" y="99">↑</text>
+    <rect class="cell-improving" x="130" y="85" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="143" y="99">↑</text>
+    <rect class="cell-improving" x="180" y="85" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="193" y="99">↑</text>
+    <rect class="cell-stagnating" x="240" y="85" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#A3A3A3" x="253" y="99">→</text>
+
+    <!-- Row 2: Siddhesh B. -->
+    <text class="label-text" x="14" y="128">Siddhesh B.</text>
+    <rect class="cell-improving" x="80" y="115" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="93" y="129">↑</text>
+    <rect class="cell-stagnating" x="130" y="115" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#A3A3A3" x="143" y="129">→</text>
+    <rect class="cell-improving" x="180" y="115" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="193" y="129">↑</text>
+    <rect class="cell-improving" x="240" y="115" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="253" y="129">↑</text>
+
+    <!-- Row 3: Maya S. -->
+    <text class="label-text" x="14" y="158">Maya S.</text>
+    <rect class="cell-improving" x="80" y="145" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="93" y="159">↑</text>
+    <rect class="cell-declining" x="130" y="145" width="40" height="20" rx="3" />
+    <text class="mono-text pulse-glyph" fill="#F87171" x="143" y="159">↓</text>
+    <rect class="cell-stagnating" x="180" y="145" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#A3A3A3" x="193" y="159">→</text>
+    <rect class="cell-improving" x="240" y="145" width="40" height="20" rx="3" />
+    <text class="mono-text" fill="#34D399" x="253" y="159">↑</text>
+
+    <!-- Bus Factor Warning Box -->
+    <g transform="translate(14, 180)">
+      <rect fill="#381A1A" stroke="#EF4444" stroke-width="1" width="280" height="42" rx="4" />
+      <text font-family="'Space Grotesk', sans-serif" font-size="11" font-weight="700" fill="#F87171" x="10" y="18">⚠️ Org Single Point of Failure</text>
+      <text class="label-text" font-size="10" fill="#FCA5A5" x="10" y="32">K8s telemetry is isolated to 1 team member.</text>
+    </g>
+  </g>
+
+  <!-- PANEL 3: K-ANONYMIZED PEER BENCHMARK -->
+  <g transform="translate(660, 60)">
+    <rect class="panel-bg" width="230" height="235" />
+    <text class="header-text" x="14" y="26">Peer Benchmark</text>
+    <text class="label-text" x="14" y="44">Privacy-Preserving (k ≥ 10)</text>
+
+    <!-- Distribution Curve -->
+    <path d="M 15 150 C 60 150, 80 80, 115 80 C 150 80, 170 150, 215 150" stroke="#38BDF8" stroke-width="2.5" fill="none" />
+    
+    <!-- 82nd Percentile Indicator -->
+    <line x1="160" y1="70" x2="160" y2="150" stroke="#DFE968" stroke-width="2" stroke-dasharray="3 3" />
+    <polygon class="marker-pulse" points="160,65 155,55 165,55" />
+
+    <text font-family="'Space Grotesk', sans-serif" font-size="28" font-weight="700" fill="#DFE968" x="14" y="195">Top 18%</text>
+    <text class="label-text" x="14" y="215">82nd percentile vs comparable tenure</text>
+  </g>
+</svg>
