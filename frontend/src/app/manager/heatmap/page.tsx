@@ -97,13 +97,14 @@ export default function HeatmapPage() {
                       </td>
                       {heatmap.competency_names.map((compName) => {
                         const data = member.competencies[compName];
-                        const trend: TrendDirection = data?.trend || "insufficient";
-                        const cfg = trendConfig[trend];
+                        const rawTrend = (data?.trend || "insufficient").toLowerCase();
+                        const normTrend: TrendDirection = rawTrend === "insufficient_evidence" ? "insufficient" : (rawTrend as TrendDirection);
+                        const cfg = trendConfig[normTrend] || trendConfig.insufficient;
                         return (
                           <td
                             key={compName}
                             className={`p-2 text-center ${cfg.bg}`}
-                            title={`${compName}: ${trend} (${data?.score ?? "N/A"})`}
+                            title={`${compName}: ${normTrend} (${data?.score ?? "N/A"})`}
                           >
                             <span className={`text-lg font-bold ${cfg.text}`}>
                               {cfg.glyph}
