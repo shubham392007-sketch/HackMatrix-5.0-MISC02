@@ -1,11 +1,15 @@
-# GrowthLens
+<h1 align="center">GrowthLens</h1>
 
 <p align="center">
   <img src="docs/images/growthlens_header.png" alt="GrowthLens - Understand every trajectory. Ask anything. Get insights that matter." width="100%" />
 </p>
 
-> **Continuous Talent Intelligence & Skill Growth Engine**  
-> *Empirical, telemetry-backed talent intelligence replacing static performance reviews with deep learning trajectories, survival analysis, and on-premise generative synthesis.*
+<p align="center">
+  <strong>Continuous Talent Intelligence &amp; Skill Growth Engine</strong><br/>
+  <em>Empirical, telemetry-backed talent intelligence replacing static performance reviews with deep learning trajectories, survival analysis, and on-premise generative synthesis.</em>
+</p>
+
+<div align="center">
 
 [![HackMatrix 5.0](https://img.shields.io/badge/HackMatrix%205.0-Track%20MISC02-DFE968?style=for-the-badge&logo=target&logoColor=1C1C1C)](https://github.com/shubham392007-sketch/HackMatrix-5.0-MISC02)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -17,6 +21,8 @@
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6600?style=for-the-badge&logo=databricks&logoColor=white)](https://trychroma.com)
 [![License MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/Tests-36%20Passed%20%7C%20100%25-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](#11-test-suites--verification)
+
+</div>
 
 ---
 
