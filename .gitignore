@@ -13,6 +13,7 @@ dist/
 build/
 *.egg
 .eggs/
+*.db
 
 # Virtual environments
 .venv/

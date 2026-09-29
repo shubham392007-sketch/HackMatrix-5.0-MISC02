@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     jira_api_token: str = Field(default="")
     jira_project_key: str = Field(default="")
 
+    # YouTube
+    youtube_api_key: str = Field(default="", description="YouTube Data API key")
+
+    # Database
+    database_url: str = Field(default="", description="PostgreSQL database URL")
+
     # Application
     app_name: str = Field(default="GrowthLens")
     app_version: str = Field(default="0.1.0")
