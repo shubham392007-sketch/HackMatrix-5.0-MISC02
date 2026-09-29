@@ -52,8 +52,8 @@ export default function EvidencePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Real integrations state
-  const [githubStatus, setGithubStatus] = useState<"connected" | "not_connected" | "needs_attention">("not_connected");
-  const [jiraStatus, setJiraStatus] = useState<"connected" | "not_connected" | "needs_attention">("not_connected");
+  const [githubStatus, setGithubStatus] = useState<"connected" | "not_connected" | "needs_attention" | "syncing">("not_connected");
+  const [jiraStatus, setJiraStatus] = useState<"connected" | "not_connected" | "needs_attention" | "syncing">("not_connected");
   const [activeIntegrationsCount, setActiveIntegrationsCount] = useState<number>(0);
   const [githubSyncing, setGithubSyncing] = useState<boolean>(false);
   const [jiraSyncing, setJiraSyncing] = useState<boolean>(false);
@@ -377,7 +377,7 @@ export default function EvidencePage() {
         skipped: totalSkipped,
         source: source.toUpperCase(),
       });
-      setLastSyncTime("Just now");
+      setGithubRawSync(new Date().toISOString());
       if (selectedLearner) fetchEvidence(selectedLearner);
       loadIntegrations();
     } catch (err: any) {
