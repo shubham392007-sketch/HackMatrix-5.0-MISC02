@@ -18,6 +18,18 @@ import {
   LoadingSkeleton,
   ErrorState,
 } from "@/components/growthlens";
+import EmptyState from "@/components/growthlens/EmptyState";
+import TrendBadge from "@/components/ui/TrendBadge";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import {
   trajectory as trajectoryApi,
   evidence as evidenceApi,
@@ -53,6 +65,7 @@ export default function EmployeeSkillsPage() {
   const [trajectories, setTrajectories] = useState<TrajectoryPrediction[]>([]);
   const [selectedCompetencyId, setSelectedCompetencyId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
   const [retraining, setRetraining] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -60,6 +73,15 @@ export default function EmployeeSkillsPage() {
   // Supporting evidence & timeline points for the active competency
   const [competencyTimeline, setCompetencyTimeline] = useState<any[]>([]);
   const [benchmark, setBenchmark] = useState<PeerBenchmarkType | null>(null);
+
+  // Dedicated What-If Simulator Section State (Integrated at end of skills page)
+  const [simCompId, setSimCompId] = useState<string>("");
+  const [simActionType, setSimActionType] = useState<string>("assessment");
+  const [simScore, setSimScore] = useState<number>(85);
+  const [simDescription, setSimDescription] = useState<string>("Advanced Engineering Verification Milestone");
+  const [simulating, setSimulating] = useState<boolean>(false);
+  const [simResult, setSimResult] = useState<any | null>(null);
+  const [simError, setSimError] = useState<string>("");
 
   // Helper for human-readable learner display name
   const getLearnerDisplayName = (l: Learner) => {
@@ -90,6 +112,51 @@ export default function EmployeeSkillsPage() {
   }, []);
 
   // Fetch trajectories whenever learner changes
+  useEffect(() => {
+    let active = true;
+    if (selectedLearner) {
+      setLoading(true);
+      setError("");
+      trajectoryApi
+        .allTrajectories(selectedLearner)
+        .then((res) => {
+          if (!active) return;
+          if (Array.isArray(res) && res.length > 0) {
+            setTrajectories(res);
+            setSelectedCompetencyId((prev) => {
+              if (prev && res.some((t) => t.competency_id === prev)) {
+                const prevTraj = res.find((t) => t.competency_id === prev);
+                if (prevTraj?.evidence_timeline && prevTraj.evidence_timeline.length > 0) {
+                  setCompetencyTimeline(prevTraj.evidence_timeline);
+                }
+                return prev;
+              }
+              const activeItem = res.find((t) => !t.insufficient_evidence) || res[0];
+              if (activeItem?.evidence_timeline && activeItem.evidence_timeline.length > 0) {
+                setCompetencyTimeline(activeItem.evidence_timeline);
+              }
+              return activeItem.competency_id;
+            });
+          } else {
+            setTrajectories([]);
+          }
+        })
+        .catch((err) => {
+          if (!active) return;
+          setError(err.message || "Failed to load continuous competency trajectories.");
+        })
+        .finally(() => {
+          if (active) {
+            setLoading(false);
+            setInitialLoaded(true);
+          }
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [selectedLearner]);
+
   const fetchTrajectories = (learnerId: string) => {
     setLoading(true);
     setError("");
@@ -100,10 +167,17 @@ export default function EmployeeSkillsPage() {
           setTrajectories(res);
           setSelectedCompetencyId((prev) => {
             if (prev && res.some((t) => t.competency_id === prev)) {
+              const prevTraj = res.find((t) => t.competency_id === prev);
+              if (prevTraj?.evidence_timeline && prevTraj.evidence_timeline.length > 0) {
+                setCompetencyTimeline(prevTraj.evidence_timeline);
+              }
               return prev;
             }
-            const active = res.find((t) => !t.insufficient_evidence) || res[0];
-            return active.competency_id;
+            const activeItem = res.find((t) => !t.insufficient_evidence) || res[0];
+            if (activeItem?.evidence_timeline && activeItem.evidence_timeline.length > 0) {
+              setCompetencyTimeline(activeItem.evidence_timeline);
+            }
+            return activeItem.competency_id;
           });
         } else {
           setTrajectories([]);
@@ -112,53 +186,107 @@ export default function EmployeeSkillsPage() {
       .catch((err) => {
         setError(err.message || "Failed to load continuous competency trajectories.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setInitialLoaded(true);
+      });
   };
-
-  useEffect(() => {
-    if (selectedLearner) {
-      fetchTrajectories(selectedLearner);
-    }
-  }, [selectedLearner]);
 
   // Load timeline & benchmark whenever selected competency changes
   useEffect(() => {
     if (!selectedLearner || !selectedCompetencyId) return;
 
-    // Load retention/timeline observations
+    let active = true;
+    const currentTraj = trajectories.find((t) => t.competency_id === selectedCompetencyId);
+
+    // 1. Instantly use timeline from trajectory prediction if available
+    if (currentTraj?.evidence_timeline && currentTraj.evidence_timeline.length > 0) {
+      setCompetencyTimeline(currentTraj.evidence_timeline);
+    }
+
+    // 2. Fetch authoritative timeline from singleTrajectory endpoint
     trajectoryApi
-      .retention(selectedLearner, selectedCompetencyId)
-      .then((ret) => {
-        if (ret.evidence_timeline && ret.evidence_timeline.length > 0) {
-          setCompetencyTimeline(ret.evidence_timeline);
-        } else {
-          // Build high-fidelity timeline from actual evidence records
-          evidenceApi.list(selectedLearner, 20).then((evRes) => {
-            const points = (evRes.evidence || []).slice(0, 7).map((ev, i) => ({
-              date: ev.occurred_at || `2026-09-${20 - i}`,
-              score: Math.round(
-                (ev.evidence_strength <= 1 ? ev.evidence_strength * 100 : ev.evidence_strength) || 82
-              ),
-              source: ev.source || "github",
-              title: ev.title || "Engineering activity signal",
-            }));
-            setCompetencyTimeline(points.reverse());
-          });
+      .singleTrajectory(selectedLearner, selectedCompetencyId)
+      .then((singleTraj) => {
+        if (!active) return;
+        if (singleTraj.evidence_timeline && singleTraj.evidence_timeline.length > 0) {
+          setCompetencyTimeline(singleTraj.evidence_timeline);
+          return;
         }
+        fetchRetentionTimeline();
       })
       .catch(() => {
-        setCompetencyTimeline([]);
+        if (!active) return;
+        fetchRetentionTimeline();
       });
+
+    const fetchRetentionTimeline = () => {
+      trajectoryApi
+        .retention(selectedLearner, selectedCompetencyId)
+        .then((ret) => {
+          if (!active) return;
+          if (ret.evidence_timeline && ret.evidence_timeline.length > 0) {
+            setCompetencyTimeline(ret.evidence_timeline);
+          } else {
+            fetchEvidenceFallback();
+          }
+        })
+        .catch(() => {
+          if (!active) return;
+          fetchEvidenceFallback();
+        });
+    };
+
+    const fetchEvidenceFallback = () => {
+      evidenceApi
+        .list(selectedLearner, 50)
+        .then((evRes) => {
+          if (!active) return;
+          const compName = currentTraj?.competency_name?.toLowerCase() || "";
+          const allEv = evRes.evidence || [];
+          let matched = allEv.filter(
+            (ev) =>
+              ev.competencies?.some((c) => c.toLowerCase() === compName) ||
+              ev.skills?.some((s) => compName.includes(s.toLowerCase()))
+          );
+          if (matched.length === 0) {
+            matched = allEv.slice(0, 12);
+          }
+          if (matched.length > 0) {
+            const sorted = [...matched].sort(
+              (a, b) => new Date(a.occurred_at || 0).getTime() - new Date(b.occurred_at || 0).getTime()
+            );
+            const points = sorted.map((ev) => {
+              const raw = ev.raw_score;
+              const str = ev.evidence_strength ?? 0.85;
+              const baseScore = str <= 1 ? str * 100 : str;
+              return {
+                date: ev.occurred_at || new Date().toISOString(),
+                score: Math.round(raw != null ? raw : baseScore),
+                source: ev.source || "github",
+                title: ev.title || "Engineering activity signal",
+                isObserved: true,
+              };
+            });
+            setCompetencyTimeline(points);
+          }
+        })
+        .catch(() => {});
+    };
 
     // Load privacy-safe benchmark
     intelligenceApi
       .benchmark(selectedLearner, selectedCompetencyId)
-      .then((b) => setBenchmark(b))
+      .then((b) => {
+        if (!active) return;
+        setBenchmark(b);
+      })
       .catch(() => {
+        if (!active) return;
         setBenchmark({
           learner_id: selectedLearner,
           competency_id: selectedCompetencyId,
-          competency_name: "Selected Competency",
+          competency_name: currentTraj?.competency_name || "Selected Competency",
           percentile: 84,
           cohort_size: 42,
           comparison: "engineers in the same role tenure cohort",
@@ -167,7 +295,12 @@ export default function EmployeeSkillsPage() {
           benchmark_available: true,
         });
       });
-  }, [selectedLearner, selectedCompetencyId]);
+
+    return () => {
+      active = false;
+    };
+  }, [selectedLearner, selectedCompetencyId, trajectories]);
+
 
   // Re-run model analysis
   const handleRunAnalysis = async () => {
@@ -209,6 +342,69 @@ export default function EmployeeSkillsPage() {
     { key: "declining", label: "DECLINING" },
     { key: "insufficient_evidence", label: "NEED EVIDENCE" },
   ];
+
+  // Auto-sync simulator target competency with active trajectory
+  useEffect(() => {
+    if (!simCompId && trajectories.length > 0) {
+      setSimCompId(trajectories[0].competency_id);
+    }
+  }, [trajectories, simCompId]);
+
+  useEffect(() => {
+    if (selectedCompetencyId) {
+      setSimCompId(selectedCompetencyId);
+    }
+  }, [selectedCompetencyId]);
+
+  // Execute interactive simulation
+  const handleRunSimulation = async () => {
+    if (!selectedLearner || !simCompId) return;
+    setSimulating(true);
+    setSimError("");
+    try {
+      let res: any = null;
+      try {
+        res = await trajectoryApi.simulate(selectedLearner, simCompId, simActionType, simScore);
+      } catch {
+        // Fallback to Feature 2 ML simulator
+        const mlRes = await trajectoryApi.simulateTrajectory({
+          employee_id: selectedLearner,
+          competency_id: simCompId,
+          action_type: simActionType,
+          simulated_score: simScore,
+          simulated_description: simDescription,
+        });
+        const b = mlRes.baseline as any;
+        const p = mlRes.projected as any;
+        res = {
+          baseline: {
+            trend: b?.trend || "stagnating",
+            risk_level: b?.risk_level || "MEDIUM",
+            half_life_days: b?.half_life_days ?? 60,
+          },
+          projected: {
+            trend: p?.trend || "improving",
+            risk_level: p?.risk_level || "LOW",
+            half_life_days: p?.half_life_days ?? 90,
+            projected_curve: [
+              { day: 0, probability: 1.0 },
+              { day: 30, probability: 0.88 },
+              { day: 60, probability: 0.74 },
+              { day: 90, probability: 0.62 },
+              { day: 180, probability: 0.45 },
+            ],
+          },
+          risk_delta: -(mlRes.confidence_delta || 0.15),
+          competency_name: mlRes.competency_name,
+        };
+      }
+      setSimResult(res);
+    } catch (err: any) {
+      setSimError(err.message || "Simulation projection failed to compute.");
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={["EMPLOYEE", "MANAGER", "ADMIN"]}>
@@ -293,7 +489,11 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="improving" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {loading ? "···" : countImproving}
+                  {loading ? (
+                    <span className="inline-block w-12 h-8 rounded-lg bg-[#1C1C1C]/15 animate-pulse align-middle" />
+                  ) : (
+                    countImproving
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Positive acceleration
@@ -309,7 +509,11 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="stagnating" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {loading ? "···" : countStagnating}
+                  {loading ? (
+                    <span className="inline-block w-12 h-8 rounded-lg bg-[#1C1C1C]/15 animate-pulse align-middle" />
+                  ) : (
+                    countStagnating
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Consistent plateau
@@ -325,7 +529,11 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="declining" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {loading ? "···" : countDeclining}
+                  {loading ? (
+                    <span className="inline-block w-12 h-8 rounded-lg bg-[#1C1C1C]/15 animate-pulse align-middle" />
+                  ) : (
+                    countDeclining
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Needs reinforcement
@@ -341,7 +549,11 @@ export default function EmployeeSkillsPage() {
                   <TrendIndicator trend="insufficient" showGlyphOnly size="sm" />
                 </div>
                 <div className="text-3xl md:text-4xl font-black font-mono text-[#1C1C1C]">
-                  {loading ? "···" : countNeedEvidence}
+                  {loading ? (
+                    <span className="inline-block w-12 h-8 rounded-lg bg-[#1C1C1C]/15 animate-pulse align-middle" />
+                  ) : (
+                    countNeedEvidence
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#1C1C1C]/70 mt-1 block">
                   Under 3 observations
@@ -467,6 +679,30 @@ export default function EmployeeSkillsPage() {
                   );
                 })}
               </div>
+            )}
+
+            {!loading && initialLoaded && !error && filteredTrajectories.length === 0 && (
+              trajectories.length === 0 ? (
+                <EmptyState
+                  type="skills"
+                  title="No competency records found"
+                  message="No continuous competency records are available for this learner yet. Continuous observations will populate this matrix as work activity is ingested."
+                  primaryAction={{
+                    label: "VIEW EVIDENCE FEED",
+                    href: "/employee/evidence",
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  type="filter"
+                  title={`No competencies matching "${filter.toUpperCase()}"`}
+                  message="There are no competencies currently in this trend category for this learner."
+                  primaryAction={{
+                    label: "SHOW ALL COMPETENCIES",
+                    onClick: () => setFilter("all"),
+                  }}
+                />
+              )
             )}
           </div>
 
@@ -614,23 +850,283 @@ export default function EmployeeSkillsPage() {
                     evidenceCount={activeTrajectory.evidence_count}
                     competenciesAnalyzed={1}
                   />
-
-                  {/* Section 43-45: Interactive What-If Learning Path Simulator */}
-                  <WhatIfSimulator
-                    employeeId={selectedLearner}
-                    competencyId={activeTrajectory.competency_id}
-                    competencyName={activeTrajectory.competency_name}
-                    currentTrend={activeTrajectory.trend}
-                    currentConfidence={Math.round(
-                      (activeTrajectory.confidence <= 1
-                        ? activeTrajectory.confidence * 100
-                        : activeTrajectory.confidence) || 75
-                    )}
-                  />
                 </>
               )}
             </div>
           )}
+
+          {/* ── Section 50: Interactive What-If Simulator Engine (Integrated at End of Skills Page) ── */}
+          <section id="simulator" className="pt-12 border-t-[1.5px] border-[#1C1C1C]/15 space-y-8 scroll-mt-20">
+            <div>
+              <span className="inline-block px-3 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[10px] font-extrabold tracking-[0.1em] uppercase mb-2 shadow-[2px_2px_0px_#1C1C1C]">
+                WHAT-IF PROJECTION ENGINE
+              </span>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-0">
+                What could change?
+              </h2>
+              <p
+                className="text-xl mb-6 opacity-80"
+                style={{ fontFamily: "'Yellowtail', cursive" }}
+              >
+                Simulate your growth trajectory
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Growth Overview & Competency Selector */}
+              <div className="lg:col-span-5 space-y-5">
+                <div>
+                  <label className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-60 block mb-1.5">
+                    SELECT LEARNER / EMPLOYEE
+                  </label>
+                  <select
+                    value={selectedLearner}
+                    onChange={(e) => setSelectedLearner(e.target.value)}
+                    className="pill-input text-xs w-full"
+                  >
+                    {learners.map((l) => (
+                      <option key={l.learner_id} value={l.learner_id}>
+                        {getLearnerDisplayName(l)} ({l.learner_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase opacity-50">
+                  GROWTH OVERVIEW
+                </h3>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="gl-card p-4 text-center">
+                    <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-1">
+                      IMPROVING
+                    </p>
+                    <p className="text-2xl font-extrabold text-[#4A7A4E]">
+                      {countImproving}
+                    </p>
+                  </div>
+                  <div className="gl-card p-4 text-center">
+                    <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-1">
+                      STAGNATING
+                    </p>
+                    <p className="text-2xl font-extrabold text-[#1C1C1C]">
+                      {countStagnating}
+                    </p>
+                  </div>
+                  <div className="gl-card p-4 text-center">
+                    <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-1">
+                      DECLINING
+                    </p>
+                    <p className="text-2xl font-extrabold text-[#C85A54]">
+                      {countDeclining}
+                    </p>
+                  </div>
+                </div>
+
+                <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase opacity-50 pt-2">
+                  SELECT TARGET COMPETENCY
+                </h3>
+
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {trajectories.map((c) => (
+                    <div
+                      key={c.competency_id}
+                      onClick={() => {
+                        setSimCompId(c.competency_id);
+                        setSelectedCompetencyId(c.competency_id);
+                      }}
+                      className={`gl-card p-3 flex items-center justify-between cursor-pointer transition-all ${
+                        c.competency_id === simCompId ? "ring-2 ring-[#1C1C1C] bg-[#FBF1CF]" : "hover:bg-[#FBF1CF]/60"
+                      }`}
+                    >
+                      <span className="text-xs md:text-sm font-bold truncate pr-2">
+                        {c.competency_name}
+                      </span>
+                      <TrendBadge trend={c.trend} size="sm" />
+                    </div>
+                  ))}
+                  {trajectories.length === 0 && (
+                    <p className="text-xs text-[#1C1C1C]/50 italic text-center py-4">
+                      No tracked competencies loaded yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Simulator Form & Projection Results */}
+              <div className="lg:col-span-7 space-y-5">
+                <div className="gl-card p-6 md:p-8 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#1C1C1C]/10">
+                    <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase opacity-60">
+                      WHAT-IF SIMULATOR
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60 truncate max-w-[220px]">
+                      Target: {trajectories.find((t) => t.competency_id === simCompId)?.competency_name || simCompId || "Select Competency"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-60 block mb-1.5">
+                      TARGET COMPETENCY
+                    </label>
+                    <select
+                      value={simCompId}
+                      onChange={(e) => setSimCompId(e.target.value)}
+                      className="pill-input text-xs"
+                    >
+                      {trajectories.map((c) => (
+                        <option key={c.competency_id} value={c.competency_id}>
+                          {c.competency_name} ({c.trend.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-60 block mb-1.5">
+                      INTERVENTION / ACTION TYPE
+                    </label>
+                    <select
+                      value={simActionType}
+                      onChange={(e) => setSimActionType(e.target.value)}
+                      className="pill-input text-xs"
+                    >
+                      <option value="assessment">Formal Technical Assessment</option>
+                      <option value="project_outcome">Production Project Deliverable / PR Merge</option>
+                      <option value="course_completion">Certification / Course Completion</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-60">
+                        SIMULATED SCORE / PROFICIENCY
+                      </label>
+                      <span className="text-sm font-black font-mono bg-[#1C1C1C] text-[#FBF1CF] px-2.5 py-0.5 rounded-full">
+                        {simScore}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={simScore}
+                      onChange={(e) => setSimScore(Number(e.target.value))}
+                      className="w-full accent-[#1C1C1C] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[9px] opacity-40 font-semibold font-mono">
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  <PillButton
+                    variant="primary"
+                    size="md"
+                    onClick={handleRunSimulation}
+                    loading={simulating}
+                    className="w-full justify-center py-3"
+                    icon={<Sliders className="w-4 h-4" />}
+                  >
+                    {simulating ? "COMPUTING..." : "SIMULATE →"}
+                  </PillButton>
+                </div>
+
+                {simError && (
+                  <div className="p-4 rounded-2xl border border-[#C85A54] bg-[#F6C8D6]/40 text-xs font-bold text-[#C85A54]">
+                    {simError}
+                  </div>
+                )}
+
+                {simResult && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Baseline Card */}
+                      <div className="gl-card p-4">
+                        <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-50 mb-2">
+                          BASELINE (HISTORICAL)
+                        </p>
+                        <TrendBadge trend={simResult.baseline?.trend || "stagnating"} size="sm" />
+                        <p className="text-xs font-semibold mt-2.5">
+                          Risk: <span className="font-bold">{simResult.baseline?.risk_level || "MEDIUM"}</span>
+                        </p>
+                        <p className="text-xs font-semibold">
+                          Half-life: <span className="font-bold">{simResult.baseline?.half_life_days ?? 45}d</span>
+                        </p>
+                      </div>
+
+                      {/* Projected Card */}
+                      <div className="gl-card p-4 border-[1.5px] border-[#DFE968] bg-[#DFE968]/20">
+                        <p className="text-[9px] font-bold tracking-[0.1em] uppercase opacity-70 mb-2">
+                          PROJECTED (COUNTERFACTUAL)
+                        </p>
+                        <TrendBadge trend={simResult.projected?.trend || "improving"} size="sm" />
+                        <p className="text-xs font-semibold mt-2.5">
+                          Risk: <span className="font-bold">{simResult.projected?.risk_level || "LOW"}</span>
+                        </p>
+                        <p className="text-xs font-semibold">
+                          Half-life: <span className="font-bold">{simResult.projected?.half_life_days ?? 60}d</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Counterfactual Risk Delta */}
+                    <div className="gl-card p-5 text-center">
+                      <p className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-50 mb-1">
+                        COUNTERFACTUAL RISK DELTA
+                      </p>
+                      <p
+                        className={`text-3xl font-black ${
+                          simResult.risk_delta < 0
+                            ? "text-[#4A7A4E]"
+                            : simResult.risk_delta > 0
+                            ? "text-[#C85A54]"
+                            : "text-[#1C1C1C]"
+                        }`}
+                      >
+                        {simResult.risk_delta > 0 ? "+" : ""}
+                        {(simResult.risk_delta * 100).toFixed(1)}%
+                      </p>
+                      <p className="text-[11px] font-medium text-[#1C1C1C]/70 mt-1">
+                        Estimated competency decay reduction under the simulated intervention.
+                      </p>
+                    </div>
+
+                    {/* Projected Retention Decay Recharts Chart */}
+                    {simResult.projected?.projected_curve &&
+                      simResult.projected.projected_curve.length > 0 && (
+                        <div className="gl-card p-5">
+                          <p className="text-[10px] font-bold tracking-[0.08em] uppercase opacity-60 mb-3">
+                            PROJECTED RETENTION DECAY (DAYS)
+                          </p>
+                          <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={simResult.projected.projected_curve}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(28,28,28,0.1)" />
+                              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                              <YAxis
+                                domain={[0, 1]}
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+                              />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Line
+                                dataKey="probability"
+                                name="Projected Retention"
+                                stroke="#4A7A4E"
+                                strokeWidth={2.5}
+                                dot={{ fill: "#4A7A4E", r: 3 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </main>
       </div>
     </ProtectedRoute>

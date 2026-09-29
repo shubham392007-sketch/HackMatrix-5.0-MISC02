@@ -1,4 +1,5 @@
 """Evidence Ingestion Service orchestrating the complete end-to-end evidence pipeline."""
+import asyncio
 import re
 import traceback
 from typing import Any, Dict, List, Optional
@@ -58,8 +59,8 @@ class EvidenceIngestionService:
     ) -> Dict[str, Any]:
         """Synchronizes GitHub commits and pull requests."""
         settings = get_settings()
-        target_owner = owner or settings.github_repository_owner
-        target_repo = repo or settings.github_repository_name
+        target_owner = owner or settings.github_repository_owner or "shubham392007-sketch"
+        target_repo = repo or settings.github_repository_name or "HackMatrix-5.0-MISC02"
         active_client = self.github_client
 
         # Handle cases where repo or owner contains combined "owner/repo"
@@ -72,14 +73,21 @@ class EvidenceIngestionService:
             target_owner = parts[0]
             target_repo = parts[1]
 
-        # If user_id is missing, try to resolve from target_employee_id
+        # Canonical employee resolution
+        canonical_emp_id = None
+        if target_employee_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
+        elif user_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
+        # If user_id is missing, try to resolve from canonical_emp_id
         user_gh_username = None
         user_gh_email = None
-        if not user_id and target_employee_id:
+        if not user_id and canonical_emp_id:
             try:
                 from backend.db.client import get_supabase_client
                 c = get_supabase_client()
-                emp = c.table("employees").select("user_id, email").eq("id", target_employee_id).execute()
+                emp = c.table("employees").select("user_id, email").eq("id", canonical_emp_id).execute()
                 if emp.data:
                     user_id = emp.data[0].get("user_id")
                     user_gh_email = emp.data[0].get("email")
@@ -122,14 +130,8 @@ class EvidenceIngestionService:
             target_owner = "shubham392007-sketch"
 
         if not target_owner or not target_repo:
-            raise GitHubIntegrationError("GitHub owner and repository must be specified or configured in .env")
-
-        # Canonical employee resolution
-        canonical_emp_id = None
-        if target_employee_id:
-            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
-        elif user_id:
-            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+            target_owner = target_owner or "shubham392007-sketch"
+            target_repo = target_repo or "HackMatrix-5.0-MISC02"
 
         # Register or update identity mapping for this canonical employee and github username
         if canonical_emp_id and user_gh_username:
@@ -213,6 +215,7 @@ class EvidenceIngestionService:
                     should_ai = run_ai and (processed < 2)
                     await self._process_single_evidence(evidence, should_ai)
                     processed += 1
+                    existing_refs.add(evidence.source_reference)
 
                 except Exception as ex:
                     logger.error(f"Failed processing GitHub record: {ex}")
@@ -282,13 +285,20 @@ class EvidenceIngestionService:
         instance_url = settings.jira_base_url
         active_client = self.jira_client
 
-        # If user_id is missing, try to resolve from target_employee_id
+        # Canonical employee resolution
+        canonical_emp_id = None
+        if target_employee_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(target_employee_id)
+        elif user_id:
+            canonical_emp_id = self.evidence_repo._resolve_employee_uuid(user_id)
+
+        # If user_id is missing, try to resolve from canonical_emp_id
         user_jira_email = None
-        if not user_id and target_employee_id:
+        if not user_id and canonical_emp_id:
             try:
                 from backend.db.client import get_supabase_client
                 c = get_supabase_client()
-                emp = c.table("employees").select("user_id, email").eq("id", target_employee_id).execute()
+                emp = c.table("employees").select("user_id, email").eq("id", canonical_emp_id).execute()
                 if emp.data:
                     user_id = emp.data[0].get("user_id")
                     user_jira_email = emp.data[0].get("email")
@@ -455,15 +465,18 @@ class EvidenceIngestionService:
         # 2. AI Extraction via local Qwen3 8B
         if run_ai:
             try:
-                # Provide known competencies to constrain and guide Qwen3
+                # Provide known competencies to constrain and guide Qwen3 with strict 8.0s timeout
                 known_comps = [c["name"] for c in self.taxonomy_service.list_all_competencies()]
-                extraction = await self.qwen_service.extract_evidence(
-                    source=evidence.source,
-                    source_type=evidence.source_type,
-                    title=evidence.title,
-                    content=evidence.content,
-                    evidence_id=ev_id,
-                    known_competencies=known_comps,
+                extraction = await asyncio.wait_for(
+                    self.qwen_service.extract_evidence(
+                        source=evidence.source,
+                        source_type=evidence.source_type,
+                        title=evidence.title,
+                        content=evidence.content,
+                        evidence_id=ev_id,
+                        known_competencies=known_comps,
+                    ),
+                    timeout=8.0,
                 )
 
                 ai_summary = extraction.evidence_summary

@@ -8,6 +8,8 @@ export interface Learner {
   department: string;
   active_competencies: number;
   total_evidence: number;
+  role?: string;
+  tenure_months?: number;
 }
 
 export interface Competency {
@@ -230,8 +232,10 @@ export interface Evidence {
   project_name?: string;
   ai_summary?: string;
   raw_evidence?: string;
+  raw_score?: number;
   ai_interpretation?: string;
 }
+
 
 /* ── API Response Wrappers ───────────────────────────────── */
 
@@ -283,7 +287,17 @@ export interface TrajectoryPrediction {
   supporting_evidence_titles: string[];
   explanation?: string;
   is_simulated?: boolean;
+  evidence_timeline?: Array<{
+    date: string;
+    score: number;
+    source?: string;
+    title?: string;
+    source_type?: string;
+    evidence_id?: string;
+    isObserved?: boolean;
+  }>;
 }
+
 
 export interface WhatIfSimulationRequest {
   employee_id: string;

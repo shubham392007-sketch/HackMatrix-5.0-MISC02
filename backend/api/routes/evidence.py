@@ -12,7 +12,7 @@ router = APIRouter(prefix="/evidence", tags=["Evidence Intelligence"])
 
 
 @router.get("/{employee_id}")
-async def list_employee_evidence(
+def list_employee_evidence(
     employee_id: str,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -52,7 +52,7 @@ async def list_employee_evidence(
 
 
 @router.get("/{employee_id}/{evidence_id}")
-async def get_evidence_detail(employee_id: str, evidence_id: str):
+def get_evidence_detail(employee_id: str, evidence_id: str):
     """Retrieve a single evidence record with full skill and competency tags for complete audit traceability."""
     repo = EvidenceRepository()
     record = repo.get_employee_evidence_by_id(employee_id, evidence_id)

@@ -13,6 +13,7 @@ import {
   ErrorState,
   WhatIfSimulator,
 } from "@/components/growthlens";
+import EmptyState from "@/components/growthlens/EmptyState";
 import {
   managerTrajectory,
   type ManagerTrajectoryTeamOverview,
@@ -82,6 +83,34 @@ export default function ManagerTrajectoryPage() {
   }, [loadOverview]);
 
   // 3. Fetch trajectories when selected employee changes
+  useEffect(() => {
+    let active = true;
+    if (selectedEmployeeId) {
+      setLoadingTrajectories(true);
+      managerTrajectory
+        .employeeTrajectories(selectedEmployeeId, false)
+        .then((data) => {
+          if (!active) return;
+          setEmployeeTrajectories(data.trajectories || []);
+          if (data.trajectories && data.trajectories.length > 0) {
+            setFocusedCompetency(data.trajectories[0]);
+          } else {
+            setFocusedCompetency(null);
+          }
+        })
+        .catch((err) => {
+          if (!active) return;
+          console.error("Failed to load employee trajectories:", err);
+        })
+        .finally(() => {
+          if (active) setLoadingTrajectories(false);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [selectedEmployeeId]);
+
   const loadTrajectories = useCallback(
     (employeeId: string, forceRefresh = false) => {
       if (forceRefresh) setRefreshingInference(true);
@@ -107,12 +136,6 @@ export default function ManagerTrajectoryPage() {
     },
     []
   );
-
-  useEffect(() => {
-    if (selectedEmployeeId) {
-      loadTrajectories(selectedEmployeeId, false);
-    }
-  }, [selectedEmployeeId, loadTrajectories]);
 
   const selectedMember = overview?.team_members.find(
     (m) => m.employee_id === selectedEmployeeId
@@ -408,14 +431,15 @@ export default function ManagerTrajectoryPage() {
                     {loadingTrajectories ? (
                       <LoadingSkeleton type="card" count={3} />
                     ) : employeeTrajectories.length === 0 ? (
-                      <div className="p-8 text-center rounded-2xl border-[1.5px] border-dashed border-[#1C1C1C]/30 bg-white">
-                        <BarChart3 className="w-8 h-8 mx-auto text-[#1C1C1C]/40 mb-2" />
-                        <h5 className="font-bold text-sm">No trajectories persisted yet</h5>
-                        <p className="text-xs text-[#1C1C1C]/60 mt-1">
-                          Click &ldquo;Re-run Inference&rdquo; to calculate real-time trajectories
-                          using the PyTorch LSTM model.
-                        </p>
-                      </div>
+                      <EmptyState
+                        type="skills"
+                        title="No trajectories calculated yet"
+                        message="Click 'Re-run Inference' to calculate continuous competency trajectories using the PyTorch LSTM attention model."
+                        primaryAction={{
+                          label: "RE-RUN INFERENCE",
+                          onClick: () => loadTrajectories(selectedMember.employee_id, true),
+                        }}
+                      />
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {employeeTrajectories.map((traj) => {

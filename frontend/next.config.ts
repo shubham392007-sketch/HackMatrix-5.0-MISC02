@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["10.212.252.240", "localhost:3000", "127.0.0.1:3000"],
+  async redirects() {
+    return [
+      {
+        source: "/employee/simulator",
+        destination: "/employee/skills#simulator",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -14,6 +23,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
 };
 
 export default nextConfig;

@@ -29,7 +29,7 @@ class SimulationRequest(BaseModel):
     )
 
 @router.get("/learners")
-async def get_sample_learners(
+def get_sample_learners(
     limit: int = Query(15, ge=1, le=50),
     profile: Optional[UserProfile] = Depends(get_optional_profile)
 ):
@@ -38,7 +38,7 @@ async def get_sample_learners(
     return {"learners": service.get_sample_learners(limit=limit)}
 
 @router.get("/learner/{learner_id}/competencies")
-async def get_learner_competencies(
+def get_learner_competencies(
     learner_id: str,
     profile: Optional[UserProfile] = Depends(get_optional_profile)
 ):
@@ -56,7 +56,7 @@ async def get_learner_competencies(
     }
 
 @router.get("/learner/{learner_id}/retention")
-async def get_retention_assessment(
+def get_retention_assessment(
     learner_id: str,
     competency_id: Optional[str] = Query(None, description="Optional specific competency ID or name"),
     profile: Optional[UserProfile] = Depends(get_optional_profile)
@@ -77,7 +77,7 @@ async def get_retention_assessment(
     return assessment
 
 @router.post("/learner/{learner_id}/retention/simulate")
-async def simulate_retention_intervention(
+def simulate_retention_intervention(
     learner_id: str,
     req: SimulationRequest
 ):

@@ -39,11 +39,13 @@ export default function ManagerGrowthPage() {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
+    let active = true;
     setLoading(true);
     setError("");
     intelligenceApi
       .teamHeatmap(selectedTeam)
       .then((data) => {
+        if (!active) return;
         setHeatmap(data);
         if (data.members && data.members.length > 0) {
           setSelectedMember(data.members[0]);
@@ -51,6 +53,7 @@ export default function ManagerGrowthPage() {
         }
       })
       .catch((err) => {
+        if (!active) return;
         // Fallback for demo
         const demoHeatmap: TeamHeatmap = {
           team_id: selectedTeam,
@@ -114,7 +117,12 @@ export default function ManagerGrowthPage() {
         setSelectedMember(demoHeatmap.members[0]);
         setSelectedCompetency(demoHeatmap.competency_names[0]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [selectedTeam]);
 
   // Load selected member's authoritative trajectories

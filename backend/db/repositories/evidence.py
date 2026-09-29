@@ -50,9 +50,14 @@ class EvidenceRepository:
         return (results if results else all_records)[:limit]
 
     def create(self, evidence: CanonicalEvidence) -> dict:
+        # Guarantee employee_id is a valid UUID or None to avoid 22P02 Postgres errors
+        resolved_emp_id = None
+        if evidence.employee_id:
+            resolved_emp_id = self._resolve_employee_uuid(str(evidence.employee_id))
+
         payload = {
             "id": evidence.evidence_id,
-            "employee_id": evidence.employee_id,
+            "employee_id": resolved_emp_id,
             "source": evidence.source,
             "source_type": evidence.source_type,
             "source_reference": evidence.source_reference,
@@ -64,11 +69,27 @@ class EvidenceRepository:
             "evidence_type": evidence.evidence_type,
             "evidence_strength": evidence.evidence_strength,
             "metadata": evidence.metadata,
-            "is_mapped": evidence.is_mapped,
-            "unmapped_external_identity": evidence.unmapped_external_identity,
+            "is_mapped": bool(resolved_emp_id),
+            "unmapped_external_identity": evidence.unmapped_external_identity if not resolved_emp_id else None,
         }
-        res = self.client.table("evidence").insert(payload).execute()
-        return res.data[0] if res.data else payload
+        try:
+            res = self.client.table("evidence").insert(payload).execute()
+            return res.data[0] if res.data else payload
+        except Exception as e:
+            err_str = str(e)
+            if "23505" in err_str or "duplicate key" in err_str.lower():
+                logger.debug(f"Evidence {evidence.source_reference} already exists, fetching existing record.")
+                existing = (
+                    self.client.table("evidence")
+                    .select("*")
+                    .eq("source", evidence.source)
+                    .eq("source_reference", evidence.source_reference)
+                    .limit(1)
+                    .execute()
+                )
+                if existing.data:
+                    return existing.data[0]
+            raise
 
     def _resolve_employee_uuid(self, employee_id: str) -> Optional[str]:
         """Resolves employee_id whether it is an employees.id, profiles.id / user_id, or slug/name."""

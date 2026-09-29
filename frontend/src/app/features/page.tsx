@@ -251,7 +251,7 @@ export default function FeaturesPage() {
               </div>
 
               <Link
-                href="/employee/simulator"
+                href="/employee/skills#simulator"
                 className="bg-[#F6BB84] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs font-black tracking-wider uppercase px-6 py-3.5 rounded-full inline-flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-[3px_3px_0px_#1C1C1C] shrink-0"
               >
                 LAUNCH WHAT-IF SIMULATOR

@@ -263,6 +263,8 @@ export const trajectory = {
     request<Record<string, unknown>>(`/api/v1/model/evaluation`),
 };
 
+export const trajectoryApi = trajectory;
+
 /* ── Feature 3: Recommendations ──────────────────────────── */
 
 export const recommendations = {

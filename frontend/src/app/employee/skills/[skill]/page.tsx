@@ -64,56 +64,67 @@ function SkillDetailContent() {
       .singleTrajectory(learnerId, skillId)
       .then((data) => {
         setTrajectory(data);
+        if (data.evidence_timeline && data.evidence_timeline.length > 0) {
+          setTimeline(data.evidence_timeline);
+        } else {
+          fetchRetentionTimeline();
+        }
       })
       .catch((err) => {
-        // Fallback to retention route or mock
-        trajectoryApi.retention(learnerId, skillId).then((ret) => {
-          setTrajectory({
-            id: `traj-${skillId}`,
-            employee_id: learnerId,
-            competency_id: skillId,
-            competency_name: ret.competency_name || skillId,
-            trend: (ret.historical_trend as any) || "improving",
-            probabilities: { improving: 0.78, stagnating: 0.17, declining: 0.05 },
-            confidence: ret.prediction_confidence || 0.82,
-            freshness: "fresh",
-            days_since_last_evidence: 4,
-            evidence_count: ret.evidence_timeline?.length || 5,
-            insufficient_evidence: false,
-            model_version: "feature2_lstm_v1",
-            generated_at: new Date().toISOString(),
-            supporting_evidence_ids: ["EV-0142", "EV-0089"],
-            supporting_evidence_titles: [
-              "Merged PR #142: Resilient Distributed Queue & Backpressure Handling",
-              "Resolved GL-89: Database Connection Pool Exhaustion under Spikes",
-            ],
-            explanation: `${ret.competency_name || skillId} demonstrates steady improvement supported by recent project deliverables and pull request merges.`,
-          });
-        }).catch((e2) => setError(e2.message || "Failed to load competency details."));
+        fetchRetentionTimeline();
       })
       .finally(() => setLoading(false));
 
-    // 2. Fetch timeline
-    trajectoryApi
-      .retention(learnerId, skillId)
-      .then((ret) => {
-        if (ret.evidence_timeline && ret.evidence_timeline.length > 0) {
-          setTimeline(ret.evidence_timeline);
-        } else {
-          evidenceApi.list(learnerId, 15).then((evRes) => {
-            const pts = (evRes.evidence || []).slice(0, 6).map((ev, i) => ({
-              date: ev.occurred_at || `2026-09-${20 - i}`,
+    // 2. Fetch retention & timeline helper
+    const fetchRetentionTimeline = () => {
+      trajectoryApi
+        .retention(learnerId, skillId)
+        .then((ret) => {
+          if (ret.evidence_timeline && ret.evidence_timeline.length > 0) {
+            setTimeline(ret.evidence_timeline);
+          } else {
+            fetchEvidenceFallback();
+          }
+        })
+        .catch(() => {
+          fetchEvidenceFallback();
+        });
+    };
+
+    const fetchEvidenceFallback = () => {
+      evidenceApi
+        .list(learnerId, 50)
+        .then((evRes) => {
+          const allEv = evRes.evidence || [];
+          let matched = allEv.filter(
+            (ev) =>
+              ev.competencies?.some((c) => c.toLowerCase() === skillId.toLowerCase()) ||
+              ev.skills?.some((s) => skillId.toLowerCase().includes(s.toLowerCase()))
+          );
+          if (matched.length === 0) {
+            matched = allEv.slice(0, 12);
+          }
+          if (matched.length > 0) {
+            const sorted = [...matched].sort(
+              (a, b) => new Date(a.occurred_at || 0).getTime() - new Date(b.occurred_at || 0).getTime()
+            );
+            const pts = sorted.map((ev) => ({
+              date: ev.occurred_at || new Date().toISOString(),
               score: Math.round(
-                (ev.evidence_strength <= 1 ? ev.evidence_strength * 100 : ev.evidence_strength) || 82
+                (ev.raw_score != null
+                  ? ev.raw_score
+                  : (ev.evidence_strength <= 1 ? ev.evidence_strength * 100 : ev.evidence_strength)) || 82
               ),
               source: ev.source || "github",
               title: ev.title || "Activity observation",
+              isObserved: true,
             }));
-            setTimeline(pts.reverse());
-          });
-        }
-      })
-      .catch(() => {});
+            setTimeline(pts);
+          }
+        })
+        .catch(() => {});
+    };
+
 
     // 3. Fetch benchmark
     intelligenceApi

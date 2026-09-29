@@ -53,6 +53,16 @@ class TrajectoryProbabilities(BaseModel):
     declining: float = Field(0.0, ge=0.0, le=1.0)
 
 
+class TimelineObservation(BaseModel):
+    date: str
+    score: float
+    source: str = "github"
+    title: str = ""
+    source_type: Optional[str] = None
+    evidence_id: Optional[str] = None
+    isObserved: bool = True
+
+
 class TrajectoryPrediction(BaseModel):
     """Authoritative Feature 2 output per employee per competency."""
     id: str = Field(default_factory=lambda: str(uuid4()))
@@ -75,6 +85,8 @@ class TrajectoryPrediction(BaseModel):
     supporting_evidence_titles: List[str] = Field(default_factory=list)
     explanation: Optional[str] = None
     is_simulated: bool = False
+    evidence_timeline: List[TimelineObservation] = Field(default_factory=list)
+
 
 
 class WhatIfSimulationRequest(BaseModel):

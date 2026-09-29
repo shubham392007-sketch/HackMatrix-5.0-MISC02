@@ -7,6 +7,9 @@ import GlobalFooter from "@/components/layout/GlobalFooter";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { trajectory, recommendations } from "@/lib/api";
 import type { Learner, Recommendation } from "@/lib/types";
+import LoadingSkeleton from "@/components/growthlens/LoadingSkeleton";
+import ErrorState from "@/components/growthlens/ErrorState";
+import EmptyState from "@/components/growthlens/EmptyState";
 import {
   ExternalLink,
   Users,
@@ -27,9 +30,10 @@ import {
 
 export default function RecommendationsPage() {
   const [learners, setLearners] = useState<Learner[]>([]);
-  const [learnerId, setLearnerId] = useState("");
+  const [learnerId, setLearnerId] = useState("shubham_pokale");
   const [recs, setRecs] = useState<Recommendation[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"ALL" | "MICRO_LEARNING" | "MENTORSHIP" | "EVIDENCE">("ALL");
@@ -39,17 +43,44 @@ export default function RecommendationsPage() {
   // Load available learners on mount
   useEffect(() => {
     trajectory.learners().then((data) => {
-      setLearners(data.learners);
-      if (data.learners.length > 0) {
-        setLearnerId(data.learners[0].learner_id);
+      setLearners(data.learners || []);
+      if (data.learners && data.learners.length > 0) {
+        const hasLearner = data.learners.some((l) => l.learner_id === learnerId);
+        if (!hasLearner) {
+          setLearnerId(data.learners[0].learner_id);
+        }
       }
     });
   }, []);
 
   // Fetch recommendations whenever learnerId changes
   useEffect(() => {
-    if (!learnerId) return;
-    loadRecommendations(learnerId);
+    let active = true;
+    if (learnerId) {
+      setLoading(true);
+      setError("");
+      recommendations
+        .get(learnerId, true)
+        .then((data) => {
+          if (active) {
+            setRecs(data.recommendations || []);
+          }
+        })
+        .catch((e) => {
+          if (active) {
+            setError(e.message || "Failed to load next-action recommendations.");
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setLoading(false);
+            setInitialLoaded(true);
+          }
+        });
+    }
+    return () => {
+      active = false;
+    };
   }, [learnerId]);
 
   const loadRecommendations = (id: string) => {
@@ -63,7 +94,10 @@ export default function RecommendationsPage() {
       .catch((e) => {
         setError(e.message || "Failed to load next-action recommendations.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setInitialLoaded(true);
+      });
   };
 
   const handleForceRegenerate = () => {
@@ -195,43 +229,48 @@ export default function RecommendationsPage() {
 
           {/* Loading Indicator */}
           {loading && (
-            <div className="text-center py-24">
-              <div className="inline-block p-4 rounded-full bg-[#DFE968] border border-[#1C1C1C] animate-bounce mb-3 shadow-[3px_3px_0px_#1C1C1C]">
-                <Sparkles className="w-6 h-6 text-[#1C1C1C]" />
-              </div>
-              <p className="text-sm font-extrabold tracking-[0.12em] uppercase text-[#1C1C1C]">
-                ROUTING TRAJECTORY SIGNALS TO TARGETED INTERVENTIONS · · ·
-              </p>
-              <p className="text-xs text-[#1C1C1C]/60 mt-1 font-medium">
-                Evaluating confidence gates, searching video transcripts, and querying verified peer mentors.
-              </p>
+            <div className="space-y-4">
+              <LoadingSkeleton type="card" count={4} />
             </div>
           )}
 
           {/* Error Message */}
-          {error && (
-            <div className="gl-card p-6 border-[#C85A54] bg-[#FFECEB] text-sm text-[#C85A54] mb-8 font-medium flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <span>{error}</span>
-            </div>
+          {!loading && error && (
+            <ErrorState
+              title="Unable to load recommended actions"
+              message={error}
+              onRetry={() => loadRecommendations(learnerId)}
+              showSettingsLink={false}
+            />
           )}
 
           {/* Empty State */}
-          {!loading && !error && filtered.length === 0 && (
-            <div className="gl-card p-12 text-center max-w-xl mx-auto my-12">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center shadow-[3px_3px_0px_#1C1C1C]">
-                <Award className="w-7 h-7 text-[#1C1C1C]" />
-              </div>
-              <h3 className="text-xl font-extrabold text-[#1C1C1C] mb-2">
-                No Corrective Actions Needed!
-              </h3>
-              <p className="text-xs md:text-sm text-[#1C1C1C]/70 mb-6 leading-relaxed font-medium">
-                All assessed competencies for this employee show positive trajectory momentum or are actively building baseline evidence.
-              </p>
-              <Link href="/employee/dashboard" className="pill-btn pill-btn-primary text-xs inline-flex items-center gap-2">
-                VIEW TALENT INTELLIGENCE DASHBOARD →
-              </Link>
-            </div>
+          {!loading && initialLoaded && !error && filtered.length === 0 && (
+            recs.length === 0 ? (
+              <EmptyState
+                type="recommendations"
+                title="No Corrective Actions Needed!"
+                message="All monitored competencies for this employee show healthy trajectory momentum or are actively building baseline evidence."
+                primaryAction={{
+                  label: "VIEW TALENT DASHBOARD",
+                  href: "/employee/dashboard",
+                }}
+                secondaryAction={{
+                  label: "EXPLORE COMPETENCIES",
+                  href: "/employee/skills",
+                }}
+              />
+            ) : (
+              <EmptyState
+                type="filter"
+                title={`No actions under "${filter.replace("_", " ")}"`}
+                message="No recommendations match this category. Select another filter tab to view remaining interventions."
+                primaryAction={{
+                  label: "SHOW ALL INTERVENTIONS",
+                  onClick: () => setFilter("ALL"),
+                }}
+              />
+            )
           )}
 
           {/* Recommendations Grid */}

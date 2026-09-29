@@ -8,7 +8,11 @@ export default function GlobalFooter() {
   const pathname = usePathname();
 
   // Render footer on marketing and informational pages
-  const isMarketingPage = pathname === "/" || pathname === "/features" || pathname === "/about";
+  const isMarketingPage =
+    pathname === "/" ||
+    pathname === "/features" ||
+    pathname === "/about" ||
+    pathname === "/developers";
   if (!isMarketingPage) {
     return null;
   }
@@ -82,7 +86,7 @@ export default function GlobalFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/employee/simulator" className="hover:text-[#1C1C1C] hover:underline">
+                <Link href="/employee/skills#simulator" className="hover:text-[#1C1C1C] hover:underline">
                   What-If Simulator
                 </Link>
               </li>
@@ -125,7 +129,16 @@ export default function GlobalFooter() {
             </h4>
             <ul className="space-y-2.5 text-xs font-semibold text-[#1C1C1C]/80">
               <li>
-                <span className="text-[#1C1C1C]">Developer: </span>
+                <Link
+                  href="/developers"
+                  className="hover:text-[#1C1C1C] hover:underline flex items-center gap-1.5 font-bold text-[#1C1C1C]"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#DFE968] border border-[#1C1C1C]"></span>
+                  Meet the Developers
+                </Link>
+              </li>
+              <li>
+                <span className="text-[#1C1C1C]">Lead: </span>
                 <span className="font-bold underline decoration-2">Shubham Pokale</span>
               </li>
               <li>

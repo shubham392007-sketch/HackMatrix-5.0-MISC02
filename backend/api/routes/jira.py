@@ -2,12 +2,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from backend.core.config import get_settings
 from backend.core.security import redact_dict
+from backend.core.logging import get_logger
+from backend.core.exceptions import JiraIntegrationError
 from backend.integrations.jira.client import JiraClient
 from backend.services.ingestion import EvidenceIngestionService
 from backend.schemas.integrations import JiraSyncRequest, IntegrationStatusResponse
 from backend.core.dependencies import get_optional_profile
 from backend.schemas.profile import UserProfile
 from backend.db.client import get_supabase_client
+from backend.db.repositories.evidence import EvidenceRepository
+
+logger = get_logger("api.routes.jira")
 
 router = APIRouter(prefix="/integrations/jira", tags=["Jira Integration"])
 
@@ -73,15 +78,52 @@ async def sync_jira_issues(
     profile: Optional[UserProfile] = Depends(get_optional_profile),
 ):
     """Synchronize recent Jira issues from a project, extract skills, and index vectors."""
-    target_emp = req.target_employee_id or (profile.id if profile else None)
+    raw_emp = req.target_employee_id.strip() if req.target_employee_id else None
+    target_emp = raw_emp or (profile.id if profile else None) or "shubham_pokale"
     user_id = profile.user_id if profile else None
 
-    service = EvidenceIngestionService()
-    result = await service.sync_jira(
-        project_key=req.project_key,
-        max_issues=req.max_issues,
-        run_ai=req.run_ai_extraction,
-        target_employee_id=target_emp,
-        user_id=user_id,
-    )
-    return result
+    evidence_repo = EvidenceRepository()
+    canonical_emp = evidence_repo._resolve_employee_uuid(target_emp)
+
+    try:
+        service = EvidenceIngestionService()
+        result = await service.sync_jira(
+            project_key=req.project_key,
+            max_issues=req.max_issues,
+            run_ai=req.run_ai_extraction,
+            target_employee_id=target_emp or canonical_emp,
+            user_id=user_id,
+        )
+        return result
+    except JiraIntegrationError as e:
+        logger.warning(f"Jira integration error during sync: {e}")
+        return {
+            "id": None,
+            "source": "jira",
+            "status": "failed",
+            "started_at": None,
+            "completed_at": None,
+            "records_found": 0,
+            "records_processed": 0,
+            "records_skipped": 0,
+            "records_failed": 1,
+            "error_summary": str(e),
+            "metadata": {"project_key": req.project_key},
+            "organization_id": None,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error in Jira sync route: {e}", exc_info=True)
+        return {
+            "id": None,
+            "source": "jira",
+            "status": "failed",
+            "started_at": None,
+            "completed_at": None,
+            "records_found": 0,
+            "records_processed": 0,
+            "records_skipped": 0,
+            "records_failed": 1,
+            "error_summary": f"Sync failed: {str(e)}",
+            "metadata": {"project_key": req.project_key},
+            "organization_id": None,
+        }

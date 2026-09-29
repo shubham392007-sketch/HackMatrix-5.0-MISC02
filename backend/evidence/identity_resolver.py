@@ -12,36 +12,52 @@ class IdentityResolver:
 
     def __init__(self):
         self.client = get_supabase_client()
+        self._cache: Dict[str, Optional[str]] = {}
 
     def resolve_github_employee(self, username: Optional[str], email: Optional[str] = None) -> Optional[str]:
         """Resolves a GitHub username or commit email to an internal employee_id."""
         if not username and not email:
             return None
 
+        cache_key = f"gh:{username}:{email}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
         # Check by GitHub username
         if username:
-            res = (
-                self.client.table("integration_identities")
-                .select("employee_id")
-                .eq("provider", "github")
-                .eq("external_username", username)
-                .execute()
-            )
-            if res.data:
-                return res.data[0]["employee_id"]
+            try:
+                res = (
+                    self.client.table("integration_identities")
+                    .select("employee_id")
+                    .eq("provider", "github")
+                    .eq("external_username", username)
+                    .execute()
+                )
+                if res.data:
+                    emp_id = res.data[0]["employee_id"]
+                    self._cache[cache_key] = emp_id
+                    return emp_id
+            except Exception:
+                pass
 
         # Check by email if provided
         if email:
-            res = (
-                self.client.table("integration_identities")
-                .select("employee_id")
-                .eq("provider", "github")
-                .eq("external_email", email)
-                .execute()
-            )
-            if res.data:
-                return res.data[0]["employee_id"]
+            try:
+                res = (
+                    self.client.table("integration_identities")
+                    .select("employee_id")
+                    .eq("provider", "github")
+                    .eq("external_email", email)
+                    .execute()
+                )
+                if res.data:
+                    emp_id = res.data[0]["employee_id"]
+                    self._cache[cache_key] = emp_id
+                    return emp_id
+            except Exception:
+                pass
 
+        self._cache[cache_key] = None
         return None
 
     def resolve_jira_employee(self, email: Optional[str], username: Optional[str] = None) -> Optional[str]:
@@ -49,17 +65,26 @@ class IdentityResolver:
         if not email and not username:
             return None
 
+        cache_key = f"jira:{username}:{email}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
         # Check by Jira email first
         if email:
-            res = (
-                self.client.table("integration_identities")
-                .select("employee_id")
-                .eq("provider", "jira")
-                .eq("external_email", email)
-                .execute()
-            )
-            if res.data:
-                return res.data[0]["employee_id"]
+            try:
+                res = (
+                    self.client.table("integration_identities")
+                    .select("employee_id")
+                    .eq("provider", "jira")
+                    .eq("external_email", email)
+                    .execute()
+                )
+                if res.data:
+                    emp_id = res.data[0]["employee_id"]
+                    self._cache[cache_key] = emp_id
+                    return emp_id
+            except Exception:
+                pass
 
         # Check by external username or accountId
         if username:

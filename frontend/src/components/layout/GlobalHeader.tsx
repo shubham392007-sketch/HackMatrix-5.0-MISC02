@@ -10,13 +10,13 @@ const publicNav = [
   { label: "HOME", href: "/" },
   { label: "FEATURES", href: "/features" },
   { label: "ABOUT", href: "/about" },
+  { label: "DEVELOPERS", href: "/developers" },
 ];
 
 const employeeNav = [
   { label: "OVERVIEW", href: "/employee/dashboard" },
   { label: "EVIDENCE", href: "/employee/evidence" },
   { label: "SKILLS", href: "/employee/skills" },
-  { label: "SIMULATOR", href: "/employee/simulator" },
   { label: "ACTIONS", href: "/employee/recommendations" },
   { label: "INTELLIGENCE", href: "/employee/narrative" },
 ];
@@ -28,9 +28,9 @@ const managerNav = [
   { label: "TEAM GROWTH", href: "/manager/growth" },
   { label: "TEAM HEATMAP", href: "/manager/heatmap" },
   { label: "SKILLS", href: "/employee/skills" },
-  { label: "SIMULATOR", href: "/employee/simulator" },
   { label: "INTELLIGENCE", href: "/employee/narrative" },
 ];
+
 
 export default function GlobalHeader() {
   const pathname = usePathname();

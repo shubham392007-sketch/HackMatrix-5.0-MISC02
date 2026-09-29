@@ -3,6 +3,7 @@
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import GlobalFooter from "@/components/layout/GlobalFooter";
+import Hero3DCard from "@/components/ui/Hero3DCard";
 import {
   ArrowRight,
   FileCode,
@@ -32,49 +33,49 @@ export default function LandingPage() {
             {/* LEFT COLUMN: 2 Cards (Top Left -3°, Bottom Left -2°) */}
             <div className="lg:col-span-3 flex flex-col gap-6 lg:gap-8 order-2 lg:order-1">
               {/* Card 1: Top Left (-3° tilt) */}
-              <div className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[4px_4px_0px_#1C1C1C] transform lg:-rotate-3 transition-transform hover:rotate-0">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/50">-3°</span>
-                  <div className="w-7 h-7 rounded-lg bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center">
-                    <FileCode className="w-4 h-4 text-[#1C1C1C]" />
+              <Hero3DCard initialRotate={-3}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-mono font-bold text-[#1C1C1C]/50">-3°</span>
+                  <div className="w-8 h-8 rounded-lg bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center shadow-[1px_1px_0px_#1C1C1C]">
+                    <FileCode className="w-4.5 h-4.5 text-[#1C1C1C]" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="px-2 py-0.5 rounded text-[9px] font-black bg-[#DFE968] border border-[#1C1C1C] uppercase tracking-wider">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-[#DFE968] border border-[#1C1C1C] uppercase tracking-wider hero-3d-pop">
                     EVIDENCE
                   </span>
-                  <span className="text-xs font-extrabold truncate">PR #142: worker_queue.py</span>
+                  <span className="text-sm font-extrabold truncate">PR #142: worker_queue.py</span>
                 </div>
-                <p className="text-[11px] font-medium text-[#1C1C1C]/70 mb-3">
+                <p className="text-xs font-medium text-[#1C1C1C]/70 mb-4">
                   Maya Sharma • 42 commits indexed
                 </p>
-                <div className="inline-block px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] text-[9px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C]">
+                <div className="inline-block px-3 py-1.5 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C] hero-3d-pop">
                   VERIFIED TALENT SIGNAL
                 </div>
-              </div>
+              </Hero3DCard>
 
               {/* Card 3: Bottom Left (-2° tilt) */}
-              <div className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[4px_4px_0px_#1C1C1C] transform lg:-rotate-2 transition-transform hover:rotate-0">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/50">-2°</span>
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C]">
-                    <Search className="w-3 h-3" />
+              <Hero3DCard initialRotate={-2}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-mono font-bold text-[#1C1C1C]/50">-2°</span>
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C] hero-3d-pop">
+                    <Search className="w-3.5 h-3.5" />
                     TALENT PIPELINE
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-1 text-[10px] font-black mb-2">
-                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/70">GIT / JIRA</span>
+                <div className="flex items-center justify-between gap-1.5 text-[11px] font-black mb-3">
+                  <span className="px-2.5 py-1.5 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop">GIT / JIRA</span>
                   <span>→</span>
-                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/70">TAXONOMY</span>
+                  <span className="px-2.5 py-1.5 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop">TAXONOMY</span>
                   <span>→</span>
-                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/70">WEIBULL</span>
+                  <span className="px-2.5 py-1.5 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop">WEIBULL</span>
                 </div>
-                <div className="flex items-center justify-between gap-1 text-[10px] font-black">
-                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-[#DFE968]">QWEN3 8B</span>
+                <div className="flex items-center justify-between gap-1.5 text-[11px] font-black">
+                  <span className="px-2.5 py-1.5 rounded border border-[#1C1C1C] bg-[#DFE968] hero-3d-pop">QWEN3 8B</span>
                   <span>→</span>
-                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/70">JUSTIFY</span>
+                  <span className="px-2.5 py-1.5 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop">JUSTIFY</span>
                 </div>
-              </div>
+              </Hero3DCard>
             </div>
 
             {/* CENTER COLUMN: Hero Headline, Description & CTAs */}
@@ -133,57 +134,57 @@ export default function LandingPage() {
             {/* RIGHT COLUMN: 2 Cards (Top Right +2°, Bottom Right +4°) */}
             <div className="lg:col-span-3 flex flex-col gap-6 lg:gap-8 order-3">
               {/* Card 2: Top Right (+2° tilt) */}
-              <div className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[4px_4px_0px_#1C1C1C] transform lg:rotate-2 transition-transform hover:rotate-0">
-                <div className="flex items-center justify-between mb-2">
+              <Hero3DCard initialRotate={2}>
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#1C1C1C]" />
-                    <span className="text-[10px] font-extrabold tracking-wider uppercase">
+                    <Sparkles className="w-4 h-4 text-[#1C1C1C]" />
+                    <span className="text-[11px] font-extrabold tracking-wider uppercase">
                       TALENT INSIGHT
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#DFE968] border border-[#1C1C1C]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#DFE968] border border-[#1C1C1C] hero-3d-pop shadow-[1px_1px_0px_#1C1C1C]">
                       GROUNDED
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/50">+2°</span>
+                    <span className="text-[11px] font-mono font-bold text-[#1C1C1C]/50">+2°</span>
                   </div>
                 </div>
-                <p className="text-[9px] font-bold uppercase text-[#1C1C1C]/50">QUERY:</p>
-                <p className="text-xs font-semibold italic text-[#1C1C1C] mb-2">
+                <p className="text-[10px] font-bold uppercase text-[#1C1C1C]/50">QUERY:</p>
+                <p className="text-sm font-semibold italic text-[#1C1C1C] mb-2.5">
                   &ldquo;What is Maya Sharma&apos;s retention risk?&rdquo;
                 </p>
-                <p className="text-[9px] font-bold uppercase text-[#1C1C1C]/50">PREDICTED TRAJECTORY:</p>
-                <p className="text-xs font-medium text-[#1C1C1C]/90 mb-3 leading-snug">
+                <p className="text-[10px] font-bold uppercase text-[#1C1C1C]/50">PREDICTED TRAJECTORY:</p>
+                <p className="text-xs font-medium text-[#1C1C1C]/90 mb-4 leading-snug">
                   &ldquo;Distributed Systems half-life is 114 days. 18% decay risk over 90d. Recommend peer mentorship.&rdquo;
                 </p>
-                <div className="flex items-center gap-1 text-[9px] font-bold">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold">
                   <span className="text-[#1C1C1C]/50">CITATIONS:</span>
-                  <span className="px-1.5 py-0.5 rounded border border-[#1C1C1C] bg-white/70">PR #142</span>
-                  <span className="px-1.5 py-0.5 rounded border border-[#1C1C1C] bg-white/70">Jira GL-89</span>
-                  <span className="px-1.5 py-0.5 rounded border border-[#1C1C1C] bg-white/70">Git #31</span>
+                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1C1C1C]">PR #142</span>
+                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1C1C1C]">Jira GL-89</span>
+                  <span className="px-2 py-1 rounded border border-[#1C1C1C] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1C1C1C]">Git #31</span>
                 </div>
-              </div>
+              </Hero3DCard>
 
               {/* Card 4: Bottom Right (+4° tilt) */}
-              <div className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[4px_4px_0px_#1C1C1C] transform lg:rotate-4 transition-transform hover:rotate-0">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C]">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+              <Hero3DCard initialRotate={4}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C] hero-3d-pop">
+                    <ShieldCheck className="w-4 h-4" />
                     LOCAL TALENT AI
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/50">+4°</span>
+                  <span className="text-[11px] font-mono font-bold text-[#1C1C1C]/50">+4°</span>
                 </div>
-                <p className="text-xs font-extrabold text-[#1C1C1C] mb-1">
+                <p className="text-sm font-extrabold text-[#1C1C1C] mb-1.5">
                   QWEN3 8B • OLLAMA
                 </p>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#4A7A4E] mb-2">
-                  <span className="w-2 h-2 rounded-full bg-[#4A7A4E] animate-pulse"></span>
+                <div className="flex items-center gap-2 text-sm font-bold text-[#4A7A4E] mb-3 hero-3d-pop">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#4A7A4E] animate-pulse"></span>
                   100% PRIVATE TALENT MODEL
                 </div>
-                <p className="text-[10px] font-semibold text-[#1C1C1C]/60 leading-tight">
+                <p className="text-[11px] font-semibold text-[#1C1C1C]/60 leading-tight">
                   Weibull Hazard Decay • 4-Factor Confidence Scoring
                 </p>
-              </div>
+              </Hero3DCard>
             </div>
 
           </div>

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -140,7 +141,9 @@ async def trigger_recommendation_generation(
 ) -> Dict[str, Any]:
     """Force fresh evaluation of Feature 2 trajectories into Feature 3 actions."""
     engine = get_engine()
-    recs = engine.generate_recommendations_for_employee(employee_id, explain_with_ai=True)
+    recs = await asyncio.to_thread(
+        engine.generate_recommendations_for_employee, employee_id, explain_with_ai=True
+    )
     return {
         "status": "success",
         "employee_id": employee_id,
@@ -163,6 +166,63 @@ async def update_recommendation_status_endpoint(
     return result
 
 
+def get_existing_recommendations_from_db(employee_id: str) -> List[Dict[str, Any]]:
+    """Loads existing persisted recommendations for fast, low-latency UI rendering (<100ms)."""
+    try:
+        from backend.db.client import get_supabase_client
+        from backend.db.repositories.evidence import EvidenceRepository
+
+        client = get_supabase_client()
+        repo = EvidenceRepository()
+        emp_uuid = repo._resolve_employee_uuid(employee_id) or employee_id
+
+        res = (
+            client.table("recommendations")
+            .select("*")
+            .eq("employee_id", emp_uuid)
+            .not_.is_("action", "null")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        if not res.data:
+            return []
+
+        seen = set()
+        deduped = []
+        for r in res.data:
+            cname = r.get("competency_name")
+            if not cname or cname in seen:
+                continue
+            seen.add(cname)
+            meta = r.get("metadata") or {}
+            deduped.append({
+                "id": str(r.get("id")),
+                "competency": cname,
+                "trend": meta.get("trend", "stagnating"),
+                "confidence": r.get("confidence", 0.85),
+                "priority": meta.get("priority", "HIGH"),
+                "action": r.get("action"),
+                "action_type": meta.get("action_type", "micro_learning"),
+                "status": meta.get("status", "generated"),
+                "justification": r.get("justification"),
+                "evidence_ref": meta.get("evidence_ref"),
+                "evidence_refs": meta.get("evidence_refs", []),
+                "supporting_evidence_details": meta.get("supporting_evidence_details", []),
+                "external_link": meta.get("external_link"),
+                "resource": meta.get("resource"),
+                "mentor_suggestion": meta.get("mentor_suggestion"),
+                "ai_explanation": meta.get("ai_explanation"),
+                "created_at": r.get("created_at"),
+            })
+
+        priority_map = {"declining": 0, "stagnating": 1, "insufficient_evidence": 2, "improving": 3}
+        deduped.sort(key=lambda x: (priority_map.get(x.get("trend", ""), 4), -float(x.get("confidence") or 0)))
+        return deduped
+    except Exception as e:
+        logger.warning(f"Error fetching existing recommendations from DB: {e}")
+        return []
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 4. Recommendation Queries by Learner / Employee
 # ──────────────────────────────────────────────────────────────────────────────
@@ -178,6 +238,7 @@ async def update_recommendation_status_endpoint(
 async def get_recommendations_endpoint(
     learner_id: str,
     explain: bool = Query(True, description="Synthesize grounded explainability rationale"),
+    force_refresh: bool = Query(False, description="Force fresh regeneration of recommendations"),
     profile: Optional[UserProfile] = Depends(get_optional_profile),
 ) -> Dict[str, Any]:
     """Retrieves authoritative Feature 2 trajectories and outputs evidence-grounded interventions."""
@@ -192,8 +253,17 @@ async def get_recommendations_endpoint(
                 detail="Access denied: You cannot view recommendations for another employee.",
             )
 
+    # 1. Check existing recommendations in DB for instant response without blocking event loop
+    if not force_refresh:
+        existing = await asyncio.to_thread(get_existing_recommendations_from_db, learner_id)
+        if existing:
+            return {"recommendations": existing}
+
+    # 2. If no persisted recommendations or force_refresh requested, generate fresh recommendations in thread pool
     engine = get_engine()
-    recs = engine.generate_recommendations_for_employee(learner_id, explain_with_ai=explain)
+    recs = await asyncio.to_thread(
+        engine.generate_recommendations_for_employee, learner_id, explain_with_ai=explain
+    )
 
     # Format for frontend
     formatted_recs = []

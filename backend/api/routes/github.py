@@ -2,12 +2,17 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from backend.core.config import get_settings
 from backend.core.security import redact_dict
+from backend.core.logging import get_logger
+from backend.core.exceptions import GitHubIntegrationError
 from backend.integrations.github.client import GitHubClient
 from backend.services.ingestion import EvidenceIngestionService
 from backend.schemas.integrations import GitHubSyncRequest, IntegrationStatusResponse
 from backend.core.dependencies import get_optional_profile
 from backend.schemas.profile import UserProfile
 from backend.db.client import get_supabase_client
+from backend.db.repositories.evidence import EvidenceRepository
+
+logger = get_logger("api.routes.github")
 
 router = APIRouter(prefix="/integrations/github", tags=["GitHub Integration"])
 
@@ -99,18 +104,22 @@ async def sync_github_activity(
     profile: Optional[UserProfile] = Depends(get_optional_profile),
 ):
     """Synchronize recent commits and PRs from a repository, extract skills, and index vectors."""
-    target_emp = req.target_employee_id or (profile.id if profile else None)
+    raw_emp = req.target_employee_id.strip() if req.target_employee_id else None
+    target_emp = raw_emp or (profile.id if profile else None) or "shubham_pokale"
     user_id = profile.user_id if profile else None
 
-    # Determine user_id from target_emp if not directly authenticated
+    evidence_repo = EvidenceRepository()
+    canonical_emp = evidence_repo._resolve_employee_uuid(target_emp)
+
+    # Determine user_id from canonical_emp if not directly authenticated
     db_client = get_supabase_client()
-    if not user_id and target_emp:
+    if not user_id and canonical_emp:
         try:
-            emp_check = db_client.table("employees").select("user_id").eq("id", target_emp).execute()
+            emp_check = db_client.table("employees").select("user_id").eq("id", canonical_emp).execute()
             if emp_check.data and emp_check.data[0].get("user_id"):
                 user_id = emp_check.data[0]["user_id"]
             else:
-                prof_check = db_client.table("profiles").select("user_id").eq("id", target_emp).execute()
+                prof_check = db_client.table("profiles").select("user_id").eq("id", canonical_emp).execute()
                 if prof_check.data and prof_check.data[0].get("user_id"):
                     user_id = prof_check.data[0]["user_id"]
         except Exception:
@@ -145,14 +154,54 @@ async def sync_github_activity(
         target_owner = parts[0]
         target_repo = parts[1]
 
-    service = EvidenceIngestionService()
-    result = await service.sync_github(
-        owner=target_owner,
-        repo=target_repo,
-        limit_commits=req.limit_commits,
-        limit_prs=req.limit_prs,
-        run_ai=req.run_ai_extraction,
-        target_employee_id=target_emp,
-        user_id=user_id,
-    )
-    return result
+    # Resilient fallback to project environment defaults
+    settings = get_settings()
+    if not target_owner:
+        target_owner = settings.github_repository_owner or "shubham392007-sketch"
+    if not target_repo:
+        target_repo = settings.github_repository_name or "HackMatrix-5.0-MISC02"
+
+    try:
+        service = EvidenceIngestionService()
+        result = await service.sync_github(
+            owner=target_owner,
+            repo=target_repo,
+            limit_commits=req.limit_commits,
+            limit_prs=req.limit_prs,
+            run_ai=req.run_ai_extraction,
+            target_employee_id=target_emp or canonical_emp,
+            user_id=user_id,
+        )
+        return result
+    except GitHubIntegrationError as e:
+        logger.warning(f"GitHub integration error during sync: {e}")
+        return {
+            "id": None,
+            "source": "github",
+            "status": "failed",
+            "started_at": None,
+            "completed_at": None,
+            "records_found": 0,
+            "records_processed": 0,
+            "records_skipped": 0,
+            "records_failed": 1,
+            "error_summary": str(e),
+            "metadata": {"owner": target_owner, "repo": target_repo},
+            "organization_id": None,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error in GitHub sync route: {e}", exc_info=True)
+        return {
+            "id": None,
+            "source": "github",
+            "status": "failed",
+            "started_at": None,
+            "completed_at": None,
+            "records_found": 0,
+            "records_processed": 0,
+            "records_skipped": 0,
+            "records_failed": 1,
+            "error_summary": f"Sync failed: {str(e)}",
+            "metadata": {"owner": target_owner, "repo": target_repo},
+            "organization_id": None,
+        }

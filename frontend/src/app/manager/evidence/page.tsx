@@ -16,6 +16,7 @@ import {
   LoadingSkeleton,
   ErrorState,
 } from "@/components/growthlens";
+import EmptyState from "@/components/growthlens/EmptyState";
 import {
   managerEvidence as managerApi,
   evidence as evidenceApi,
@@ -109,6 +110,35 @@ export default function ManagerEvidencePage() {
   }, [selectedDept]);
 
   // Load selected employee evidence
+  useEffect(() => {
+    let active = true;
+    if (selectedMemberId) {
+      setLoadingEvidence(true);
+      setEvidenceError("");
+      managerApi
+        .employeeEvidence(selectedMemberId, 100)
+        .then((res) => {
+          if (!active) return;
+          setMemberEvidence(res.evidence || []);
+          setMemberName(res.employee_name || selectedMemberId);
+        })
+        .catch((err: any) => {
+          if (!active) return;
+          if (err.message?.includes("403") || err.message?.includes("Access denied")) {
+            setEvidenceError("You are not authorized to view this employee.");
+          } else {
+            setEvidenceError(err.message || "Unable to retrieve employee evidence.");
+          }
+        })
+        .finally(() => {
+          if (active) setLoadingEvidence(false);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [selectedMemberId]);
+
   const loadMemberEvidence = async (empId: string) => {
     if (!empId) return;
     setLoadingEvidence(true);
@@ -127,12 +157,6 @@ export default function ManagerEvidencePage() {
       setLoadingEvidence(false);
     }
   };
-
-  useEffect(() => {
-    if (selectedMemberId) {
-      loadMemberEvidence(selectedMemberId);
-    }
-  }, [selectedMemberId]);
 
   // Handle Sync for the selected member
   const handleSyncSelectedMember = async () => {
@@ -639,29 +663,37 @@ export default function ManagerEvidencePage() {
 
             {/* Empty State */}
             {!loadingEvidence && !evidenceError && filteredEvidence.length === 0 && (
-              <div className="p-10 md:p-14 rounded-[32px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 shadow-[4px_4px_0px_#1C1C1C] text-center max-w-xl mx-auto my-8">
-                <div className="w-12 h-12 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] flex items-center justify-center mx-auto mb-4">
-                  <Database className="w-5 h-5 text-[#1C1C1C]/60" />
-                </div>
-                <h4 className="text-xl font-black text-[#1C1C1C] mb-2">
-                  {memberEvidence.length === 0
-                    ? "No evidence has been collected for this employee."
-                    : (searchQuery
-                      ? "No evidence records match this search."
-                      : "No evidence is currently associated with this competency.")}
-                </h4>
-                <p className="text-xs md:text-sm font-medium text-[#1C1C1C]/75 leading-relaxed mb-6">
-                  Trigger an on-demand sync above to extract git activity and tickets for this employee into the canonical pipeline.
-                </p>
-                <PillButton
-                  variant="primary"
-                  size="md"
-                  onClick={handleSyncSelectedMember}
-                  loading={syncing}
-                >
-                  SYNC WORKSTREAM NOW
-                </PillButton>
-              </div>
+              memberEvidence.length === 0 ? (
+                <EmptyState
+                  type="evidence"
+                  title="No evidence has been collected for this employee."
+                  message="Trigger an on-demand sync above to extract git activity and tickets for this employee into the canonical pipeline."
+                  primaryAction={{
+                    label: "SYNC WORKSTREAM NOW",
+                    onClick: handleSyncSelectedMember,
+                  }}
+                />
+              ) : searchQuery.trim() ? (
+                <EmptyState
+                  type="search"
+                  title={`No evidence matching "${searchQuery}"`}
+                  message="No evidence titles, descriptions, or competency tags match this search query."
+                  primaryAction={{
+                    label: "CLEAR SEARCH",
+                    onClick: () => setSearchQuery(""),
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  type="filter"
+                  title={`No evidence under "${sourceFilter}"`}
+                  message="No records match this source filter for the selected employee."
+                  primaryAction={{
+                    label: "SHOW ALL SOURCES",
+                    onClick: () => setSourceFilter("ALL"),
+                  }}
+                />
+              )
             )}
 
             {/* Evidence Cards (Section 16, 17, 18: Raw Evidence vs AI Interpretation) */}

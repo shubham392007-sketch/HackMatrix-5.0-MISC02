@@ -18,6 +18,7 @@ import {
   LoadingSkeleton,
   ErrorState,
 } from "@/components/growthlens";
+import EmptyState from "@/components/growthlens/EmptyState";
 import {
   evidence as evidenceApi,
   integrations,
@@ -44,9 +45,10 @@ const FILTERS = ["ALL", "GITHUB", "JIRA", "ASSESSMENT", "PROJECT", "COURSE", "FE
 export default function EvidencePage() {
   const { user, profile } = useAuth();
   const [learners, setLearners] = useState<Learner[]>([]);
-  const [selectedLearner, setSelectedLearner] = useState<string>("");
+  const [selectedLearner, setSelectedLearner] = useState<string>("shubham_pokale");
   const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [filter, setFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -205,6 +207,35 @@ export default function EvidencePage() {
   }, [profile, user]);
 
   // Fetch real employee evidence whenever learner changes
+  useEffect(() => {
+    let active = true;
+    if (selectedLearner) {
+      setLoading(true);
+      setError("");
+      evidenceApi
+        .list(selectedLearner, 100)
+        .then((res) => {
+          if (active) {
+            setEvidenceList(res.evidence || []);
+          }
+        })
+        .catch((err) => {
+          if (active) {
+            setError(err.message || "Failed to retrieve evidence stream from PostgreSQL.");
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setLoading(false);
+            setInitialLoaded(true);
+          }
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [selectedLearner]);
+
   const fetchEvidence = (learnerId: string) => {
     if (!learnerId) return;
     setLoading(true);
@@ -217,35 +248,38 @@ export default function EvidencePage() {
       .catch((err) => {
         setError(err.message || "Failed to retrieve evidence stream from PostgreSQL.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setInitialLoaded(true);
+      });
   };
-
-  useEffect(() => {
-    if (selectedLearner) {
-      fetchEvidence(selectedLearner);
-    }
-  }, [selectedLearner]);
 
   // Sync GitHub handler
   const handleSyncGithub = async () => {
     setGithubSyncing(true);
     setGithubStatus("syncing");
+    setPipelineError("");
     try {
-      const targetEmp = selectedLearner || profile?.id || user?.id;
-      await integrations.syncGithub({
+      const targetEmp = selectedLearner || profile?.id || user?.id || "shubham_pokale";
+      const res = await integrations.syncGithub({
         run_ai_extraction: false,
         limit_commits: 5,
         limit_prs: 5,
         target_employee_id: targetEmp,
       });
-      setGithubRawSync(new Date().toISOString());
-      setGithubStatus("connected");
+      if ((res as any)?.status === "failed") {
+        setPipelineError((res as any)?.error_summary || "GitHub sync failed. Please verify credentials or repository.");
+        setGithubStatus(githubCount > 0 ? "connected" : "needs_attention");
+      } else {
+        setGithubRawSync(new Date().toISOString());
+        setGithubStatus("connected");
+      }
       if (selectedLearner) {
         await fetchEvidence(selectedLearner);
       }
       await loadIntegrations();
-    } catch (err) {
-      console.error("GitHub sync failed:", err);
+    } catch (err: any) {
+      setPipelineError(err?.message || "GitHub sync encountered an issue. Please verify connection.");
       setGithubStatus(githubCount > 0 ? "connected" : "needs_attention");
     } finally {
       setGithubSyncing(false);
@@ -256,21 +290,27 @@ export default function EvidencePage() {
   const handleSyncJira = async () => {
     setJiraSyncing(true);
     setJiraStatus("syncing");
+    setPipelineError("");
     try {
-      const targetEmp = selectedLearner || profile?.id || user?.id;
-      await integrations.syncJira({
+      const targetEmp = selectedLearner || profile?.id || user?.id || "shubham_pokale";
+      const res = await integrations.syncJira({
         run_ai_extraction: false,
         max_issues: 5,
         target_employee_id: targetEmp,
       });
-      setJiraRawSync(new Date().toISOString());
-      setJiraStatus("connected");
+      if ((res as any)?.status === "failed") {
+        setPipelineError((res as any)?.error_summary || "Jira sync failed. Please verify credentials or project key.");
+        setJiraStatus(jiraCount > 0 ? "connected" : "needs_attention");
+      } else {
+        setJiraRawSync(new Date().toISOString());
+        setJiraStatus("connected");
+      }
       if (selectedLearner) {
         await fetchEvidence(selectedLearner);
       }
       await loadIntegrations();
-    } catch (err) {
-      console.error("Jira sync failed:", err);
+    } catch (err: any) {
+      setPipelineError(err?.message || "Jira sync encountered an issue. Please verify connection.");
       setJiraStatus(jiraCount > 0 ? "connected" : "needs_attention");
     } finally {
       setJiraSyncing(false);
@@ -677,29 +717,43 @@ export default function EvidencePage() {
               />
             )}
 
-            {/* Section 27: Empty state */}
-            {!loading && !error && filteredEvidence.length === 0 && (
-              <div className="p-10 md:p-14 rounded-[32px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 shadow-[4px_4px_0px_#1C1C1C] text-center max-w-xl mx-auto my-8">
-                <div className="w-12 h-12 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] flex items-center justify-center mx-auto mb-4">
-                  <Database className="w-5 h-5 text-[#1C1C1C]/60" />
-                </div>
-                <h4 className="text-xl font-black text-[#1C1C1C] mb-2">
-                  Your evidence stream hasn&apos;t started yet.
-                </h4>
-                <p className="text-xs md:text-sm font-medium text-[#1C1C1C]/75 leading-relaxed mb-6">
-                  Connect a source or run your first evidence sync to begin extracting verifiable competency records.
-                </p>
-                <div className="flex justify-center gap-3">
-                  <Link href="/onboarding">
-                    <PillButton variant="primary" size="md">
-                      CONNECT SOURCE
-                    </PillButton>
-                  </Link>
-                  <PillButton variant="secondary" size="md" onClick={handleSyncGithub}>
-                    RUN SYNC
-                  </PillButton>
-                </div>
-              </div>
+            {/* Section 27: Empty state with search / filter awareness */}
+            {!loading && initialLoaded && !error && filteredEvidence.length === 0 && (
+              evidenceList.length === 0 ? (
+                <EmptyState
+                  type="evidence"
+                  title="Your evidence stream hasn't started yet."
+                  message="Connect an activity source (GitHub, Jira) or run an evidence sync to begin extracting verifiable competency records into PostgreSQL."
+                  primaryAction={{
+                    label: "CONNECT SOURCE",
+                    href: "/onboarding",
+                  }}
+                  secondaryAction={{
+                    label: "RUN SYNC",
+                    onClick: handleSyncGithub,
+                  }}
+                />
+              ) : searchQuery.trim() ? (
+                <EmptyState
+                  type="search"
+                  title={`No evidence matching "${searchQuery}"`}
+                  message="No evidence titles, descriptions, or competency tags match this search query."
+                  primaryAction={{
+                    label: "CLEAR SEARCH",
+                    onClick: () => setSearchQuery(""),
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  type="filter"
+                  title={`No evidence found under "${filter}"`}
+                  message={`There are currently no items originating from ${filter}. Try switching to another source category.`}
+                  primaryAction={{
+                    label: "VIEW ALL SOURCES",
+                    onClick: () => setFilter("ALL"),
+                  }}
+                />
+              )
             )}
 
             {/* Feed Cards */}

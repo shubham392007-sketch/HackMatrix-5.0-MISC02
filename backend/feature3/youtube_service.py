@@ -136,16 +136,23 @@ class YouTubeDiscoveryService:
         params = {
             "part": "snippet",
             "type": "video",
-            "maxResults": 3,
+            "maxResults": 4,
             "q": f"{query} full tutorial",
             "videoCaption": "closedCaption",  # Prioritize videos with transcripts
             "key": self.api_key,
         }
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(endpoint, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-            items = data.get("items", [])
+            items = []
+            if resp.status_code == 200:
+                items = resp.json().get("items", [])
+            if not items:
+                # Retry without videoCaption constraint for wider pool
+                params.pop("videoCaption", None)
+                resp = client.get(endpoint, params=params)
+                resp.raise_for_status()
+                items = resp.json().get("items", [])
+
             if not items:
                 raise ValueError("No video results found in YouTube search API")
             top = items[0]
@@ -155,7 +162,9 @@ class YouTubeDiscoveryService:
                 "video_id": vid,
                 "title": snippet["title"],
                 "channel": snippet.get("channelTitle", "Verified Instructor"),
-                "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"),
+                "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url")
+                or snippet.get("thumbnails", {}).get("medium", {}).get("url")
+                or f"https://img.youtube.com/vi/{vid}/hqdefault.jpg",
             }
 
     def _get_fallback_video(self, competency_name: str, query: str) -> Dict[str, Any]:
@@ -179,11 +188,18 @@ class YouTubeDiscoveryService:
         target_topics: List[str],
     ) -> tuple[Optional[str], Optional[int], Optional[str], Optional[str]]:
         """Retrieve transcript using youtube-transcript-api and locate relevant section."""
+        transcript_list = []
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
-        except (TranscriptsDisabled, NoTranscriptFound, Exception) as e:
-            logger.info(f"Transcript unavailable for video {video_id}: {e}")
-            return None, None, None, None
+            yta = YouTubeTranscriptApi()
+            fetched = yta.fetch(video_id, languages=["en", "en-US", "en-GB"])
+            transcript_list = [{"text": getattr(s, "text", ""), "start": getattr(s, "start", 0)} for s in fetched]
+        except Exception:
+            try:
+                raw = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
+                transcript_list = [{"text": r.get("text", ""), "start": r.get("start", 0)} for r in raw]
+            except Exception as e:
+                logger.info(f"Transcript unavailable for video {video_id}: {e}")
+                return None, None, None, None
 
         if not transcript_list:
             return None, None, None, None

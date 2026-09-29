@@ -3,7 +3,7 @@
 import React from "react";
 
 interface LoadingSkeletonProps {
-  type?: "card" | "chart" | "feed" | "stats" | "timeline";
+  type?: "card" | "chart" | "feed" | "stats" | "timeline" | "table" | "page";
   count?: number;
   className?: string;
 }
@@ -73,6 +73,66 @@ export default function LoadingSkeleton({
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (type === "table") {
+    return (
+      <div className={`p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 shadow-[3px_3px_0px_#1C1C1C] animate-pulse space-y-4 ${className}`}>
+        {/* Table header skeleton */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#1C1C1C]/15">
+          <div className="h-4 w-32 bg-[#1C1C1C]/25 rounded-md" />
+          <div className="flex gap-4">
+            <div className="h-4 w-20 bg-[#1C1C1C]/15 rounded-md" />
+            <div className="h-4 w-20 bg-[#1C1C1C]/15 rounded-md" />
+          </div>
+        </div>
+        {/* Table rows */}
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between py-3 border-b border-[#1C1C1C]/10 last:border-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#1C1C1C]/15" />
+              <div className="space-y-1.5">
+                <div className="h-4 w-40 bg-[#1C1C1C]/20 rounded-md" />
+                <div className="h-2.5 w-24 bg-[#1C1C1C]/10 rounded-full" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-6 w-20 bg-[#1C1C1C]/15 rounded-full" />
+              <div className="h-6 w-16 bg-[#1C1C1C]/10 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "page") {
+    return (
+      <div className={`space-y-8 animate-pulse ${className}`}>
+        <div className="space-y-3">
+          <div className="h-8 w-64 bg-[#1C1C1C]/25 rounded-md" />
+          <div className="h-4 w-96 bg-[#1C1C1C]/15 rounded-full" />
+        </div>
+        <div className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 shadow-[3px_3px_0px_#1C1C1C]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-16 bg-[#1C1C1C]/15 rounded-full" />
+                <div className="h-8 w-20 bg-[#1C1C1C]/25 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-48 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF]/80 p-6 space-y-3">
+              <div className="h-5 w-32 bg-[#1C1C1C]/20 rounded-md" />
+              <div className="h-10 w-20 bg-[#1C1C1C]/25 rounded-md" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
