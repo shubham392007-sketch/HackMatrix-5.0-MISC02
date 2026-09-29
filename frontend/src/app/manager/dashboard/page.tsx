@@ -133,9 +133,18 @@ export default function ManagerDashboard() {
             )}
 
             {/* Quick Links */}
-            <div className="flex gap-3">
-              <Link href="/manager/heatmap" className="pill-btn pill-btn-primary">
-                VIEW HEATMAP →
+            <div className="flex flex-wrap gap-3 pt-4 border-t border-[#1C1C1C]/15">
+              <Link href="/manager/evidence" className="pill-btn pill-btn-primary">
+                TEAM EVIDENCE →
+              </Link>
+              <Link href="/manager/trajectory" className="pill-btn pill-btn-secondary">
+                TEAM TRAJECTORY →
+              </Link>
+              <Link href="/manager/heatmap" className="pill-btn pill-btn-secondary">
+                TEAM HEATMAP →
+              </Link>
+              <Link href="/manager/growth" className="pill-btn pill-btn-outline">
+                TEAM GROWTH →
               </Link>
             </div>
           </div>
