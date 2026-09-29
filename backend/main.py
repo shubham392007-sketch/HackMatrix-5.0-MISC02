@@ -93,13 +93,13 @@ app.include_router(evidence.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(ingestion.router, prefix="/api")
 
-# Register recommendation router if available
+# Register Feature 3 Next-Action Recommendation Engine
 try:
-    from routers.recommendations import router as recommendations_router
-    app.include_router(recommendations_router)
-    logger.info("Recommendations router registered")
+    from backend.feature3.api import router as feature3_router
+    app.include_router(feature3_router)
+    logger.info("Feature 3 Next-Action Recommendation Engine registered")
 except Exception as e:
-    logger.warning(f"Could not load recommendations router: {e}")
+    logger.warning(f"Could not load Feature 3 router: {e}")
 
 # Register retention router if available
 try:
@@ -119,11 +119,27 @@ except Exception as e:
 
 # Register Feature 4 Growth Intelligence & Benchmark router
 try:
-    from routers.intelligence import router as intelligence_router
-    app.include_router(intelligence_router)
+    from backend.feature4.api import router as feature4_router
+    app.include_router(feature4_router)
     logger.info("Feature 4 Intelligence router registered")
 except Exception as e:
-    logger.warning(f"Could not load intelligence router: {e}")
+    logger.warning(f"Could not load feature4 router: {e}")
+
+# Register Manager Evidence Intelligence router (Feature 1 Manager View)
+try:
+    from backend.api.routes.manager_evidence import router as manager_evidence_router
+    app.include_router(manager_evidence_router, prefix="/api")
+    logger.info("Manager Evidence Intelligence router registered")
+except Exception as e:
+    logger.warning(f"Could not load manager evidence router: {e}")
+
+# Register Manager Trajectory Intelligence router (Feature 2 Manager View)
+try:
+    from backend.api.routes.manager_trajectory import router as manager_trajectory_router
+    app.include_router(manager_trajectory_router, prefix="/api")
+    logger.info("Manager Trajectory Intelligence router registered")
+except Exception as e:
+    logger.warning(f"Could not load manager trajectory router: {e}")
 
 
 # Mount static folder
