@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 180" width="100%" height="180" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .stage-card { fill: #1C1C1C; stroke: #333333; stroke-width: 1.5; rx: 10px; }
+      .stage-card-active { fill: #232818; stroke: #DFE968; stroke-width: 2; rx: 10px; }
+      .num-badge { fill: #DFE968; rx: 4px; }
+      .num-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; fill: #1C1C1C; }
+      .title-text { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; fill: #FFFFFF; }
+      .desc-text { font-family: 'Space Grotesk', sans-serif; font-size: 10px; fill: #A3A3A3; }
+      
+      .flow-arrow {
+        stroke: #DFE968;
+        stroke-width: 2;
+        stroke-dasharray: 4 6;
+        fill: none;
+        animation: arrowDash 2s linear infinite;
+      }
+      @keyframes arrowDash {
+        to { stroke-dashoffset: -20; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect fill="#121212" stroke="#262626" stroke-width="1.5" rx="14" x="2" y="2" width="916" height="176" />
+
+  <!-- Stage Connectors -->
+  <path class="flow-arrow" d="M 175 90 L 205 90" />
+  <path class="flow-arrow" d="M 355 90 L 385 90" />
+  <path class="flow-arrow" d="M 535 90 L 565 90" />
+  <path class="flow-arrow" d="M 715 90 L 745 90" />
+
+  <!-- STAGE 1: TELEMETRY INGESTION -->
+  <g transform="translate(25, 40)">
+    <rect class="stage-card" width="150" height="100" />
+    <rect class="num-badge" x="12" y="12" width="22" height="16" />
+    <text class="num-text" x="17" y="24">01</text>
+    <text class="title-text" x="12" y="46">Evidence Ingestion</text>
+    <text class="desc-text" x="12" y="64">• GitHub PRs &amp; Commits</text>
+    <text class="desc-text" x="12" y="78">• Jira Sprint Outcomes</text>
+    <text class="desc-text" x="12" y="92">• Technical Rubrics</text>
+  </g>
+
+  <!-- STAGE 2: IDENTITY & 8D NORMALIZATION -->
+  <g transform="translate(205, 40)">
+    <rect class="stage-card" width="150" height="100" />
+    <rect class="num-badge" x="12" y="12" width="22" height="16" />
+    <text class="num-text" x="17" y="24">02</text>
+    <text class="title-text" x="12" y="46">Feature Adapter</text>
+    <text class="desc-text" x="12" y="64">• Identity Resolution</text>
+    <text class="desc-text" x="12" y="78">• Secret Regex Scrub</text>
+    <text class="desc-text" x="12" y="92">• 8D Tensor Pipeline</text>
+  </g>
+
+  <!-- STAGE 3: DUAL DEEP LEARNING & SURVIVAL -->
+  <g transform="translate(385, 40)">
+    <rect class="stage-card-active" width="150" height="100" />
+    <rect class="num-badge" x="12" y="12" width="22" height="16" />
+    <text class="num-text" x="17" y="24">03</text>
+    <text class="title-text" x="12" y="46">Dual ML Models</text>
+    <text class="desc-text" x="12" y="64" fill="#DFE968">• PyTorch Bi-LSTM (80%)</text>
+    <text class="desc-text" x="12" y="78" fill="#DFE968">• Weibull AFT (C: 0.79)</text>
+    <text class="desc-text" x="12" y="92">• Isolated What-If Sim</text>
+  </g>
+
+  <!-- STAGE 4: PERSONALIZED ACTION ENGINE -->
+  <g transform="translate(565, 40)">
+    <rect class="stage-card" width="150" height="100" />
+    <rect class="num-badge" x="12" y="12" width="22" height="16" />
+    <text class="num-text" x="17" y="24">04</text>
+    <text class="title-text" x="12" y="46">Growth Engine</text>
+    <text class="desc-text" x="12" y="64">• YouTube Deep-Links</text>
+    <text class="desc-text" x="12" y="78">• ACID Peer Mentorship</text>
+    <text class="desc-text" x="12" y="92">• Urgency Re-ranking</text>
+  </g>
+
+  <!-- STAGE 5: EXECUTIVE TALENT INTELLIGENCE -->
+  <g transform="translate(745, 40)">
+    <rect class="stage-card" width="150" height="100" />
+    <rect class="num-badge" x="12" y="12" width="22" height="16" />
+    <text class="num-text" x="17" y="24">05</text>
+    <text class="title-text" x="12" y="46">Talent Intelligence</text>
+    <text class="desc-text" x="12" y="64">• Qwen 2.5 8B Briefs</text>
+    <text class="desc-text" x="12" y="78">• Team Skill Heatmaps</text>
+    <text class="desc-text" x="12" y="92">• Privacy Benchmarking</text>
+  </g>
+</svg>

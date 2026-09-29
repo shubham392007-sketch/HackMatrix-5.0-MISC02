@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 300" width="100%" height="300" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');
+      .box-traditional { fill: #1C1515; stroke: #451E1E; stroke-width: 1.5; rx: 12px; }
+      .box-growthlens { fill: #1E2515; stroke: #DFE968; stroke-width: 2; rx: 12px; }
+      .header-trad { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; fill: #F87171; }
+      .header-growth { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; fill: #DFE968; }
+      .body-text { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500; fill: #E5E7EB; }
+      .sub-text { font-family: 'Space Grotesk', sans-serif; font-size: 11px; fill: #9CA3AF; }
+      .tag-bad { fill: #EF4444; rx: 4px; }
+      .tag-good { fill: #DFE968; rx: 4px; }
+      
+      .row-glow {
+        animation: rowPulse 3s ease-in-out infinite;
+      }
+      @keyframes rowPulse {
+        0%, 100% { opacity: 0.9; }
+        50% { opacity: 1; transform: scale(1.005); }
+      }
+    </style>
+  </defs>
+
+  <!-- Canvas Surface -->
+  <rect fill="#121212" stroke="#262626" stroke-width="1.5" rx="16" x="2" y="2" width="916" height="296" />
+
+  <!-- Title -->
+  <text font-family="'Space Grotesk', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" x="32" y="32">
+    PARADIGM SHIFT: TRADITIONAL REVIEWS VS. CONTINUOUS TALENT INTELLIGENCE
+  </text>
+
+  <!-- COLUMN 1: TRADITIONAL ANNUAL REVIEWS -->
+  <g transform="translate(30, 55)">
+    <rect class="box-traditional" width="410" height="225" />
+    <circle cx="24" cy="24" r="6" fill="#EF4444" />
+    <text class="header-trad" x="38" y="29">Legacy Periodic Reviews (Annual / Static)</text>
+    
+    <!-- Item 1 -->
+    <text class="body-text" x="20" y="62">❌ Cadence:</text>
+    <text class="sub-text" x="120" y="62">Annual or 6-month retrospective memory</text>
+
+    <!-- Item 2 -->
+    <text class="body-text" x="20" y="100">❌ Data Signal:</text>
+    <text class="sub-text" x="120" y="100">Subjective recall &amp; recency bias (last 2 weeks)</text>
+
+    <!-- Item 3 -->
+    <text class="body-text" x="20" y="138">❌ Skill Decay:</text>
+    <text class="sub-text" x="120" y="138">Invisible until project deadline or outage</text>
+
+    <!-- Item 4 -->
+    <text class="body-text" x="20" y="176">❌ Modeling:</text>
+    <text class="sub-text" x="120" y="176">Compressed 1-to-5 scalar rating per person</text>
+
+    <!-- Item 5 -->
+    <text class="body-text" x="20" y="212">❌ Actions:</text>
+    <text class="sub-text" x="120" y="212">Generic corporate video courses</text>
+  </g>
+
+  <!-- COLUMN 2: GROWTHLENS CONTINUOUS ENGINE -->
+  <g transform="translate(470, 55)">
+    <rect class="box-growthlens row-glow" width="420" height="225" />
+    <circle cx="24" cy="24" r="6" fill="#DFE968" />
+    <text class="header-growth" x="38" y="29">GrowthLens Continuous Intelligence Engine</text>
+
+    <!-- Item 1 -->
+    <text class="body-text" x="20" y="62" fill="#DFE968">✓ Cadence:</text>
+    <text class="body-text" x="120" y="62">Continuous, real-time longitudinal evaluation</text>
+
+    <!-- Item 2 -->
+    <text class="body-text" x="20" y="100" fill="#DFE968">✓ Data Signal:</text>
+    <text class="body-text" x="120" y="100">Multi-modal telemetry (GitHub + Jira + Exams)</text>
+
+    <!-- Item 3 -->
+    <text class="body-text" x="20" y="138" fill="#DFE968">✓ Skill Decay:</text>
+    <text class="body-text" x="120" y="138">Weibull AFT hazard curves (30/60/90/180-day)</text>
+
+    <!-- Item 4 -->
+    <text class="body-text" x="20" y="176" fill="#DFE968">✓ Modeling:</text>
+    <text class="body-text" x="120" y="176">Independent PyTorch Attention Bi-LSTM per skill</text>
+
+    <!-- Item 5 -->
+    <text class="body-text" x="20" y="212" fill="#DFE968">✓ Actions:</text>
+    <text class="body-text" x="120" y="212">YouTube &amp;t=X deep-links &amp; ACID mentorship</text>
+  </g>
+</svg>

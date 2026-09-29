@@ -77,6 +77,10 @@ All generative executive briefings, mentorship pairings, and skill roadmaps are 
 
 ## 2. GrowthLens vs Traditional HR Systems
 
+<p align="center">
+  <img src="docs/assets/problem-comparison.svg" alt="Traditional Reviews vs Continuous Talent Intelligence" width="100%" />
+</p>
+
 | Dimension | Legacy Annual Reviews (Lattice, Workday) | Static Metric Dashboards (Pluralsight, GitPrime) | **GrowthLens Autonomous Talent Platform** |
 |---|---|---|---|
 | **Evaluation Cadence** | Annual or semi-annual retrospective | Daily commits & lines-of-code heuristics | **Continuous, real-time longitudinal evaluation** |
@@ -102,6 +106,10 @@ flowchart LR
     F1 -.->|Evidence Citations| F4
     F3 -.->|Feedback Loop| F1
 ```
+
+<p align="center">
+  <img src="docs/assets/solution-workflow.svg" alt="GrowthLens 5-Stage Continuous Solution Workflow" width="100%" />
+</p>
 
 ---
 
@@ -686,7 +694,7 @@ GrowthLens is styled using the **Moonwood Editorial Design System**, blending ed
 GrowthLens was researched, architected, and built for **HackMatrix 5.0** by the following engineering team:
 
 <p align="center">
-  <img src="docs/images/developers_banner.png" alt="GrowthLens Engineering Core" width="100%" />
+  <img src="docs/images/growthlens_team_core.png" alt="GrowthLens Engineering Core" width="100%" />
 </p>
 
 | Contributor | Role & Specialization | Contact & Profiles |
@@ -708,6 +716,10 @@ For granular technical specifications, please explore our companion architectura
 - 🔒 **[Security & Privacy Architecture](docs/SECURITY.md)**: Threat modeling, secret regex sanitization, and tenant isolation policies.
 
 ---
+
+<p align="center">
+  <img src="docs/assets/closing-banner.svg" alt="GrowthLens Closing Banner" width="100%" />
+</p>
 
 <p align="center">
   <b>Built with excellence for HackMatrix 5.0 (Track MISC02)</b><br/>
