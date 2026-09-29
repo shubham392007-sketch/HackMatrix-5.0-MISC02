@@ -1,5 +1,9 @@
 # GrowthLens
 
+<p align="center">
+  <img src="docs/images/growthlens_header.png" alt="GrowthLens - Understand every trajectory. Ask anything. Get insights that matter." width="100%" />
+</p>
+
 > **Continuous Talent Intelligence & Skill Growth Engine**  
 > *Empirical, telemetry-backed talent intelligence replacing static performance reviews with deep learning trajectories, survival analysis, and on-premise generative synthesis.*
 
