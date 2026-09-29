@@ -79,15 +79,68 @@ export interface SimulationResult {
   confidence: number;
 }
 
-export interface Recommendation {
-  competency: string;
+export interface ResourceDeepLink {
+  video_id: string;
+  video_url: string;
+  deep_link_url: string;
+  title: string;
+  channel_title?: string;
+  thumbnail_url?: string;
+  duration?: string;
+  timestamp_seconds?: number;
+  timestamp_formatted?: string;
+  matched_topic?: string;
+  matched_snippet?: string;
+  timestamp_available: boolean;
+}
+
+export interface MentorSuggestion {
+  mentor_id: string;
+  mentor_name: string;
+  mentor_email?: string;
+  mentor_department?: string;
+  competency_id?: string;
+  competency_name?: string;
+  mentor_trend?: string;
+  mentor_confidence?: number;
+  pairing_status?: string;
+  pairing_id?: string;
+}
+
+export interface RecommendationExplanation {
   action: string;
+  action_type: string;
+  target_gap: string;
+  reason: string;
+  expected_benefit: string;
+  evidence_refs: string[];
+  confidence: number;
+}
+
+export interface Recommendation {
+  id?: string;
+  competency: string;
+  trend?: string;
+  confidence?: number;
+  priority?: "HIGH" | "MEDIUM" | "LOW";
+  action: string;
+  action_type?: "micro_learning" | "peer_mentorship" | "evidence_gathering";
+  status?: "generated" | "viewed" | "started" | "completed" | "dismissed" | "expired";
+  justification?: string;
   evidence_ref?: string;
+  evidence_refs?: string[];
+  supporting_evidence_details?: Array<{
+    id: string;
+    title?: string;
+    source?: string;
+    content?: string;
+    occurred_at?: string;
+  }>;
   external_link?: string;
-  mentor_suggestion?: {
-    mentor_id: string;
-    mentor_name: string;
-  };
+  resource?: ResourceDeepLink;
+  mentor_suggestion?: MentorSuggestion;
+  ai_explanation?: RecommendationExplanation;
+  created_at?: string;
 }
 
 /* ── Feature 4 Types ─────────────────────────────────────── */
@@ -175,6 +228,9 @@ export interface Evidence {
   skills: string[];
   competencies: string[];
   project_name?: string;
+  ai_summary?: string;
+  raw_evidence?: string;
+  ai_interpretation?: string;
 }
 
 /* ── API Response Wrappers ───────────────────────────────── */

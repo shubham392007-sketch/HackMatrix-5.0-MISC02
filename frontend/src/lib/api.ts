@@ -12,6 +12,8 @@ import type {
   TrajectoryPrediction,
   WhatIfSimulationRequest,
   WhatIfSimulationResponse,
+  Evidence,
+  Recommendation,
 } from "./types";
 import { supabase } from "./supabase";
 
@@ -264,26 +266,67 @@ export const trajectory = {
 /* ── Feature 3: Recommendations ──────────────────────────── */
 
 export const recommendations = {
-  get: (learnerId: string) =>
+  get: (learnerId: string, explain = true) =>
     request<RecommendationsResponse>(
-      `/api/v1/learner/${learnerId}/recommendations`
+      `/api/v1/learner/${learnerId}/recommendations?explain=${explain}`
+    ),
+
+  generate: (employeeId: string) =>
+    request<{ status: string; count: number; recommendations: Recommendation[] }>(
+      `/api/v1/recommendations/generate/${employeeId}`,
+      { method: "POST" }
+    ),
+
+  updateStatus: (recommendationId: string, status: "started" | "completed" | "dismissed") =>
+    request<{ id: string; status: string; updated_at: string }>(
+      `/api/v1/recommendations/${recommendationId}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }
     ),
 
   requestMentorship: (
-    managerId: string,
-    mentorId: string,
     menteeId: string,
-    competencyId: string
+    mentorId: string,
+    competencyId: string,
+    recommendationId?: string,
+    note?: string,
+    managerId?: string
   ) =>
-    request<{ status: string }>(`/api/v1/manager/mentorship/request`, {
-      method: "POST",
-      body: JSON.stringify({
-        manager_id: managerId,
-        mentor_id: mentorId,
-        mentee_id: menteeId,
-        competency_id: competencyId,
-      }),
-    }),
+    request<{ id: string; status: string; message: string }>(
+      `/api/v1/recommendations/mentorship/request`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          mentee_id: menteeId,
+          mentor_id: mentorId,
+          competency_id: competencyId,
+          recommendation_id: recommendationId,
+          note,
+          manager_id: managerId,
+        }),
+      }
+    ),
+
+  pairings: (employeeId?: string) =>
+    request<{ pairings: Array<Record<string, any>> }>(
+      `/api/v1/recommendations/mentorship/requests${employeeId ? `?employee_id=${employeeId}` : ""}`
+    ),
+
+  updatePairingStatus: (pairingId: string, status: string, feedback?: string) =>
+    request<{ id: string; status: string; updated_at: string }>(
+      `/api/v1/recommendations/mentorship/${pairingId}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status, feedback }),
+      }
+    ),
+
+  catalog: () =>
+    request<{ rules: Array<Record<string, any>> }>(
+      `/api/v1/recommendations/catalog`
+    ),
 };
 
 /* ── Feature 4: Growth Intelligence ──────────────────────── */
@@ -304,6 +347,211 @@ export const intelligence = {
 
   teamHeatmap: (teamId: string) =>
     request<TeamHeatmap>(`/feature4/api/heatmap/team/${teamId}`),
+};
+
+/* ── Manager Evidence Intelligence ───────────────────────── */
+
+export interface ManagerTeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  department?: string;
+  feature4_status?: string;
+  feature3_status?: string;
+  evidence_count: number;
+  competency_count?: number;
+  competencies?: string[];
+  last_evidence_at?: string;
+}
+
+export interface ManagerTeamOverview {
+  manager_id: string;
+  team_members: ManagerTeamMember[];
+  total_evidence: number;
+  total_members: number;
+  competencies_represented?: number;
+  evidence_sources?: number;
+  latest_evidence?: string;
+  sources_breakdown: Record<string, number>;
+  competency_coverage?: Record<string, number>;
+}
+
+export interface ManagerEmployeeEvidence {
+  employee_id: string;
+  employee_name: string;
+  department?: string;
+  role?: string;
+  feature4_status?: string;
+  count: number;
+  evidence: Evidence[];
+  sources_breakdown: Record<string, number>;
+  competencies_detected: string[];
+  competency_counts?: Record<string, number>;
+}
+
+export interface ManagerEmployeeSummary {
+  employee_id: string;
+  employee_name: string;
+  department?: string;
+  role?: string;
+  feature4_status?: string;
+  feature3_status?: string;
+  evidence_count: number;
+  sources: Record<string, number>;
+  competencies_detected: string[];
+  competency_counts?: Record<string, number>;
+  freshest_evidence_at?: string;
+  oldest_evidence_at?: string;
+}
+
+export const managerEvidence = {
+  teamOverview: (department?: string, search?: string) =>
+    request<ManagerTeamOverview>(
+      `/api/manager/evidence/team?${[
+        department ? `department=${encodeURIComponent(department)}` : "",
+        search ? `search=${encodeURIComponent(search)}` : "",
+      ].filter(Boolean).join("&")}`
+    ),
+
+  feature4Participants: (department?: string, search?: string) =>
+    request<ManagerTeamOverview>(
+      `/api/manager/evidence/feature4-participants?${[
+        department ? `department=${encodeURIComponent(department)}` : "",
+        search ? `search=${encodeURIComponent(search)}` : "",
+      ].filter(Boolean).join("&")}`
+    ),
+
+  employeeEvidence: (
+    employeeId: string,
+    limit = 50,
+    offset = 0,
+    sourceFilter?: string,
+    competencyFilter?: string,
+    search?: string
+  ) =>
+    request<ManagerEmployeeEvidence>(
+      `/api/manager/evidence/team/${employeeId}?${[
+        `limit=${limit}`,
+        `offset=${offset}`,
+        sourceFilter ? `source_filter=${encodeURIComponent(sourceFilter)}` : "",
+        competencyFilter ? `competency_filter=${encodeURIComponent(competencyFilter)}` : "",
+        search ? `search=${encodeURIComponent(search)}` : "",
+      ].filter(Boolean).join("&")}`
+    ),
+
+  employeeSummary: (employeeId: string) =>
+    request<ManagerEmployeeSummary>(
+      `/api/manager/evidence/team/${employeeId}/summary`
+    ),
+
+  evidenceDetail: (employeeId: string, evidenceId: string) =>
+    request<any>(`/api/manager/evidence/team/${employeeId}/evidence/${evidenceId}`),
+
+  competenciesBreakdown: (employeeId: string) =>
+    request<any[]>(`/api/manager/evidence/team/${employeeId}/competencies`),
+
+  askRAG: (employeeId: string, question: string, competency?: string) =>
+    request<{
+      competency: string;
+      action?: string;
+      justification: string;
+      evidence_refs: string[];
+      confidence: number;
+      evidence_sufficiency: string;
+    }>(`/api/manager/evidence/team/${employeeId}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ question, competency }),
+    }),
+
+  departments: () =>
+    request<{ departments: string[] }>(`/api/manager/evidence/departments`),
+};
+
+/* ── Manager Trajectory Intelligence ─────────────────────── */
+
+export interface ManagerTrajectoryTeamMember {
+  employee_id: string;
+  name: string;
+  email: string;
+  department?: string;
+  competency_count: number;
+  total_evidence: number;
+  average_confidence: number;
+  trend_distribution: {
+    improving: number;
+    stagnating: number;
+    declining: number;
+    insufficient_evidence: number;
+  };
+  dominant_trend: "attention_needed" | "improving" | "stagnating" | "insufficient_evidence" | "no_data";
+  latest_evidence_at?: string;
+}
+
+export interface ManagerTrajectoryTeamOverview {
+  team_members: ManagerTrajectoryTeamMember[];
+  total_members: number;
+  total_competencies_tracked: number;
+  trend_distribution: {
+    improving: number;
+    stagnating: number;
+    declining: number;
+    insufficient_evidence: number;
+  };
+  average_confidence: number;
+  department_filter?: string;
+}
+
+export interface ManagerEmployeeTrajectories {
+  employee_id: string;
+  employee_name: string;
+  department?: string;
+  trajectory_count: number;
+  trajectories: TrajectoryPrediction[];
+}
+
+export interface ManagerCompetencyTrend {
+  competency_id: string;
+  competency_name: string;
+  employee_count: number;
+  trend_distribution: {
+    improving: number;
+    stagnating: number;
+    declining: number;
+    insufficient_evidence: number;
+  };
+  health: "healthy" | "at_risk" | "critical";
+}
+
+export interface ManagerTeamTrends {
+  competency_trends: ManagerCompetencyTrend[];
+  total_employees: number;
+  department_filter?: string;
+}
+
+export const managerTrajectory = {
+  teamOverview: (department?: string) =>
+    request<ManagerTrajectoryTeamOverview>(
+      `/api/manager/trajectory/team${department ? `?department=${encodeURIComponent(department)}` : ""}`
+    ),
+
+  employeeTrajectories: (employeeId: string, refresh = false) =>
+    request<ManagerEmployeeTrajectories>(
+      `/api/manager/trajectory/team/${employeeId}${refresh ? "?refresh=true" : ""}`
+    ),
+
+  singleCompetency: (employeeId: string, competencyId: string, refresh = false) =>
+    request<TrajectoryPrediction>(
+      `/api/manager/trajectory/team/${employeeId}/${competencyId}${refresh ? "?refresh=true" : ""}`
+    ),
+
+  teamTrends: (department?: string) =>
+    request<ManagerTeamTrends>(
+      `/api/manager/trajectory/trends${department ? `?department=${encodeURIComponent(department)}` : ""}`
+    ),
+
+  departments: () =>
+    request<{ departments: string[] }>(`/api/manager/trajectory/departments`),
 };
 
 /* ── Health Check ────────────────────────────────────────── */
