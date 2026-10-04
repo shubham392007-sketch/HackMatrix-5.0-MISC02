@@ -61,5 +61,6 @@ Rules:
 1. Do not invent skills that have zero basis in the text.
 2. If the text has no technical work, set "insufficient_information": true.
 3. In "evidence_refs", include only ["{ev_ref}"].
+4. Output ONLY the raw JSON object. Do not include thinking or thoughts.
 </TASK>
 """

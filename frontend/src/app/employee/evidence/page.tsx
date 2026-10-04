@@ -385,26 +385,39 @@ export default function EvidencePage() {
           throw new Error("Jira is not connected. Configure your Jira credentials in your Profile or Settings before extracting Jira tickets.");
         }
         const res = await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        if ((res as any)?.status === "failed") {
+          throw new Error((res as any)?.error_summary || "Jira synchronization failed.");
+        }
         totalFound += (res as any)?.records_found || 0;
         totalProcessed += (res as any)?.records_processed || 0;
         totalSkipped += (res as any)?.records_skipped || 0;
       } else if (source === "github") {
         const res = await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        if ((res as any)?.status === "failed") {
+          throw new Error((res as any)?.error_summary || "GitHub synchronization failed.");
+        }
         totalFound += (res as any)?.records_found || 0;
         totalProcessed += (res as any)?.records_processed || 0;
         totalSkipped += (res as any)?.records_skipped || 0;
       } else {
         // all connected sources
         const res = await integrations.syncGithub({ limit_commits: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+        if ((res as any)?.status === "failed" && jiraStatus !== "connected") {
+          throw new Error((res as any)?.error_summary || "GitHub synchronization failed.");
+        }
         totalFound += (res as any)?.records_found || 0;
         totalProcessed += (res as any)?.records_processed || 0;
         totalSkipped += (res as any)?.records_skipped || 0;
 
         if (jiraStatus === "connected") {
-          const jRes = await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
-          totalFound += (jRes as any)?.records_found || 0;
-          totalProcessed += (jRes as any)?.records_processed || 0;
-          totalSkipped += (jRes as any)?.records_skipped || 0;
+          try {
+            const jRes = await integrations.syncJira({ max_issues: limit, run_ai_extraction: runAi, target_employee_id: targetEmp });
+            totalFound += (jRes as any)?.records_found || 0;
+            totalProcessed += (jRes as any)?.records_processed || 0;
+            totalSkipped += (jRes as any)?.records_skipped || 0;
+          } catch (jErr: any) {
+            console.warn("Jira sub-sync skipped:", jErr?.message);
+          }
         }
       }
 

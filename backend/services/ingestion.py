@@ -465,7 +465,7 @@ class EvidenceIngestionService:
         # 2. AI Extraction via local Qwen3 8B
         if run_ai:
             try:
-                # Provide known competencies to constrain and guide Qwen3 with strict 8.0s timeout
+                # Provide known competencies to constrain and guide Qwen3 with realistic timeout
                 known_comps = [c["name"] for c in self.taxonomy_service.list_all_competencies()]
                 extraction = await asyncio.wait_for(
                     self.qwen_service.extract_evidence(
@@ -476,7 +476,7 @@ class EvidenceIngestionService:
                         evidence_id=ev_id,
                         known_competencies=known_comps,
                     ),
-                    timeout=8.0,
+                    timeout=25.0,
                 )
 
                 ai_summary = extraction.evidence_summary

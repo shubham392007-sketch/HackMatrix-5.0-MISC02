@@ -1,7 +1,14 @@
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from backend.core.dependencies import get_current_user, get_current_profile, require_employee, require_manager, require_admin
+from backend.core.dependencies import (
+    get_current_user,
+    get_current_profile,
+    get_optional_profile,
+    require_employee,
+    require_manager,
+    require_admin,
+)
 from backend.schemas.profile import (
     UserProfile,
     ProfileUpdateRequest,
@@ -467,11 +474,17 @@ async def complete_profile_onboarding(
 
 
 @router.get("/integrations", response_model=Dict[str, UserIntegrationSummary])
-async def get_my_integrations(profile: UserProfile = Depends(get_current_profile)):
+async def get_my_integrations(profile: Optional[UserProfile] = Depends(get_optional_profile)):
     """Retrieve all configured integrations for the user with masked credentials."""
     client = get_supabase_client()
     try:
-        res = client.table("user_integrations").select("*").eq("user_id", profile.user_id).execute()
+        user_id = profile.user_id if profile else None
+        query = client.table("user_integrations").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+        else:
+            query = query.eq("is_active", True)
+        res = query.execute()
         records = res.data or []
         summary = {}
         for r in records:
