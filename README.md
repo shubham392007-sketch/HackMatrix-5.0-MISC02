@@ -395,19 +395,35 @@ erDiagram
 Rather than treating trajectory classification as a heuristic rule, GrowthLens models competency progression through a custom recurrent neural network (`backend/ml/lstm_model.py`) loaded from `models/feature2/feature2_lstm_v1.pt`.
 
 #### Mathematical Formulation:
+
 Given an input sequence of temporal feature vectors $\mathbf{x}_1, \dots, \mathbf{x}_T \in \mathbb{R}^8$, the bidirectional LSTM computes forward and backward hidden representations:
-$$\overrightarrow{\mathbf{h}}_t = \text{LSTM}_{\text{fwd}}(\mathbf{x}_t, \overrightarrow{\mathbf{h}}_{t-1})$$
-$$\overleftarrow{\mathbf{h}}_t = \text{LSTM}_{\text{bwd}}(\mathbf{x}_t, \overleftarrow{\mathbf{h}}_{t+1})$$
-$$\mathbf{h}_t = [\overrightarrow{\mathbf{h}}_t \,\|\, \overleftarrow{\mathbf{h}}_t] \in \mathbb{R}^{32}$$
+
+$$
+\begin{aligned}
+\overrightarrow{\mathbf{h}}_t &= \text{LSTM}_{\text{fwd}}(\mathbf{x}_t, \overrightarrow{\mathbf{h}}_{t-1}) \\
+\overleftarrow{\mathbf{h}}_t &= \text{LSTM}_{\text{bwd}}(\mathbf{x}_t, \overleftarrow{\mathbf{h}}_{t+1}) \\
+\mathbf{h}_t &= \left[ \overrightarrow{\mathbf{h}}_t \,\|\, \overleftarrow{\mathbf{h}}_t \right] \in \mathbb{R}^{32}
+\end{aligned}
+$$
 
 The temporal attention layer computes importance weights $\alpha_t$ across time steps, emphasizing pivotal engineering milestones while attenuating routine commits:
-$$u_t = \mathbf{v}^\top \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{b}_a)$$
-$$\alpha_t = \frac{\exp(u_t) \cdot m_t}{\sum_{j=1}^{T} \exp(u_j) \cdot m_j + \epsilon}$$
-$$\mathbf{c} = \sum_{t=1}^{T} \alpha_t \mathbf{h}_t$$
 
-The context vector $\mathbf{c}$ is passed through a multi-layer perceptron with dropout ($p = 0.20$) to produce unnormalized logits:
-$$\hat{\mathbf{y}} = \mathbf{W}_2 \, \text{ReLU}(\mathbf{W}_1 \mathbf{c} + \mathbf{b}_1) + \mathbf{b}_2$$
-$$\mathbf{P}(c) = \text{Softmax}(\hat{\mathbf{y}})$$
+$$
+\begin{aligned}
+u_t &= \mathbf{v}^\top \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{b}_a) \\
+\alpha_t &= \frac{\exp(u_t) \cdot m_t}{\sum_{j=1}^{T} \exp(u_j) \cdot m_j + \epsilon} \\
+\mathbf{c} &= \sum_{t=1}^{T} \alpha_t \mathbf{h}_t
+\end{aligned}
+$$
+
+The context vector $\mathbf{c}$ is passed through a multi-layer perceptron with dropout ($p = 0.20$) to produce unnormalized logits and calibrated probabilities:
+
+$$
+\begin{aligned}
+\hat{\mathbf{y}} &= \mathbf{W}_2 \, \text{ReLU}(\mathbf{W}_1 \mathbf{c} + \mathbf{b}_1) + \mathbf{b}_2 \\
+\mathbf{P}(c) &= \text{Softmax}(\hat{\mathbf{y}})_c = \frac{\exp(\hat{y}_c)}{\sum_{k=1}^3 \exp(\hat{y}_k)}
+\end{aligned}
+$$
 
 #### Authoritative Test Evaluation Results (`models/feature2/evaluation_report.json`):
 - **Test Set Size**: 169 independent, chronologically isolated sequences
@@ -436,8 +452,13 @@ Actual Improving                0                     0                     44
 
 To anticipate when a skill will atrophy before project delays materialize, GrowthLens uses the **Weibull Accelerated Failure Time (AFT)** model (`models/retention/weibull_model.pkl`).
 
-$$\ln(T) = \mu + \mathbf{x}^\top \boldsymbol{\beta} + \sigma W$$
-$$S(t | \mathbf{x}) = \exp\left( - \left[ \frac{t}{\lambda(\mathbf{x})} \right]^\rho \right), \quad \lambda(\mathbf{x}) = \exp(\mu + \mathbf{x}^\top \boldsymbol{\beta})$$
+$$
+\ln(T) = \mu + \mathbf{x}^\top \boldsymbol{\beta} + \sigma W
+$$
+
+$$
+S(t \mid \mathbf{x}) = \exp\left( - \left[ \frac{t}{\lambda(\mathbf{x})} \right]^\rho \right), \quad \text{where} \quad \lambda(\mathbf{x}) = \exp(\mu + \mathbf{x}^\top \boldsymbol{\beta})
+$$
 
 - **Training Samples**: $N = 29,865$ employee competency trajectories
 - **Test Validation Set**: $54,647$ transitions
@@ -453,12 +474,22 @@ $$S(t | \mathbf{x}) = \exp\left( - \left[ \frac{t}{\lambda(\mathbf{x})} \right]^
 
 ### 7.3 Continuous Exponential Freshness & Calibration
 
-To prevent outdated evidence from yielding unjustified confidence, evidence freshness is continuously degraded via an exponential half-life decay function ($H = 60$ days):
-$$\lambda = \frac{\ln(2)}{60} \approx 0.01155 \text{ day}^{-1}$$
-$$F(\Delta t) = \max\left(0.05, \exp(-\lambda \cdot \Delta t)\right)$$
+To prevent outdated evidence from yielding unjustified confidence, evidence freshness is continuously degraded via an exponential half-life decay function ($H = 60\text{ days}$):
+
+$$
+\lambda = \frac{\ln(2)}{60} \approx 0.01155 \text{ day}^{-1}
+$$
+
+$$
+F(\Delta t) = \max\left(0.05, \, \exp(-\lambda \cdot \Delta t)\right)
+$$
 
 Confidence is strictly calibrated:
-$$C = P(\hat{y}) \cdot \Big[ 0.40 \cdot V(n) + 0.35 \cdot F(\Delta t) + 0.25 \cdot \bar{Q} \Big]$$
+
+$$
+C = P(\hat{y}) \cdot \left[ 0.40 \cdot V(n) + 0.35 \cdot F(\Delta t) + 0.25 \cdot \bar{Q} \right]
+$$
+
 - If evidence observations $n < 3$, status is mathematically clamped to `insufficient_evidence` with confidence $C \equiv 0.00$.
 - No artificial $100\%$ confidence scores are permitted; calibrated confidence is strictly bounded to $[0.10, 0.98]$.
 

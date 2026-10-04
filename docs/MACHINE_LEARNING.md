@@ -112,12 +112,20 @@ Each chronological evidence item $E_k$ ($k = 0, \dots, n-1$) for a specific `(em
 Sequences are bounded to $T = 10$ steps. When an employee sequence has length $m < 10$ ($m \ge 3$), the sequence is **pre-padded** with zero vectors at positions $0, \dots, 10 - m - 1$. 
 
 An attention mask $\mathbf{m} \in \{0, 1\}^{10}$ is computed such that:
-$$m_i = \begin{cases} 0 & \text{if } i < 10 - m \\ 1 & \text{if } i \ge 10 - m \end{cases}$$
+
+$$
+m_i = \begin{cases} 0 & \text{if } i < 10 - m \\ 1 & \text{if } i \ge 10 - m \end{cases}
+$$
 
 The temporal attention layer computes normalized alignment weights $\alpha_t$:
-$$u_t = \mathbf{v}^\top \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{b}_a)$$
-$$\alpha_t = \frac{\exp(u_t) \cdot m_t}{\sum_{j=1}^{T} \exp(u_j) \cdot m_j + \epsilon}$$
-$$\mathbf{c} = \sum_{t=1}^{T} \alpha_t \mathbf{h}_t$$
+
+$$
+\begin{aligned}
+u_t &= \mathbf{v}^\top \tanh(\mathbf{W}_a \mathbf{h}_t + \mathbf{b}_a) \\
+\alpha_t &= \frac{\exp(u_t) \cdot m_t}{\sum_{j=1}^{T} \exp(u_j) \cdot m_j + \epsilon} \\
+\mathbf{c} &= \sum_{t=1}^{T} \alpha_t \mathbf{h}_t
+\end{aligned}
+$$
 
 The context vector $\mathbf{c} \in \mathbb{R}^{32}$ is passed through the MLP classifier with $20\%$ dropout to yield logit predictions over the 3 classes:
 - `0`: **Declining** (Skill is actively atrophying or falling behind expected benchmarks)
@@ -132,12 +140,18 @@ The context vector $\mathbf{c} \in \mathbb{R}^{32}$ is passed through the MLP cl
 Skill decay is modeled as a time-to-event survival process. In talent intelligence, "failure" is defined as a drop in demonstrated competency below baseline threshold ($\ge 10\%$ decrease or $>90$ days without reinforcing evidence).
 
 We parameterize survival time $T$ using the Accelerated Failure Time (AFT) formulation with a Weibull distribution:
-$$\ln(T) = \mu + \mathbf{x}^\top \boldsymbol{\beta} + \sigma W$$
+
+$$
+\ln(T) = \mu + \mathbf{x}^\top \boldsymbol{\beta} + \sigma W
+$$
+
 where $W$ follows the standard Gumbel distribution, $\mu$ is the baseline intercept, $\sigma$ is the scale parameter, and $\boldsymbol{\beta}$ is the vector of learned regression coefficients.
 
-The resulting survival function $S(t | \mathbf{x})$ predicts the probability that an employee retains skill mastery beyond time $t$:
-$$S(t | \mathbf{x}) = \exp\left( - \left[ \frac{t}{\lambda(\mathbf{x})} \right]^\rho \right)$$
-where $\lambda(\mathbf{x}) = \exp(\mu + \mathbf{x}^\top \boldsymbol{\beta})$ is the scale parameter and $\rho = 1/\sigma$ is the shape parameter.
+The resulting survival function $S(t \mid \mathbf{x})$ predicts the probability that an employee retains skill mastery beyond time $t$:
+
+$$
+S(t \mid \mathbf{x}) = \exp\left( - \left[ \frac{t}{\lambda(\mathbf{x})} \right]^\rho \right), \quad \text{where} \quad \lambda(\mathbf{x}) = \exp(\mu + \mathbf{x}^\top \boldsymbol{\beta}) \quad \text{and} \quad \rho = \frac{1}{\sigma}
+$$
 
 ### 3.2 Survival Features & Learned Coefficients
 Trained on $N = 29,865$ employee competency trajectories and validated on $54,647$ held-out transitions (`models/retention/model_metadata.json`):
@@ -182,9 +196,15 @@ Evidence chunks and competency descriptors are embedded via `nomic-embed-text` (
 A critical failure mode of enterprise AI is presenting high confidence for outdated or sparse data. GrowthLens implements an exponential half-life decay function and multi-factor calibration.
 
 ### 5.1 Exponential Half-Life Freshness
-With a half-life $H = 60$ days, the decay rate constant is:
-$$\lambda = \frac{\ln(2)}{60} \approx 0.01155 \text{ day}^{-1}$$
-$$F(\Delta t) = \max\left(0.05, \exp(-\lambda \cdot \Delta t)\right)$$
+With a half-life $H = 60\text{ days}$, the decay rate constant is:
+
+$$
+\lambda = \frac{\ln(2)}{60} \approx 0.01155 \text{ day}^{-1}
+$$
+
+$$
+F(\Delta t) = \max\left(0.05, \, \exp(-\lambda \cdot \Delta t)\right)
+$$
 
 | Elapsed Days ($\Delta t$) | Status Flag | Freshness Multiplier $F(\Delta t)$ | Impact on Confidence |
 |---|---|---|---|
@@ -195,7 +215,11 @@ $$F(\Delta t) = \max\left(0.05, \exp(-\lambda \cdot \Delta t)\right)$$
 
 ### 5.2 Confidence Calibration Equation
 For any predicted class $\hat{y}$:
-$$C = P(\hat{y}) \cdot \Big[ 0.40 \cdot V(n) + 0.35 \cdot F(\Delta t) + 0.25 \cdot \bar{Q} \Big]$$
+
+$$
+C = P(\hat{y}) \cdot \left[ 0.40 \cdot V(n) + 0.35 \cdot F(\Delta t) + 0.25 \cdot \bar{Q} \right]
+$$
+
 where:
 - $P(\hat{y}) \in [0.33, 1.0]$ is the model softmax probability.
 - $V(n) = \min(1.0, 0.40 + 0.075 \cdot n)$ scales evidence volume, saturating at $n = 8$ observations.
