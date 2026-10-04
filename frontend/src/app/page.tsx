@@ -4,6 +4,7 @@ import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import GlobalFooter from "@/components/layout/GlobalFooter";
 import Hero3DCard from "@/components/ui/Hero3DCard";
+import ScrollReveal from "@/components/layout/ScrollReveal";
 import {
   ArrowRight,
   FileCode,
@@ -192,6 +193,7 @@ export default function LandingPage() {
 
         {/* ── SECTION 2: EVIDENCE DECOMPOSITION (Matching Pedyssey Image 2) ── */}
         <section id="features" className="max-w-[1400px] mx-auto px-5 md:px-10 py-20 border-t border-[#1C1C1C]/15">
+          <ScrollReveal direction="up">
           <div className="text-center mb-12">
             <span className="inline-block px-4 py-1 rounded-full border border-[#1C1C1C] bg-[#FBF6DF] text-[10px] font-extrabold tracking-[0.15em] uppercase mb-4 shadow-[2px_2px_0px_#1C1C1C]">
               EVIDENCE DECOMPOSITION
@@ -209,8 +211,10 @@ export default function LandingPage() {
               GrowthLens transforms raw workplace activities into a dynamic vector graph of verifiable competencies, survival curves, and cross-source evidence.
             </p>
           </div>
+          </ScrollReveal>
 
           {/* Large Rounded Container with 4 Horizontal Process Cards */}
+          <ScrollReveal direction="up" delayMs={100}>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[32px] p-6 md:p-8 shadow-[4px_4px_0px_#1C1C1C]">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Step 1 */}
@@ -294,10 +298,12 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── SECTION 3: 3x3 ARCHITECTURE GRID (Matching Pedyssey Images 4 & 5) ── */}
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-20 border-t border-[#1C1C1C]/15">
+          <ScrollReveal direction="up">
           <div className="text-center mb-14">
             <span className="inline-block px-4 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[10px] font-extrabold tracking-[0.15em] uppercase mb-4 shadow-[2px_2px_0px_#1C1C1C]">
               FULL ARCHITECTURE
@@ -315,6 +321,7 @@ export default function LandingPage() {
               Every tool, algorithm, and interface in GrowthLens was engineered to make complex talent understanding instant, accurate, and completely verifiable.
             </p>
           </div>
+          </ScrollReveal>
 
           {/* 3x3 Feature Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -500,6 +507,7 @@ export default function LandingPage() {
           </div>
 
           {/* Deep Dive Action Banner */}
+          <ScrollReveal direction="up" delayMs={120}>
           <div className="mt-14 text-center flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/features"
@@ -515,6 +523,7 @@ export default function LandingPage() {
               READ OUR MANIFESTO
             </Link>
           </div>
+          </ScrollReveal>
         </section>
       </main>
 

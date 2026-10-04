@@ -193,6 +193,9 @@ export default function TrajectoryChart({
                 stroke="transparent"
                 fill="url(#confidenceGradient)"
                 name="Confidence Envelope Upper"
+                isAnimationActive={true}
+                animationDuration={900}
+                animationEasing="ease-out"
               />
 
               {/* Confidence Band Mask (Lower Boundary to create floating envelope) */}
@@ -202,6 +205,9 @@ export default function TrajectoryChart({
                 stroke="transparent"
                 fill="#FBF6DF"
                 name="Confidence Envelope Lower Mask"
+                isAnimationActive={true}
+                animationDuration={900}
+                animationEasing="ease-out"
               />
 
               {/* Trajectory Main Line */}
@@ -210,6 +216,9 @@ export default function TrajectoryChart({
                 dataKey="score"
                 stroke="#1C1C1C"
                 strokeWidth={3}
+                isAnimationActive={true}
+                animationDuration={1200}
+                animationEasing="ease-out"
                 dot={{
                   r: 5,
                   fill: "#DFE968",

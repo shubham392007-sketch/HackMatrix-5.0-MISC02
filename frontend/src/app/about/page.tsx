@@ -3,6 +3,7 @@
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import GlobalFooter from "@/components/layout/GlobalFooter";
+import ScrollReveal from "@/components/layout/ScrollReveal";
 import {
   ArrowRight,
   ShieldCheck,
@@ -107,6 +108,7 @@ export default function AboutPage() {
 
         {/* ── QUOTE SECTION ───────────────────────────────────────────── */}
         <section className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <ScrollReveal>
           <div className="p-8 sm:p-12 rounded-[36px] border-[1.5px] border-[#1C1C1C] bg-[#DFE968]/30 shadow-[4px_4px_0px_#1C1C1C] text-center space-y-4">
             <blockquote
               className="text-2xl sm:text-3xl md:text-4xl leading-snug font-normal text-[#1C1C1C]"
@@ -118,10 +120,12 @@ export default function AboutPage() {
               GROWTHLENS CORE PHILOSOPHY
             </p>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── THE PROBLEM VS THE SOLUTION ─────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight">
               Rethinking How Talent Is Understood
@@ -188,10 +192,12 @@ export default function AboutPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── CORE PILLARS & ARCHITECTURAL VALUES ─────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 rounded-full border border-[#1C1C1C] bg-[#FBF6DF] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0px_#1C1C1C] mb-3">
               FOUNDATIONAL PILLARS
@@ -224,10 +230,12 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── STEP-BY-STEP MATHEMATICAL METHODOLOGY ───────────────────── */}
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[36px] p-6 sm:p-10 lg:p-14 shadow-[5px_5px_0px_#1C1C1C]">
             <div className="text-center max-w-3xl mx-auto mb-12">
               <span className="inline-block px-3 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[10px] font-black tracking-wider uppercase mb-3 shadow-[1.5px_1.5px_0px_#1C1C1C]">
@@ -264,10 +272,12 @@ export default function AboutPage() {
               ))}
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── CALL TO ACTION ─────────────────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <ScrollReveal>
           <div className="p-8 sm:p-14 lg:p-16 rounded-[40px] border-[2px] border-[#1C1C1C] bg-[#FBF1CF] text-center shadow-[6px_6px_0px_#1C1C1C] space-y-6">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#1C1C1C] tracking-tight">
               See how your capability changes over time.
@@ -291,6 +301,7 @@ export default function AboutPage() {
               </Link>
             </div>
           </div>
+          </ScrollReveal>
         </section>
       </main>
 

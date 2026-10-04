@@ -523,4 +523,190 @@ body {
   }
 }
 
+/* ── GrowthLens Apple-Style Boot Animation ──────────────── */
+.growthlens-boot-outline {
+  stroke-dasharray: 2200;
+  stroke-dashoffset: 2200;
+  animation: growthlens-draw-outline 3.8s cubic-bezier(0.42, 0, 0.25, 1) forwards;
+  will-change: stroke-dashoffset, fill-opacity;
+}
+
+.growthlens-reveal-mask {
+  width: 0%;
+  animation: growthlens-sweep-reveal 3.6s cubic-bezier(0.38, 0, 0.2, 1) forwards;
+  animation-delay: 0.15s;
+}
+
+@keyframes growthlens-draw-outline {
+  0% {
+    stroke-dashoffset: 2200;
+    fill-opacity: 0;
+  }
+  75% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0.15;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+  }
+}
+
+@keyframes growthlens-sweep-reveal {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growthlens-boot-outline {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+    fill-opacity: 1 !important;
+  }
+  .growthlens-reveal-mask {
+    animation: none !important;
+    width: 100% !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GROWTHLENS CINEMATIC MOTION SYSTEM (GLOBAL DESIGN TOKENS)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Route & Page Transition ────────────────────────────────── */
+.gl-page-enter {
+  animation: gl-page-in 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes gl-page-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Scroll Reveal System (Viewport Intersection Observers) ── */
+.gl-reveal-base {
+  opacity: 0;
+  transition-property: opacity, transform;
+  transition-duration: 650ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.gl-reveal-up {
+  transform: translateY(22px) scale(0.99);
+}
+
+.gl-reveal-down {
+  transform: translateY(-16px);
+}
+
+.gl-reveal-fade {
+  transform: none;
+}
+
+.gl-reveal-base.gl-revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ── Staggered Children Sequencing ──────────────────────────── */
+.gl-stagger-parent > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1), transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.gl-stagger-parent.gl-revealed > *:nth-child(1) { transition-delay: 40ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(2) { transition-delay: 90ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(3) { transition-delay: 140ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(4) { transition-delay: 190ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(5) { transition-delay: 240ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(6) { transition-delay: 290ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(7) { transition-delay: 340ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(8) { transition-delay: 390ms; opacity: 1; transform: translateY(0); }
+.gl-stagger-parent.gl-revealed > *:nth-child(n+9) { transition-delay: 420ms; opacity: 1; transform: translateY(0); }
+
+/* ── Elevated Micro-Interactions (Cards, Buttons, Inputs) ───── */
+.gl-card {
+  transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1), 
+              box-shadow 260ms cubic-bezier(0.23, 1, 0.32, 1), 
+              border-color 200ms ease-out !important;
+  will-change: transform, box-shadow;
+}
+
+.gl-card:hover {
+  transform: translateY(-3px) scale(1.002);
+  box-shadow: 6px 6px 0px var(--color-ink);
+}
+
+.pill-btn {
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), 
+              box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1), 
+              background-color 160ms ease-out, 
+              color 160ms ease-out !important;
+  will-change: transform, box-shadow;
+}
+
+.pill-btn:hover {
+  transform: translateY(-1.5px) scale(1.015);
+  box-shadow: 4px 4px 0px var(--color-ink);
+}
+
+.pill-btn:active {
+  transform: translateY(1.5px) scale(0.985);
+  box-shadow: 1px 1px 0px var(--color-ink);
+}
+
+.pill-input {
+  transition: box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1), 
+              border-color 220ms ease-out, 
+              background-color 220ms ease-out !important;
+}
+
+.pill-input:focus {
+  box-shadow: 0 0 0 3px var(--color-ink), 3px 3px 0px var(--color-ink);
+}
+
+/* ── Table Row Micro-Interactions ───────────────────────────── */
+tr {
+  transition: background-color 150ms ease-out;
+}
+
+/* ── Nav Links Micro-Interaction ────────────────────────────── */
+header nav a {
+  transition: color 200ms ease-out, transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+header nav a:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Reduced Motion Accessibility ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .gl-page-enter,
+  .gl-reveal-base,
+  .gl-stagger-parent > *,
+  .gl-card,
+  .pill-btn,
+  .pill-input {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+
 

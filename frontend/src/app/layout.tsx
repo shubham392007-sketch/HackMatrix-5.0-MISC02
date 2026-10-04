@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import GrowthLensBootScreen from "@/components/layout/GrowthLensBootScreen";
+import PageTransition from "@/components/layout/PageTransition";
 
 const poppins = Poppins({
   variable: "--font-primary",
@@ -32,7 +34,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
-        <AuthProvider>{children}</AuthProvider>
+        <GrowthLensBootScreen />
+        <AuthProvider>
+          <PageTransition>{children}</PageTransition>
+        </AuthProvider>
       </body>
     </html>
   );

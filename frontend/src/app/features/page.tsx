@@ -3,6 +3,7 @@
 import Link from "next/link";
 import GlobalHeader from "@/components/layout/GlobalHeader";
 import GlobalFooter from "@/components/layout/GlobalFooter";
+import ScrollReveal from "@/components/layout/ScrollReveal";
 import {
   ArrowRight,
   GitBranch,
@@ -82,6 +83,7 @@ export default function FeaturesPage() {
 
         {/* ── FEATURE 1: EVIDENCE INTELLIGENCE ENGINE ─────────────────── */}
         <section id="feature-1" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0px_#1C1C1C]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-[#1C1C1C]/15 mb-10">
               <div className="max-w-2xl">
@@ -155,10 +157,12 @@ export default function FeaturesPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── FEATURE 2: CONTINUOUS COMPETENCY TRAJECTORY ENGINE ──────── */}
         <section id="feature-2" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0px_#1C1C1C]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-[#1C1C1C]/15 mb-10">
               <div className="max-w-2xl">
@@ -232,10 +236,12 @@ export default function FeaturesPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── FEATURE 3: WHAT-IF SIMULATOR & ACTION ENGINE ───────────── */}
         <section id="feature-3" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0px_#1C1C1C]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-[#1C1C1C]/15 mb-10">
               <div className="max-w-2xl">
@@ -309,10 +315,12 @@ export default function FeaturesPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── FEATURE 4: HOLISTIC NARRATIVES & TEAM HEATMAP ──────────── */}
         <section id="feature-4" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-[#1C1C1C]/15">
+          <ScrollReveal>
           <div className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0px_#1C1C1C]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-[#1C1C1C]/15 mb-10">
               <div className="max-w-2xl">
@@ -386,10 +394,12 @@ export default function FeaturesPage() {
               </div>
             </div>
           </div>
+          </ScrollReveal>
         </section>
 
         {/* ── CALL TO ACTION SECTION ─────────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <ScrollReveal>
           <div className="p-8 sm:p-14 lg:p-16 rounded-[40px] border-[2px] border-[#1C1C1C] bg-[#FBF1CF] text-center shadow-[6px_6px_0px_#1C1C1C] space-y-6">
             <span
               className="text-4xl sm:text-6xl md:text-7xl font-normal text-[#1C1C1C] block select-none"
@@ -422,6 +432,7 @@ export default function FeaturesPage() {
               </Link>
             </div>
           </div>
+          </ScrollReveal>
         </section>
       </main>
 

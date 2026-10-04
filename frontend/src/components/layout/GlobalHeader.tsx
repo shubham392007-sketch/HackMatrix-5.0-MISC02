@@ -168,7 +168,7 @@ export default function GlobalHeader() {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="lg:hidden bg-[#FBF1CF] border-t border-[#1C1C1C] px-5 py-4 space-y-2">
+        <div className="lg:hidden bg-[#FBF1CF] border-t border-[#1C1C1C] px-5 py-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {authenticated && profile && (
             <div className="pb-3 mb-2 border-b border-[#1C1C1C]/20 flex items-center justify-between">
               <Link
