@@ -229,7 +229,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
 
       {/* Navigation Categories (Scrolls Independently) */}
       <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar">
-        {WORKSPACE_NAV.map((section) => (
+        {WORKSPACE_NAV.map((section, idx) => (
           <div key={section.category}>
             <p
               className="text-[17px] text-[#1C1C1C] px-2 mb-1 leading-tight select-none font-normal"
@@ -277,6 +277,13 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                 );
               })}
             </div>
+
+            {/* Dividing Line after each domain (except the last section) */}
+            {idx < WORKSPACE_NAV.length - 1 && (
+              <div className="pt-3.5 pb-0.5 px-2">
+                <hr className="border-t border-[#1C1C1C]/15" />
+              </div>
+            )}
           </div>
         ))}
       </div>
