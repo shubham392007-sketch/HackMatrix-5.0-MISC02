@@ -1,0 +1,44 @@
+import type { Metadata } from "next";
+import { Poppins } from "next/font/google";
+import "./globals.css";
+import PageTransition from "@/components/layout/PageTransition";
+import SkillPassportBootScreen from "@/components/layout/SkillPassportBootScreen";
+import { EvidenceProvider } from "@/context/EvidenceContext";
+
+const poppins = Poppins({
+  variable: "--font-primary",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "SkillPassport Powered by GrowthLens — Verifiable Skills & Evidence Intelligence",
+  description:
+    "Turn projects, repositories, and documents into an inspectable, evidence-backed skill profile with role alignment and personalized learning.",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className={`${poppins.variable} bg-[#FBF1CF]`} data-scroll-behavior="smooth">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Yellowtail&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
+        <SkillPassportBootScreen />
+        <EvidenceProvider>
+          <PageTransition>{children}</PageTransition>
+        </EvidenceProvider>
+      </body>
+    </html>
+  );
+}
