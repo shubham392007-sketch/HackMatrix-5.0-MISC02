@@ -43,7 +43,7 @@ export default function RoleMatchOverviewPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
         <div>
@@ -73,7 +73,7 @@ export default function RoleMatchOverviewPage() {
       <TargetRoleSelectorBar />
 
       {/* Match Overview Summary Card */}
-      <div className="gl-card p-6 bg-white space-y-6 border border-ink/15">
+      <div className="gl-card p-6 md:p-8 bg-white space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-ink/10 pb-6">
           {/* Main Score Ring / Big Numbers */}
           <div className="flex items-center gap-6">
@@ -126,8 +126,8 @@ export default function RoleMatchOverviewPage() {
         </div>
 
         {/* 4 Categorical Metric Counts */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-2">
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs">
             <span className="text-emerald-900 font-mono text-[10px] uppercase block font-bold">
               Strong Verified Matches
             </span>
@@ -137,7 +137,7 @@ export default function RoleMatchOverviewPage() {
             <span className="text-[11px] text-emerald-800 block">Exceeds target depth</span>
           </div>
 
-          <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 text-xs">
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs">
             <span className="text-amber-900 font-mono text-[10px] uppercase block font-bold">
               Partial Matches (Depth Gap)
             </span>
@@ -147,7 +147,7 @@ export default function RoleMatchOverviewPage() {
             <span className="text-[11px] text-amber-800 block">Below expected tier</span>
           </div>
 
-          <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200 text-xs">
+          <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200 text-xs">
             <span className="text-purple-900 font-mono text-[10px] uppercase block font-bold">
               Evidence Gaps
             </span>
@@ -157,7 +157,7 @@ export default function RoleMatchOverviewPage() {
             <span className="text-[11px] text-purple-800 block">Unverified self-claims</span>
           </div>
 
-          <div className="p-3 rounded-xl bg-red-50/60 border border-red-200 text-xs">
+          <div className="p-3.5 rounded-xl bg-red-50/70 border border-red-200 text-xs">
             <span className="text-red-900 font-mono text-[10px] uppercase block font-bold">
               Missing / Weak Skills
             </span>
@@ -170,7 +170,7 @@ export default function RoleMatchOverviewPage() {
       </div>
 
       {/* Feature 5: Skill Match Breakdown Matrix */}
-      <div className="gl-card p-6 bg-white space-y-4">
+      <div className="gl-card p-6 md:p-8 bg-white space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink/10 pb-4">
           <div>
             <h3 className="text-base font-bold text-ink">
@@ -219,7 +219,7 @@ export default function RoleMatchOverviewPage() {
         </div>
 
         {/* Detailed Breakdown List */}
-        <div className="space-y-3">
+        <div className="space-y-3 pt-2">
           {filteredMatches.map((m) => (
             <div
               key={m.skill_id}
