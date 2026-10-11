@@ -42,8 +42,11 @@ export default function RecruiterPublicLayout({
                 SP
               </div>
               <div>
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-extrabold text-base tracking-tight text-ink">
+                <div className="flex items-center gap-2 leading-none">
+                  <span
+                    className="text-2xl tracking-tight text-ink"
+                    style={{ fontFamily: "'Yellowtail', cursive" }}
+                  >
                     SkillPassport
                   </span>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF1CF] border border-ink/15 text-ink uppercase tracking-wide">

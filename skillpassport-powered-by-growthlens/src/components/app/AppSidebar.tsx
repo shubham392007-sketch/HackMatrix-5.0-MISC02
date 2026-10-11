@@ -185,8 +185,11 @@ export default function AppSidebar() {
       {/* Workspace Brand Wordmark (Fixed Top) */}
       <div className="p-5 pb-3.5 shrink-0 border-b border-[#1C1C1C]/10 bg-[#FBF6DF]">
         <Link href="/app/passport" className="block group select-none">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xl font-black tracking-tight text-[#1C1C1C]">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-2xl text-[#1C1C1C] leading-none"
+              style={{ fontFamily: "'Yellowtail', cursive" }}
+            >
               SkillPassport
             </span>
             <span
@@ -196,7 +199,7 @@ export default function AppSidebar() {
               app
             </span>
           </div>
-          <span className="text-[8.5px] font-black uppercase tracking-[0.16em] text-[#1C1C1C]/60 block -mt-0.5">
+          <span className="text-[8.5px] font-black uppercase tracking-[0.16em] text-[#1C1C1C]/60 block mt-0.5">
             VERIFIABLE TALENT PASSPORT
           </span>
         </Link>

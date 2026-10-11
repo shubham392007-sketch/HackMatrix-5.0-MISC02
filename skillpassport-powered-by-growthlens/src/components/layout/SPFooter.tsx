@@ -10,12 +10,15 @@ export default function SPFooter() {
         {/* Top Header Row with Wordmark */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 pb-12 border-b border-[#1C1C1C]/15">
           <div className="space-y-3 max-w-xl">
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-[#1C1C1C]">
+            <div className="flex items-baseline gap-3">
+              <span
+                className="text-4xl sm:text-5xl md:text-6xl text-[#1C1C1C] leading-none"
+                style={{ fontFamily: "'Yellowtail', cursive" }}
+              >
                 SkillPassport
               </span>
               <span
-                className="text-2xl sm:text-3xl text-[#1C1C1C]"
+                className="text-2xl sm:text-3xl text-[#1C1C1C] opacity-90"
                 style={{ fontFamily: "'Yellowtail', cursive" }}
               >
                 by GrowthLens

@@ -100,9 +100,19 @@ export default function PassportExportPage() {
         {/* Document Header */}
         <div className="border-b-2 border-black pb-6 space-y-4">
           <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 font-black text-sm tracking-tight">
-              <span>SkillPassport</span>
-              <span className="font-serif italic font-normal text-xs text-black/70">powered by GrowthLens</span>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xl font-normal tracking-tight text-black leading-none"
+                style={{ fontFamily: "'Yellowtail', cursive" }}
+              >
+                SkillPassport
+              </span>
+              <span
+                className="text-sm font-normal text-black/70"
+                style={{ fontFamily: "'Yellowtail', cursive" }}
+              >
+                by GrowthLens
+              </span>
             </div>
             <div suppressHydrationWarning className="text-right text-[11px] font-mono text-black/60">
               Export Date: {exportDateDisplay} · Official Verification Snapshot

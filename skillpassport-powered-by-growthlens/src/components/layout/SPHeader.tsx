@@ -21,18 +21,21 @@ export default function SPHeader() {
       <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-16">
         {/* Brand Logo & Wordmark */}
         <Link href="/" className="flex flex-col justify-center group select-none">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#1C1C1C]">
+          <div className="flex items-center gap-2">
+            <span
+              className="text-2xl sm:text-3xl text-[#1C1C1C] leading-none"
+              style={{ fontFamily: "'Yellowtail', cursive" }}
+            >
               SkillPassport
             </span>
             <span
-              className="text-lg text-[#1C1C1C] opacity-90 hidden sm:inline"
+              className="text-lg sm:text-xl text-[#1C1C1C] opacity-90 hidden sm:inline"
               style={{ fontFamily: "'Yellowtail', cursive" }}
             >
               by GrowthLens
             </span>
           </div>
-          <span className="text-[9px] font-black tracking-[0.14em] uppercase text-[#1C1C1C]/60 -mt-1 block sm:hidden">
+          <span className="text-[9px] font-black tracking-[0.14em] uppercase text-[#1C1C1C]/60 -mt-0.5 block sm:hidden">
             POWERED BY GROWTHLENS
           </span>
         </Link>
