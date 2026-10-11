@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import {
   EvidenceItem,
   ConnectedSource,
@@ -982,9 +982,22 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const recordShareAccess = (shareId: string) => {
-    setShareRecords((prev) =>
-      prev.map((r) => {
+  const recordShareAccess = useCallback((shareId: string) => {
+    setShareRecords((prev) => {
+      const target = prev.find((r) => r.shareId === shareId);
+      if (target && target.status === "active") {
+        const newActivity: ShareActivityEvent = {
+          id: `act-${Date.now()}`,
+          timestamp: "Just now",
+          shareId,
+          shareLabel: target.label,
+          action: "viewed",
+          details: "Recruiter loaded shared passport page.",
+        };
+        setShareActivities((actPrev) => [newActivity, ...actPrev]);
+      }
+
+      return prev.map((r) => {
         if (r.shareId === shareId) {
           return {
             ...r,
@@ -993,22 +1006,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           };
         }
         return r;
-      })
-    );
-
-    const target = shareRecords.find((r) => r.shareId === shareId);
-    if (target && target.status === "active") {
-      const newActivity: ShareActivityEvent = {
-        id: `act-${Date.now()}`,
-        timestamp: "Just now",
-        shareId,
-        shareLabel: target.label,
-        action: "viewed",
-        details: "Recruiter loaded shared passport page.",
-      };
-      setShareActivities((prev) => [newActivity, ...prev]);
-    }
-  };
+      });
+    });
+  }, []);
 
   // Toast handlers
   const addToast = (title: string, message: string, type: "success" | "error" | "info" = "info") => {

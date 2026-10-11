@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -37,10 +37,12 @@ export default function RecruiterPassportPage({ params }: PageProps) {
   const { getShareProjection, recordShareAccess } = useEvidence();
 
   const [copied, setCopied] = useState(false);
+  const recordedRef = useRef<string | null>(null);
 
-  // Record access when recruiter loads the link
+  // Record access when recruiter loads the link (guarded to once per shareId)
   useEffect(() => {
-    if (shareId) {
+    if (shareId && recordedRef.current !== shareId) {
+      recordedRef.current = shareId;
       recordShareAccess(shareId);
     }
   }, [shareId, recordShareAccess]);
