@@ -71,22 +71,55 @@ export interface NavSection {
 
 export const WORKSPACE_NAV: NavSection[] = [
   {
-    category: "SKILLPASSPORT",
+    category: "SKILL PASSPORT",
     items: [
       { label: "Public Home", href: "/", icon: ExternalLink, external: true },
       { label: "Passport Overview", href: "/app/passport", icon: Award },
     ],
   },
   {
-    category: "SHARING & RECRUITER",
+    category: "EVIDENCE WORKSPACE",
     items: [
-      { label: "Sharing Overview", href: "/app/passport/sharing", icon: Share2 },
-      { label: "Live Passport Preview", href: "/app/passport/preview", icon: Eye },
-      { label: "Create Share Link", href: "/app/passport/share", icon: Link2 },
-      { label: "Sharing Permissions", href: "/app/passport/permissions", icon: SlidersHorizontal },
-      { label: "Manage Shared Access", href: "/app/passport/access", icon: Lock },
-      { label: "Passport Export", href: "/app/passport/export", icon: Download },
-      { label: "Demo Recruiter View", href: "/p/share-recruiter-demo", icon: ExternalLink, external: true },
+      { label: "Evidence Center", href: "/app/evidence", icon: Layers },
+      { label: "Connected Sources", href: "/app/evidence/sources", icon: FolderSync },
+      { label: "Upload Work & Docs", href: "/app/evidence/upload", icon: UploadCloud },
+      { label: "Evidence Library", href: "/app/evidence/library", icon: Library },
+      { label: "Ingestion Runs", href: "/app/evidence/runs", icon: Activity },
+      { label: "Data & Permissions", href: "/app/evidence/permissions", icon: Lock },
+    ],
+  },
+  {
+    category: "TRUST & GOVERNANCE",
+    items: [
+      { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
+      { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
+      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList, restricted: "Reviewer" },
+      { label: "Prompt-Injection Guard", href: "/app/ai/prompt-injection", icon: Shield, restricted: "Reviewer" },
+      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3, restricted: "Admin" },
+      { label: "AI Audit Trail", href: "/app/ai/audit", icon: ScrollText },
+    ],
+  },
+  {
+    category: "AI INTELLIGENCE",
+    items: [
+      { label: "AI Overview", href: "/app/ai", icon: Cpu },
+      { label: "AI Work Analysis", href: "/app/ai/work-analysis", icon: Sparkles },
+      { label: "Skill Extraction", href: "/app/ai/skill-extraction", icon: Fingerprint },
+      { label: "Evidence Mapping", href: "/app/ai/evidence-mapping", icon: Layers },
+      { label: "Verification Review", href: "/app/ai/verification", icon: Scale },
+      { label: "Confidence & Uncertainty", href: "/app/ai/confidence", icon: Percent },
+      { label: "Conflict Resolution", href: "/app/ai/conflicts", icon: GitCompare },
+    ],
+  },
+  {
+    category: "SKILL INTELLIGENCE",
+    items: [
+      { label: "Verified Skills", href: "/app/passport/skills", icon: ShieldCheck },
+      { label: "Skill Explorer", href: "/app/passport/explorer", icon: Search },
+      { label: "Taxonomy & Ontology", href: "/app/passport/taxonomy", icon: Network },
+      { label: "Candidate Review", href: "/app/passport/candidates", icon: CheckCircle2 },
+      { label: "Evidence Coverage", href: "/app/passport/coverage", icon: FileCheck2 },
+      { label: "Skill History", href: "/app/passport/history", icon: History },
     ],
   },
   {
@@ -119,48 +152,15 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "SKILL INTELLIGENCE",
+    category: "SHARING & RECRUITER",
     items: [
-      { label: "Verified Skills", href: "/app/passport/skills", icon: ShieldCheck },
-      { label: "Skill Explorer", href: "/app/passport/explorer", icon: Search },
-      { label: "Taxonomy & Ontology", href: "/app/passport/taxonomy", icon: Network },
-      { label: "Candidate Review", href: "/app/passport/candidates", icon: CheckCircle2 },
-      { label: "Evidence Coverage", href: "/app/passport/coverage", icon: FileCheck2 },
-      { label: "Skill History", href: "/app/passport/history", icon: History },
-    ],
-  },
-  {
-    category: "AI INTELLIGENCE",
-    items: [
-      { label: "AI Overview", href: "/app/ai", icon: Cpu },
-      { label: "AI Work Analysis", href: "/app/ai/work-analysis", icon: Sparkles },
-      { label: "Skill Extraction", href: "/app/ai/skill-extraction", icon: Fingerprint },
-      { label: "Evidence Mapping", href: "/app/ai/evidence-mapping", icon: Layers },
-      { label: "Verification Review", href: "/app/ai/verification", icon: Scale },
-      { label: "Confidence & Uncertainty", href: "/app/ai/confidence", icon: Percent },
-      { label: "Conflict Resolution", href: "/app/ai/conflicts", icon: GitCompare },
-    ],
-  },
-  {
-    category: "TRUST & GOVERNANCE",
-    items: [
-      { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
-      { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
-      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList, restricted: "Reviewer" },
-      { label: "Prompt-Injection Guard", href: "/app/ai/prompt-injection", icon: Shield, restricted: "Reviewer" },
-      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3, restricted: "Admin" },
-      { label: "AI Audit Trail", href: "/app/ai/audit", icon: ScrollText },
-    ],
-  },
-  {
-    category: "EVIDENCE WORKSPACE",
-    items: [
-      { label: "Evidence Center", href: "/app/evidence", icon: Layers },
-      { label: "Connected Sources", href: "/app/evidence/sources", icon: FolderSync },
-      { label: "Upload Work & Docs", href: "/app/evidence/upload", icon: UploadCloud },
-      { label: "Evidence Library", href: "/app/evidence/library", icon: Library },
-      { label: "Ingestion Runs", href: "/app/evidence/runs", icon: Activity },
-      { label: "Data & Permissions", href: "/app/evidence/permissions", icon: Lock },
+      { label: "Sharing Overview", href: "/app/passport/sharing", icon: Share2 },
+      { label: "Live Passport Preview", href: "/app/passport/preview", icon: Eye },
+      { label: "Create Share Link", href: "/app/passport/share", icon: Link2 },
+      { label: "Sharing Permissions", href: "/app/passport/permissions", icon: SlidersHorizontal },
+      { label: "Manage Shared Access", href: "/app/passport/access", icon: Lock },
+      { label: "Passport Export", href: "/app/passport/export", icon: Download },
+      { label: "Demo Recruiter View", href: "/p/share-recruiter-demo", icon: ExternalLink, external: true },
     ],
   },
   {
@@ -231,7 +231,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar">
         {WORKSPACE_NAV.map((section) => (
           <div key={section.category}>
-            <p className="text-[8.5px] font-black uppercase tracking-[0.15em] text-[#1C1C1C]/50 px-2 mb-1.5">
+            <p className="text-[9.5px] font-black uppercase tracking-[0.16em] text-[#1C1C1C] px-2 mb-1.5">
               {section.category}
             </p>
             <div className="space-y-0.5">
