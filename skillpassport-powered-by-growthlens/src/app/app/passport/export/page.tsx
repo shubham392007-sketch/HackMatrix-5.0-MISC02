@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
 import { buildShareProjection } from "@/lib/sharingCalculations";
@@ -16,6 +16,12 @@ import {
 } from "lucide-react";
 
 export default function PassportExportPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     skills,
     evidenceItems,
@@ -45,6 +51,10 @@ export default function PassportExportPage() {
       window.print();
     }
   };
+
+  const exportDateDisplay = mounted
+    ? new Date().toLocaleDateString()
+    : "10/11/2026";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -94,8 +104,8 @@ export default function PassportExportPage() {
               <span>SkillPassport</span>
               <span className="font-serif italic font-normal text-xs text-black/70">powered by GrowthLens</span>
             </div>
-            <div className="text-right text-[11px] font-mono text-black/60">
-              Export Date: {new Date().toLocaleDateString()} · Official Verification Snapshot
+            <div suppressHydrationWarning className="text-right text-[11px] font-mono text-black/60">
+              Export Date: {exportDateDisplay} · Official Verification Snapshot
             </div>
           </div>
 
@@ -230,8 +240,8 @@ export default function PassportExportPage() {
           <p className="font-semibold text-black">
             {projection.verificationGuaranteeNote}
           </p>
-          <p className="text-[10px] text-black/50">
-            This document represents verified competencies extracted and confirmed as of {new Date().toLocaleDateString()}. It does not constitute an employment endorsement or guarantee of future performance.
+          <p suppressHydrationWarning className="text-[10px] text-black/50">
+            This document represents verified competencies extracted and confirmed as of {exportDateDisplay}. It does not constitute an employment endorsement or guarantee of future performance.
           </p>
         </div>
       </div>
