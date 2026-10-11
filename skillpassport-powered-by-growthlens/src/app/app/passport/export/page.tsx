@@ -224,7 +224,7 @@ export default function PassportExportPage() {
               {projection.roleAlignment.alignmentSummary}
             </p>
 
-            <div className="grid grid-cols-2 gap-4 text-[11px] pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] pt-1">
               <div>
                 <strong>Demonstrated Strengths:</strong>
                 <ul className="list-disc list-inside mt-0.5 text-black/70">

@@ -66,7 +66,7 @@ export default function RecruiterPublicLayout({
               <span>Cryptographic Provenance Verified</span>
             </div>
             <Link
-              href="/app/passport/overview"
+              href="/app/passport"
               className="px-3.5 py-1.5 rounded-full bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-semibold tracking-wide transition-all shadow-sm flex items-center gap-1.5"
             >
               <span>Candidate Portal</span>

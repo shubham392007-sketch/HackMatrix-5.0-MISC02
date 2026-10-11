@@ -53,6 +53,7 @@ import {
   Settings as SettingsIcon,
   Clock,
   HelpCircle,
+  X,
 } from "lucide-react";
 
 export interface NavItem {
@@ -176,15 +177,25 @@ export const WORKSPACE_NAV: NavSection[] = [
   },
 ];
 
-export default function AppSidebar() {
+interface SidebarContentProps {
+  onLinkClick?: () => void;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+}
+
+function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarContentProps) {
   const pathname = usePathname();
   const { currentRole, setDemoRole, userProfile } = useEvidence();
 
   return (
-    <aside className="w-64 shrink-0 bg-[#FBF6DF] border-r-[1.5px] border-[#1C1C1C] flex flex-col h-screen max-h-screen overflow-hidden select-none">
+    <>
       {/* Workspace Brand Wordmark (Fixed Top) */}
-      <div className="p-5 pb-3.5 shrink-0 border-b border-[#1C1C1C]/10 bg-[#FBF6DF]">
-        <Link href="/app/passport" className="block group select-none">
+      <div className="p-4 sm:p-5 pb-3.5 shrink-0 border-b border-[#1C1C1C]/10 bg-[#FBF6DF] flex items-center justify-between">
+        <Link
+          href="/app/passport"
+          onClick={onLinkClick}
+          className="block group select-none"
+        >
           <div className="flex items-center gap-2">
             <span
               className="text-2xl text-[#1C1C1C] leading-none"
@@ -203,6 +214,17 @@ export default function AppSidebar() {
             VERIFIABLE TALENT PASSPORT
           </span>
         </Link>
+
+        {showCloseButton && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] hover:bg-[#DFE968] transition-colors lg:hidden"
+            aria-label="Close navigation"
+          >
+            <X className="w-4 h-4 text-[#1C1C1C]" />
+          </button>
+        )}
       </div>
 
       {/* Navigation Categories (Scrolls Independently) */}
@@ -229,6 +251,7 @@ export default function AppSidebar() {
                   <Link
                     key={item.label}
                     href={item.href}
+                    onClick={onLinkClick}
                     className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
                         ? "bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
@@ -259,6 +282,7 @@ export default function AppSidebar() {
       <div className="p-3.5 border-t border-[#1C1C1C]/15 bg-[#FBF1CF]/70 space-y-2.5 shrink-0">
         <Link
           href="/app/settings/profile"
+          onClick={onLinkClick}
           className="flex items-center gap-2.5 group hover:opacity-85 transition-opacity"
         >
           <div className="w-8 h-8 rounded-full bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1C1C1C]">
@@ -318,6 +342,40 @@ export default function AppSidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export default function AppSidebar() {
+  const { mobileSidebarOpen, setMobileSidebarOpen } = useEvidence();
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (Only visible on lg and wider) */}
+      <aside className="hidden lg:flex w-64 shrink-0 bg-[#FBF6DF] border-r-[1.5px] border-[#1C1C1C] flex-col h-screen max-h-screen overflow-hidden select-none">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Drawer (Visible on smaller screens when open) */}
+      {mobileSidebarOpen && (
+        <div className="lg:hidden">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 z-50 bg-[#1C1C1C]/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Sliding Drawer */}
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#FBF6DF] border-r-[1.5px] border-[#1C1C1C] flex flex-col h-screen max-h-screen overflow-hidden select-none shadow-2xl animate-in slide-in-from-left duration-300">
+            <SidebarContent
+              onLinkClick={() => setMobileSidebarOpen(false)}
+              showCloseButton
+              onClose={() => setMobileSidebarOpen(false)}
+            />
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

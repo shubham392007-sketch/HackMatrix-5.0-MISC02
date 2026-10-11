@@ -152,7 +152,7 @@ export default function LearningProgressPage() {
         </div>
 
         <div className="overflow-x-auto border border-ink/10 rounded-2xl bg-paper">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[720px]">
             <thead>
               <tr className="border-b border-ink/10 bg-card text-ink font-bold">
                 <th className="p-3.5">Topic & Objective</th>

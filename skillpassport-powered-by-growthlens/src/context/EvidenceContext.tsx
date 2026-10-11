@@ -261,6 +261,11 @@ interface EvidenceContextType {
   toasts: { id: string; title: string; message: string; type: "success" | "error" | "info" }[];
   addToast: (title: string, message: string, type?: "success" | "error" | "info") => void;
   removeToast: (id: string) => void;
+
+  // Mobile Navigation Drawer State
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleMobileSidebar: () => void;
 }
 
 const EvidenceContext = createContext<EvidenceContextType | undefined>(undefined);
@@ -272,6 +277,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILLS);
   const [historyEvents, setHistoryEvents] = useState<SkillHistoryEvent[]>(INITIAL_SKILL_HISTORY);
   const [taxonomyCategories] = useState<TaxonomyCategory[]>(INITIAL_TAXONOMY_CATEGORIES);
+
+  // Mobile Navigation Drawer State
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const toggleMobileSidebar = () => setMobileSidebarOpen((prev) => !prev);
 
   // Domain 3 AI State
   const [currentRole, setDemoRole] = useState<DemoRole>("employee");
@@ -1352,6 +1361,11 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         toasts,
         addToast,
         removeToast,
+
+        // Mobile Navigation Drawer
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
+        toggleMobileSidebar,
       }}
     >
       {children}

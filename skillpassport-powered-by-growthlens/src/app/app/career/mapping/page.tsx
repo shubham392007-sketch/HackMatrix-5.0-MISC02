@@ -210,7 +210,7 @@ export default function RoleSkillMappingPage() {
 
         {/* Matrix Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[680px]">
             <thead>
               <tr className="border-b border-ink/10 text-ink-muted font-mono uppercase text-[10px]">
                 <th className="py-3 px-3">Role Requirement Label</th>

@@ -178,7 +178,7 @@ export default function EvidenceCoveragePage() {
       {/* Coverage Inventory List */}
       <div className="gl-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[680px]">
             <thead className="bg-[#FAF8F5] border-b border-[#EBE5DC] text-[11px] uppercase tracking-wider text-[#8C827A]">
               <tr>
                 <th className="py-3 px-4 font-bold">Skill Name</th>

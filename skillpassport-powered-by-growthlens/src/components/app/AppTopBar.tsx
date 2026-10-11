@@ -127,7 +127,7 @@ export default function AppTopBar({
       </div>
 
       {/* Right side: Global Actions & Controls */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
         {children}
 
         {/* Contextual Help Icon */}
@@ -156,7 +156,7 @@ export default function AppTopBar({
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border-2 border-ink shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border-2 border-ink shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-ink/10">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-ink">Notifications</span>
@@ -228,7 +228,7 @@ export default function AppTopBar({
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border-2 border-ink shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
+            <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border-2 border-ink shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
               <div className="p-2.5 border-b border-ink/10 space-y-0.5">
                 <div className="font-bold text-ink truncate">
                   {userProfile?.displayName || "Alex Rivera"}

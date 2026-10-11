@@ -108,7 +108,7 @@ export default function PassportSharingOverviewPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
               <span className="text-xs text-ink/60">Verified Skills</span>
               <div className="text-2xl font-extrabold text-ink">
@@ -165,7 +165,7 @@ export default function PassportSharingOverviewPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 bg-paper rounded-2xl border border-ink/10 text-center">
               <span className="text-[11px] text-ink/60 font-semibold">Active</span>
               <div className="text-xl font-extrabold text-emerald-700 mt-0.5">
