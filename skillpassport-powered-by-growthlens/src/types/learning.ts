@@ -1,0 +1,323 @@
+export type StepStatus =
+  | "locked"
+  | "available"
+  | "in_progress"
+  | "completed"
+  | "needs_remediation";
+
+export type TopicDifficulty = "Beginner" | "Intermediate" | "Advanced";
+
+export interface LearningTopic {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: TopicDifficulty;
+  estimated_minutes: number;
+  learning_objective: string;
+  prerequisites: string[]; // Topic IDs that must be completed
+  related_skill_id?: string; // Canonical skill id (e.g. "skill-python")
+  knowledge_signal: number; // 0-100
+  practice_signal: number; // 0-100
+  assessment_signal: number; // 0-100
+  project_signal: number; // 0-100
+  current_mastery: number; // 0.30 K + 0.25 P + 0.20 A + 0.25 Prj
+  target_mastery: number;
+  status: StepStatus;
+}
+
+export interface LearningModule {
+  id: string;
+  title: string;
+  description: string;
+  topics: LearningTopic[];
+}
+
+export interface DomainBlueprint {
+  domain_id: string;
+  title: string;
+  version: string;
+  status: "active" | "draft" | "archived";
+  description: string;
+  target_mastery: number;
+  estimated_hours: number;
+  learning_objectives: string[];
+  modules: LearningModule[];
+}
+
+export interface DiagnosticQuestion {
+  id: string;
+  question_text: string;
+  domain_id: string;
+  module_id: string;
+  topic_id: string;
+  category: "concept" | "reasoning" | "implementation" | "application";
+  options: string[];
+  correct_index: number;
+  code_snippet?: string;
+  explanation: string;
+}
+
+export interface DiagnosticResult {
+  attempt_id: string;
+  domain_id: string;
+  completed_at: string;
+  overall_score: number;
+  concept_score: number;
+  reasoning_score: number;
+  implementation_score: number;
+  application_score: number;
+  topic_scores: Record<string, number>;
+  strong_topics: string[];
+  weak_topics: string[];
+  prerequisite_weaknesses: string[];
+  recommended_focus: string[];
+}
+
+export interface RoadmapStep {
+  step_id: string;
+  topic_id: string;
+  module_id: string;
+  title: string;
+  learning_objective: string;
+  difficulty: TopicDifficulty;
+  estimated_minutes: number;
+  current_mastery: number;
+  target_mastery: number;
+  prerequisite_ids: string[];
+  prerequisites_met: boolean;
+  status: StepStatus;
+  recommendation_reason: string;
+  recommended_resource_ids: string[];
+  practice_exercise_ids: string[];
+  assessment_id?: string;
+  project_id?: string;
+}
+
+export interface LearningRoadmap {
+  path_id: string;
+  domain_id: string;
+  domain_title: string;
+  blueprint_version: string;
+  baseline_mastery: number;
+  current_mastery: number;
+  target_mastery: number;
+  study_hours_per_week: number;
+  preference: "text-first" | "video-first" | "practice-first";
+  pace: "standard" | "fast_track";
+  steps: RoadmapStep[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LearningStepPacket {
+  step_id: string;
+  topic_id: string;
+  title: string;
+  learning_objective: string;
+  why_this_matters: string;
+  what_is_it: string;
+  why_and_when: string;
+  worked_example: {
+    title: string;
+    explanation: string;
+    code?: string;
+    visual_note?: string;
+  };
+  common_mistakes: string[];
+  implementation_steps: string[];
+  knowledge_check: Array<{
+    question: string;
+    options: string[];
+    correct_index: number;
+    explanation: string;
+  }>;
+  source_attribution: string;
+}
+
+export interface LearningResource {
+  id: string;
+  title: string;
+  resource_type:
+    | "video"
+    | "article"
+    | "official_docs"
+    | "tutorial"
+    | "practice_exercise"
+    | "project_guide";
+  provider: string;
+  duration_minutes: number;
+  difficulty: TopicDifficulty;
+  domain_id: string;
+  topic_id: string;
+  learning_objective: string;
+  relevance_score: number; // Illustrative 0-100
+  selection_explanation: string;
+  concepts_covered: string[];
+  concepts_not_covered: string[];
+  roadmap_position: string;
+  url: string;
+}
+
+export interface PracticeExercise {
+  id: string;
+  topic_id: string;
+  domain_id: string;
+  title: string;
+  difficulty: TopicDifficulty;
+  estimated_minutes: number;
+  learning_objective: string;
+  format:
+    | "multiple_choice"
+    | "code_completion"
+    | "error_identification"
+    | "applied_scenario";
+  prompt: string;
+  starter_code?: string;
+  options?: string[];
+  correct_index?: number;
+  solution_explanation: string;
+  completed: boolean;
+  score?: number;
+}
+
+export interface AssessmentQuestion {
+  id: string;
+  text: string;
+  topic_id: string;
+  category: "concept" | "application";
+  options: string[];
+  correct_index: number;
+  code_block?: string;
+  explanation: string;
+}
+
+export interface KnowledgeAssessment {
+  id: string;
+  domain_id: string;
+  title: string;
+  time_limit_minutes: number;
+  passing_threshold: number; // e.g. 70
+  questions: AssessmentQuestion[];
+}
+
+export interface AssessmentAttempt {
+  attempt_id: string;
+  assessment_id: string;
+  timestamp: string;
+  total_score: number;
+  passed: boolean;
+  concept_score: number;
+  application_score: number;
+  objective_results: Array<{
+    topic_id: string;
+    score: number;
+    passed: boolean;
+    feedback: string;
+  }>;
+  feedback: string;
+  needs_remediation: boolean;
+  failed_topic_ids: string[];
+}
+
+export interface MiniProjectRubricItem {
+  criterion: string;
+  weight_pct: number;
+  description: string;
+}
+
+export interface MiniProjectAttempt {
+  attempt_id: string;
+  project_id: string;
+  submitted_at: string;
+  github_repo_url: string;
+  summary_notes: string;
+  status: "evaluated";
+  rubric_scores: Array<{
+    criterion: string;
+    score: number;
+    feedback: string;
+  }>;
+  total_score: number;
+  feedback: string;
+  generated_artifact_id: string;
+  candidate_evidence_id: string;
+}
+
+export interface MiniProject {
+  id: string;
+  title: string;
+  domain_id: string;
+  problem_statement: string;
+  relevance_to_gap: string;
+  objectives: string[];
+  required_steps: string[];
+  dataset_description: string;
+  submission_requirements: string[];
+  rubric: MiniProjectRubricItem[];
+  status: "not_started" | "in_progress" | "submitted" | "evaluated";
+  submitted_attempt?: MiniProjectAttempt;
+}
+
+export interface RemediationSession {
+  session_id: string;
+  attempt_id: string;
+  domain_id: string;
+  failed_score: number;
+  failed_objectives: string[];
+  strong_objectives: string[];
+  concept_refresher: string;
+  worked_examples: Array<{
+    title: string;
+    explanation: string;
+    code?: string;
+  }>;
+  guided_exercise_id: string;
+  micro_test: Array<{
+    question: string;
+    options: string[];
+    correct_index: number;
+  }>;
+  status: "pending" | "completed";
+}
+
+export interface LearningHistoryEvent {
+  id: string;
+  timestamp: string;
+  type:
+    | "diagnostic"
+    | "step_completed"
+    | "resource_viewed"
+    | "practice_completed"
+    | "assessment_attempt"
+    | "project_submitted"
+    | "remediation_completed"
+    | "roadmap_adjusted"
+    | "candidate_evidence_generated";
+  title: string;
+  domain_id: string;
+  topic_id?: string;
+  detail: string;
+  link_route?: string;
+  score?: number;
+}
+
+export interface CandidateLearningEvidence {
+  artifact_id: string;
+  evidence_id: string; // Links to Domain 1 EvidenceItem.id
+  title: string;
+  source_type: "LEARNING_PROJECT";
+  domain_id: string;
+  topic_id: string;
+  related_skill_id: string;
+  project_id: string;
+  submitted_at: string;
+  provenance: string;
+  evidence_state:
+    | "Learning Activity Completed"
+    | "Candidate Evidence Created"
+    | "Awaiting Review"
+    | "Under Review"
+    | "Verified"
+    | "Insufficient Evidence";
+  verification_notes: string;
+}

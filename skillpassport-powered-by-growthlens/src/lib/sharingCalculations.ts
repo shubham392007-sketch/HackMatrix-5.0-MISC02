@@ -1,0 +1,232 @@
+import { SkillItem } from "@/types/passport";
+import { EvidenceItem } from "@/types/evidence";
+import { RoleDemandModel } from "@/types/career";
+import {
+  ShareRecord,
+  ShareProjection,
+  SharePermissionsConfig,
+  AuthorizedVerifiedSkill,
+  AuthorizedEvidenceItem,
+  AuthorizedRoleAlignment,
+} from "@/types/sharing";
+
+export const DEFAULT_CANDIDATE_PROFILE = {
+  displayName: "Alex Rivera",
+  headline: "Senior Software Engineer & Data Intelligence Specialist",
+  summary:
+    "Full-stack engineer with 5+ years of experience building resilient microservices, async messaging systems, and telemetry data pipelines. Proven background delivering high-throughput Python backends and sensor fusion architectures.",
+  contactEmail: "alex.rivera@example.com",
+  contactLinkedIn: "linkedin.com/in/alex-rivera-dev",
+};
+
+export const DEFAULT_SHARE_PERMISSIONS: SharePermissionsConfig = {
+  identity: {
+    showDisplayName: true,
+    showHeadline: true,
+    showSummary: true,
+    showContactInfo: false, // Minimized disclosure by default
+    contactEmail: DEFAULT_CANDIDATE_PROFILE.contactEmail,
+    contactLinkedIn: DEFAULT_CANDIDATE_PROFILE.contactLinkedIn,
+  },
+  shareVerifiedSkillsOnly: true, // Non-negotiable security guard
+  selectedSkillIds: ["skill-python", "skill-api-integration", "skill-data-analysis", "skill-technical-writing"],
+  evidenceAccessLevel: "detail_inspection",
+  selectedEvidencePermissions: {
+    "ev-01": { shareSummary: true, allowDetail: true },
+    "ev-02": { shareSummary: true, allowDetail: true },
+    "ev-03": { shareSummary: true, allowDetail: false }, // Report summary only
+  },
+  includeRoleAlignment: true,
+  targetRoleId: "role-data-scientist",
+  expiryDays: 14,
+  customLinkLabel: "Standard Recruiter Share",
+};
+
+/**
+ * Generates an allowlist-restricted ShareProjection.
+ * Guarantees zero leakage of internal prompts, private review notes, or unverified claims.
+ */
+export function buildShareProjection(
+  shareRecord: ShareRecord,
+  allSkills: SkillItem[],
+  allEvidence: EvidenceItem[],
+  roles: RoleDemandModel[],
+  candidateProfile = DEFAULT_CANDIDATE_PROFILE
+): ShareProjection {
+  const isRevoked = shareRecord.status === "revoked";
+
+  // Check Expiry dynamically
+  let isExpired = shareRecord.status === "expired";
+  if (!isExpired && shareRecord.expiresAt) {
+    const expiryTime = new Date(shareRecord.expiresAt).getTime();
+    if (!isNaN(expiryTime) && Date.now() > expiryTime) {
+      isExpired = true;
+    }
+  }
+
+  // If revoked or expired, return a sealed zero-data projection
+  if (isRevoked || isExpired) {
+    return {
+      shareId: shareRecord.shareId,
+      status: isRevoked ? "revoked" : "expired",
+      createdAt: shareRecord.createdAt,
+      expiresAt: shareRecord.expiresAt,
+      isExpired,
+      isRevoked,
+      candidateProfile: {},
+      verifiedSkills: [],
+      authorizedEvidence: [],
+      roleAlignment: null,
+      verificationGuaranteeNote:
+        "Access denied. This passport link is no longer active.",
+    };
+  }
+
+  const perms = shareRecord.permissions;
+
+  // 1. Build Candidate Identity Projection
+  const profileProj: ShareProjection["candidateProfile"] = {};
+  if (perms.identity.showDisplayName) profileProj.displayName = candidateProfile.displayName;
+  if (perms.identity.showHeadline) profileProj.headline = candidateProfile.headline;
+  if (perms.identity.showSummary) profileProj.summary = candidateProfile.summary;
+  if (perms.identity.showContactInfo) {
+    profileProj.contactEmail = perms.identity.contactEmail || candidateProfile.contactEmail;
+    profileProj.contactLinkedIn = perms.identity.contactLinkedIn || candidateProfile.contactLinkedIn;
+  }
+
+  // 2. Build Verified Skills Projection
+  // STRICT RULE: Only skills with verificationState === "verified" can ever be included!
+  const verifiedOnlySkills = allSkills.filter((s) => s.verificationState === "verified");
+  const authorizedSkills: AuthorizedVerifiedSkill[] = [];
+
+  verifiedOnlySkills.forEach((skill) => {
+    // Check if candidate selected this skill
+    if (perms.selectedSkillIds.includes(skill.id)) {
+      // Find which evidence IDs for this skill are authorized
+      const authorizedEvIds = skill.evidenceIds.filter((evId) => {
+        const evPerm = perms.selectedEvidencePermissions[evId];
+        return evPerm && evPerm.shareSummary;
+      });
+
+      authorizedSkills.push({
+        id: skill.id,
+        canonicalName: skill.canonicalName,
+        category: skill.category,
+        verifiedProficiency: skill.verifiedProficiency,
+        description: skill.definition,
+        evidenceCount: authorizedEvIds.length,
+        authorizedEvidenceIds: authorizedEvIds,
+      });
+    }
+  });
+
+  // 3. Build Authorized Evidence Projection
+  // Collect all unique authorized evidence IDs
+  const allAuthorizedEvIds = Array.from(
+    new Set(authorizedSkills.flatMap((s) => s.authorizedEvidenceIds))
+  );
+
+  const authorizedEvidence: AuthorizedEvidenceItem[] = [];
+  allAuthorizedEvIds.forEach((evId) => {
+    const evItem = allEvidence.find((e) => e.id === evId);
+    const evPerm = perms.selectedEvidencePermissions[evId];
+
+    if (evItem && evPerm && evPerm.shareSummary) {
+      // Find matching related skill name
+      const parentSkill = authorizedSkills.find((s) => s.authorizedEvidenceIds.includes(evId));
+
+      authorizedEvidence.push({
+        id: evItem.id,
+        title: evItem.title,
+        sourceType: evItem.sourceType,
+        project: evItem.project,
+        date: evItem.date,
+        shortSummary: evItem.extractedSummary || evItem.description,
+        relatedSkillName: parentSkill?.canonicalName || "Technical Engineering",
+        claimedContribution: evItem.claimedContribution,
+        allowDetailInspection: Boolean(evPerm.allowDetail),
+        sourceReference: evPerm.allowDetail ? evItem.sourceReference : undefined,
+        sourceUrl: evPerm.allowDetail ? evItem.sourceUrl : undefined,
+      });
+    }
+  });
+
+  // 4. Build Role Alignment Projection (if enabled)
+  let roleAlignment: AuthorizedRoleAlignment | null = null;
+  if (perms.includeRoleAlignment) {
+    const targetRole = roles.find((r) => r.role_id === perms.targetRoleId) || roles[0];
+    if (targetRole) {
+      // Compare verified skills with role requirements
+      const demonstratedSkills = authorizedSkills.map((s) => s.canonicalName);
+      const strengths = demonstratedSkills.slice(0, 3);
+      const unsupported = ["Distributed Kubernetes Orchestration", "Real-Time Drift Monitoring"];
+
+      roleAlignment = {
+        targetRoleTitle: targetRole.title,
+        alignmentSummary: `Demonstrates strong evidence-backed alignment in ${strengths.join(", ")}. Cloud infrastructure orchestration is not demonstrated in the shared artifacts.`,
+        strengths,
+        unsupportedAreas: unsupported,
+        alignmentScore: 78,
+        coverageNote: "Illustrative alignment based solely on candidate's authorized verified skills.",
+      };
+    }
+  }
+
+  return {
+    shareId: shareRecord.shareId,
+    status: "active",
+    createdAt: shareRecord.createdAt,
+    expiresAt: shareRecord.expiresAt,
+    isExpired: false,
+    isRevoked: false,
+    candidateProfile: profileProj,
+    verifiedSkills: authorizedSkills,
+    authorizedEvidence,
+    roleAlignment,
+    verificationGuaranteeNote:
+      "All capabilities listed in this passport are verified against authentic repository commits, technical specifications, and Jira work items via SkillPassport's evidence provenance engine.",
+  };
+}
+
+/**
+ * Validates whether a recruiter can inspect the detailed evidence page
+ */
+export function validateEvidenceAccess(
+  projection: ShareProjection | null,
+  evidenceId: string
+): {
+  allowed: boolean;
+  evidence?: AuthorizedEvidenceItem;
+  reason?: string;
+} {
+  if (!projection) {
+    return { allowed: false, reason: "Share link not found or invalid." };
+  }
+
+  if (projection.isRevoked) {
+    return { allowed: false, reason: "This passport link has been revoked by the candidate." };
+  }
+
+  if (projection.isExpired) {
+    return { allowed: false, reason: "This passport link has expired." };
+  }
+
+  const evidence = projection.authorizedEvidence.find((e) => e.id === evidenceId);
+  if (!evidence) {
+    return {
+      allowed: false,
+      reason: "The requested evidence is not included in this shared passport.",
+    };
+  }
+
+  if (!evidence.allowDetailInspection) {
+    return {
+      allowed: false,
+      evidence,
+      reason:
+        "The candidate has shared this capability summary but has not authorized detailed inspection of the underlying artifact.",
+    };
+  }
+
+  return { allowed: true, evidence };
+}

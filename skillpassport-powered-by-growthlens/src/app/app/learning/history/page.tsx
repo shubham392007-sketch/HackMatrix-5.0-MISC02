@@ -1,0 +1,232 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import Link from "next/link";
+import { useEvidence } from "@/context/EvidenceContext";
+import {
+  ActiveDomainSelectorBar,
+} from "@/components/app/LearningBadges";
+import {
+  History,
+  Filter,
+  Download,
+  Calendar,
+  CheckCircle,
+  Award,
+  FolderGit2,
+  LifeBuoy,
+  BookOpen,
+  ArrowRight,
+  ExternalLink,
+  Code,
+  Sparkles,
+} from "lucide-react";
+
+export default function LearningHistoryPage() {
+  const { learningHistory, activeBlueprint } = useEvidence();
+
+  const [selectedType, setSelectedType] = useState<string>("all");
+  const [copiedExport, setCopiedExport] = useState<boolean>(false);
+
+  const filteredHistory = useMemo(() => {
+    return learningHistory.filter((ev) => {
+      if (selectedType !== "all" && ev.type !== selectedType) return false;
+      return true;
+    });
+  }, [learningHistory, selectedType]);
+
+  const handleExportJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(learningHistory, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `skillpassport_learning_audit_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+
+    setCopiedExport(true);
+    setTimeout(() => setCopiedExport(false), 2500);
+  };
+
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case "diagnostic":
+        return { label: "Diagnostic", icon: Sparkles, color: "bg-purple-100 text-purple-900 border-purple-200" };
+      case "step_completed":
+        return { label: "Step Completed", icon: CheckCircle, color: "bg-emerald-100 text-emerald-900 border-emerald-200" };
+      case "resource_viewed":
+        return { label: "Resource Viewed", icon: BookOpen, color: "bg-blue-100 text-blue-900 border-blue-200" };
+      case "practice_completed":
+        return { label: "Practice", icon: Code, color: "bg-amber-100 text-amber-900 border-amber-200" };
+      case "assessment_attempt":
+        return { label: "Assessment", icon: Award, color: "bg-rose-100 text-rose-900 border-rose-200" };
+      case "project_submitted":
+        return { label: "Mini-Project", icon: FolderGit2, color: "bg-indigo-100 text-indigo-900 border-indigo-200" };
+      case "remediation_completed":
+        return { label: "Remediation", icon: LifeBuoy, color: "bg-orange-100 text-orange-900 border-orange-200" };
+      default:
+        return { label: "Activity", icon: History, color: "bg-stone-100 text-stone-900 border-stone-200" };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <ActiveDomainSelectorBar />
+
+      {/* Header */}
+      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
+              <History className="w-3.5 h-3.5" />
+              DOMAIN 5 · AUDITABLE ACTIVITY STREAM
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
+              Learning Activity History
+            </h1>
+            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
+              Immutable chronology of all diagnostic tests, learning packets, practice submissions, formal assessments, and project evaluations. Every action directly feeds the 4-signal mastery telemetry.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportJSON}
+              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {copiedExport ? "Audit Log Exported!" : "Export Audit Log (JSON)"}
+            </button>
+            <Link
+              href="/app/learning/capability"
+              className="pill-btn pill-btn-primary text-xs"
+            >
+              View Candidate Evidence →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="gl-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs font-bold text-ink/60 mr-1 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              Filter by Event:
+            </div>
+            {[
+              { id: "all", label: "All Events" },
+              { id: "diagnostic", label: "Diagnostics" },
+              { id: "step_completed", label: "Steps" },
+              { id: "resource_viewed", label: "Resources" },
+              { id: "practice_completed", label: "Practice" },
+              { id: "assessment_attempt", label: "Assessments" },
+              { id: "project_submitted", label: "Mini-Projects" },
+              { id: "remediation_completed", label: "Remediation" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setSelectedType(f.id)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                  selectedType === f.id
+                    ? "bg-ink text-paper shadow-sm"
+                    : "bg-paper hover:bg-card-hover text-ink/70 border border-ink/10"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="text-xs font-medium text-ink/60">
+            Showing <span className="font-bold text-ink">{filteredHistory.length}</span> recorded events
+          </div>
+        </div>
+      </div>
+
+      {/* Chronological Timeline Stream */}
+      <div className="space-y-4">
+        {filteredHistory.map((item, idx) => {
+          const badge = getTypeBadge(item.type);
+          const IconComp = badge.icon;
+
+          return (
+            <div
+              key={item.id}
+              className="gl-card p-5 transition-all hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4"
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${badge.color}`}
+                >
+                  <IconComp className="w-5 h-5" />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.color}`}
+                    >
+                      {badge.label}
+                    </span>
+                    <span className="text-xs text-ink/50 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {item.timestamp}
+                    </span>
+                    <span className="text-xs font-mono text-ink/40">
+                      ID: {item.id}
+                    </span>
+                  </div>
+
+                  <h3 className="text-sm font-extrabold text-ink">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-ink/70 leading-relaxed max-w-3xl">
+                    {item.detail}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                {item.score !== undefined && (
+                  <div className="text-right">
+                    <div className="text-[10px] text-ink/50 font-bold uppercase">
+                      Score / Outcome
+                    </div>
+                    <div className="text-sm font-extrabold text-ink">
+                      {item.score}%
+                    </div>
+                  </div>
+                )}
+
+                {item.link_route && (
+                  <Link
+                    href={item.link_route}
+                    className="pill-btn pill-btn-ghost text-xs flex items-center gap-1"
+                  >
+                    Inspect
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {filteredHistory.length === 0 && (
+          <div className="gl-card p-12 text-center text-ink/60">
+            <History className="w-8 h-8 mx-auto text-ink/30 mb-2" />
+            <p className="font-semibold">No history events match your filter.</p>
+            <button
+              onClick={() => setSelectedType("all")}
+              className="mt-3 text-xs text-ink underline font-medium"
+            >
+              Show all events
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

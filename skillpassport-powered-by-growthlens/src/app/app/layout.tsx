@@ -6,14 +6,14 @@ export default function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex text-[#1C1C1C]">
+    <div className="h-screen max-h-screen overflow-hidden flex text-[#1C1C1C]">
       {/* Persistent App Sidebar */}
       <AppSidebar />
 
       {/* Main Workspace Scroll Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#FBF1CF]">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#FBF1CF] h-screen max-h-screen overflow-y-auto custom-scrollbar">
         {children}
-      </div>
+      </main>
     </div>
   );
 }
