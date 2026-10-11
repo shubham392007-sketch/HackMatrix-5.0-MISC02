@@ -10,6 +10,7 @@ import {
   MasteryProgressBar,
   ActiveDomainSelectorBar,
 } from "@/components/app/LearningBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   Map,
   Sliders,
@@ -67,47 +68,30 @@ export default function PersonalizedRoadmapPage() {
     activeRoadmap.current_mastery - activeRoadmap.baseline_mastery;
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-lime/40 text-ink border border-ink/20 font-bold">
-              Domain 5 &bull; Screen 4
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Personalized Learning Journey
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              {activeRoadmap.blueprint_version}
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Personalized Roadmap: {activeRoadmap.domain_title}
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            A sequenced, prerequisite-aware learning journey designed to close your diagnosed skill gaps.
-            Each step specifies its objective, rationale, and target mastery.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={`Personalized Roadmap: ${activeRoadmap.domain_title}`}
+        description="A sequenced, prerequisite-aware learning journey designed to close your diagnosed skill gaps. Each step specifies its objective, rationale, and target mastery."
+        badge={activeRoadmap.blueprint_version}
+        badgeColor="border-ink/20 text-ink bg-sand/30"
+      >
+        <button
+          onClick={() => setShowPreferences(!showPreferences)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          {showPreferences ? "Close Preferences" : "Schedule & Preferences"}
+        </button>
+        <Link
+          href={`/app/learning/domains/${activeDomainId}`}
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <Layers className="w-3.5 h-3.5" />
+          View Full Blueprint
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPreferences(!showPreferences)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            {showPreferences ? "Close Preferences" : "Schedule & Preferences"}
-          </button>
-          <Link
-            href={`/app/learning/domains/${activeDomainId}`}
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            View Full Blueprint
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Domain Switcher */}
       <ActiveDomainSelectorBar />
@@ -404,5 +388,6 @@ export default function PersonalizedRoadmapPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

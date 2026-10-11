@@ -28,6 +28,7 @@ import {
 } from "@/types/career";
 import { ProficiencyLevel } from "@/types/passport";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 interface ExtractedCompItem {
   id: string;
@@ -230,7 +231,7 @@ export default function JobDescriptionParserPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -239,31 +240,14 @@ export default function JobDescriptionParserPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Career Intelligence</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Job Parser</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Analyze a Job Description
-            <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-full font-mono font-medium">
-              Simulated Job Parsing
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Turn any real-world job posting into structured, versioned role requirements. Review and edit
-            the canonical taxonomy mappings, importance weights, and expected proficiencies before comparing
-            with your SkillPassport.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="Analyze a Job Description"
+        description="Turn any real-world job posting into structured, versioned role requirements. Review and edit the canonical taxonomy mappings, importance weights, and expected proficiencies before comparing with your SkillPassport."
+        badge="Simulated Job Parsing"
+        badgeColor="border-purple-300 text-purple-900 bg-purple-100"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Input Options Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -510,5 +494,6 @@ export default function JobDescriptionParserPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

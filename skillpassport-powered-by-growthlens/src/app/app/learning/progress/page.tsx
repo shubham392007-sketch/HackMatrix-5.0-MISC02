@@ -26,6 +26,7 @@ import {
   FileCheck2,
 } from "lucide-react";
 import { calculateTopicMastery } from "@/lib/learningCalculations";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function LearningProgressPage() {
   const { activeBlueprint, activeRoadmap, activeDiagnosticResult } = useEvidence();
@@ -61,74 +62,66 @@ export default function LearningProgressPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <TrendingUp className="w-3.5 h-3.5" />
-              DOMAIN 5 · TRANSPARENT 4-SIGNAL MASTERY ANALYTICS
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Progress & Topic Mastery
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Inspect your verified progress across {activeBlueprint.title}. Unlike opaque AI estimations, our mastery model uses an exact deterministic formula: <span className="font-bold text-ink">0.30 K + 0.25 P + 0.20 A + 0.25 Prj</span>.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFormulaModal(true)}
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <Info className="w-3.5 h-3.5" />
-              Inspect Mastery Formula
-            </button>
-            <Link
-              href="/app/learning/capability"
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              <FileCheck2 className="w-3.5 h-3.5" />
-              Bridge to SkillPassport →
-            </Link>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Progress & Topic Mastery"
+        description={`Inspect your verified progress across ${activeBlueprint.title}. Unlike opaque AI estimations, our mastery model uses an exact deterministic formula: 0.30 K + 0.25 P + 0.20 A + 0.25 Prj.`}
+        badge="Domain 5 · Mastery Analytics"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFormulaModal(true)}
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+          >
+            <Info className="w-3.5 h-3.5" />
+            Inspect Formula
+          </button>
+          <Link
+            href="/app/learning/capability"
+            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+          >
+            <FileCheck2 className="w-3.5 h-3.5" />
+            Bridge to SkillPassport &rarr;
+          </Link>
         </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
         {/* Baseline vs Current vs Target Trio */}
-        <div className="mt-6 pt-6 border-t border-ink/10 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
-            <span className="text-xs font-semibold text-ink/60">Diagnostic Baseline</span>
-            <div className="text-2xl font-extrabold text-ink">{baseline}%</div>
-            <p className="text-[11px] text-ink/50">Initial pre-test benchmark</p>
-          </div>
-
-          <div className="p-4 bg-paper rounded-2xl border-2 border-peach/50 space-y-1">
-            <span className="text-xs font-semibold text-ink/60">Current Domain Mastery</span>
-            <div className="text-2xl font-extrabold text-ink">{avgMastery}%</div>
-            <p className="text-[11px] text-emerald-700 font-bold">
-              +{growthDelta > 0 ? growthDelta : 0}% Growth Delta
-            </p>
-          </div>
-
-          <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
-            <span className="text-xs font-semibold text-ink/60">Target Domain Goal</span>
-            <div className="text-2xl font-extrabold text-ink">{target}%</div>
-            <p className="text-[11px] text-ink/50">Production practitioner benchmark</p>
-          </div>
-
-          <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
-            <span className="text-xs font-semibold text-ink/60">Pacing Telemetry</span>
-            <div className="text-lg font-extrabold text-ink">
-              {activeRoadmap.pace === "fast_track" ? "Fast-Track" : "Standard Pace"}
+        <div className="gl-card p-4 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
+              <span className="text-xs font-semibold text-ink/60">Diagnostic Baseline</span>
+              <div className="text-2xl font-extrabold text-ink">{baseline}%</div>
+              <p className="text-[11px] text-ink/50">Initial pre-test benchmark</p>
             </div>
-            <p className="text-[11px] text-ink/50">{activeRoadmap.study_hours_per_week} hrs/week planned</p>
+
+            <div className="p-4 bg-paper rounded-2xl border-2 border-peach/50 space-y-1">
+              <span className="text-xs font-semibold text-ink/60">Current Domain Mastery</span>
+              <div className="text-2xl font-extrabold text-ink">{avgMastery}%</div>
+              <p className="text-[11px] text-emerald-700 font-bold">
+                +{growthDelta > 0 ? growthDelta : 0}% Growth Delta
+              </p>
+            </div>
+
+            <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
+              <span className="text-xs font-semibold text-ink/60">Target Domain Goal</span>
+              <div className="text-2xl font-extrabold text-ink">{target}%</div>
+              <p className="text-[11px] text-ink/50">Production practitioner benchmark</p>
+            </div>
+
+            <div className="p-4 bg-paper rounded-2xl border border-ink/10 space-y-1">
+              <span className="text-xs font-semibold text-ink/60">Pacing Telemetry</span>
+              <div className="text-lg font-extrabold text-ink">
+                {activeRoadmap.pace === "fast_track" ? "Fast-Track" : "Standard Pace"}
+              </div>
+              <p className="text-[11px] text-ink/50">{activeRoadmap.study_hours_per_week} hrs/week planned</p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Topic Mastery Matrix Table */}
       <div className="gl-card p-6 md:p-8 space-y-6">
@@ -353,6 +346,7 @@ export default function LearningProgressPage() {
           onClose={() => setShowFormulaModal(false)}
         />
       )}
+      </div>
     </div>
   );
 }

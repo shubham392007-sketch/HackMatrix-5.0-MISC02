@@ -7,6 +7,7 @@ import {
   TargetRoleSelectorBar,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -42,46 +43,29 @@ export default function CareerReadinessPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">
-              Domain 4 &bull; Feature 9
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Career Readiness Index
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Career Readiness & Blocker Diagnosis
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            A comprehensive audit of your readiness for <strong>{activeRole.title}</strong>,
-            synthesizing required coverage, proficiency alignment, and verification certainty.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Career Readiness & Blocker Diagnosis"
+        description={`A comprehensive audit of your readiness for ${activeRole.title}, synthesizing required coverage, proficiency alignment, and verification certainty.`}
+        badge="Career Readiness Index"
+        badgeColor="border-emerald-300 text-emerald-900 bg-emerald-100"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Audit Rules
+        </button>
+        <Link
+          href="/app/career/compare"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          Compare Roles →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Audit Rules
-          </button>
-          <Link
-            href="/app/career/compare"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            Compare Roles →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector */}
       <TargetRoleSelectorBar />
@@ -313,5 +297,6 @@ export default function CareerReadinessPage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

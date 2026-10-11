@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   CheckCircle2,
   AlertCircle,
@@ -85,7 +86,7 @@ export default function AIOutputValidationPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -94,31 +95,14 @@ export default function AIOutputValidationPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>AI Intelligence & Governance</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Output Validation</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            AI Output Validation
-            <span className="text-xs px-2.5 py-1 bg-sky-100 text-sky-900 border border-sky-300 rounded-full font-mono font-medium">
-              JSON Schema Gate
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Raw LLM inference streams are strictly quarantined until they pass rigorous schema conformance,
-            boundary validation (e.g., probability ranges), and reference integrity checks. Malformed outputs
-            are halted before polluting the Skill Passport.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="AI Output Validation"
+        description="Raw LLM inference streams are strictly quarantined until they pass rigorous schema conformance, boundary checks, and integrity validation."
+        badge="JSON SCHEMA GATE"
+        badgeColor="bg-sky-200 text-sky-950"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -338,5 +322,6 @@ export default function AIOutputValidationPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

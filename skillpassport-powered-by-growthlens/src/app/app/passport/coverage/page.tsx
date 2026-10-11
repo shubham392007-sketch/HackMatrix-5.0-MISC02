@@ -21,6 +21,7 @@ import {
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function EvidenceCoveragePage() {
   const { skills, evidenceItems } = useEvidence();
@@ -42,35 +43,23 @@ export default function EvidenceCoveragePage() {
   });
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Evidence Coverage</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Evidence Coverage Analysis
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Evaluate whether your technical competencies are supported by robust, varied, and fresh evidence artifacts, or if coverage deficits exist.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Evidence Coverage Analysis"
+        description="Evaluate whether your technical competencies are supported by robust, varied, and fresh evidence artifacts, or if coverage deficits exist."
+        badge="Domain 2 · Evidence Health"
+        badgeColor="border-emerald-300 text-emerald-800 bg-emerald-50"
+      >
+        <Link
+          href="/app/evidence/connect"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Connect Work Source
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/app/evidence/connect"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Connect Work Source
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Coverage Health Scorecard */}
       <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
@@ -243,6 +232,7 @@ export default function EvidenceCoveragePage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

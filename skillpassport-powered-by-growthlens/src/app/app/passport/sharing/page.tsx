@@ -23,6 +23,7 @@ import {
   UserCheck,
   FileCheck2,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function PassportSharingOverviewPage() {
   const { skills, evidenceItems, shareRecords } = useEvidence();
@@ -45,45 +46,34 @@ export default function PassportSharingOverviewPage() {
   const mostRecentLink = shareRecords[0];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-peach/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-3">
-              <Share2 className="w-3.5 h-3.5" />
-              DOMAIN 6 · CONTROLLED RECRUITER EXPERIENCE
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Share your demonstrated capabilities
-            </h1>
-            <p className="text-sm text-ink/70 mt-1 max-w-2xl leading-relaxed">
-              Give recruiters a clear view of your verified skills and the evidence that supports them. You decide what to share, configure optional expiry dates, and revoke access instantly.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/app/passport/preview"
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Preview Passport
-            </Link>
-            <Link
-              href="/app/passport/share"
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              <Link2 className="w-3.5 h-3.5" />
-              Create Share Link →
-            </Link>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Share Demonstrated Capabilities"
+        description="Give recruiters a clear view of your verified skills and the evidence that supports them. You decide what to share, configure optional expiry dates, and revoke access instantly."
+        badge="Domain 6 · Recruiter Experience"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/passport/preview"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            Preview Passport
+          </Link>
+          <Link
+            href="/app/passport/share"
+            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            Create Share Link &rarr;
+          </Link>
         </div>
+      </AppTopBar>
 
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {/* Security / Verification Notice */}
-        <div className="mt-6 p-4 rounded-2xl bg-amber-50/80 border border-amber-300 text-xs text-amber-950 flex items-start gap-3">
+        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300 text-xs text-amber-950 flex items-start gap-3">
           <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span className="font-extrabold block mb-0.5">
@@ -92,7 +82,6 @@ export default function PassportSharingOverviewPage() {
             Only skills with explicit <span className="font-bold">VERIFIED</span> status are eligible for public recruiter passports. Candidate competencies, diagnostic scores, and course certificates remain private until validated through workplace proof in Domain 3.
           </div>
         </div>
-      </div>
 
       {/* Grid: Passport Readiness & Current Share Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -370,6 +359,7 @@ export default function PassportSharingOverviewPage() {
             </ul>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

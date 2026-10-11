@@ -17,6 +17,7 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 import { RequirementTypeBadge } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function TargetRolesCataloguePage() {
   const { targetRoles, selectedRoleId, setSelectedRoleId } = useEvidence();
@@ -36,37 +37,21 @@ export default function TargetRolesCataloguePage() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Career Intelligence</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Target Roles</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Explore Your Next Role
-            <span className="text-xs px-2.5 py-1 bg-sand text-ink border border-ink/20 rounded-full font-mono font-medium">
-              Demo Role Models
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Compare the capabilities you can demonstrate with the requirements of a role you want to pursue.
-            Select a curated industry benchmark or create your own custom model from any job description.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            href="/app/career/job-parser"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5 shadow-sm"
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Parse Custom Job Description
-          </Link>
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Explore Your Next Role"
+        description="Compare the capabilities you can demonstrate with the requirements of a role you want to pursue. Select a curated industry benchmark or create your own custom model from any job description."
+        badge="Demo Role Models"
+      >
+        <Link
+          href="/app/career/job-parser"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5 shadow-sm"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Parse Custom Job Description
+        </Link>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Filter and Search Bar */}
       <div className="gl-card p-4 bg-white space-y-3">
@@ -230,5 +215,6 @@ export default function TargetRolesCataloguePage() {
         })}
       </div>
     </div>
-  );
+  </div>
+);
 }

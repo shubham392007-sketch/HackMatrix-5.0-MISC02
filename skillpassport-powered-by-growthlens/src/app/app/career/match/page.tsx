@@ -27,6 +27,7 @@ import {
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleMatchOverviewPage() {
   const { activeRole, activeMatch, activeGaps, activeReadiness } = useEvidence();
@@ -43,31 +44,15 @@ export default function RoleMatchOverviewPage() {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Career Intelligence</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Role Match Overview</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Your Role Match
-            <span className="text-xs px-2.5 py-1 bg-lime text-ink border border-ink/20 rounded-full font-mono font-medium">
-              Demo Match Calculation
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            See which requirements your demonstrated capabilities support, where proficiency falls short,
-            and where more evidence is needed. High model confidence without verifiable artifacts does not grant credit.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Your Role Match"
+        description="See which requirements your demonstrated capabilities support, where proficiency falls short, and where more evidence is needed."
+        badge="Match Calculation"
+        badgeColor="border-ink/20 text-ink bg-lime"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector Bar */}
       <TargetRoleSelectorBar />
@@ -320,5 +305,6 @@ export default function RoleMatchOverviewPage() {
         onClose={() => setShowExplanation(false)}
       />
     </div>
-  );
+  </div>
+);
 }

@@ -22,6 +22,7 @@ import {
   Layers,
   Lock,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function PassportPreviewPage() {
   const {
@@ -52,14 +53,13 @@ export default function PassportPreviewPage() {
   }, [tempShareRecord, skills, evidenceItems, targetRoles]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="gl-card p-4 bg-paper/90 border border-ink/20 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-2 text-xs font-bold text-ink">
-          <Eye className="w-4 h-4 text-peach" />
-          <span>Candidate Live Preview: This is the exact projection recruiters will inspect.</span>
-        </div>
-
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Passport Preview"
+        description="Candidate Live Preview: Inspect the exact projection recruiters and hiring managers will see before sharing."
+        badge="Domain 6 · Recruiter Preview"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
         <div className="flex items-center gap-2">
           <Link
             href="/app/passport/permissions"
@@ -72,13 +72,14 @@ export default function PassportPreviewPage() {
             href="/app/passport/share"
             className="pill-btn pill-btn-primary text-xs flex items-center gap-1"
           >
-            Continue to Share →
+            Continue to Share &rarr;
           </Link>
         </div>
-      </div>
+      </AppTopBar>
 
-      {/* Recruiter View Mock Frame */}
-      <div className="gl-card p-6 md:p-10 space-y-8 bg-paper border-2 border-ink shadow-lg">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        {/* Recruiter View Mock Frame */}
+        <div className="gl-card p-6 md:p-10 space-y-8 bg-paper border-2 border-ink shadow-lg">
         {/* Recruiter Header */}
         <div className="border-b border-ink/10 pb-6 space-y-4">
           <div className="flex items-center justify-between text-xs text-ink/60">
@@ -333,6 +334,7 @@ export default function PassportPreviewPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
       </div>
     </div>
   );

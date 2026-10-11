@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
 import { DemoDataNotice } from "@/components/app/AIBadges";
 import {
@@ -89,37 +90,21 @@ export default function SkillVerificationReviewPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/ai" className="hover:text-[#1F1E1D]">
-              AI Intelligence
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Verification Review</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Skill Verification Review
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Audit the current verification state of competencies against organizational rubrics and corroborating artifacts.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Skill Verification Review"
+        description="Audit the current verification state of competencies against organizational rubrics and corroborating artifacts."
+      >
+        <Link
+          href="/app/ai/confidence"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <span>CONFIDENCE SCORE</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/app/ai/confidence"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-          >
-            Confidence & Uncertainty
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
-
-      <DemoDataNotice />
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {simulatedActionMessage && (
         <div className="p-3.5 rounded-2xl bg-[#EBF3ED] border border-[#B8D7C2] text-xs text-[#234D31] flex items-center gap-2">
@@ -379,5 +364,6 @@ export default function SkillVerificationReviewPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

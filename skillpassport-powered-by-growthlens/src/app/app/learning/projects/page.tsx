@@ -22,6 +22,7 @@ import {
   FileCheck2,
   AlertCircle,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function MiniProjectsCatalogPage() {
   const { activeBlueprint, miniProjects } = useEvidence();
@@ -84,38 +85,27 @@ export default function MiniProjectsCatalogPage() {
   const domainProjects = allProjects.filter((p) => p.domain_id === activeBlueprint.domain_id);
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Evidence-Generating Mini-Projects"
+        description="Solve realistic data engineering and ML engineering challenges. Completing a project updates your Project Signal (Prj = 25%) and submits a verifiable artifact directly to the Verification Center."
+        badge="Domain 5 · Applied Mini-Projects"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <Link
+          href="/app/learning/capability"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          <FileCheck2 className="w-3.5 h-3.5" />
+          View Candidate Evidence Bridge &rarr;
+        </Link>
+      </AppTopBar>
 
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <FolderGit2 className="w-3.5 h-3.5" />
-              DOMAIN 5 · APPLIED MINI-PROJECT DIRECTORY
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Evidence-Generating Mini-Projects
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Solve realistic data engineering and ML engineering challenges. Completing a project updates your <span className="font-semibold text-ink">Project Signal (Prj = 25%)</span> and submits a verifiable artifact directly to the <span className="font-semibold text-ink">Verification Center</span>.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app/learning/capability"
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              <FileCheck2 className="w-3.5 h-3.5" />
-              View Candidate Evidence Bridge →
-            </Link>
-          </div>
-        </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
         {/* Critical Rule Callout */}
-        <div className="mt-6 p-4 rounded-2xl bg-amber-50/80 border border-amber-300 text-xs text-amber-950 flex items-start gap-3">
+        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300 text-xs text-amber-950 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
             <span className="font-extrabold block mb-0.5">
@@ -124,7 +114,6 @@ export default function MiniProjectsCatalogPage() {
             Submitting a completed mini-project generates a <span className="font-semibold">Candidate Learning Evidence item</span> in Domain 1. It enters the <span className="font-semibold">Human Review Queue (Domain 3)</span> with full provenance. Only after peer or managerial verification does it promote candidate skills into your verified SkillPassport.
           </div>
         </div>
-      </div>
 
       {/* Projects Grid */}
       <div className="space-y-4">
@@ -210,6 +199,7 @@ export default function MiniProjectsCatalogPage() {
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

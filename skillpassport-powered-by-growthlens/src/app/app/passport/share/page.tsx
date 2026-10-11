@@ -23,6 +23,7 @@ import {
   Briefcase,
   AlertTriangle,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 import { SharePermissionsConfig } from "@/types/sharing";
 
 export default function SharePassportWizardPage() {
@@ -143,67 +144,57 @@ export default function SharePassportWizardPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <Link2 className="w-3.5 h-3.5" />
-              DOMAIN 6 · SHARING SETUP WIZARD
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Create a Shareable Skill Passport
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1">
-              Configure what recruiters can see, set optional expiration, and generate a selective access link.
-            </p>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Create a Shareable Skill Passport"
+        description="Configure what recruiters can see, set optional expiration, and generate a selective access link."
+        badge="Domain 6 · Sharing Setup Wizard"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <Link
+          href="/app/passport/sharing"
+          className="pill-btn pill-btn-ghost text-xs"
+        >
+          Cancel
+        </Link>
+      </AppTopBar>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/app/passport/sharing"
-              className="pill-btn pill-btn-ghost text-xs"
-            >
-              Cancel
-            </Link>
-          </div>
-        </div>
-
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {/* Stepper Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-ink/10 flex items-center justify-between text-xs">
-          {[
-            { num: 1, title: "Contents" },
-            { num: 2, title: "Access & Expiry" },
-            { num: 3, title: "Review" },
-            { num: 4, title: "Link Created" },
-          ].map((s) => (
-            <div
-              key={s.num}
-              className={`flex items-center gap-2 ${
-                step === s.num
-                  ? "font-extrabold text-ink"
-                  : step > s.num
-                  ? "text-emerald-700 font-semibold"
-                  : "text-ink/40 font-medium"
-              }`}
-            >
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+        <div className="gl-card p-4 sm:p-6">
+          <div className="flex items-center justify-between text-xs">
+            {[
+              { num: 1, title: "Contents" },
+              { num: 2, title: "Access & Expiry" },
+              { num: 3, title: "Review" },
+              { num: 4, title: "Link Created" },
+            ].map((s) => (
+              <div
+                key={s.num}
+                className={`flex items-center gap-2 ${
                   step === s.num
-                    ? "bg-ink text-paper"
+                    ? "font-extrabold text-ink"
                     : step > s.num
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-paper border border-ink/20"
+                    ? "text-emerald-700 font-semibold"
+                    : "text-ink/40 font-medium"
                 }`}
               >
-                {step > s.num ? "✓" : s.num}
-              </span>
-              <span className="hidden sm:inline">{s.title}</span>
-            </div>
-          ))}
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    step === s.num
+                      ? "bg-ink text-paper"
+                      : step > s.num
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-paper border border-ink/20"
+                  }`}
+                >
+                  {step > s.num ? "✓" : s.num}
+                </span>
+                <span className="hidden sm:inline">{s.title}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
       {/* STEP 1: Choose Contents */}
       {step === 1 && (
@@ -642,6 +633,7 @@ export default function SharePassportWizardPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   MasteryProgressBar,
   ActiveDomainSelectorBar,
 } from "@/components/app/LearningBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   BookOpen,
   GraduationCap,
@@ -42,46 +43,30 @@ export default function DomainBlueprintDetailPage() {
   const totalTopics = blueprint.modules.flatMap((m) => m.topics).length;
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-300 font-bold">
-              Domain 5 &bull; Screen 2
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Curriculum Blueprint
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              {blueprint.version}
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            {blueprint.title} Blueprint
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            {blueprint.description}
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={`${blueprint.title} Blueprint`}
+        description={blueprint.description}
+        badge={blueprint.version}
+        badgeColor="border-sky-300 text-sky-900 bg-sky-100"
+      >
+        <Link
+          href={`/app/learning/domains/${blueprint.domain_id}/diagnostic`}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Target className="w-3.5 h-3.5" />
+          Take Diagnostic Check
+        </Link>
+        <Link
+          href={`/app/learning/roadmaps/roadmap-${blueprint.domain_id}`}
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <GraduationCap className="w-3.5 h-3.5" />
+          Personalized Roadmap &rarr;
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/app/learning/domains/${blueprint.domain_id}/diagnostic`}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Target className="w-3.5 h-3.5" />
-            Take Diagnostic Check
-          </Link>
-          <Link
-            href={`/app/learning/roadmaps/roadmap-${blueprint.domain_id}`}
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            Personalized Roadmap &rarr;
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Domain Switcher */}
       <ActiveDomainSelectorBar />
@@ -241,5 +226,6 @@ export default function DomainBlueprintDetailPage() {
         ))}
       </div>
     </div>
-  );
+  </div>
+);
 }

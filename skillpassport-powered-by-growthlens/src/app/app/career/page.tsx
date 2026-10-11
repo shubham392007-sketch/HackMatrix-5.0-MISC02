@@ -29,38 +29,22 @@ import {
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleIntelligenceOverviewPage() {
   const { activeRole, activeMatch, activeGaps, activeReadiness } = useEvidence();
   const [showExplanation, setShowExplanation] = useState(false);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Career Intelligence & Role Readiness</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Overview</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Role Intelligence & Career Readiness
-            <span className="text-xs px-2.5 py-1 bg-lime text-ink border border-ink/20 rounded-full font-mono font-medium">
-              Domain 4
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Compare your verified evidence-backed capability state against explicit, versioned models
-            of real role demand. Trace every match, inspect partial proficiencies, and prioritize the exact
-            competency gaps that matter most.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice message="Role demand models and match calculations are illustrative client-side prototypes based on the GrowthLens Adaptive Role Growth spec." />
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Role Intelligence & Career Readiness"
+        description="Compare your verified evidence-backed capability state against explicit, versioned models of real role demand. Trace every match, inspect partial proficiencies, and prioritize the exact competency gaps that matter most."
+        badge="Domain 4"
+        badgeColor="border-ink/20 text-ink bg-lime"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector Bar */}
       <TargetRoleSelectorBar />
@@ -389,5 +373,6 @@ export default function RoleIntelligenceOverviewPage() {
         onClose={() => setShowExplanation(false)}
       />
     </div>
-  );
+  </div>
+);
 }

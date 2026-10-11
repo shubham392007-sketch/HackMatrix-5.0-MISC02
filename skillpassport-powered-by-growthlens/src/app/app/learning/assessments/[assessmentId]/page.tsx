@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { evaluateAssessmentAttempt } from "@/lib/learningCalculations";
+import AppTopBar from "@/components/app/AppTopBar";
 import { AssessmentAttempt } from "@/types/learning";
 
 export default function KnowledgeAssessmentPage() {
@@ -94,39 +95,29 @@ export default function KnowledgeAssessmentPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header bar */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <Award className="w-3.5 h-3.5" />
-              DOMAIN 5 · FORMAL KNOWLEDGE ASSESSMENT
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={assessment.title}
+        description={`Target Blueprint: ${activeBlueprint.title}. Passing threshold is ${assessment.passing_threshold}%. Performance directly calibrates your Assessment Signal (A = 20%).`}
+        badge="Domain 5 · Formal Assessment"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        {!submittedAttempt && (
+          <div className="flex items-center gap-3 bg-paper/80 px-3 py-1.5 rounded-xl border border-ink/10 shadow-sm shrink-0">
+            <div className="flex items-center gap-1.5 text-ink font-mono font-bold text-sm">
+              <Clock className="w-4 h-4 text-peach fill-current animate-pulse" />
+              <span>{formatTimer(timeLeft)}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              {assessment.title}
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Target Blueprint: <span className="font-semibold text-ink">{activeBlueprint.title}</span>. Passing threshold is <span className="font-bold text-ink">{assessment.passing_threshold}%</span>. Performance directly calibrates your <span className="font-semibold text-ink">Assessment Signal (A = 20%)</span>.
-            </p>
+            <div className="h-4 w-px bg-ink/10" />
+            <div className="text-xs text-ink/70">
+              <span className="font-bold text-ink">{answeredCount}</span>/{questions.length} answered
+            </div>
           </div>
+        )}
+      </AppTopBar>
 
-          {!submittedAttempt && (
-            <div className="flex items-center gap-4 bg-paper p-3 rounded-2xl border border-ink/10 shadow-sm shrink-0">
-              <div className="flex items-center gap-2 text-ink font-mono font-bold text-lg">
-                <Clock className="w-5 h-5 text-peach fill-current animate-pulse" />
-                <span>{formatTimer(timeLeft)}</span>
-              </div>
-              <div className="h-8 w-px bg-ink/10" />
-              <div className="text-xs text-ink/60">
-                <span className="font-bold text-ink">{answeredCount}</span> of {questions.length} answered
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
       {/* Main View: In-Progress vs Results */}
       {!submittedAttempt ? (
@@ -503,6 +494,7 @@ export default function KnowledgeAssessmentPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import { TopicDifficultyBadge } from "@/components/app/LearningBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   ArrowLeft,
   BookOpen,
@@ -33,30 +34,22 @@ export default function ResourceExplanationPage() {
   }, [resources, resourceId]);
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Breadcrumbs */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <Link
-            href="/app/learning/resources"
-            className="hover:text-ink flex items-center gap-1 font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Curated Resources
-          </Link>
-          <span>/</span>
-          <span className="text-ink font-semibold">{resource.title}</span>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={resource.title}
+        description={`Provider: ${resource.provider} • Duration: ${resource.duration_minutes} min • Relevance: ${resource.relevance_score}%`}
+        badge={resource.resource_type.replace("_", " ").toUpperCase()}
+      >
+        <Link
+          href="/app/learning/resources"
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Resources
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-            Screen 7: Resource Explainability
-          </span>
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-lime/40 text-ink font-bold">
-            {resource.relevance_score}% Relevance
-          </span>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Main Explainability Card */}
       <div className="gl-card p-6 md:p-8 space-y-6 border-ink/15 bg-white">
@@ -181,5 +174,6 @@ export default function ResourceExplanationPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

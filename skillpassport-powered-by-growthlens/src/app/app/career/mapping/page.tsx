@@ -22,6 +22,7 @@ import {
   ImportanceBadge,
 } from "@/components/app/CareerBadges";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import { MappingStatus } from "@/types/career";
 
 export default function RoleSkillMappingPage() {
@@ -110,7 +111,7 @@ export default function RoleSkillMappingPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -119,31 +120,13 @@ export default function RoleSkillMappingPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Career Intelligence</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Taxonomy Mapping</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Role–Skill Taxonomy Mapping
-            <span className="text-xs px-2.5 py-1 bg-sand text-ink border border-ink/20 rounded-full font-mono font-medium">
-              Canonical Ontology
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Inspect how external job requirements resolve into the canonical SkillPassport ontology.
-            Loose terminology or synonym aliases are anchored strictly to canonical skills to prevent
-            fragmentation.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="Role–Skill Taxonomy Mapping"
+        description="Inspect how external job requirements resolve into the canonical SkillPassport ontology. Loose terminology or synonym aliases are anchored strictly to canonical skills to prevent fragmentation."
+        badge="Canonical Ontology"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector Bar */}
       <TargetRoleSelectorBar />
@@ -319,5 +302,6 @@ export default function RoleSkillMappingPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

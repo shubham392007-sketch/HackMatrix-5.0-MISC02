@@ -45,7 +45,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
       recordedRef.current = shareId;
       recordShareAccess(shareId);
     }
-  }, [shareId, recordShareAccess]);
+  }, [shareId]);
 
   const projection = getShareProjection(shareId);
 

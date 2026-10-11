@@ -22,6 +22,7 @@ import {
   Layers,
   FileText,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function CandidateSkillReviewPage() {
   const {
@@ -136,35 +137,23 @@ export default function CandidateSkillReviewPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Candidate Review</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Candidate Skill Review
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Provisional competencies extracted by pipeline models. Inspect the extracted rationale and corroborate evidence before promoting to your permanent passport.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Candidate Skill Review"
+        description="Provisional competencies extracted by pipeline models. Inspect the extracted rationale and corroborate evidence before promoting to your permanent passport."
+        badge="Domain 2 · Candidate Queue"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-50"
+      >
+        <Link
+          href="/app/passport/skills"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          Verified Skills
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/passport/skills"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-          >
-            Verified Skills
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Trust Philosophy Banner */}
       <div className="p-4 rounded-2xl bg-[#FFF6E9] border border-[#F0D5B5] flex items-start gap-3">
@@ -350,6 +339,7 @@ export default function CandidateSkillReviewPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

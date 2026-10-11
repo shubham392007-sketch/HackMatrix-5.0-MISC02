@@ -27,6 +27,7 @@ import {
   DemoRoleSelector,
   GuardOutcomeBadge,
 } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function HallucinationGuardPage() {
   const { guardResults, updateGuardResult, addAIAuditEvent, currentRole } =
@@ -127,7 +128,7 @@ export default function HallucinationGuardPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -136,31 +137,14 @@ export default function HallucinationGuardPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>AI Intelligence & Governance</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Hallucination Guard</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Hallucination / Unsupported-Claim Guard
-            <span className="text-xs px-2.5 py-1 bg-red-100 text-red-900 border border-red-300 rounded-full font-mono font-medium">
-              Automated Policy Enforcement
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            GrowthLens executes a deterministic seven-point verification gate before any AI extraction can be linked
-            to a candidate skill or promoted to a verified passport credential. Fabricated citations, unbacked resume claims,
-            and over-stated levels are intercepted automatically.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="Hallucination / Unsupported-Claim Guard"
+        description="GrowthLens executes a deterministic seven-point verification gate before any AI extraction can be linked to a candidate skill or promoted to a verified passport credential."
+        badge="Policy Enforcement"
+        badgeColor="border-red-300 text-red-900 bg-red-100"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* The 7 Automated Checks Banner */}
       <div className="gl-card p-5 bg-gradient-to-r from-red-50/40 via-amber-50/20 to-white border border-red-200">
@@ -500,5 +484,6 @@ export default function HallucinationGuardPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

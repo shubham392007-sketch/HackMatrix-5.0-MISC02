@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Filter,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 import { PracticeExercise } from "@/types/learning";
 
 export default function PracticeExercisesPage() {
@@ -126,69 +127,59 @@ export default function PracticeExercisesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Domain Switcher */}
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-peach/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-3">
-              <Code className="w-3.5 h-3.5" />
-              DOMAIN 5 · PRACTICE & APPLICATION WORKSPACE
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Interactive Practice Exercises
-            </h1>
-            <p className="text-sm text-ink/70 mt-1 max-w-2xl">
-              Solve hands-on coding snippets, spot architectural flaws, and diagnose applied engineering scenarios. Practice directly fuels the <span className="font-semibold text-ink">Practice Signal (P = 25%)</span> in your overall topic mastery formula.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app/learning/roadmaps/roadmap-domain-data-preprocessing"
-              className="pill-btn pill-btn-ghost text-xs"
-            >
-              ← Back to Roadmap
-            </Link>
-            <Link
-              href="/app/learning/projects"
-              className="pill-btn pill-btn-primary text-xs"
-            >
-              Go to Mini-Projects →
-            </Link>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Interactive Practice Exercises"
+        description="Solve hands-on coding snippets, spot architectural flaws, and diagnose applied engineering scenarios. Practice directly fuels the Practice Signal (P = 25%) in your overall topic mastery formula."
+        badge="Domain 5 · Practice & Application"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/learning/roadmaps/roadmap-domain-data-preprocessing"
+            className="pill-btn pill-btn-ghost text-xs"
+          >
+            &larr; Back to Roadmap
+          </Link>
+          <Link
+            href="/app/learning/projects"
+            className="pill-btn pill-btn-primary text-xs"
+          >
+            Go to Mini-Projects &rarr;
+          </Link>
         </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        {/* Domain Switcher */}
+        <ActiveDomainSelectorBar />
 
         {/* Quick Stats Banner */}
-        <div className="mt-6 pt-6 border-t border-ink/10 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
-            <div className="text-xs text-ink/60 font-medium">Domain Exercises</div>
-            <div className="text-xl font-extrabold text-ink mt-0.5">{totalCount} Modules</div>
-          </div>
-          <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
-            <div className="text-xs text-ink/60 font-medium">Completed</div>
-            <div className="text-xl font-extrabold text-ink mt-0.5">
-              {completedCount} of {totalCount} ({totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%)
+        <div className="gl-card p-4 sm:p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
+              <div className="text-xs text-ink/60 font-medium">Domain Exercises</div>
+              <div className="text-xl font-extrabold text-ink mt-0.5">{totalCount} Modules</div>
             </div>
-          </div>
-          <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
-            <div className="text-xs text-ink/60 font-medium">Mastery Contribution</div>
-            <div className="text-xl font-extrabold text-ink mt-0.5">25% (Signal P)</div>
-          </div>
-          <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
-            <div className="text-xs text-ink/60 font-medium">Execution Engine</div>
-            <div className="text-xs font-bold text-ink mt-1 flex items-center gap-1.5 text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Browser AST Sandbox
+            <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
+              <div className="text-xs text-ink/60 font-medium">Completed</div>
+              <div className="text-xl font-extrabold text-ink mt-0.5">
+                {completedCount} of {totalCount} ({totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%)
+              </div>
+            </div>
+            <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
+              <div className="text-xs text-ink/60 font-medium">Mastery Contribution</div>
+              <div className="text-xl font-extrabold text-ink mt-0.5">25% (Signal P)</div>
+            </div>
+            <div className="p-3 bg-paper/60 rounded-xl border border-ink/5">
+              <div className="text-xs text-ink/60 font-medium">Execution Engine</div>
+              <div className="text-xs font-bold text-ink mt-1 flex items-center gap-1.5 text-emerald-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Browser AST Sandbox
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       {/* Filter Toolbar */}
       <div className="gl-card p-4">
@@ -551,6 +542,7 @@ export default function PracticeExercisesPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

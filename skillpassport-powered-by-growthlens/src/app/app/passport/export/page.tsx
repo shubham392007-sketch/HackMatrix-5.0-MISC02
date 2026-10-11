@@ -14,6 +14,7 @@ import {
   Check,
   Info,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function PassportExportPage() {
   const [mounted, setMounted] = useState(false);
@@ -57,43 +58,29 @@ export default function PassportExportPage() {
     : "10/11/2026";
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Non-print Top Controls */}
-      <div className="gl-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link
-              href="/app/passport/sharing"
-              className="text-xs font-bold text-ink/60 hover:text-ink flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Passport Sharing Hub
-            </Link>
-          </div>
-          <h1 className="text-xl font-extrabold text-ink">
-            Print & Export Skill Passport
-          </h1>
-          <p className="text-xs text-ink/70 mt-0.5">
-            Clean, high-fidelity PDF / print layout containing only your authorized verified capabilities.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Print & Export Skill Passport"
+        description="Clean, high-fidelity PDF / print layout containing only your authorized verified capabilities."
+        badge="DOMAIN 6 · EXPORT & VERIFICATION SNAPSHOT"
+        badgeColor="peach"
+      >
+        <Link
+          href="/app/passport/permissions"
+          className="pill-btn pill-btn-ghost text-xs"
+        >
+          Adjust Export Content
+        </Link>
+        <button
+          onClick={handlePrint}
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 shadow-sm"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print to PDF / Paper
+        </button>
+      </AppTopBar>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/passport/permissions"
-            className="pill-btn pill-btn-ghost text-xs"
-          >
-            Adjust Export Content
-          </Link>
-          <button
-            onClick={handlePrint}
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 shadow-sm"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Print to PDF / Paper
-          </button>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-4xl w-full mx-auto pb-16 print:p-0 print:m-0 print:max-w-none">
 
       {/* Printable Sheet */}
       <div className="bg-white text-black p-8 md:p-12 rounded-2xl border-2 border-black/20 shadow-md space-y-8 print:border-none print:shadow-none print:p-0 print:rounded-none">
@@ -255,6 +242,7 @@ export default function PassportExportPage() {
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 }

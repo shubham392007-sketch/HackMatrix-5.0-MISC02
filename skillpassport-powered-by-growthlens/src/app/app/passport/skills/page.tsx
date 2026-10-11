@@ -20,6 +20,7 @@ import {
   AlertCircle,
   FileText,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function VerifiedSkillsPage() {
   const { skills, evidenceItems } = useEvidence();
@@ -51,29 +52,17 @@ export default function VerifiedSkillsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Verified Skills</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Verified Competencies
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Only competencies grounded in auditable, attributable workplace artifacts receive verified status. Unverified AI extracts remain strictly separated in the Candidate queue.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Verified Competencies"
+        description="Only competencies grounded in auditable, attributable workplace artifacts receive verified status. Unverified AI extracts remain strictly separated in the Candidate queue."
+        badge="Domain 2 · Verified Skills"
+        badgeColor="border-emerald-300 text-emerald-800 bg-emerald-50"
+      >
+        <div className="flex items-center gap-2">
           <Link
             href="/app/passport/candidates"
-            className="pill-btn pill-btn-secondary text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
           >
             Review Candidates
             <ArrowRight className="w-3.5 h-3.5" />
@@ -86,7 +75,9 @@ export default function VerifiedSkillsPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Trust & Verification Disclaimer Banner */}
       <div className="p-4 rounded-2xl bg-[#EBF3ED] border border-[#B8D7C2] flex items-start gap-3.5">
@@ -313,6 +304,7 @@ export default function VerifiedSkillsPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

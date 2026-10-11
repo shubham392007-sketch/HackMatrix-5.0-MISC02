@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 interface PageProps {
   params: Promise<{ skillId: string }>;
@@ -124,33 +125,17 @@ export default function ProficiencyAssessmentPage({ params }: PageProps) {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <Link href={`/app/passport/skills/${skill.id}`} className="hover:text-[#1F1E1D]">
-              {skill.canonicalName}
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Proficiency Rubric</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Proficiency Rubric
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Objective criteria ladder evaluating competence from foundational basics to expert architectural leadership.
-          </p>
-        </div>
-
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Proficiency Rubric"
+        description={`Objective criteria ladder evaluating competence from foundational basics to expert architectural leadership for ${skill.canonicalName}.`}
+        badge="Domain 2 · Assessment Framework"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-50"
+      >
         <div className="flex items-center gap-2">
           <Link
             href={`/app/passport/skills/${skill.id}`}
-            className="pill-btn pill-btn-secondary text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Profile
@@ -163,7 +148,9 @@ export default function ProficiencyAssessmentPage({ params }: PageProps) {
             Inspect Evidence Map
           </Link>
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Current Level Summary Card */}
       <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
@@ -309,6 +296,7 @@ export default function ProficiencyAssessmentPage({ params }: PageProps) {
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   Activity,
   CheckCircle2,
@@ -49,29 +50,21 @@ export default function AIEvaluationDashboardPage() {
 
   if (!isAdmin) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-              <span>Model Governance & Benchmarking</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-ink font-semibold">AI Evaluation</span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-ink">
-              AI Evaluation Dashboard
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <DemoRoleSelector />
-            <DemoDataNotice />
-          </div>
-        </div>
-
-        <RestrictedAccessCard
-          requiredRole="System Administrator"
-          screenName="Model Evaluation & Offline Benchmark Suite"
-          reason="Inspecting continuous model regression benchmarks, adversarial prompt test suites, and hallucination guard accuracy metrics is restricted to platform administrators."
+      <div className="flex-1 flex flex-col">
+        <AppTopBar
+          title="AI Evaluation Dashboard"
+          description="Continuous benchmark evaluation verifying extraction precision, hallucination interception, and adversarial prompt resilience."
+          badge="RESTRICTED (ADMIN)"
+          badgeColor="bg-purple-200 text-purple-950"
         />
+
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
+          <RestrictedAccessCard
+            requiredRole="System Administrator"
+            screenName="Model Evaluation & Offline Benchmark Suite"
+            reason="Inspecting continuous model regression benchmarks, adversarial prompt test suites, and hallucination guard accuracy metrics is restricted to platform administrators."
+          />
+        </div>
       </div>
     );
   }
@@ -100,7 +93,7 @@ export default function AIEvaluationDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -109,38 +102,23 @@ export default function AIEvaluationDashboardPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Model Governance & Benchmarking</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">AI Evaluation</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            AI Evaluation Dashboard
-            <span className="text-xs px-2.5 py-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-full font-mono font-medium">
-              Offline Test Suites
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Offline benchmark suites continuously evaluate model extraction precision, hallucination interception,
-            adversarial prompt resilience, and schema compliance to ensure zero regressions across production deploys.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleRunSuite}
-            disabled={isRunningSuite}
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-2 shadow-sm"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isRunningSuite ? "animate-spin" : ""}`} />
-            {isRunningSuite ? "Running Benchmark..." : "Run Evaluation Suite"}
-          </button>
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="AI Evaluation Dashboard"
+        description="Offline benchmark suites continuously evaluate model extraction precision, hallucination interception, and adversarial prompt resilience."
+        badge="OFFLINE TEST SUITES"
+        badgeColor="bg-purple-200 text-purple-950"
+      >
+        <button
+          onClick={handleRunSuite}
+          disabled={isRunningSuite}
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-2 shadow-sm"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${isRunningSuite ? "animate-spin" : ""}`} />
+          <span>{isRunningSuite ? "RUNNING..." : "RUN EVALUATION SUITE"}</span>
+        </button>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Benchmark Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -387,5 +365,6 @@ export default function AIEvaluationDashboardPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   ImportanceBadge,
 } from "@/components/app/CareerBadges";
 import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleDemandDetailPage() {
   const params = useParams();
@@ -42,20 +43,27 @@ export default function RoleDemandDetailPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Top back navigation */}
-      <div className="flex items-center justify-between border-b border-ink/10 pb-4">
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={role.title}
+        description={`Context: ${role.context} • Seniority: ${role.seniority}`}
+        badge={role.seniority.toUpperCase()}
+      >
         <Link
           href="/app/career/roles"
-          className="text-xs font-semibold text-ink-muted hover:text-ink flex items-center gap-1.5"
+          className="pill-btn pill-btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Role Catalogue
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Roles
         </Link>
-        <div className="flex items-center gap-3">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+        <button
+          onClick={handleSelectAndMatch}
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5 shadow-sm"
+        >
+          <Scale className="w-3.5 h-3.5" /> Compare Skills &rarr;
+        </button>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Role Title Banner */}
       <div className="gl-card p-8 bg-white border border-ink/15 space-y-4">
@@ -289,5 +297,6 @@ export default function RoleDemandDetailPage() {
         </button>
       </div>
     </div>
-  );
+  </div>
+);
 }

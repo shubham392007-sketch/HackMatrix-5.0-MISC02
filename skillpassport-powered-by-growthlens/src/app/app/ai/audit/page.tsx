@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   History,
   ShieldCheck,
@@ -117,7 +118,7 @@ export default function AIAuditHistoryPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -126,38 +127,21 @@ export default function AIAuditHistoryPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Governance & Compliance</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Audit History</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            AI & Governance Audit History
-            <span className="text-xs px-2.5 py-1 bg-sand text-ink border border-ink/20 rounded-full font-mono font-medium">
-              Immutable Log
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            A cryptographically structured timeline of all AI extractions, guard policy intercepts,
-            human adjudications, schema regenerations, and threat quarantines. Every credential change
-            is fully auditable.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleExportAuditJson}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink text-ink text-xs py-2 px-4 flex items-center gap-2 shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export Audit Log (JSON)
-          </button>
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="AI & Governance Audit History"
+        description="A cryptographically structured timeline of all AI extractions, guard policy intercepts, human adjudications, and threat quarantines."
+        badge="IMMUTABLE AUDIT TRAIL"
+      >
+        <button
+          onClick={handleExportAuditJson}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink text-ink text-xs py-2 px-4 flex items-center gap-2 shadow-sm"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>EXPORT AUDIT LOG (JSON)</span>
+        </button>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Filter and Search Bar */}
       <div className="gl-card p-4 bg-white space-y-3">
@@ -311,5 +295,6 @@ export default function AIAuditHistoryPage() {
         )}
       </div>
     </div>
+  </div>
   );
 }

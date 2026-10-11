@@ -10,6 +10,7 @@ import {
   ImportanceBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -61,40 +62,34 @@ export default function WhyThisGapDetailPage() {
 
   if (!gap) {
     return (
-      <div className="p-12 text-center space-y-4">
-        <p className="text-sm text-ink-muted">Gap record not found.</p>
-        <Link href="/app/career/gaps" className="pill-btn pill-btn-primary text-xs py-2 px-4">
-          Return to Gap Analysis
-        </Link>
+      <div className="flex-1 flex flex-col">
+        <AppTopBar title="Skill Gap Not Found" />
+        <div className="flex-1 p-12 text-center space-y-4">
+          <p className="text-sm text-ink-muted">Gap record not found.</p>
+          <Link href="/app/career/gaps" className="pill-btn pill-btn-primary text-xs py-2 px-4">
+            Return to Gap Analysis
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Breadcrumb & Navigation */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <Link
-            href="/app/career/gaps"
-            className="hover:text-ink flex items-center gap-1 font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Gaps List
-          </Link>
-          <span>/</span>
-          <span className="text-ink font-semibold">{gap.canonical_name}</span>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={`Why This Gap: ${gap.canonical_name}`}
+        description={`Role: ${gap.role_title} • Target: ${gap.target_proficiency_level} • Current: ${gap.current_proficiency_level || "None"}`}
+        badge={gap.gap_type.replace(/_/g, " ").toUpperCase()}
+      >
+        <Link
+          href="/app/career/gaps"
+          className="pill-btn pill-btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Gaps
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-            Feature 7: Why This Gap?
-          </span>
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
-            DEMO DATA
-          </span>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Main Gap Title Header */}
       <div className="gl-card p-6 md:p-8 space-y-4 border-ink/15">
@@ -364,5 +359,6 @@ export default function WhyThisGapDetailPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

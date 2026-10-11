@@ -21,6 +21,7 @@ import {
   Code,
   Sparkles,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function LearningHistoryPage() {
   const { learningHistory, activeBlueprint } = useEvidence();
@@ -70,42 +71,32 @@ export default function LearningHistoryPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <History className="w-3.5 h-3.5" />
-              DOMAIN 5 · AUDITABLE ACTIVITY STREAM
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Learning Activity History
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Immutable chronology of all diagnostic tests, learning packets, practice submissions, formal assessments, and project evaluations. Every action directly feeds the 4-signal mastery telemetry.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExportJSON}
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              {copiedExport ? "Audit Log Exported!" : "Export Audit Log (JSON)"}
-            </button>
-            <Link
-              href="/app/learning/capability"
-              className="pill-btn pill-btn-primary text-xs"
-            >
-              View Candidate Evidence →
-            </Link>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Learning Activity History"
+        description="Immutable chronology of all diagnostic tests, learning packets, practice submissions, formal assessments, and project evaluations. Every action directly feeds the 4-signal mastery telemetry."
+        badge="Domain 5 · Auditable Activity Stream"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportJSON}
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {copiedExport ? "Audit Log Exported!" : "Export Audit Log (JSON)"}
+          </button>
+          <Link
+            href="/app/learning/capability"
+            className="pill-btn pill-btn-primary text-xs"
+          >
+            View Candidate Evidence &rarr;
+          </Link>
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
       {/* Filter Toolbar */}
       <div className="gl-card p-4">
@@ -226,6 +217,7 @@ export default function LearningHistoryPage() {
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

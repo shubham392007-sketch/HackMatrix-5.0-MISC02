@@ -26,6 +26,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 interface PageProps {
   params: Promise<{ skillId: string }>;
@@ -59,33 +60,17 @@ export default function SkillDetailPage({ params }: PageProps) {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Top Breadcrumb & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <Link href="/app/passport/skills" className="hover:text-[#1F1E1D]">
-              Skills
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">{skill.canonicalName}</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            {skill.canonicalName}
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1">
-            Category: <strong className="text-[#1F1E1D] font-bold">{skill.category}</strong>
-          </p>
-        </div>
-
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={skill.canonicalName}
+        description={`Category: ${skill.category}. ${skill.definition}`}
+        badge="Domain 2 · Competency Profile"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-50"
+      >
         <div className="flex items-center gap-2">
           <Link
             href={`/app/passport/skills/${skill.id}/evidence`}
-            className="pill-btn pill-btn-secondary text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
           >
             <Layers className="w-3.5 h-3.5" />
             Evidence Map ({skill.evidenceIds.length})
@@ -98,7 +83,9 @@ export default function SkillDetailPage({ params }: PageProps) {
             Proficiency Rubric
           </Link>
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Trust Separation Callout */}
       <div className="p-4 rounded-2xl bg-[#FBF9F6] border border-[#EBE5DC] flex items-start gap-3">
@@ -353,6 +340,7 @@ export default function SkillDetailPage({ params }: PageProps) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import {
   FileCode,
   FileText,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 import { SharePermissionsConfig } from "@/types/sharing";
 
 export default function SharingPermissionsPage() {
@@ -102,55 +103,43 @@ export default function SharingPermissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              DOMAIN 6 · SHARING PERMISSION GOVERNANCE
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Sharing Permissions & Data Disclosure
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl leading-relaxed">
-              Define the default boundary for what recruiters can inspect. Changes here calibrate your baseline sharing settings and update the preview projection.
-            </p>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Sharing Permissions & Data Disclosure"
+        description="Define the default boundary for what recruiters can inspect. Changes here calibrate your baseline sharing settings and update the preview projection."
+        badge="DOMAIN 6 · SHARING PERMISSION GOVERNANCE"
+        badgeColor="peach"
+      >
+        <button
+          onClick={handleReset}
+          className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset to Defaults
+        </button>
+        <Link
+          href="/app/passport/preview"
+          className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          Preview Changes
+        </Link>
+        <button
+          onClick={handleSave}
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          <Save className="w-3.5 h-3.5" />
+          {savedSuccess ? "Saved Settings!" : "Save Settings"}
+        </button>
+      </AppTopBar>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={handleReset}
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset to Defaults
-            </button>
-            <Link
-              href="/app/passport/preview"
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Preview Changes
-            </Link>
-            <button
-              onClick={handleSave}
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              <Save className="w-3.5 h-3.5" />
-              {savedSuccess ? "Saved Settings!" : "Save Settings"}
-            </button>
-          </div>
-        </div>
-
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {savedSuccess && (
-          <div className="mt-4 p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+          <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
             <CheckCircle className="w-4 h-4 text-emerald-700" />
             Settings saved successfully. All future preview projections will reflect these rules.
           </div>
         )}
-      </div>
 
       {/* Permission Groups */}
       <div className="space-y-6">
@@ -467,6 +456,7 @@ export default function SharingPermissionsPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

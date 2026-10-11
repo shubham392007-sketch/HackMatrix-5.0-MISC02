@@ -7,6 +7,7 @@ import { useEvidence } from "@/context/EvidenceContext";
 import { INITIAL_DIAGNOSTIC_QUESTIONS } from "@/data/learningMock";
 import { evaluateDiagnostic } from "@/lib/learningCalculations";
 import { DiagnosticResult } from "@/types/learning";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   CheckCircle2,
   XCircle,
@@ -63,39 +64,23 @@ export default function DiagnosticAssessmentPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
-              Domain 5 &bull; Screen 3
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Diagnostic Assessment
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              10 Technical Questions
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            {activeBlueprint.title} Diagnostic
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Evaluate your baseline capability across conceptual, reasoning, implementation, and application dimensions before roadmap generation.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={`${activeBlueprint.title} Diagnostic`}
+        description="Evaluate your baseline capability across conceptual, reasoning, implementation, and application dimensions before roadmap generation."
+        badge="10 Technical Questions"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-100"
+      >
+        <Link
+          href={`/app/learning/domains/${domainId}`}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Blueprint
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/app/learning/domains/${domainId}`}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Blueprint
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {!isSubmitted && !result ? (
         /* Question Flow */
@@ -368,5 +353,6 @@ export default function DiagnosticAssessmentPage() {
         </div>
       )}
     </div>
-  );
+  </div>
+);
 }

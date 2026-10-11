@@ -25,6 +25,7 @@ import {
   Building2,
   FileCode2,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function UpdatedCapabilityBridgePage() {
   const {
@@ -50,45 +51,36 @@ export default function UpdatedCapabilityBridgePage() {
     : baselineMatchScore;
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <FileCheck2 className="w-3.5 h-3.5" />
-              DOMAIN 5 · SYSTEM BRIDGE & CAPABILITY INTEGRATION
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Updated Capability & Evidence Bridge
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Inspect how your learning mastery achievements in {activeBlueprint.title} translate into verifiable candidate evidence, human verification tasks, and projected career readiness.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app/passport"
-              className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-            >
-              <Award className="w-3.5 h-3.5" />
-              View Verified SkillPassport →
-            </Link>
-            <Link
-              href="/app/ai/review-queue"
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              Domain 3 Review Queue →
-            </Link>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Updated Capability & Evidence Bridge"
+        description={`Inspect how your learning mastery achievements in ${activeBlueprint.title} translate into verifiable candidate evidence, human verification tasks, and projected career readiness.`}
+        badge="Domain 5 · System Bridge"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/passport"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+          >
+            <Award className="w-3.5 h-3.5" />
+            Verified SkillPassport &rarr;
+          </Link>
+          <Link
+            href="/app/ai/review-queue"
+            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            Review Queue &rarr;
+          </Link>
         </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
         {/* NON-NEGOTIABLE ARCHITECTURAL PRINCIPLE CALLOUT */}
-        <div className="mt-6 p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-ink shadow-sm space-y-2">
+        <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-ink shadow-sm space-y-2">
           <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-900">
             <AlertCircle className="w-4 h-4 text-amber-700" />
             Core Architectural Rule: Learning Completion ≠ Automatically Verified Skill
@@ -97,7 +89,6 @@ export default function UpdatedCapabilityBridgePage() {
             In SkillPassport Powered by GrowthLens, finishing a roadmap module, reading a guide, or achieving 100% on a quiz establishes <span className="font-bold">Learning Mastery</span>, but does <span className="font-bold underline">not</span> directly alter your verified professional skills. Verified skills require authentic workplace proof or human-validated project deliverables. Your mini-project submissions generate <span className="font-bold">Candidate Learning Evidence</span> that must pass peer or supervisor review in <span className="font-bold">Domain 3</span> before promoting competencies in your <span className="font-bold">SkillPassport (Domain 2)</span>.
           </p>
         </div>
-      </div>
 
       {/* Two Column Section Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -370,6 +361,7 @@ export default function UpdatedCapabilityBridgePage() {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

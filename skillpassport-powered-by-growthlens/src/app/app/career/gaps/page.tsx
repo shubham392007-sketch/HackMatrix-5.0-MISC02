@@ -10,6 +10,7 @@ import {
   ImportanceBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   AlertTriangle,
   HelpCircle,
@@ -71,47 +72,30 @@ export default function CareerGapsPage() {
   }, [activeGaps, selectedType, selectedReq, searchQuery]);
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
-              Domain 4 &bull; Feature 6
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Gap Taxonomy Engine
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Skill Gap Analysis
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            A gap is not simply an absent skill. GrowthLens categorizes 7 distinct gap types
-            to distinguish missing capability from missing proof, depth shortfalls, and unverified claims.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Skill Gap Analysis"
+        description="A gap is not simply an absent skill. GrowthLens categorizes 7 distinct gap types to distinguish missing capability from missing proof, depth shortfalls, and unverified claims."
+        badge="Gap Taxonomy Engine"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-100"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Gap Methodology
+        </button>
+        <Link
+          href="/app/career/priorities"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          View Prioritization →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Gap Methodology
-          </button>
-          <Link
-            href="/app/career/priorities"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            View Prioritization →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector */}
       <TargetRoleSelectorBar />
@@ -428,5 +412,6 @@ export default function CareerGapsPage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

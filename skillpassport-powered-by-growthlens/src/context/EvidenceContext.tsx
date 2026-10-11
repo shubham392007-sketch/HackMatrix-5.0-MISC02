@@ -986,15 +986,19 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     setShareRecords((prev) => {
       const target = prev.find((r) => r.shareId === shareId);
       if (target && target.status === "active") {
-        const newActivity: ShareActivityEvent = {
-          id: `act-${Date.now()}`,
-          timestamp: "Just now",
-          shareId,
-          shareLabel: target.label,
-          action: "viewed",
-          details: "Recruiter loaded shared passport page.",
-        };
-        setShareActivities((actPrev) => [newActivity, ...actPrev]);
+        setTimeout(() => {
+          setShareActivities((actPrev) => [
+            {
+              id: `act-${Date.now()}`,
+              timestamp: "Just now",
+              shareId,
+              shareLabel: target.label,
+              action: "viewed",
+              details: "Recruiter loaded shared passport page.",
+            },
+            ...actPrev,
+          ]);
+        }, 0);
       }
 
       return prev.map((r) => {

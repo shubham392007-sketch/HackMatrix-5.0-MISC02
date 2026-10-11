@@ -9,6 +9,7 @@ import {
   StepStatusBadge,
   MasteryProgressBar,
 } from "@/components/app/LearningBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -72,27 +73,22 @@ export default function LearningStepDetailPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Top Breadcrumb & Actions */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <Link
-            href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
-            className="hover:text-ink flex items-center gap-1 font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Roadmap
-          </Link>
-          <span>/</span>
-          <span className="text-ink font-semibold">{roadmapStep.title}</span>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={packet.title}
+        description={`Outcome: ${packet.learning_objective}`}
+        badge={isCompleted ? "COMPLETED" : roadmapStep.status.toUpperCase()}
+      >
+        <Link
+          href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Roadmap
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <StepStatusBadge
-            status={isCompleted ? "completed" : roadmapStep.status}
-          />
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Main 2-Column Learning Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -365,5 +361,6 @@ export default function LearningStepDetailPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

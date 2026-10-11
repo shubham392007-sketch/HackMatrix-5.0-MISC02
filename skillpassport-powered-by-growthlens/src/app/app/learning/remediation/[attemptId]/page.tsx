@@ -24,6 +24,7 @@ import {
   FileCode2,
   ChevronRight,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RemediationSessionPage() {
   const params = useParams();
@@ -61,49 +62,36 @@ export default function RemediationSessionPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Link
-                href={`/app/learning/assessments/${assessment.id}`}
-                className="text-xs font-bold text-ink/60 hover:text-ink flex items-center gap-1"
-              >
-                ← Back to Assessment
-              </Link>
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-900 text-xs font-bold mb-2">
-              <LifeBuoy className="w-3.5 h-3.5" />
-              DOMAIN 5 · TARGETED REMEDIATION MODULE
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Concept Gap Remediation
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Blueprint: <span className="font-semibold text-ink">{activeBlueprint.title}</span>. Your previous assessment score ({remediationSession.failed_score}%) triggered this automated review to reinforce prerequisite concepts before your re-assessment.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {remediationSession.status === "completed" ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
-                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                Remediation Completed
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 text-rose-800 font-bold text-xs">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-                Session in Progress
-              </span>
-            )}
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Concept Gap Remediation"
+        description={`Blueprint: ${activeBlueprint.title}. Your previous assessment score (${remediationSession.failed_score}%) triggered this automated review to reinforce prerequisite concepts before your re-assessment.`}
+        badge="Domain 5 · Targeted Remediation"
+        badgeColor="border-rose-300 text-rose-900 bg-rose-100"
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/app/learning/assessments/${assessment.id}`}
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1"
+          >
+            &larr; Back to Assessment
+          </Link>
+          {remediationSession.status === "completed" ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              Remediation Completed
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 text-rose-800 font-bold text-xs">
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              Session in Progress
+            </span>
+          )}
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
       {/* Objective Diagnosis Panel */}
       <div className="gl-card p-6 md:p-8 space-y-4">
@@ -304,6 +292,7 @@ export default function RemediationSessionPage() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

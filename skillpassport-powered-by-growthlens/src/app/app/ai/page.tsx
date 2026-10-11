@@ -7,6 +7,7 @@ import {
   DemoDataNotice,
   GuardOutcomeBadge,
 } from "@/components/app/AIBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   Sparkles,
   Fingerprint,
@@ -133,37 +134,22 @@ export default function AIOverviewPage() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              SkillPassport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">AI Intelligence</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            AI Work Analysis & Hallucination Protection
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            The LLM may propose claims. The evidence and verification system determines whether those claims can be trusted.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="AI Work Analysis & Hallucination Protection"
+        description="The LLM may propose claims. The evidence and verification system determines whether those claims can be trusted."
+      >
+        <Link
+          href="/app/ai/guard"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          <ShieldAlert className="w-3.5 h-3.5" />
+          Inspect Guard
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/ai/guard"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            Inspect Guard
-          </Link>
-        </div>
-      </div>
-
-      <DemoDataNotice />
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 animate-fade-in pb-16 max-w-7xl w-full mx-auto">
+        <DemoDataNotice />
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -328,5 +314,6 @@ export default function AIOverviewPage() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

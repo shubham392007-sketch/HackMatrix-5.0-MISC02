@@ -21,6 +21,7 @@ import {
   Tag,
   Clock,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function SkillExplorerPage() {
   const { skills, evidenceItems } = useEvidence();
@@ -55,26 +56,14 @@ export default function SkillExplorerPage() {
   ).length;
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Explorer</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Skill Explorer
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            Browse all competencies recognized in the canonical taxonomy. Inspect verification status, evidence backing, and coverage health.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Skill Explorer"
+        description="Browse all competencies recognized in the canonical taxonomy. Inspect verification status, evidence backing, and coverage health."
+        badge="Domain 2 · Competency Catalog"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-50"
+      >
+        <div className="flex items-center gap-2">
           <div className="bg-[#EFEAE1] p-1 rounded-xl flex items-center gap-1 border border-[#E0D9CD]">
             <button
               onClick={() => setViewMode("grid")}
@@ -102,13 +91,15 @@ export default function SkillExplorerPage() {
 
           <Link
             href="/app/passport/taxonomy"
-            className="pill-btn pill-btn-secondary text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
           >
             <Compass className="w-3.5 h-3.5" />
             View Taxonomy
           </Link>
         </div>
-      </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Overview Stat Ribbon */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,6 +328,7 @@ export default function SkillExplorerPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

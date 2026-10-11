@@ -14,6 +14,7 @@ import {
   RequirementTypeBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   GitCompare,
   CheckCircle2,
@@ -108,47 +109,30 @@ export default function CompareRolesPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-300 font-bold">
-              Domain 4 &bull; Feature 10
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Role Comparison Matrix
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Compare Target Roles
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Inspect how your single SkillPassport capability state maps across multiple career directions.
-            Identify shared foundational strengths versus divergent role specializations.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Compare Target Roles"
+        description="Inspect how your single SkillPassport capability state maps across multiple career directions. Identify shared foundational strengths versus divergent role specializations."
+        badge="Role Comparison Matrix"
+        badgeColor="border-sky-300 text-sky-900 bg-sky-100"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Comparison Rules
+        </button>
+        <Link
+          href="/app/career/roles"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <Compass className="w-3.5 h-3.5" />
+          Roles Catalogue →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Comparison Rules
-          </button>
-          <Link
-            href="/app/career/roles"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <Compass className="w-3.5 h-3.5" />
-            Roles Catalogue →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Role Selector Chips */}
       <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-3">
@@ -437,5 +421,6 @@ export default function CompareRolesPage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

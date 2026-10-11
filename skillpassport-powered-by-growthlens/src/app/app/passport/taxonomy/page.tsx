@@ -19,6 +19,7 @@ import {
   BookOpen,
   Layers,
 } from "lucide-react";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function SkillTaxonomyPage() {
   const { taxonomyCategories, skills } = useEvidence();
@@ -43,35 +44,23 @@ export default function SkillTaxonomyPage() {
     : skills.filter((s) => s.category.toLowerCase() === activeCategory?.name.toLowerCase());
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#8C827A] uppercase tracking-wider mb-2">
-            <Link href="/app/passport" className="hover:text-[#1F1E1D]">
-              Passport
-            </Link>
-            <span>/</span>
-            <span className="text-[#1F1E1D]">Taxonomy & Ontology</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F1E1D] tracking-tight">
-            Skill Taxonomy & Ontology
-          </h1>
-          <p className="text-sm text-[#5A5550] mt-1.5 max-w-2xl">
-            The canonical schema and graph ontology ensuring uniform skill definitions, alias normalization, and structured dependency mapping.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Skill Taxonomy & Ontology"
+        description="The canonical schema and graph ontology ensuring uniform skill definitions, alias normalization, and structured dependency mapping."
+        badge="Domain 2 · Graph Ontology"
+        badgeColor="border-amber-300 text-amber-900 bg-amber-50"
+      >
+        <Link
+          href="/app/passport/explorer"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          Universal Explorer
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/passport/explorer"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-          >
-            Universal Explorer
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Ontology Principles Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -322,6 +311,7 @@ export default function SkillTaxonomyPage() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

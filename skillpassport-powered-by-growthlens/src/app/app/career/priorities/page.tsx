@@ -10,6 +10,7 @@ import {
   ImportanceBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   TrendingUp,
   Sparkles,
@@ -82,47 +83,30 @@ export default function GapPrioritizationPage() {
   }, [activeGaps, effortWeight, leverageBoost, strategyFilter]);
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-lime/40 text-ink border border-ink/20 font-bold">
-              Domain 4 &bull; Feature 8
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Strategic Prioritization
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Gap Prioritization & Leverage Engine
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Rank development actions by expected career impact rather than chronological listing.
-            Leverage existing projects to close gaps with minimum incremental effort.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Gap Prioritization & Leverage Engine"
+        description="Rank development actions by expected career impact rather than chronological listing. Leverage existing projects to close gaps with minimum incremental effort."
+        badge="Strategic Prioritization"
+        badgeColor="border-ink/20 text-ink bg-lime/40"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Formula Explanation
+        </button>
+        <Link
+          href="/app/career/readiness"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          Career Readiness Index →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Formula Explanation
-          </button>
-          <Link
-            href="/app/career/readiness"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            Career Readiness Index →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector */}
       <TargetRoleSelectorBar />
@@ -403,5 +387,6 @@ export default function GapPrioritizationPage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

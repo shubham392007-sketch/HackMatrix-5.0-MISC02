@@ -29,6 +29,7 @@ import {
   Info,
 } from "lucide-react";
 import { INITIAL_MINI_PROJECT } from "@/data/learningMock";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function MiniProjectDetailPage() {
   const params = useParams();
@@ -68,62 +69,45 @@ export default function MiniProjectDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <ActiveDomainSelectorBar />
-
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Link
-                href="/app/learning/projects"
-                className="text-xs font-bold text-ink/60 hover:text-ink flex items-center gap-1"
-              >
-                ← Mini-Projects Catalog
-              </Link>
-              <span className="text-ink/30">/</span>
-              <span className="text-xs font-semibold text-ink/80">
-                {project.id}
-              </span>
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <FolderGit2 className="w-3.5 h-3.5" />
-              DOMAIN 5 · APPLIED EVIDENCE GENERATOR
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              {project.title}
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl">
-              Target Domain: <span className="font-semibold text-ink">{activeBlueprint.title}</span>. Complete the engineering pipeline specification and submit your repository for automated rubric scoring.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {isEvaluated ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
-                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                Evaluated · {attempt.total_score}/100
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-paper border border-ink/10 text-ink/70 font-bold text-xs">
-                <Clock className="w-3.5 h-3.5" />
-                Awaiting Submission
-              </span>
-            )}
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title={project.title}
+        description={`Target Domain: ${activeBlueprint.title}. Complete the engineering pipeline specification and submit your repository for automated rubric scoring.`}
+        badge="Domain 5 · Applied Evidence Generator"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/learning/projects"
+            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1"
+          >
+            &larr; Projects Catalog
+          </Link>
+          {isEvaluated ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              Evaluated · {attempt.total_score}/100
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-paper border border-ink/10 text-ink/70 font-bold text-xs">
+              <Clock className="w-3.5 h-3.5" />
+              Awaiting Submission
+            </span>
+          )}
         </div>
+      </AppTopBar>
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+        <ActiveDomainSelectorBar />
 
         {/* Bridge Notification */}
-        <div className="mt-6 p-4 rounded-2xl bg-paper/80 border border-ink/10 text-xs text-ink/80 flex items-start gap-3">
+        <div className="p-4 rounded-2xl bg-paper/80 border border-ink/10 text-xs text-ink/80 flex items-start gap-3">
           <Info className="w-4 h-4 text-peach shrink-0 mt-0.5" />
           <div>
             <span className="font-bold text-ink">Verifiable Artifact Pipeline: </span>
             Submitting this mini-project updates your <span className="font-bold text-ink">Project Signal (Prj = 25%)</span> in topic mastery and publishes a <span className="font-bold text-ink">Candidate Evidence item to Domain 1</span>. It is subsequently queued for human review in <span className="font-bold text-ink">Domain 3</span>.
           </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Project Spec, Objectives, Rubric */}
@@ -358,6 +342,7 @@ export default function MiniProjectDetailPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

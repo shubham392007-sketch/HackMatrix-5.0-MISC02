@@ -17,9 +17,9 @@ import {
   Eye,
   SlidersHorizontal,
   X,
-  Share2,
 } from "lucide-react";
 import { ShareRecord } from "@/types/sharing";
+import AppTopBar from "@/components/app/AppTopBar";
 
 export default function SharedAccessManagementPage() {
   const {
@@ -63,33 +63,22 @@ export default function SharedAccessManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="gl-card p-6 md:p-8 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-peach/30 text-ink text-xs font-semibold mb-2">
-              <Lock className="w-3.5 h-3.5" />
-              DOMAIN 6 · ACCESS LIFECYCLE MANAGEMENT
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-              Shared Access & Link Management
-            </h1>
-            <p className="text-xs md:text-sm text-ink/70 mt-1 max-w-2xl leading-relaxed">
-              Monitor all issued demo links, review recruiter access counts, and instantly revoke permissions. Revoking a link terminates public access immediately.
-            </p>
-          </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Shared Access & Link Management"
+        description="Monitor all issued demo links, review recruiter access counts, and instantly revoke permissions. Revoking a link terminates public access immediately."
+        badge="DOMAIN 6 · ACCESS LIFECYCLE MANAGEMENT"
+        badgeColor="peach"
+      >
+        <Link
+          href="/app/passport/share"
+          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+        >
+          + Create New Share Link
+        </Link>
+      </AppTopBar>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app/passport/share"
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-            >
-              + Create New Share Link
-            </Link>
-          </div>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Share Links Table */}
       <div className="gl-card p-6 md:p-8 space-y-4">
@@ -350,6 +339,7 @@ export default function SharedAccessManagementPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

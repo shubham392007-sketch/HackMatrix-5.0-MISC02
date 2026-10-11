@@ -13,6 +13,7 @@ import {
   ImportanceBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   Briefcase,
   FileText,
@@ -121,47 +122,30 @@ export default function CustomJobModePage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 font-bold">
-              Domain 4 &bull; Feature 11
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Custom Job Mode
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Custom Job Mode & Saved Postings
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Evaluate your verified SkillPassport evidence against arbitrary real-world job descriptions.
-            Turn external job postings into temporary versioned role models without corrupting core taxonomy benchmarks.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Custom Job Mode & Saved Postings"
+        description="Evaluate your verified SkillPassport evidence against arbitrary real-world job descriptions. Turn external job postings into temporary versioned role models without corrupting core taxonomy benchmarks."
+        badge="Custom Job Mode"
+        badgeColor="border-purple-300 text-purple-900 bg-purple-100"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Parser Guidelines
+        </button>
+        <Link
+          href="/app/career/job-parser"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <PlusCircle className="w-3.5 h-3.5" />
+          Parse New Job Description →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Parser Guidelines
-          </button>
-          <Link
-            href="/app/career/job-parser"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            Parse New Job Description →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Explainer Banner */}
       <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-50 via-white to-sand/20 border border-purple-200/80 flex items-start gap-4">
@@ -339,5 +323,6 @@ export default function CustomJobModePage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

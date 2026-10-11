@@ -16,6 +16,7 @@ import {
   ImportanceBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   HelpCircle,
   CheckCircle2,
@@ -87,46 +88,29 @@ export default function RoleExplanationExplorerPage() {
   }, [evidenceItems, selectedSkillId, compMatch, roleComp]);
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-sand/60 text-ink border border-ink/20 font-bold">
-              Domain 4 &bull; Feature 12
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Explainability Explorer
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Role Explanation Explorer
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Audit the exact mathematical and evidence provenance behind any evaluation.
-            Understand why you match, why you only partially match, or why a gap was flagged.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Role Explanation Explorer"
+        description="Audit the exact mathematical and evidence provenance behind any evaluation. Understand why you match, why you only partially match, or why a gap was flagged."
+        badge="Explainability Explorer"
+        badgeColor="border-ink/20 text-ink bg-sand/60"
+      >
+        <button
+          onClick={() => setIsExplainModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Formula Reference
+        </button>
+        <Link
+          href="/app/career/match"
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          Role Match Matrix →
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsExplainModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Formula Reference
-          </button>
-          <Link
-            href="/app/career/match"
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            Role Match Matrix →
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Target Role Selector */}
       <TargetRoleSelectorBar />
@@ -452,5 +436,6 @@ export default function RoleExplanationExplorerPage() {
         onClose={() => setIsExplainModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }

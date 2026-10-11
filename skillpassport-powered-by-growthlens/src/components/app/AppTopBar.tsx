@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   CheckCircle2,
   XCircle,
   X,
+  Compass,
 } from "lucide-react";
 
 export interface BreadcrumbItem {
@@ -27,6 +29,8 @@ export interface BreadcrumbItem {
 interface AppTopBarProps {
   title: string;
   description?: string;
+  badge?: string;
+  badgeColor?: string;
   backHref?: string;
   backLabel?: string;
   breadcrumbs?: BreadcrumbItem[];
@@ -36,12 +40,17 @@ interface AppTopBarProps {
 export default function AppTopBar({
   title,
   description,
+  badge,
+  badgeColor,
   backHref,
   backLabel,
   breadcrumbs,
   children,
 }: AppTopBarProps) {
+  const pathname = usePathname();
   const {
+    currentRole,
+    setDemoRole,
     userProfile,
     unreadNotificationsCount,
     notifications,
@@ -72,15 +81,73 @@ export default function AppTopBar({
 
   const latestUnread = notifications.filter((n) => !n.read).slice(0, 3);
 
+  // Auto-resolve breadcrumbs if not explicitly passed
+  const resolvedBreadcrumbs = useMemo(() => {
+    if (breadcrumbs && breadcrumbs.length > 0) return breadcrumbs;
+
+    const crumbs: BreadcrumbItem[] = [
+      { label: "SkillPassport", href: "/app/passport" }
+    ];
+
+    if (!pathname) return crumbs;
+
+    if (pathname.startsWith("/app/evidence")) {
+      crumbs.push({ label: "Evidence Workspace", href: "/app/evidence" });
+    } else if (
+      pathname.startsWith("/app/ai/guard") ||
+      pathname.startsWith("/app/ai/validation") ||
+      pathname.startsWith("/app/ai/review-queue") ||
+      pathname.startsWith("/app/ai/prompt-injection") ||
+      pathname.startsWith("/app/ai/evaluation") ||
+      pathname.startsWith("/app/ai/audit")
+    ) {
+      crumbs.push({ label: "Trust & Governance", href: "/app/ai/guard" });
+    } else if (pathname.startsWith("/app/ai")) {
+      crumbs.push({ label: "AI Intelligence", href: "/app/ai" });
+    } else if (
+      pathname.startsWith("/app/passport/sharing") ||
+      pathname.startsWith("/app/passport/preview") ||
+      pathname.startsWith("/app/passport/share") ||
+      pathname.startsWith("/app/passport/permissions") ||
+      pathname.startsWith("/app/passport/access") ||
+      pathname.startsWith("/app/passport/export")
+    ) {
+      crumbs.push({ label: "Sharing & Recruiter", href: "/app/passport/sharing" });
+    } else if (
+      pathname.startsWith("/app/passport/skills") ||
+      pathname.startsWith("/app/passport/explorer") ||
+      pathname.startsWith("/app/passport/taxonomy") ||
+      pathname.startsWith("/app/passport/candidates") ||
+      pathname.startsWith("/app/passport/coverage") ||
+      pathname.startsWith("/app/passport/history")
+    ) {
+      crumbs.push({ label: "Skill Intelligence", href: "/app/passport/skills" });
+    } else if (pathname.startsWith("/app/career")) {
+      crumbs.push({ label: "Career Intelligence", href: "/app/career" });
+    } else if (pathname.startsWith("/app/learning")) {
+      crumbs.push({ label: "Learn & Grow", href: "/app/learning" });
+    } else if (
+      pathname.startsWith("/app/settings") ||
+      pathname.startsWith("/app/notifications") ||
+      pathname.startsWith("/app/activity") ||
+      pathname.startsWith("/app/help")
+    ) {
+      crumbs.push({ label: "Settings & Access", href: "/app/settings" });
+    }
+
+    crumbs.push({ label: title });
+    return crumbs;
+  }, [breadcrumbs, pathname, title]);
+
   return (
-    <header className="sticky top-0 z-40 bg-[#FBF1CF]/95 backdrop-blur-sm border-b-[1.5px] border-[#1C1C1C] px-4 sm:px-6 lg:px-10 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-[#FBF1CF]/95 backdrop-blur-sm border-b-[1.5px] border-[#1C1C1C] px-4 sm:px-6 lg:px-10 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
       {/* Left side: Breadcrumbs, Back, Title */}
       <div className="min-w-0">
-        {/* Breadcrumbs if provided */}
-        {breadcrumbs && breadcrumbs.length > 0 ? (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-bold text-ink/60 mb-1">
-            {breadcrumbs.map((crumb, idx) => {
-              const isLast = idx === breadcrumbs.length - 1;
+        {/* Breadcrumb Navigation */}
+        {resolvedBreadcrumbs && resolvedBreadcrumbs.length > 0 ? (
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-bold text-ink/70 mb-1 flex-wrap">
+            {resolvedBreadcrumbs.map((crumb, idx) => {
+              const isLast = idx === resolvedBreadcrumbs.length - 1;
               return (
                 <React.Fragment key={idx}>
                   {crumb.href && !isLast ? (
@@ -110,13 +177,18 @@ export default function AppTopBar({
           </Link>
         ) : null}
 
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#1C1C1C] truncate">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1
+            className="text-2xl sm:text-3xl text-[#1C1C1C] leading-tight font-normal"
+            style={{ fontFamily: "'Yellowtail', cursive" }}
+          >
             {title}
           </h1>
-          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-[#DFE968] border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0">
-            DEMO DATA
-          </span>
+          {badge !== "" && (
+            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0 ${badgeColor || "bg-[#DFE968]"}`}>
+              {badge || "DEMO DATA"}
+            </span>
+          )}
         </div>
 
         {description && (
@@ -128,6 +200,25 @@ export default function AppTopBar({
 
       {/* Right side: Global Actions & Controls */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+        {/* Interactive Demo Role Switcher in Header */}
+        <div className="hidden sm:inline-flex items-center gap-1 p-1 bg-white/90 rounded-full border border-ink/20 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
+          <span className="text-[9px] font-black uppercase text-ink/60 px-2">ROLE:</span>
+          {(["employee", "reviewer", "admin"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setDemoRole(r)}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize transition-all ${
+                currentRole === r
+                  ? "bg-[#1C1C1C] text-white shadow-sm"
+                  : "text-ink/70 hover:text-ink"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
         {children}
 
         {/* Contextual Help Icon */}

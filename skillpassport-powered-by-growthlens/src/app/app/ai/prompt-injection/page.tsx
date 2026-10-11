@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   ShieldAlert,
   ShieldCheck,
@@ -54,29 +55,21 @@ export default function PromptInjectionProtectionPage() {
 
   if (!isAuthorized) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-              <span>Security & Governance</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-ink font-semibold">Prompt Injection</span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-ink">
-              Prompt-Injection Protection
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <DemoRoleSelector />
-            <DemoDataNotice />
-          </div>
-        </div>
-
-        <RestrictedAccessCard
-          requiredRole="Authorized Reviewer or Administrator"
-          screenName="Security Sanitization & Prompt-Injection Quarantine"
-          reason="Viewing and adjudicating raw prompt injection payloads and adversarial inputs in ingested employee files is restricted to security auditors and review staff to prevent accidental exposure."
+      <div className="flex-1 flex flex-col">
+        <AppTopBar
+          title="Prompt-Injection Protection"
+          description="Neutralizes indirect prompt injections hidden in user codebases, markdown comments, resume documents, and task tickets."
+          badge="RESTRICTED (REVIEWER)"
+          badgeColor="bg-red-200 text-red-950"
         />
+
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
+          <RestrictedAccessCard
+            requiredRole="Authorized Reviewer or Administrator"
+            screenName="Security Sanitization & Prompt-Injection Quarantine"
+            reason="Viewing and adjudicating raw prompt injection payloads and adversarial inputs in ingested employee files is restricted to security auditors and review staff to prevent accidental exposure."
+          />
+        </div>
       </div>
     );
   }
@@ -111,7 +104,7 @@ export default function PromptInjectionProtectionPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="flex-1 flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2 border border-ink/20 animate-fade-in">
@@ -120,30 +113,14 @@ export default function PromptInjectionProtectionPage() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-ink/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-ink-muted uppercase tracking-wider mb-1">
-            <span>Security & Governance</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-ink font-semibold">Prompt Injection</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink flex items-center gap-3">
-            Prompt-Injection Protection & Quarantine
-            <span className="text-xs px-2.5 py-1 bg-red-100 text-red-900 border border-red-300 rounded-full font-mono font-medium">
-              Security Quarantine Active
-            </span>
-          </h1>
-          <p className="text-ink-muted text-sm mt-1 max-w-3xl">
-            Neutralizes indirect prompt injections hidden in user codebases, markdown comments, resume documents,
-            and task tickets before they are consumed by the LLM extraction pipeline.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DemoRoleSelector />
-          <DemoDataNotice />
-        </div>
-      </div>
+      <AppTopBar
+        title="Prompt-Injection Protection & Quarantine"
+        description="Neutralizes indirect prompt injections hidden in user codebases, markdown comments, resume documents, and task tickets."
+        badge="SECURITY QUARANTINE"
+        badgeColor="bg-red-200 text-red-950"
+      />
+
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Threat Education Warning Banner */}
       <div className="gl-card p-5 bg-gradient-to-r from-red-50/70 via-sand/20 to-white border border-red-200">
@@ -370,5 +347,6 @@ export default function PromptInjectionProtectionPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

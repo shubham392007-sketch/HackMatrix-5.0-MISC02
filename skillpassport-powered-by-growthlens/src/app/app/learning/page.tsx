@@ -9,6 +9,7 @@ import {
   MasteryProgressBar,
   MasteryFormulaModal,
 } from "@/components/app/LearningBadges";
+import AppTopBar from "@/components/app/AppTopBar";
 import {
   GraduationCap,
   PlayCircle,
@@ -53,47 +54,30 @@ export default function LearningOverviewPage() {
   const improvement = activeRoadmap.current_mastery - activeRoadmap.baseline_mastery;
 
   return (
-    <div className="space-y-8 animate-fade-in pb-16">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-lime/40 text-ink border border-ink/20 font-bold">
-              Domain 5 &bull; Learning Intelligence
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sand/30 text-ink-muted">
-              Personalized Growth Engine
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
-              DEMO DATA
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-ink">
-            Your Growth Journey
-          </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-2xl">
-            Targeted learning personalized to the competencies and evidence gaps identified in your SkillPassport.
-            Convert identified weaknesses into measurable, verifiable capabilities.
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col">
+      <AppTopBar
+        title="Your Growth Journey"
+        description="Targeted learning personalized to the competencies and evidence gaps identified in your SkillPassport. Convert identified weaknesses into measurable, verifiable capabilities."
+        badge="Personalized Growth"
+        badgeColor="border-ink/20 text-ink bg-lime/40"
+      >
+        <button
+          onClick={() => setIsFormulaModalOpen(true)}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Mastery Formula
+        </button>
+        <Link
+          href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
+          className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+        >
+          <GraduationCap className="w-3.5 h-3.5" />
+          Open Full Roadmap &rarr;
+        </Link>
+      </AppTopBar>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsFormulaModalOpen(true)}
-            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Mastery Formula
-          </button>
-          <Link
-            href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
-            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            Open Full Roadmap &rarr;
-          </Link>
-        </div>
-      </div>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Domain Switcher */}
       <ActiveDomainSelectorBar />
@@ -407,5 +391,6 @@ export default function LearningOverviewPage() {
         onClose={() => setIsFormulaModalOpen(false)}
       />
     </div>
-  );
+  </div>
+);
 }
