@@ -71,14 +71,14 @@ export interface NavSection {
 
 export const WORKSPACE_NAV: NavSection[] = [
   {
-    category: "SKILL PASSPORT",
+    category: "Skill Passport",
     items: [
       { label: "Public Home", href: "/", icon: ExternalLink, external: true },
       { label: "Passport Overview", href: "/app/passport", icon: Award },
     ],
   },
   {
-    category: "EVIDENCE WORKSPACE",
+    category: "Evidence Workspace",
     items: [
       { label: "Evidence Center", href: "/app/evidence", icon: Layers },
       { label: "Connected Sources", href: "/app/evidence/sources", icon: FolderSync },
@@ -89,7 +89,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "TRUST & GOVERNANCE",
+    category: "Trust & Governance",
     items: [
       { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
       { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
@@ -100,7 +100,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "AI INTELLIGENCE",
+    category: "AI Intelligence",
     items: [
       { label: "AI Overview", href: "/app/ai", icon: Cpu },
       { label: "AI Work Analysis", href: "/app/ai/work-analysis", icon: Sparkles },
@@ -112,7 +112,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "SKILL INTELLIGENCE",
+    category: "Skill Intelligence",
     items: [
       { label: "Verified Skills", href: "/app/passport/skills", icon: ShieldCheck },
       { label: "Skill Explorer", href: "/app/passport/explorer", icon: Search },
@@ -123,7 +123,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "CAREER INTELLIGENCE",
+    category: "Career Intelligence",
     items: [
       { label: "Role Overview", href: "/app/career", icon: Compass },
       { label: "Target Roles", href: "/app/career/roles", icon: Briefcase },
@@ -136,7 +136,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "LEARN & GROW",
+    category: "Learn & Grow",
     items: [
       { label: "Learning Overview", href: "/app/learning", icon: GraduationCap },
       { label: "Personalized Roadmap", href: "/app/learning/roadmaps/roadmap-domain-data-preprocessing", icon: Map },
@@ -152,7 +152,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "SHARING & RECRUITER",
+    category: "Sharing & Recruiter",
     items: [
       { label: "Sharing Overview", href: "/app/passport/sharing", icon: Share2 },
       { label: "Live Passport Preview", href: "/app/passport/preview", icon: Eye },
@@ -164,7 +164,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "SETTINGS & ACCESS",
+    category: "Settings & Access",
     items: [
       { label: "Profile", href: "/app/settings/profile", icon: User },
       { label: "Connected Accounts", href: "/app/settings/connections", icon: FolderGit2 },
@@ -231,7 +231,10 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar">
         {WORKSPACE_NAV.map((section) => (
           <div key={section.category}>
-            <p className="text-[9.5px] font-black uppercase tracking-[0.16em] text-[#1C1C1C] px-2 mb-1.5">
+            <p
+              className="text-[17px] text-[#1C1C1C] px-2 mb-1 leading-tight select-none font-normal"
+              style={{ fontFamily: "'Yellowtail', cursive" }}
+            >
               {section.category}
             </p>
             <div className="space-y-0.5">
