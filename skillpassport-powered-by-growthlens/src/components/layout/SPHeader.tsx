@@ -8,6 +8,7 @@ import { useState } from "react";
 const publicNav = [
   { label: "HOME", href: "/" },
   { label: "FEATURES", href: "/features" },
+  { label: "GROWTHLENS", href: "/growthlens" },
   { label: "ABOUT", href: "/about" },
   { label: "DEVELOPERS", href: "/developers" },
 ];

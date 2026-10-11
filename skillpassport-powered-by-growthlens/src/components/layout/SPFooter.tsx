@@ -60,6 +60,9 @@ export default function SPFooter() {
                 <Link href="/features" className="hover:underline">4 Core Capabilities</Link>
               </li>
               <li>
+                <Link href="/growthlens" className="hover:underline">GrowthLens Parent Platform</Link>
+              </li>
+              <li>
                 <Link href="/about" className="hover:underline">About & Manifesto</Link>
               </li>
               <li>
