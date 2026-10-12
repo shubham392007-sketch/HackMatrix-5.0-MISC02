@@ -266,6 +266,12 @@ interface EvidenceContextType {
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobileSidebar: () => void;
+
+  // Demo Authentication State
+  isAuthenticated: boolean;
+  authChecked: boolean;
+  loginDemo: (role?: DemoRole, userOverrides?: Partial<UserProfile>) => void;
+  logoutDemo: () => void;
 }
 
 const EvidenceContext = createContext<EvidenceContextType | undefined>(undefined);
@@ -310,9 +316,19 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const [unifiedActivities, setUnifiedActivities] = useState<UnifiedActivityEvent[]>(INITIAL_UNIFIED_ACTIVITIES);
   const [toasts, setToasts] = useState<{ id: string; title: string; message: string; type: "success" | "error" | "info" }[]>([]);
 
+  // Demo Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
+
   // Sync with localStorage for seamless developer testing across page refreshes
   useEffect(() => {
     try {
+      const savedAuth = localStorage.getItem("sp_demo_auth");
+      if (savedAuth === "true") {
+        setIsAuthenticated(true);
+      }
+      setAuthChecked(true);
+
       const savedEv = localStorage.getItem("sp_evidence_items");
       if (savedEv) setEvidenceItems(JSON.parse(savedEv));
       const savedSrc = localStorage.getItem("sp_sources");
@@ -338,6 +354,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       const savedRoleId = localStorage.getItem("sp_selected_role_id");
       if (savedRoleId) setSelectedRoleIdState(savedRoleId);
     } catch {
+      setAuthChecked(true);
       // Ignore local storage read errors
     }
   }, []);
@@ -1027,6 +1044,72 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Demo Authentication Handlers
+  const loginDemo = (role: DemoRole = "employee", userOverrides?: Partial<UserProfile>) => {
+    setIsAuthenticated(true);
+    setDemoRole(role);
+    try {
+      localStorage.setItem("sp_demo_auth", "true");
+      localStorage.setItem("sp_demo_role", role);
+    } catch {}
+
+    if (role === "employee") {
+      setUserProfile((prev) => ({
+        ...prev,
+        displayName: "Alex Rivera",
+        headline: "Senior Software Engineer & Data Intelligence Specialist",
+        currentRole: "Senior Software Engineer",
+        contactEmail: "alex.rivera@growthlens.io",
+        avatarInitials: "AR",
+        ...userOverrides,
+      }));
+    } else if (role === "manager") {
+      setUserProfile((prev) => ({
+        ...prev,
+        displayName: "Elena Rostova",
+        headline: "Engineering Director · Talent Strategy & Performance",
+        currentRole: "Engineering Director",
+        contactEmail: "elena.rostova@growthlens.io",
+        avatarInitials: "ER",
+        ...userOverrides,
+      }));
+    } else if (role === "recruiter") {
+      setUserProfile((prev) => ({
+        ...prev,
+        displayName: "Marcus Vance",
+        headline: "Principal Talent Partner & Technical Recruiter",
+        currentRole: "Technical Recruiter",
+        contactEmail: "marcus.vance@growthlens.io",
+        avatarInitials: "MV",
+        ...userOverrides,
+      }));
+    } else if (role === "auditor") {
+      setUserProfile((prev) => ({
+        ...prev,
+        displayName: "Dr. Sarah Chen",
+        headline: "Chief AI Ethics & Verification Auditor",
+        currentRole: "AI Governance Officer",
+        contactEmail: "sarah.chen@growthlens.io",
+        avatarInitials: "SC",
+        ...userOverrides,
+      }));
+    }
+
+    addToast(
+      "Demo Access Granted",
+      `Signed in as ${userOverrides?.displayName || (role === "employee" ? "Alex Rivera" : role === "manager" ? "Elena Rostova" : role === "recruiter" ? "Marcus Vance" : "Dr. Sarah Chen")}. SkillPassport unlocked!`,
+      "success"
+    );
+  };
+
+  const logoutDemo = () => {
+    setIsAuthenticated(false);
+    try {
+      localStorage.removeItem("sp_demo_auth");
+    } catch {}
+    addToast("Signed Out", "Demo session ended. Sign in anytime to regain access.", "info");
+  };
+
   // Activity handler
   const addUnifiedActivity = (act: Omit<UnifiedActivityEvent, "id">) => {
     const newAct: UnifiedActivityEvent = {
@@ -1370,6 +1453,12 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         mobileSidebarOpen,
         setMobileSidebarOpen,
         toggleMobileSidebar,
+
+        // Demo Authentication State
+        isAuthenticated,
+        authChecked,
+        loginDemo,
+        logoutDemo,
       }}
     >
       {children}

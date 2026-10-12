@@ -6,9 +6,11 @@ import SPHeader from "@/components/layout/SPHeader";
 import { User, Users, ArrowRight, Loader2, Info } from "lucide-react";
 
 import { useRouter } from "next/navigation";
+import { useEvidence } from "@/context/EvidenceContext";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { loginDemo } = useEvidence();
   const [role, setRole] = useState<"EMPLOYEE" | "MANAGER">("EMPLOYEE");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +36,11 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+
+    loginDemo(role === "MANAGER" ? "manager" : "employee", {
+      displayName: fullName || "New Demo User",
+      contactEmail: email || "user@example.com",
+    });
 
     // Direct user straight to Domain 1 Evidence Workspace
     setTimeout(() => {

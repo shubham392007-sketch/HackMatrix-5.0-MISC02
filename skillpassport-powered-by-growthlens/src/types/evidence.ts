@@ -1,3 +1,5 @@
+export type { DemoRole } from "./ai";
+
 export type SourceType =
   | "github"
   | "jira"

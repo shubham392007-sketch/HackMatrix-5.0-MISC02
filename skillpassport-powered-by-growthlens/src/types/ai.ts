@@ -1,4 +1,4 @@
-export type DemoRole = "employee" | "reviewer" | "admin";
+export type DemoRole = "employee" | "reviewer" | "admin" | "manager" | "recruiter" | "auditor";
 
 export type AnalysisStatus = "completed" | "partial" | "failed" | "processing";
 

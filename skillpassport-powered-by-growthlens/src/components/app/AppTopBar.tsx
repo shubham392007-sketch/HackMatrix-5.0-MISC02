@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   ArrowLeft,
@@ -48,6 +48,7 @@ export default function AppTopBar({
   children,
 }: AppTopBarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     currentRole,
     setDemoRole,
@@ -57,6 +58,7 @@ export default function AppTopBar({
     markNotificationRead,
     toasts,
     removeToast,
+    logoutDemo,
   } = useEvidence();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -365,14 +367,18 @@ export default function AppTopBar({
               </div>
 
               <div className="pt-1 border-t border-ink/10">
-                <Link
-                  href="/"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-rose-700 hover:bg-rose-50 font-medium transition-colors"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    logoutDemo();
+                    router.push("/login");
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-rose-700 hover:bg-rose-50 font-bold transition-colors text-left"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Exit to Public Portal</span>
-                </Link>
+                  <span>Demo Sign Out</span>
+                </button>
               </div>
             </div>
           )}
