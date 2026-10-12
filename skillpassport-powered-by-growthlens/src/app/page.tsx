@@ -20,8 +20,10 @@ import {
   Users,
   Compass,
 } from "lucide-react";
+import { useEvidence } from "@/context/EvidenceContext";
 
 export default function LandingPage() {
+  const { isAuthenticated } = useEvidence();
   return (
     <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
       <SPHeader />
@@ -115,7 +117,7 @@ export default function LandingPage() {
               {/* Dual CTA Buttons */}
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
                 <Link
-                  href="/app/evidence"
+                  href={isAuthenticated ? "/app/evidence" : "/login?redirect=/app/onboarding"}
                   className="bg-[#F6BB84] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:opacity-95 transition-all shadow-[3px_3px_0px_#1C1C1C] hover:translate-y-[-1px]"
                 >
                   ENTER EVIDENCE CENTER
