@@ -23,7 +23,7 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 
 export default function LandingPage() {
-  const { isAuthenticated } = useEvidence();
+  const { isAuthenticated, logoutDemo } = useEvidence();
   return (
     <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
       <SPHeader />
@@ -123,12 +123,21 @@ export default function LandingPage() {
                   ENTER EVIDENCE CENTER
                   <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  href="/features"
-                  className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1C1C1C]/5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
-                >
-                  EXPLORE 4 CAPABILITIES →
-                </Link>
+                {isAuthenticated ? (
+                  <button
+                    onClick={logoutDemo}
+                    className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-6 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1C1C1C]/5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
+                  >
+                    SIGN OUT / SWITCH DEMO
+                  </button>
+                ) : (
+                  <Link
+                    href="/login?redirect=/app/onboarding"
+                    className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1C1C1C]/5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
+                  >
+                    DEMO SIGN IN →
+                  </Link>
+                )}
               </div>
             </div>
 

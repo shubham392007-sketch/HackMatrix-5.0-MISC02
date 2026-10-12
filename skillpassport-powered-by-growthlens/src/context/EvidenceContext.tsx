@@ -320,12 +320,17 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
 
-  // Sync with localStorage for seamless developer testing across page refreshes
+  // Sync with sessionStorage for developer testing without persistent lockout
   useEffect(() => {
     try {
-      const savedAuth = localStorage.getItem("sp_demo_auth");
-      if (savedAuth === "true") {
+      // Clear legacy permanent localStorage flag to ensure visitors must perform sign-in
+      localStorage.removeItem("sp_demo_auth");
+
+      const sessionAuth = sessionStorage.getItem("sp_session_auth");
+      if (sessionAuth === "true") {
         setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
       }
       setAuthChecked(true);
 
@@ -1049,8 +1054,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
     setDemoRole(role);
     try {
-      localStorage.setItem("sp_demo_auth", "true");
-      localStorage.setItem("sp_demo_role", role);
+      sessionStorage.setItem("sp_session_auth", "true");
+      sessionStorage.setItem("sp_demo_role", role);
+      localStorage.removeItem("sp_demo_auth");
     } catch {}
 
     if (role === "employee") {
@@ -1105,6 +1111,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const logoutDemo = () => {
     setIsAuthenticated(false);
     try {
+      sessionStorage.removeItem("sp_session_auth");
+      sessionStorage.removeItem("sp_demo_role");
       localStorage.removeItem("sp_demo_auth");
     } catch {}
     addToast("Signed Out", "Demo session ended. Sign in anytime to regain access.", "info");

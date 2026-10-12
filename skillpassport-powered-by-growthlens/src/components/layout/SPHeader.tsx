@@ -17,7 +17,7 @@ const publicNav = [
 export default function SPHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isAuthenticated } = useEvidence();
+  const { isAuthenticated, logoutDemo } = useEvidence();
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C]">
@@ -69,13 +69,22 @@ export default function SPHeader() {
         {/* Right CTA Area */}
         <div className="hidden sm:flex items-center gap-3">
           {isAuthenticated ? (
-            <Link
-              href="/app/evidence"
-              className="bg-[#DFE968] hover:bg-[#d6e058] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
-            >
-              <span>ENTER WORKSPACE</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <>
+              <Link
+                href="/app/evidence"
+                className="bg-[#DFE968] hover:bg-[#d6e058] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
+              >
+                <span>ENTER WORKSPACE</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                onClick={logoutDemo}
+                className="bg-transparent border border-[#1C1C1C] text-[#1C1C1C] text-[10px] font-bold tracking-[0.08em] uppercase px-3 py-1.5 rounded-full hover:bg-[#1C1C1C]/5 transition-all"
+                title="Sign out of current demo session"
+              >
+                SIGN OUT
+              </button>
+            </>
           ) : (
             <>
               <Link
@@ -85,10 +94,10 @@ export default function SPHeader() {
                 SIGN IN
               </Link>
               <Link
-                href="/signup"
-                className="bg-[#1C1C1C] text-[#FBF1CF] text-[11px] font-bold tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 hover:opacity-90 transition-all shadow-[2px_2px_0px_#1C1C1C]"
+                href="/login?redirect=/app/onboarding"
+                className="bg-[#DFE968] hover:bg-[#d6e058] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
               >
-                GET STARTED
+                <span>ENTER WORKSPACE</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </>
@@ -128,13 +137,24 @@ export default function SPHeader() {
 
           <div className="pt-3 border-t border-[#1C1C1C]/20 flex gap-2">
             {isAuthenticated ? (
-              <Link
-                href="/app/evidence"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 text-center py-2.5 text-xs font-black uppercase bg-[#DFE968] border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1.5"
-              >
-                Enter Workspace <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <>
+                <Link
+                  href="/app/evidence"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex-1 text-center py-2.5 text-xs font-black uppercase bg-[#DFE968] border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1.5"
+                >
+                  Enter Workspace <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <button
+                  onClick={() => {
+                    logoutDemo();
+                    setMobileOpen(false);
+                  }}
+                  className="py-2.5 px-3 text-xs font-bold uppercase border border-[#1C1C1C] rounded-full hover:bg-[#1C1C1C]/5"
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
               <>
                 <Link
@@ -145,11 +165,11 @@ export default function SPHeader() {
                   Sign In
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/login?redirect=/app/onboarding"
                   onClick={() => setMobileOpen(false)}
-                  className="flex-1 text-center py-2 text-xs font-black uppercase bg-[#1C1C1C] text-[#FBF1CF] rounded-full"
+                  className="flex-1 text-center py-2 text-xs font-black uppercase bg-[#DFE968] border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1"
                 >
-                  Get Started
+                  Enter Workspace <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </>
             )}
