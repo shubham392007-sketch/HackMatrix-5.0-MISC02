@@ -137,17 +137,20 @@ export default function AppTopBar({
       crumbs.push({ label: "Settings & Access", href: "/app/settings" });
     }
 
-    crumbs.push({ label: title });
+    if (title) {
+      const shortTitle = title.length > 26 ? title.slice(0, 24) + "…" : title;
+      crumbs.push({ label: shortTitle });
+    }
     return crumbs;
   }, [breadcrumbs, pathname, title]);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FBF1CF]/95 backdrop-blur-sm border-b-[1.5px] border-[#1C1C1C] px-4 sm:px-6 lg:px-10 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+    <header className="sticky top-0 z-40 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C] px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden shadow-xs">
       {/* Left side: Breadcrumbs, Back, Title */}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         {/* Breadcrumb Navigation */}
         {resolvedBreadcrumbs && resolvedBreadcrumbs.length > 0 ? (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-bold text-ink/70 mb-1 flex-wrap">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[10.5px] font-bold text-ink/70 mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
             {resolvedBreadcrumbs.map((crumb, idx) => {
               const isLast = idx === resolvedBreadcrumbs.length - 1;
               return (
@@ -155,12 +158,12 @@ export default function AppTopBar({
                   {crumb.href && !isLast ? (
                     <Link
                       href={crumb.href}
-                      className="hover:text-ink hover:underline transition-colors"
+                      className="hover:text-ink hover:underline transition-colors shrink-0"
                     >
                       {crumb.label}
                     </Link>
                   ) : (
-                    <span className={isLast ? "text-ink font-extrabold" : ""}>
+                    <span className={`truncate ${isLast ? "text-ink font-extrabold" : "shrink-0"}`}>
                       {crumb.label}
                     </span>
                   )}
@@ -172,36 +175,39 @@ export default function AppTopBar({
         ) : backHref ? (
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 hover:text-[#1C1C1C] mb-1 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 hover:text-[#1C1C1C] mb-0.5 transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             <span>{backLabel || "Back"}</span>
           </Link>
         ) : null}
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
           <h1
-            className="text-2xl sm:text-3xl text-[#1C1C1C] leading-tight font-normal"
+            className="text-xl sm:text-2xl text-[#1C1C1C] leading-none font-normal whitespace-nowrap truncate"
             style={{ fontFamily: "'Yellowtail', cursive" }}
           >
             {title}
           </h1>
           {badge !== "" && (
-            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0 ${badgeColor || "bg-[#DFE968]"}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0 whitespace-nowrap ${badgeColor || "bg-[#DFE968]"}`}>
               {badge || "DEMO DATA"}
             </span>
           )}
         </div>
 
         {description && (
-          <p className="text-xs font-medium text-[#1C1C1C]/75 mt-0.5 max-w-2xl line-clamp-1 sm:line-clamp-none">
+          <p
+            className="text-[11px] sm:text-xs font-medium text-[#1C1C1C]/75 mt-0.5 max-w-2xl line-clamp-1"
+            title={description}
+          >
             {description}
           </p>
         )}
       </div>
 
       {/* Right side: Global Actions & Controls */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-nowrap">
         {/* Interactive Demo Role Switcher in Header */}
         <div className="hidden sm:inline-flex items-center gap-1 p-1 bg-white/90 rounded-full border border-ink/20 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
           <span className="text-[9px] font-black uppercase text-ink/60 px-2">ROLE:</span>

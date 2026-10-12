@@ -56,23 +56,23 @@ export default function PassportPreviewPage() {
     <div className="flex-1 flex flex-col">
       <AppTopBar
         title="Passport Preview"
-        description="Candidate Live Preview: Inspect the exact projection recruiters and hiring managers will see before sharing."
+        description="Inspect the exact projection recruiters and hiring managers will see before sharing."
         badge="Domain 6 · Recruiter Preview"
         badgeColor="border-peach/40 text-ink bg-peach/20"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/app/passport/permissions"
-            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1"
+            className="pill-btn pill-btn-ghost text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Edit Sharing Settings
+            <SlidersHorizontal className="w-3 h-3" />
+            <span>Settings</span>
           </Link>
           <Link
             href="/app/passport/share"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1"
+            className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
           >
-            Continue to Share &rarr;
+            <span>Share &rarr;</span>
           </Link>
         </div>
       </AppTopBar>

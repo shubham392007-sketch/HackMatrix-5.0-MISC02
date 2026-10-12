@@ -13,8 +13,14 @@ export default function WorkspaceLayout({
         {/* Persistent App Sidebar on Desktop & Slide-out Drawer on Mobile/Tablet */}
         <AppSidebar />
 
-        {/* Main Workspace Scroll Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#FBF1CF] h-screen max-h-screen overflow-y-auto custom-scrollbar">
+        {/* Main Workspace Scroll Area with Home Screen Background */}
+        <main
+          className="flex-1 flex flex-col min-w-0 h-screen max-h-screen overflow-y-auto custom-scrollbar"
+          style={{
+            background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
+            backgroundAttachment: "fixed",
+          }}
+        >
           {/* Mobile / Tablet Top Navigation Bar (Hidden on lg and wider) */}
           <MobileTopNav />
 

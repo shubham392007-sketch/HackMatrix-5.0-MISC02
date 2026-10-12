@@ -146,14 +146,14 @@ export default function SharePassportWizardPage() {
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title="Create a Shareable Skill Passport"
+        title="Create Shareable Passport"
         description="Configure what recruiters can see, set optional expiration, and generate a selective access link."
-        badge="Domain 6 · Sharing Setup Wizard"
+        badge="Domain 6 · Sharing Wizard"
         badgeColor="border-peach/40 text-ink bg-peach/20"
       >
         <Link
           href="/app/passport/sharing"
-          className="pill-btn pill-btn-ghost text-xs"
+          className="pill-btn pill-btn-ghost text-[11px] py-1.5 px-3 shrink-0"
         >
           Cancel
         </Link>

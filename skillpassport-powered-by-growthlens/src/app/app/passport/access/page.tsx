@@ -65,16 +65,16 @@ export default function SharedAccessManagementPage() {
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title="Shared Access & Link Management"
-        description="Monitor all issued demo links, review recruiter access counts, and instantly revoke permissions. Revoking a link terminates public access immediately."
-        badge="DOMAIN 6 · ACCESS LIFECYCLE MANAGEMENT"
-        badgeColor="peach"
+        title="Shared Access Links"
+        description="Monitor issued demo links, review recruiter access counts, and instantly revoke permissions."
+        badge="Domain 6 · Access"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
       >
         <Link
           href="/app/passport/share"
-          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+          className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
         >
-          + Create New Share Link
+          + Create Link
         </Link>
       </AppTopBar>
 

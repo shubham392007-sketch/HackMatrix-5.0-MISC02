@@ -60,23 +60,17 @@ export default function PassportExportPage() {
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title="Print & Export Skill Passport"
-        description="Clean, high-fidelity PDF / print layout containing only your authorized verified capabilities."
-        badge="DOMAIN 6 · EXPORT & VERIFICATION SNAPSHOT"
-        badgeColor="peach"
+        title="Print & Export Passport"
+        description="Clean, high-fidelity PDF / print layout containing only authorized verified capabilities."
+        badge="Domain 6 · Export"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
       >
-        <Link
-          href="/app/passport/permissions"
-          className="pill-btn pill-btn-ghost text-xs"
-        >
-          Adjust Export Content
-        </Link>
         <button
           onClick={handlePrint}
-          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 shadow-sm"
+          className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shadow-sm shrink-0"
         >
-          <Printer className="w-3.5 h-3.5" />
-          Print to PDF / Paper
+          <Printer className="w-3 h-3" />
+          <span>Print / PDF</span>
         </button>
       </AppTopBar>
 

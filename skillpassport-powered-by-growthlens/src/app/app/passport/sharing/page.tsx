@@ -49,24 +49,24 @@ export default function PassportSharingOverviewPage() {
     <div className="flex-1 flex flex-col">
       <AppTopBar
         title="Share Demonstrated Capabilities"
-        description="Give recruiters a clear view of your verified skills and the evidence that supports them. You decide what to share, configure optional expiry dates, and revoke access instantly."
+        description="Configure selective recruiter access, preview candidate projections, and manage live links."
         badge="Domain 6 · Recruiter Experience"
         badgeColor="border-peach/40 text-ink bg-peach/20"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/app/passport/preview"
-            className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-ghost text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
           >
-            <Eye className="w-3.5 h-3.5" />
-            Preview Passport
+            <Eye className="w-3 h-3" />
+            <span>Preview</span>
           </Link>
           <Link
             href="/app/passport/share"
-            className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+            className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
           >
-            <Link2 className="w-3.5 h-3.5" />
-            Create Share Link &rarr;
+            <Link2 className="w-3 h-3" />
+            <span>Create Link &rarr;</span>
           </Link>
         </div>
       </AppTopBar>

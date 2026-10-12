@@ -105,32 +105,27 @@ export default function SharingPermissionsPage() {
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title="Sharing Permissions & Data Disclosure"
-        description="Define the default boundary for what recruiters can inspect. Changes here calibrate your baseline sharing settings and update the preview projection."
-        badge="DOMAIN 6 · SHARING PERMISSION GOVERNANCE"
-        badgeColor="peach"
+        title="Sharing Permissions"
+        description="Calibrate baseline data disclosure rules and visibility policies for external links."
+        badge="Domain 6 · Permissions"
+        badgeColor="border-peach/40 text-ink bg-peach/20"
       >
-        <button
-          onClick={handleReset}
-          className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          Reset to Defaults
-        </button>
-        <Link
-          href="/app/passport/preview"
-          className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          Preview Changes
-        </Link>
-        <button
-          onClick={handleSave}
-          className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
-        >
-          <Save className="w-3.5 h-3.5" />
-          {savedSuccess ? "Saved Settings!" : "Save Settings"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleReset}
+            className="pill-btn pill-btn-ghost text-[11px] py-1.5 px-2.5 flex items-center gap-1 shrink-0"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset</span>
+          </button>
+          <button
+            onClick={handleSave}
+            className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
+          >
+            <Save className="w-3 h-3" />
+            <span>{savedSuccess ? "Saved!" : "Save"}</span>
+          </button>
+        </div>
       </AppTopBar>
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
