@@ -78,7 +78,7 @@ export default function WhyThisGapDetailPage() {
     <div className="flex-1 flex flex-col">
       <AppTopBar
         title={`Why This Gap: ${gap.canonical_name}`}
-        description={`Role: ${gap.role_title} • Target: ${gap.target_proficiency_level} • Current: ${gap.current_proficiency_level || "None"}`}
+        description={`Role: ${gap.role_title} • Target: ${gap.expected_level} • Current: ${gap.current_supported_level || "None"}`}
         badge={gap.gap_type.replace(/_/g, " ").toUpperCase()}
       >
         <Link
