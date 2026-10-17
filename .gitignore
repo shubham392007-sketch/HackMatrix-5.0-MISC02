@@ -56,3 +56,9 @@ frontend/node_modules/
 .next/
 frontend/.next/
 frontend/out/
+*.tsbuildinfo
+
+# Temporary scratch & vault files
+temp_prompt.txt
+temp_full_prompt.txt
+skillpassport-powered-by-growthlens/backend/data/

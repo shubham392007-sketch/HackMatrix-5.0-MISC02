@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import { UserProfile } from "@/types/account";
 import { ConfirmationModal } from "@/components/app/AppStates";
 import {
@@ -25,6 +26,7 @@ import {
 
 export default function ProfileSettingsPage() {
   const { userProfile, updateUserProfile } = useEvidence();
+  const { profile, updateProfile } = useAuth();
 
   const [formData, setFormData] = useState<UserProfile>(userProfile);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -32,8 +34,20 @@ export default function ProfileSettingsPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    setFormData(userProfile);
-  }, [userProfile]);
+    if (profile) {
+      setFormData((prev) => ({
+        ...prev,
+        displayName: profile.display_name || prev.displayName,
+        contactEmail: profile.email || prev.contactEmail,
+        currentRole: profile.job_title || profile.current_role || prev.currentRole,
+        headline: profile.headline || prev.headline,
+        organization: profile.department_or_team || prev.organization,
+        summary: profile.professional_summary || prev.summary,
+      }));
+    } else {
+      setFormData(userProfile);
+    }
+  }, [profile, userProfile]);
 
   const handleChange = (
     field: keyof UserProfile,
@@ -65,7 +79,7 @@ export default function ProfileSettingsPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -81,6 +95,17 @@ export default function ProfileSettingsPage() {
       ...formData,
       avatarInitials: initials,
     });
+
+    if (updateProfile) {
+      await updateProfile({
+        display_name: formData.displayName,
+        headline: formData.headline,
+        job_title: formData.currentRole,
+        department_or_team: formData.organization,
+        professional_summary: formData.summary,
+      });
+    }
+
     setHasUnsavedChanges(false);
   };
 

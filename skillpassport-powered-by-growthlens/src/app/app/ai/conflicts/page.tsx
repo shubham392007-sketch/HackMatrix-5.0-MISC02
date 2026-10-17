@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
@@ -22,13 +22,19 @@ import {
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
 import { ConflictRecord } from "@/types/ai";
-import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 
 export default function EvidenceConflictsPage() {
   const { conflicts, updateConflict, addAIAuditEvent, currentRole } = useEvidence();
   const [selectedConflictId, setSelectedConflictId] = useState<string>(
-    conflicts[0]?.id || "conf-01"
+    conflicts[0]?.id || ""
   );
+
+  useEffect(() => {
+    if (!selectedConflictId && conflicts.length > 0) {
+      setSelectedConflictId(conflicts[0].id);
+    }
+  }, [conflicts, selectedConflictId]);
+
   const [filterType, setFilterType] = useState<string>("all");
   const [resolutionNote, setResolutionNote] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -55,9 +61,9 @@ export default function EvidenceConflictsPage() {
   ) => {
     const actorName =
       currentRole === "admin"
-        ? "Demo Administrator"
+        ? "Administrator"
         : currentRole === "reviewer"
-        ? "Authorized Reviewer (Jordan Blake)"
+        ? "Authorized Reviewer"
         : "Employee (Self-Resolution)";
 
     updateConflict(conflict.id, {
@@ -89,7 +95,7 @@ export default function EvidenceConflictsPage() {
   const handleMarkInsufficient = (conflict: ConflictRecord) => {
     const actorName =
       currentRole === "admin"
-        ? "Demo Administrator"
+        ? "Administrator"
         : currentRole === "reviewer"
         ? "Authorized Reviewer"
         : "Employee";
@@ -194,6 +200,23 @@ export default function EvidenceConflictsPage() {
       </div>
 
       {/* Main Grid: Left List + Right Side-by-Side Review */}
+      {conflicts.length === 0 ? (
+        <div className="gl-card p-12 text-center bg-white border border-dashed border-ink/20 rounded-2xl">
+          <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-ink">Zero Evidence Contradictions Detected</h3>
+          <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
+            All ingested evidence sources are currently in consensus. When conflicting attribution, co-authorship disputes, or opposing proficiency signals arise across multiple artifacts, they will be quarantined here for adjudication.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/app/evidence" className="pill-btn pill-btn-primary text-xs py-2 px-5">
+              Ingest Work Artifacts &rarr;
+            </Link>
+            <Link href="/app/ai" className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-5">
+              Return to AI Overview
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Conflict Selector List */}
         <div className="lg:col-span-5 space-y-4">
@@ -231,18 +254,23 @@ export default function EvidenceConflictsPage() {
           </div>
 
           <div className="space-y-3">
-            {filteredConflicts.map((c) => {
-              const isSelected = c.id === selectedConflictId;
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => setSelectedConflictId(c.id)}
-                  className={`gl-card p-4 cursor-pointer transition-all border ${
-                    isSelected
-                      ? "ring-2 ring-ink border-ink bg-white shadow-md"
-                      : "bg-white/80 hover:bg-white border-ink/10"
-                  }`}
-                >
+            {filteredConflicts.length === 0 ? (
+              <div className="gl-card p-6 text-center text-ink-muted text-xs bg-white">
+                No conflicts match the &ldquo;{filterType}&rdquo; filter.
+              </div>
+            ) : (
+              filteredConflicts.map((c) => {
+                const isSelected = c.id === selectedConflictId;
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelectedConflictId(c.id)}
+                    className={`gl-card p-4 cursor-pointer transition-all border ${
+                      isSelected
+                        ? "ring-2 ring-ink border-ink bg-white shadow-md"
+                        : "bg-white/80 hover:bg-white border-ink/10"
+                    }`}
+                  >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="text-[11px] font-mono uppercase px-2 py-0.5 rounded bg-ink/5 text-ink-muted">
                       {c.conflict_type.replace("_", " ")}
@@ -278,7 +306,7 @@ export default function EvidenceConflictsPage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 
@@ -469,6 +497,7 @@ export default function EvidenceConflictsPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   </div>
   );

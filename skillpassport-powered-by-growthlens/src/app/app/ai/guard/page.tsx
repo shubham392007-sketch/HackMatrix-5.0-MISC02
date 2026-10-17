@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ShieldAlert,
@@ -23,23 +23,28 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 import { GuardClaimResult, GuardOutcome } from "@/types/ai";
 import {
-  DemoDataNotice,
-  DemoRoleSelector,
   GuardOutcomeBadge,
 } from "@/components/app/AIBadges";
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function HallucinationGuardPage() {
-  const { guardResults, updateGuardResult, addAIAuditEvent, currentRole } =
+  const { guardResults, updateGuardResult, addAIAuditEvent, currentRole, evidenceItems } =
     useEvidence();
   const [filterOutcome, setFilterOutcome] = useState<string>("ALL");
   const [selectedClaimId, setSelectedClaimId] = useState<string>(
-    guardResults[0]?.id || "grd-01"
+    guardResults[0]?.id || ""
   );
+
+  useEffect(() => {
+    if (!selectedClaimId && guardResults.length > 0) {
+      setSelectedClaimId(guardResults[0].id);
+    }
+  }, [guardResults, selectedClaimId]);
+
   const [simClaimTitle, setSimClaimTitle] = useState("");
   const [simSkill, setSimSkill] = useState("skill-python");
   const [simLevel, setSimLevel] = useState("Practitioner");
-  const [simEvidenceId, setSimEvidenceId] = useState("ev-01");
+  const [simEvidenceId, setSimEvidenceId] = useState("none");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const selectedClaim =
@@ -246,52 +251,75 @@ export default function HallucinationGuardPage() {
           </div>
 
           <div className="space-y-3">
-            {filteredResults.map((item) => {
-              const isSelected = item.id === selectedClaimId;
-              const passedChecksCount = Object.values(item.checks).filter(Boolean).length;
+            {guardResults.length === 0 ? (
+              <div className="gl-card p-6 text-center text-ink-muted text-xs bg-white space-y-2 border border-dashed border-ink/20">
+                <ShieldAlert className="w-8 h-8 text-ink-muted mx-auto opacity-50" />
+                <p className="font-semibold text-ink">No Evaluated Guard Records Yet</p>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  GrowthLens executes deterministic verification checks whenever candidate skills are extracted. You can also run an adversarial probe using the Live Guard Test Sandbox below.
+                </p>
+              </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="gl-card p-6 text-center text-ink-muted text-xs bg-white">
+                No claims match the &ldquo;{filterOutcome}&rdquo; filter.
+              </div>
+            ) : (
+              filteredResults.map((item) => {
+                const isSelected = item.id === selectedClaimId;
+                const passedChecksCount = Object.values(item.checks).filter(Boolean).length;
 
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedClaimId(item.id)}
-                  className={`gl-card p-4 cursor-pointer transition-all border ${
-                    isSelected
-                      ? "ring-2 ring-ink border-ink bg-white shadow-md"
-                      : "bg-white/80 hover:bg-white border-ink/10"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-mono text-ink-muted">{item.id}</span>
-                    <GuardOutcomeBadge outcome={item.guard_outcome} />
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedClaimId(item.id)}
+                    className={`gl-card p-4 cursor-pointer transition-all border ${
+                      isSelected
+                        ? "ring-2 ring-ink border-ink bg-white shadow-md"
+                        : "bg-white/80 hover:bg-white border-ink/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[11px] font-mono text-ink-muted">{item.id}</span>
+                      <GuardOutcomeBadge outcome={item.guard_outcome} />
+                    </div>
+
+                    <h4 className="text-sm font-bold text-ink">{item.claim_title}</h4>
+                    <p className="text-xs text-ink-muted mt-1 font-mono">
+                      Skill: {item.associated_skill} &bull; Claimed: {item.claimed_level}
+                    </p>
+
+                    <div className="mt-3 pt-2.5 border-t border-ink/5 flex items-center justify-between text-[11px] font-mono">
+                      <span
+                        className={`${
+                          passedChecksCount === 7
+                            ? "text-emerald-700"
+                            : passedChecksCount < 4
+                            ? "text-red-700"
+                            : "text-amber-700"
+                        } font-semibold`}
+                      >
+                        {passedChecksCount}/7 Checks Passed
+                      </span>
+                      <span className="text-ink-muted">Code: {item.reason_code}</span>
+                    </div>
                   </div>
-
-                  <h4 className="text-sm font-bold text-ink">{item.claim_title}</h4>
-                  <p className="text-xs text-ink-muted mt-1 font-mono">
-                    Skill: {item.associated_skill} &bull; Claimed: {item.claimed_level}
-                  </p>
-
-                  <div className="mt-3 pt-2.5 border-t border-ink/5 flex items-center justify-between text-[11px] font-mono">
-                    <span
-                      className={`${
-                        passedChecksCount === 7
-                          ? "text-emerald-700"
-                          : passedChecksCount < 4
-                          ? "text-red-700"
-                          : "text-amber-700"
-                      } font-semibold`}
-                    >
-                      {passedChecksCount}/7 Checks Passed
-                    </span>
-                    <span className="text-ink-muted">Code: {item.reason_code}</span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* Right Side: Detailed Check Results & Testing Simulator */}
         <div className="lg:col-span-7 space-y-6">
+          {!selectedClaim && (
+            <div className="gl-card p-8 text-center text-ink-muted text-xs bg-white space-y-2 border border-dashed border-ink/20">
+              <ShieldCheck className="w-8 h-8 text-ink mx-auto opacity-50" />
+              <p className="font-semibold text-ink">No Claim Selected</p>
+              <p className="text-[11px] text-ink-muted">
+                Run a test claim in the sandbox below to inspect the 7 deterministic verification checks.
+              </p>
+            </div>
+          )}
           {/* Selected Claim Audit Drawer */}
           {selectedClaim && (
             <div className="gl-card p-6 bg-white space-y-6">
@@ -461,12 +489,13 @@ export default function HallucinationGuardPage() {
                     onChange={(e) => setSimEvidenceId(e.target.value)}
                     className="pill-input w-full text-xs font-mono"
                   >
-                    <option value="ev-01">ev-01 (GitHub Repo #main)</option>
-                    <option value="ev-02">ev-02 (Jira AGRI-142)</option>
-                    <option value="ev-03">ev-03 (Capstone PDF)</option>
-                    <option value="ev-04">ev-04 (Coursera Cert)</option>
                     <option value="none">None (Self-claim on Resume)</option>
-                    <option value="ev-fake-999">ev-fake-999 (Fabricated ID)</option>
+                    {evidenceItems.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.id.substring(0, 8)}... ({ev.title.substring(0, 30)})
+                      </option>
+                    ))}
+                    <option value="ev-fake-999">ev-fake-999 (Fabricated ID Probe)</option>
                   </select>
                 </div>
               </div>

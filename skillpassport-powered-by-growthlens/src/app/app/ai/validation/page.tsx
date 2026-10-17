@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
@@ -22,8 +22,6 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 import { OutputValidationRecord } from "@/types/ai";
 import {
-  DemoDataNotice,
-  DemoRoleSelector,
   ValidationStatusBadge,
 } from "@/components/app/AIBadges";
 
@@ -31,8 +29,15 @@ export default function AIOutputValidationPage() {
   const { validationRecords, updateValidationRecord, addAIAuditEvent, currentRole } =
     useEvidence();
   const [selectedRunId, setSelectedRunId] = useState<string>(
-    validationRecords[0]?.run_id || "val-01"
+    validationRecords[0]?.run_id || ""
   );
+
+  useEffect(() => {
+    if (!selectedRunId && validationRecords.length > 0) {
+      setSelectedRunId(validationRecords[0].run_id);
+    }
+  }, [validationRecords, selectedRunId]);
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -75,7 +80,7 @@ export default function AIOutputValidationPage() {
         previous_state: "validation_failed",
         new_state: "valid",
         reason: "Model regenerated JSON payload with strictly conforming schema and bounded confidence scores.",
-        actor: `${currentRole === "admin" ? "Admin" : "System Pipeline"}`,
+        actor: currentRole === "admin" ? "Administrator" : "System Pipeline",
         model_or_policy_version: "qwen-3-8b (prompt-retry-v2)",
         run_id: runId,
       });
@@ -133,6 +138,23 @@ export default function AIOutputValidationPage() {
       </div>
 
       {/* Main Grid: Runs List + Detailed Inspector */}
+      {validationRecords.length === 0 ? (
+        <div className="gl-card p-12 text-center bg-white border border-dashed border-ink/20 rounded-2xl">
+          <CheckCircle2 className="w-12 h-12 text-sky-600 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-ink">Zero Model Output Violations</h3>
+          <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
+            GrowthLens strictly quarantines raw model inference streams and validates them against Pydantic schemas and numerical boundary rules before candidate skills are accepted. When AI Work Analysis or Candidate Extraction jobs execute, schema conformance checks will be recorded here.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/app/ai/work-analysis" className="pill-btn pill-btn-primary text-xs py-2 px-5">
+              Run Work Analysis &rarr;
+            </Link>
+            <Link href="/app/ai" className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-5">
+              Return to AI Overview
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Runs List */}
         <div className="lg:col-span-5 space-y-4">
@@ -170,18 +192,23 @@ export default function AIOutputValidationPage() {
           </div>
 
           <div className="space-y-3">
-            {filteredRecords.map((r) => {
-              const isSelected = r.run_id === selectedRunId;
-              return (
-                <div
-                  key={r.run_id}
-                  onClick={() => setSelectedRunId(r.run_id)}
-                  className={`gl-card p-4 cursor-pointer transition-all border ${
-                    isSelected
-                      ? "ring-2 ring-ink border-ink bg-white shadow-md"
-                      : "bg-white/80 hover:bg-white border-ink/10"
-                  }`}
-                >
+            {filteredRecords.length === 0 ? (
+              <div className="gl-card p-6 text-center text-ink-muted text-xs bg-white">
+                No validation runs match the &ldquo;{statusFilter}&rdquo; filter.
+              </div>
+            ) : (
+              filteredRecords.map((r) => {
+                const isSelected = r.run_id === selectedRunId;
+                return (
+                  <div
+                    key={r.run_id}
+                    onClick={() => setSelectedRunId(r.run_id)}
+                    className={`gl-card p-4 cursor-pointer transition-all border ${
+                      isSelected
+                        ? "ring-2 ring-ink border-ink bg-white shadow-md"
+                        : "bg-white/80 hover:bg-white border-ink/10"
+                    }`}
+                  >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="text-[11px] font-mono text-ink-muted">{r.run_id}</span>
                     <ValidationStatusBadge status={r.status} />
@@ -207,7 +234,7 @@ export default function AIOutputValidationPage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 
@@ -321,6 +348,7 @@ export default function AIOutputValidationPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   </div>
   );

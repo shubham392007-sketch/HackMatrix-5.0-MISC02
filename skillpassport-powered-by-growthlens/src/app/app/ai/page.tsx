@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
-  DemoDataNotice,
   GuardOutcomeBadge,
 } from "@/components/app/AIBadges";
 import AppTopBar from "@/components/app/AppTopBar";
@@ -37,7 +36,11 @@ export default function AIOverviewPage() {
     validationRecords,
     reviewTasks,
     aiAuditEvents,
+    initialLoading,
+    isLoadingEvidence,
   } = useEvidence();
+
+  const isDataLoading = initialLoading || (isLoadingEvidence && workAnalyses.length === 0 && extractionCandidates.length === 0);
 
   const totalAnalyses = workAnalyses.length;
   const totalCandidates = extractionCandidates.length;
@@ -149,7 +152,22 @@ export default function AIOverviewPage() {
       </AppTopBar>
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 animate-fade-in pb-16 max-w-7xl w-full mx-auto">
-        <DemoDataNotice />
+        {!isDataLoading && totalAnalyses === 0 && totalCandidates === 0 && (
+          <div className="p-4 rounded-2xl bg-[#F7F4EC] border border-[#E0D9CD] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-[#4361EE] flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-[#1F1E1D]">No AI Analyses Executed Yet</p>
+                <p className="text-[11px] text-[#8C827A]">
+                  Ingest source documents or repositories in Evidence Workspace, then launch a Work Analysis pass to extract candidate skills.
+                </p>
+              </div>
+            </div>
+            <Link href="/app/evidence" className="pill-btn pill-btn-primary text-xs flex-shrink-0 self-start sm:self-auto">
+              Evidence Workspace →
+            </Link>
+          </div>
+        )}
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -158,7 +176,11 @@ export default function AIOverviewPage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Work Analyses</span>
             <Sparkles className="w-4 h-4 text-[#4361EE]" />
           </div>
-          <div className="text-3xl font-extrabold text-[#1F1E1D]">{totalAnalyses}</div>
+          {isDataLoading ? (
+            <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+          ) : (
+            <div className="text-3xl font-extrabold text-[#1F1E1D]">{totalAnalyses}</div>
+          )}
           <p className="text-xs text-[#8C827A] mt-1">Ingested source repositories</p>
         </div>
 
@@ -167,7 +189,11 @@ export default function AIOverviewPage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Candidate Skills</span>
             <Fingerprint className="w-4 h-4 text-[#8A38F5]" />
           </div>
-          <div className="text-3xl font-extrabold text-[#1F1E1D]">{totalCandidates}</div>
+          {isDataLoading ? (
+            <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+          ) : (
+            <div className="text-3xl font-extrabold text-[#1F1E1D]">{totalCandidates}</div>
+          )}
           <p className="text-xs text-[#8C827A] mt-1">Pending formal verification</p>
         </div>
 
@@ -176,7 +202,11 @@ export default function AIOverviewPage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Claims Blocked</span>
             <ShieldAlert className="w-4 h-4 text-[#BA1A1A]" />
           </div>
-          <div className="text-3xl font-extrabold text-[#BA1A1A]">{blockedCount}</div>
+          {isDataLoading ? (
+            <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+          ) : (
+            <div className="text-3xl font-extrabold text-[#BA1A1A]">{blockedCount}</div>
+          )}
           <p className="text-xs text-[#8C827A] mt-1">Zero evidence / fake IDs</p>
         </div>
 
@@ -185,7 +215,11 @@ export default function AIOverviewPage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Active Conflicts</span>
             <GitCompare className="w-4 h-4 text-[#B07219]" />
           </div>
-          <div className="text-3xl font-extrabold text-[#B07219]">{openConflicts}</div>
+          {isDataLoading ? (
+            <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+          ) : (
+            <div className="text-3xl font-extrabold text-[#B07219]">{openConflicts}</div>
+          )}
           <p className="text-xs text-[#8C827A] mt-1">Attribution / source clashes</p>
         </div>
       </div>
@@ -297,20 +331,26 @@ export default function AIOverviewPage() {
         </div>
 
         <div className="divide-y divide-[#F0EBE1]">
-          {aiAuditEvents.slice(0, 4).map((evt) => (
-            <div key={evt.id} className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-4 text-xs">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#1F1E1D]">{evt.actor}</span>
-                  <span className="text-[10px] text-[#8C827A]">• {evt.timestamp}</span>
-                </div>
-                <p className="text-xs text-[#5A5550] mt-0.5">{evt.reason}</p>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FAF8F5] text-[#1F1E1D] border border-[#EBE5DC] flex-shrink-0">
-                {evt.new_state}
-              </span>
+          {aiAuditEvents.length === 0 ? (
+            <div className="py-6 text-center text-xs text-[#8C827A]">
+              No governance events recorded yet. Extractions, verifications, and guard decisions will appear here in real time.
             </div>
-          ))}
+          ) : (
+            aiAuditEvents.slice(0, 4).map((evt) => (
+              <div key={evt.id} className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-4 text-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#1F1E1D]">{evt.actor}</span>
+                    <span className="text-[10px] text-[#8C827A]">• {evt.timestamp}</span>
+                  </div>
+                  <p className="text-xs text-[#5A5550] mt-0.5">{evt.reason}</p>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FAF8F5] text-[#1F1E1D] border border-[#EBE5DC] flex-shrink-0">
+                  {evt.new_state}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

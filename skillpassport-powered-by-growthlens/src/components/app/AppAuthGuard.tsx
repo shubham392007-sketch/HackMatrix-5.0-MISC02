@@ -3,8 +3,8 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEvidence } from "@/context/EvidenceContext";
-import { Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import LoadingAnimation from "@/components/ui/LoadingAnimation";
 
 export default function AppAuthGuard({
   children,
@@ -13,46 +13,67 @@ export default function AppAuthGuard({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, authChecked } = useEvidence();
+  const { isAuthenticated, isLoading, profile } = useAuth();
 
   useEffect(() => {
-    if (authChecked && !isAuthenticated) {
-      const target = pathname ? `/login?redirect=${encodeURIComponent(pathname)}` : "/login?redirect=/app/onboarding";
-      router.replace(target);
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        const target = pathname
+          ? `/login?redirect=${encodeURIComponent(pathname)}`
+          : "/login?redirect=/app/evidence";
+        router.replace(target);
+      } else {
+        // If user is authenticated and profile is loaded with incomplete onboarding, guide to onboarding wizard
+        const isOnboardingRoute = pathname === "/app/onboarding" || pathname === "/app/evidence/onboarding";
+        if (profile && profile.onboarding_status && profile.onboarding_status !== "completed" && !isOnboardingRoute) {
+          router.replace("/app/onboarding");
+        }
+      }
     }
-  }, [authChecked, isAuthenticated, pathname, router]);
+  }, [isLoading, isAuthenticated, profile, pathname, router]);
 
-  // Wait until localStorage auth check finishes to avoid hydration flicker
-  if (!authChecked) {
+  // Loading state while verifying Supabase session
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FBF1CF] flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]">
-        <div className="w-10 h-10 border-4 border-[#1C1C1C] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]/60">
-          INITIALIZING SKILLPASSPORT ···
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]"
+        style={{
+          background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
+          backgroundAttachment: "fixed",
+        }}
+      >
+        <LoadingAnimation size="lg" className="mb-2" />
+        <p className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
+          VERIFYING SUPABASE SESSION ···
         </p>
       </div>
     );
   }
 
-  // If not authenticated, require the user to sign in
+  // Unauthenticated screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#FBF1CF] flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]">
-        <Loader2 className="w-8 h-8 animate-spin mb-4 text-[#1C1C1C]" />
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]"
+        style={{
+          background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
+          backgroundAttachment: "fixed",
+        }}
+      >
+        <LoadingAnimation size="md" className="mb-2" />
         <h2 className="text-xl font-extrabold mb-1">Authentication Required</h2>
         <p className="text-xs font-bold text-[#1C1C1C]/60 uppercase tracking-wider mb-4">
-          Please sign in or sign up to access SkillPassport features ···
+          Please sign in to access your SkillPassport workspace
         </p>
         <Link
-          href={`/login?redirect=${encodeURIComponent(pathname || "/app/onboarding")}`}
+          href={`/login?redirect=${encodeURIComponent(pathname || "/app/evidence")}`}
           className="pill-btn pill-btn-primary text-xs"
         >
-          Go to Sign In / Sign Up →
+          Sign In or Sign Up →
         </Link>
       </div>
     );
   }
 
-  // Once authenticated, render children normally
   return <>{children}</>;
 }

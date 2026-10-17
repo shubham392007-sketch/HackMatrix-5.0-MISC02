@@ -1,140 +1,408 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
-import { Layers, Check, ShieldCheck, ArrowRight } from "lucide-react";
+import {
+  testJiraCredentials,
+  connectJira,
+  listJiraProjects,
+  updateSelectedJiraProjects,
+  triggerJiraSync,
+  disconnectSource,
+} from "@/lib/evidenceApi";
+import {
+  Layers,
+  Check,
+  ShieldCheck,
+  ArrowRight,
+  AlertCircle,
+  Key,
+  RefreshCw,
+  LogOut,
+  ExternalLink,
+  Lock,
+  Globe,
+  Mail,
+} from "lucide-react";
+import LoadingAnimation from "@/components/ui/LoadingAnimation";
 import Link from "next/link";
 
-const AVAILABLE_PROJECTS = [
-  { key: "AGRI", name: "Core Platform & Infrastructure", issues: 54 },
-  { key: "DATA", name: "Telemetry & Pipeline Stream", issues: 32 },
-  { key: "API", name: "External Gateway & Webhooks", issues: 18 },
-  { key: "QA", name: "Automated End-to-End Suite", issues: 11 },
-];
+interface JiraProjectItem {
+  id?: string;
+  key: string;
+  name: string;
+  projectTypeKey?: string;
+  url?: string;
+  selected?: boolean;
+}
 
 export default function JiraSourceFlow() {
-  const { sources, connectSource } = useEvidence();
-  const currentSource = sources.find((s) => s.type === "jira");
+  const { sources, refreshEvidenceData } = useEvidence();
+  const currentSource = sources.find((s) => s.type === "jira" && s.status === "connected");
 
-  const [selected, setSelected] = useState<string[]>(
-    currentSource?.selectedEntities || ["AGRI (Core Platform)", "DATA (Pipeline Stream)"]
-  );
+  const [siteUrl, setSiteUrl] = useState("");
+  const [email, setEmail] = useState("");
+  const [apiToken, setApiToken] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+
+  const [projects, setProjects] = useState<JiraProjectItem[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const toggleProject = (projectName: string) => {
-    if (selected.includes(projectName)) {
-      setSelected(selected.filter((p) => p !== projectName));
-    } else {
-      setSelected([...selected, projectName]);
+  useEffect(() => {
+    if (currentSource) {
+      loadProjects();
+    }
+  }, [currentSource?.id]);
+
+  const loadProjects = async () => {
+    setLoadingProjects(true);
+    setConnectError(null);
+    try {
+      const data = await listJiraProjects();
+      if (data && Array.isArray(data.projects)) {
+        setProjects(data.projects);
+      }
+    } catch (err: any) {
+      console.warn("Could not load Jira projects:", err);
+    } finally {
+      setLoadingProjects(false);
     }
   };
 
-  const handleSync = () => {
-    setSyncing(true);
-    setSuccessMessage(null);
-    setTimeout(() => {
-      connectSource("jira", selected);
-      setSyncing(false);
-      setSuccessMessage(
-        `SUCCESS: Synchronized ${selected.length} Jira projects into evidence library.`
-      );
-    }, 800);
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteUrl.trim() || !email.trim() || !apiToken.trim()) {
+      setConnectError("Please fill in your Atlassian Site URL, Email, and API Token.");
+      return;
+    }
+    setConnecting(true);
+    setConnectError(null);
+    setStatusMessage(null);
+
+    try {
+      // 1. Validate credentials with Jira Cloud API
+      await testJiraCredentials(siteUrl.trim(), email.trim(), apiToken.trim());
+
+      // 2. Connect and store encrypted credentials
+      await connectJira(siteUrl.trim(), email.trim(), apiToken.trim());
+
+      setApiToken("");
+      setStatusMessage("Jira connected successfully! Loading accessible projects...");
+      await refreshEvidenceData();
+      await loadProjects();
+    } catch (err: any) {
+      setConnectError(err.message || "Failed to validate or connect Jira Cloud credentials.");
+    } finally {
+      setConnecting(false);
+    }
   };
+
+  const toggleProject = (key: string) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.key === key ? { ...p, selected: !p.selected } : p))
+    );
+  };
+
+  const handleSaveAndSync = async () => {
+    setSyncing(true);
+    setStatusMessage(null);
+    setConnectError(null);
+
+    try {
+      const payload = projects.map((p) => ({
+        key: p.key,
+        name: p.name,
+        url: p.url,
+        selected: Boolean(p.selected),
+      }));
+
+      await updateSelectedJiraProjects(payload);
+      await triggerJiraSync();
+
+      const selectedCount = projects.filter((p) => p.selected).length;
+      setStatusMessage(`Sync triggered for ${selectedCount} Jira projects! Ingestion jobs queued.`);
+      await refreshEvidenceData();
+    } catch (err: any) {
+      setConnectError(err.message || "Failed to update Jira projects or start sync.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!currentSource) return;
+    if (!confirm("Are you sure you want to disconnect Jira? Existing imported evidence items will be preserved.")) return;
+
+    setDisconnecting(true);
+    try {
+      await disconnectSource(currentSource.id);
+      setProjects([]);
+      setStatusMessage("Jira disconnected successfully.");
+      await refreshEvidenceData();
+    } catch (err: any) {
+      setConnectError(err.message || "Failed to disconnect Jira.");
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const selectedCount = projects.filter((p) => p.selected).length;
 
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title="Jira Project Selection"
-        description="Select Jira projects to import closed user stories, pull request reviews, and sprint artifacts."
+        title="Jira Software Integration"
+        description="Connect Jira Cloud to import work items, user stories, and resolution worklogs."
         backHref="/app/evidence/sources"
         backLabel="Connected Sources"
       />
 
       <main className="p-6 lg:p-10 space-y-8 max-w-4xl">
-        <div className="p-5 rounded-2xl bg-[#F6BB84]/30 border-[1.5px] border-[#1C1C1C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
-          <ShieldCheck className="w-5 h-5 text-[#1C1C1C] shrink-0 mt-0.5" />
+        {/* Security & Credentials Banner */}
+        <div className="p-5 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
+          <ShieldCheck className="w-5 h-5 text-[#4A7A4E] shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
             <span className="font-black uppercase tracking-wider block text-[#1C1C1C]">
-              SIMULATED JIRA AUTHORIZATION • AGRITECH ENTERPRISE
+              JIRA CLOUD CONNECTOR • AES-256 ENCRYPTED CREDENTIALS
             </span>
-            <p className="font-medium text-[#1C1C1C]/80">
-              Only issues where you are listed as Author, Assignee, or Reviewer will be extracted as individual capability evidence.
+            <p className="font-medium text-[#1C1C1C]/80 leading-relaxed">
+              Your Jira API token is encrypted at rest using AES-256. GrowthLens only imports issues where you are author, assignee, or reviewer to ground competency records.
             </p>
           </div>
         </div>
 
-        {successMessage && (
-          <div className="p-4 rounded-xl bg-[#DFE968] border border-[#1C1C1C] text-xs font-black text-[#1C1C1C]">
-            {successMessage}
+        {statusMessage && (
+          <div className="p-4 rounded-xl bg-[#DFE968] border border-[#1C1C1C] text-xs font-black text-[#1C1C1C] flex items-center justify-between">
+            <span>{statusMessage}</span>
           </div>
         )}
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black text-[#1C1C1C]">Authorized Jira Projects</h3>
-            <span className="text-xs font-bold text-[#1C1C1C]/60">
-              {selected.length} Selected
-            </span>
+        {connectError && (
+          <div className="p-4 rounded-xl bg-[#F6C8D6] border border-[#1C1C1C] text-xs font-bold text-[#C85A54] flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{connectError}</span>
           </div>
+        )}
 
-          <div className="space-y-3">
-            {AVAILABLE_PROJECTS.map((proj) => {
-              const projLabel = `${proj.key} (${proj.name})`;
-              const isChecked = selected.some((s) => s.includes(proj.key));
-              return (
-                <div
-                  key={proj.key}
-                  onClick={() => toggleProject(projLabel)}
-                  className={`p-4 rounded-2xl border-[1.5px] border-[#1C1C1C] flex items-center justify-between cursor-pointer transition-all ${
-                    isChecked
-                      ? "bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C]"
-                      : "bg-[#FBF1CF]/50 opacity-60 hover:opacity-100"
-                  }`}
+        {!currentSource ? (
+          /* Connect Jira Form */
+          <div className="gl-card p-6 md:p-8 bg-[#FBF6DF] space-y-6">
+            <div className="space-y-1 border-b border-[#1C1C1C]/15 pb-4">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#1C1C1C]" />
+                <h3 className="text-lg font-black text-[#1C1C1C]">Connect Jira Cloud</h3>
+              </div>
+              <p className="text-xs text-[#1C1C1C]/75">
+                Provide your Atlassian site domain, account email, and an API token.
+              </p>
+            </div>
+
+            <form onSubmit={handleConnect} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-[#1C1C1C]/60" />
+                  Atlassian Site URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://your-company.atlassian.net"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                  className="pill-input w-full text-xs"
+                  disabled={connecting}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-[#1C1C1C]/60" />
+                  Account Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pill-input w-full text-xs"
+                  disabled={connecting}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-[#1C1C1C]/60" />
+                  Atlassian API Token
+                </label>
+                <input
+                  type="password"
+                  placeholder="ATATT3xFfGF0..."
+                  value={apiToken}
+                  onChange={(e) => setApiToken(e.target.value)}
+                  className="pill-input w-full font-mono text-xs"
+                  disabled={connecting}
+                />
+                <p className="text-[11px] text-[#1C1C1C]/60">
+                  Generate an API token in{" "}
+                  <a
+                    href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline font-bold text-[#1C1C1C] inline-flex items-center gap-0.5"
+                  >
+                    Atlassian Account Security → API tokens <ExternalLink className="w-3 h-3" />
+                  </a>
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={connecting}
+                  className="pill-btn pill-btn-primary text-xs py-3 px-6 flex items-center gap-2"
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-6 h-6 rounded-lg border border-[#1C1C1C] flex items-center justify-center ${
-                        isChecked ? "bg-[#DFE968]" : "bg-white"
-                      }`}
-                    >
-                      {isChecked && <Check className="w-4 h-4 text-[#1C1C1C]" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#FBF1CF] border border-[#1C1C1C]">
-                          {proj.key}
-                        </span>
-                        <h4 className="text-sm font-black text-[#1C1C1C]">{proj.name}</h4>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right text-xs font-mono font-bold text-[#1C1C1C]/60">
-                    {proj.issues} resolved tasks
-                  </div>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{connecting ? "VALIDATING & CONNECTING ···" : "VALIDATE & CONNECT JIRA →"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* Connected State: Project Selection */
+          <div className="space-y-6">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[2px_2px_0_0_#1C1C1C]">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                  CONNECTED JIRA INSTANCE
+                </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Layers className="w-4 h-4 text-[#1C1C1C]" />
+                  <h4 className="text-sm font-black text-[#1C1C1C]">{currentSource.accountIdentity}</h4>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#DFE968] border border-[#1C1C1C] text-[#4A7A4E]">
+                    ACTIVE
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <span className="text-[11px] text-[#1C1C1C]/65 block mt-1">
+                  Last sync: {currentSource.lastSync} • Imported items: {currentSource.importedRecordsCount}
+                </span>
+              </div>
 
-          <div className="pt-4 flex gap-4">
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="pill-btn pill-btn-primary text-xs py-3 px-6"
-            >
-              {syncing ? "SYNCING JIRA ···" : "SYNC SELECTED PROJECTS →"}
-            </button>
-            <Link
-              href="/app/evidence"
-              className="pill-btn pill-btn-secondary text-xs py-3 px-6"
-            >
-              DONE / RETURN TO EVIDENCE
-            </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadProjects}
+                  disabled={loadingProjects}
+                  className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1.5"
+                  title="Reload Jira projects"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingProjects ? "animate-spin" : ""}`} />
+                  <span>REFRESH PROJECTS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 text-[#C85A54] flex items-center gap-1.5"
+                  title="Disconnect account"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>DISCONNECT</span>
+                </button>
+              </div>
+            </div>
+
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[#1C1C1C]">Select Jira Projects for Ingestion</h3>
+                  <p className="text-xs text-[#1C1C1C]/70">
+                    Check the projects you want analyzed for evidence and competency mapping.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#1C1C1C]/60 shrink-0">
+                  {selectedCount} of {projects.length} Selected
+                </span>
+              </div>
+
+              {loadingProjects ? (
+                <div className="p-8 text-center bg-[#FBF6DF] rounded-2xl border border-[#1C1C1C]">
+                  <LoadingAnimation size="sm" className="mx-auto -my-3" />
+                  <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">Loading projects from Jira Cloud API...</p>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="p-8 text-center bg-[#FBF6DF] rounded-2xl border border-[#1C1C1C] space-y-2">
+                  <p className="text-sm font-black text-[#1C1C1C]">No Jira projects found</p>
+                  <p className="text-xs text-[#1C1C1C]/60">
+                    Ensure your account has read permissions for projects on this Jira site.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {projects.map((proj) => {
+                    const isChecked = Boolean(proj.selected);
+                    return (
+                      <div
+                        key={proj.key}
+                        onClick={() => toggleProject(proj.key)}
+                        className={`p-4 rounded-2xl border-[1.5px] border-[#1C1C1C] flex items-center justify-between cursor-pointer transition-all ${
+                          isChecked
+                            ? "bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C]"
+                            : "bg-[#FBF1CF]/50 opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-lg border border-[#1C1C1C] flex items-center justify-center shrink-0 ${
+                              isChecked ? "bg-[#DFE968]" : "bg-white"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-4 h-4 text-[#1C1C1C]" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono font-bold uppercase bg-[#FBF1CF] px-1.5 py-0.5 rounded border border-[#1C1C1C]/20">
+                                {proj.key}
+                              </span>
+                              <h4 className="text-sm font-black text-[#1C1C1C]">{proj.name}</h4>
+                            </div>
+                          </div>
+                        </div>
+
+                        {proj.projectTypeKey && (
+                          <div className="text-right text-xs font-mono font-bold text-[#1C1C1C]/60 shrink-0 ml-3">
+                            {proj.projectTypeKey}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="pt-4 flex flex-wrap gap-4">
+                <button
+                  type="button"
+                  onClick={handleSaveAndSync}
+                  disabled={syncing || selectedCount === 0}
+                  className="pill-btn pill-btn-primary text-xs py-3 px-6 flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+                  <span>{syncing ? "TRIGGERING INGESTION RUN ···" : "SAVE SELECTION & TRIGGER SYNC →"}</span>
+                </button>
+                <Link
+                  href="/app/evidence"
+                  className="pill-btn pill-btn-secondary text-xs py-3 px-6"
+                >
+                  DONE / RETURN TO EVIDENCE
+                </Link>
+              </div>
+            </section>
           </div>
-        </section>
+        )}
       </main>
     </div>
   );

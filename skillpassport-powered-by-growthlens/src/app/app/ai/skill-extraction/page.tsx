@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
-import { DemoDataNotice } from "@/components/app/AIBadges";
 import {
   Fingerprint,
   Search,
@@ -28,8 +27,10 @@ export default function AISkillExtractionPage() {
   const {
     extractionCandidates,
     evidenceItems,
+    userProfile,
     updateExtractionCandidate,
     addAIAuditEvent,
+    refreshEvidenceData,
   } = useEvidence();
 
   const [search, setSearch] = useState("");
@@ -61,21 +62,30 @@ export default function AISkillExtractionPage() {
 
   const activeCandidate = extractionCandidates.find((c) => c.id === inspectItem);
 
-  const handleSimulateExtraction = () => {
+  const handleSimulateExtraction = async () => {
     setIsExtracting(true);
-    setTimeout(() => {
-      setIsExtracting(false);
+    try {
+      const { runSkillExtraction } = await import("@/lib/evidenceApi");
+      const evIds = evidenceItems.map((e) => e.id);
+      if (evIds.length > 0) {
+        await runSkillExtraction(evIds);
+        await refreshEvidenceData();
+      }
       addAIAuditEvent({
         timestamp: "Just now",
         event_type: "candidate_extracted",
         affected_entity_type: "candidate_skill",
         affected_entity_id: "ext-batch",
         new_state: "Batch Extraction Completed",
-        reason: "Simulated extraction pass across connected sources completed.",
+        reason: "Extraction pass across connected sources completed.",
         actor: "Qwen-3 8B Extraction Pipeline",
-        model_or_policy_version: "v2.4.0",
+        model_or_policy_version: "qwen3:8b",
       });
-    }, 1000);
+    } catch (e) {
+      console.warn("Backend skill extraction error:", e);
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleFlagDuplicate = (id: string) => {
@@ -90,7 +100,7 @@ export default function AISkillExtractionPage() {
       affected_entity_id: id,
       new_state: "Taxonomy Status: Duplicate",
       reason: "Collapsed duplicate candidate synonym into canonical parent competency.",
-      actor: "Reviewer (Alex Rivera)",
+      actor: userProfile.displayName ? `Reviewer (${userProfile.displayName})` : "Authorized Reviewer",
     });
   };
 
@@ -190,8 +200,15 @@ export default function AISkillExtractionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0EBE1]">
-                {filteredCandidates.map((cand) => {
-                  const isSelected = cand.id === inspectItem;
+                {filteredCandidates.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-xs text-[#8C827A]">
+                      No candidate skills extracted yet. Ingest evidence and run an extraction pass above.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCandidates.map((cand) => {
+                    const isSelected = cand.id === inspectItem;
 
                   return (
                     <tr
@@ -246,7 +263,7 @@ export default function AISkillExtractionPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>

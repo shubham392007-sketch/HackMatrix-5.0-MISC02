@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   ShieldCheck,
   FolderSync,
@@ -89,17 +90,6 @@ export const WORKSPACE_NAV: NavSection[] = [
     ],
   },
   {
-    category: "Trust & Governance",
-    items: [
-      { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
-      { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
-      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList, restricted: "Reviewer" },
-      { label: "Prompt-Injection Guard", href: "/app/ai/prompt-injection", icon: Shield, restricted: "Reviewer" },
-      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3, restricted: "Admin" },
-      { label: "AI Audit Trail", href: "/app/ai/audit", icon: ScrollText },
-    ],
-  },
-  {
     category: "AI Intelligence",
     items: [
       { label: "AI Overview", href: "/app/ai", icon: Cpu },
@@ -109,6 +99,17 @@ export const WORKSPACE_NAV: NavSection[] = [
       { label: "Verification Review", href: "/app/ai/verification", icon: Scale },
       { label: "Confidence & Uncertainty", href: "/app/ai/confidence", icon: Percent },
       { label: "Conflict Resolution", href: "/app/ai/conflicts", icon: GitCompare },
+    ],
+  },
+  {
+    category: "Trust & Governance",
+    items: [
+      { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
+      { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
+      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList, restricted: "Reviewer" },
+      { label: "Prompt-Injection Protection", href: "/app/ai/prompt-injection", icon: Shield, restricted: "Reviewer" },
+      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3, restricted: "Admin" },
+      { label: "AI Audit Trail", href: "/app/ai/audit", icon: ScrollText },
     ],
   },
   {
@@ -160,7 +161,7 @@ export const WORKSPACE_NAV: NavSection[] = [
       { label: "Sharing Permissions", href: "/app/passport/permissions", icon: SlidersHorizontal },
       { label: "Manage Shared Access", href: "/app/passport/access", icon: Lock },
       { label: "Passport Export", href: "/app/passport/export", icon: Download },
-      { label: "Demo Recruiter View", href: "/p/share-recruiter-demo", icon: ExternalLink, external: true },
+      { label: "Recruiter View", href: "/p/share-recruiter-demo", icon: ExternalLink, external: true },
     ],
   },
   {
@@ -186,6 +187,29 @@ interface SidebarContentProps {
 function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarContentProps) {
   const pathname = usePathname();
   const { currentRole, setDemoRole, userProfile } = useEvidence();
+  const { user: authUser, profile: authProfile } = useAuth();
+
+  const realDisplayName =
+    authProfile?.display_name ||
+    (authUser?.user_metadata?.full_name as string) ||
+    (authUser?.user_metadata?.name as string) ||
+    (authUser?.email ? authUser.email.split("@")[0] : null) ||
+    userProfile?.displayName ||
+    "User";
+
+  const realInitials = (() => {
+    const parts = realDisplayName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return realDisplayName.slice(0, 2).toUpperCase();
+  })();
+
+  const realRole =
+    authProfile?.job_title ||
+    authProfile?.current_role ||
+    userProfile?.currentRole ||
+    "Software Developer";
 
   return (
     <>
@@ -296,18 +320,18 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
           className="flex items-center gap-2.5 group hover:opacity-85 transition-opacity"
         >
           <div className="w-8 h-8 rounded-full bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1C1C1C]">
-            {userProfile?.avatarInitials || "AR"}
+            {realInitials}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-black truncate text-[#1C1C1C] group-hover:underline">
-              {userProfile?.displayName || "Alex Rivera"}
+              {realDisplayName}
             </p>
             <span className="text-[9px] font-bold text-[#1C1C1C]/60 uppercase tracking-wider block truncate">
               {currentRole === "admin"
                 ? "Demo Administrator"
                 : currentRole === "reviewer"
                 ? "Authorized Reviewer"
-                : userProfile?.currentRole || "Software Developer"}
+                : realRole}
             </span>
           </div>
         </Link>

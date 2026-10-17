@@ -18,7 +18,10 @@ import {
 } from "lucide-react";
 
 export default function ConnectedSourcesPage() {
-  const { sources } = useEvidence();
+  const { sources, initialLoading, isLoadingEvidence } = useEvidence();
+  const isDataLoading = initialLoading || (isLoadingEvidence && sources.length === 0);
+  const githubSource = sources.find((s) => s.type === "github");
+  const jiraSource = sources.find((s) => s.type === "jira");
 
   return (
     <div className="flex-1 flex flex-col">
@@ -42,7 +45,7 @@ export default function ConnectedSourcesPage() {
           <div className="border-b border-[#1C1C1C]/15 pb-2">
             <h2 className="text-xl font-black text-[#1C1C1C]">Version Control &amp; Project Trackers</h2>
             <p className="text-xs font-medium text-[#1C1C1C]/75">
-              Simulated OAuth integration pipelines for automated commit and ticket extraction.
+              Live integration pipelines with encrypted credential storage for automated commit and ticket extraction.
             </p>
           </div>
 
@@ -54,18 +57,36 @@ export default function ConnectedSourcesPage() {
                   <div className="w-12 h-12 rounded-2xl bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1C1C1C]">
                     <GitBranch className="w-6 h-6 text-[#1C1C1C]" />
                   </div>
-                  <SourceStatusBadge status={sources.find((s) => s.type === "github")?.status || "not_connected"} />
+                  <SourceStatusBadge status={isDataLoading ? "syncing" : (githubSource?.status || "not_connected")} />
                 </div>
                 <h3 className="text-xl font-black text-[#1C1C1C] mb-1">GitHub</h3>
                 <p className="text-xs font-medium text-[#1C1C1C]/80 leading-relaxed mb-4">
                   Import authorized repositories and reviewable activity such as commits, pull requests, issues, and code reviews with cryptographic SHA attribution.
                 </p>
 
-                <div className="p-3 bg-[#FBF1CF] rounded-xl border border-[#1C1C1C] text-xs font-mono mb-4">
-                  <span className="block font-bold mb-1">Active Repositories:</span>
-                  <span className="text-[#4A7A4E] font-black">
-                    smart-irrigation-ai • worker-queue-engine
-                  </span>
+                <div className="p-3 bg-[#FBF1CF] rounded-xl border border-[#1C1C1C] text-xs font-mono mb-4 space-y-2">
+                  <div>
+                    <span className="block font-bold mb-1">Active Repositories:</span>
+                    {isDataLoading ? (
+                      <div className="h-4 w-36 bg-[#1C1C1C]/15 rounded animate-pulse" />
+                    ) : (
+                      <span className={githubSource?.selectedEntities?.length ? "text-[#4A7A4E] font-black break-all" : "text-[#1C1C1C]/50"}>
+                        {githubSource?.selectedEntities?.length ? githubSource.selectedEntities.join(" • ") : "No repositories connected"}
+                      </span>
+                    )}
+                  </div>
+                  {(githubSource as any)?.languageSummary?.languages?.length > 0 && (
+                    <div className="pt-2 border-t border-[#1C1C1C]/15">
+                      <span className="block font-bold mb-1 text-[11px]">Repository Languages Detected:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(githubSource as any).languageSummary.languages.map((l: string) => (
+                          <span key={l} className="px-1.5 py-0.5 rounded bg-white border border-[#1C1C1C]/30 text-[10px] font-bold">
+                            {l}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -86,7 +107,7 @@ export default function ConnectedSourcesPage() {
                   <div className="w-12 h-12 rounded-2xl bg-[#F6BB84] border border-[#1C1C1C] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1C1C1C]">
                     <Layers className="w-6 h-6 text-[#1C1C1C]" />
                   </div>
-                  <SourceStatusBadge status={sources.find((s) => s.type === "jira")?.status || "not_connected"} />
+                  <SourceStatusBadge status={isDataLoading ? "syncing" : (jiraSource?.status || "not_connected")} />
                 </div>
                 <h3 className="text-xl font-black text-[#1C1C1C] mb-1">Jira Software</h3>
                 <p className="text-xs font-medium text-[#1C1C1C]/80 leading-relaxed mb-4">
@@ -95,9 +116,13 @@ export default function ConnectedSourcesPage() {
 
                 <div className="p-3 bg-[#FBF1CF] rounded-xl border border-[#1C1C1C] text-xs font-mono mb-4">
                   <span className="block font-bold mb-1">Active Projects:</span>
-                  <span className="text-[#4A7A4E] font-black">
-                    AGRI (Core Platform) • DATA (Pipeline Stream)
-                  </span>
+                  {isDataLoading ? (
+                    <div className="h-4 w-36 bg-[#1C1C1C]/15 rounded animate-pulse" />
+                  ) : (
+                    <span className={jiraSource?.selectedEntities?.length ? "text-[#4A7A4E] font-black break-all" : "text-[#1C1C1C]/50"}>
+                      {jiraSource?.selectedEntities?.length ? jiraSource.selectedEntities.join(" • ") : "No projects connected"}
+                    </span>
+                  )}
                 </div>
               </div>
 

@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
-import { DemoDataNotice } from "@/components/app/AIBadges";
 import {
   Percent,
   Search,
@@ -21,9 +20,15 @@ import {
 export default function ConfidenceUncertaintyPage() {
   const { confidenceClaims } = useEvidence();
   const [selectedClaimId, setSelectedClaimId] = useState<string>(
-    confidenceClaims[0]?.id || "conf-claim-01"
+    confidenceClaims[0]?.id || ""
   );
   const [search, setSearch] = useState("");
+
+  React.useEffect(() => {
+    if (!selectedClaimId && confidenceClaims.length > 0) {
+      setSelectedClaimId(confidenceClaims[0].id);
+    }
+  }, [confidenceClaims, selectedClaimId]);
 
   const activeClaim = confidenceClaims.find((c) => c.id === selectedClaimId);
 

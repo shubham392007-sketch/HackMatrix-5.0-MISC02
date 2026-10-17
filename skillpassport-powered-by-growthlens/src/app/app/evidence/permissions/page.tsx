@@ -5,7 +5,7 @@ import { useEvidence } from "@/context/EvidenceContext";
 import { Lock, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
 
 export default function PermissionsPage() {
-  const { sources, disconnectSource } = useEvidence();
+  const { sources, disconnectSource, refreshEvidenceData } = useEvidence();
 
   return (
     <div className="flex-1 flex flex-col">
@@ -54,12 +54,13 @@ export default function PermissionsPage() {
                 </div>
 
                 <div className="shrink-0">
-                  {src.status === "demo_connected" || src.status === "connected" ? (
+                  {src.status === "connected" ? (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm(`Disconnect and revoke access for ${src.name}?`)) {
                           disconnectSource(src.id);
+                          await refreshEvidenceData();
                         }
                       }}
                       className="pill-btn pill-btn-secondary text-xs text-[#C85A54] py-1.5 px-3 flex items-center gap-1"

@@ -49,7 +49,7 @@ export default function LandingPage() {
                   <span className="text-sm font-extrabold truncate">PR #204: redis_pubsub.py</span>
                 </div>
                 <p className="text-xs font-medium text-[#1C1C1C]/70 mb-4">
-                  Alex Rivera • 14 commits verified
+                  Contributor • 14 commits verified
                 </p>
                 <div className="inline-block px-3 py-1.5 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1C1C1C] hero-3d-pop">
                   VERIFIED CAPABILITY SIGNAL

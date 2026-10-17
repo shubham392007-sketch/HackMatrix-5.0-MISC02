@@ -20,14 +20,18 @@ import {
   Layers,
   Award,
   BookOpen,
+  Loader2,
 } from "lucide-react";
 
 export default function EvidenceLibraryPage() {
-  const { evidenceItems, deleteEvidenceItem } = useEvidence();
+  const { evidenceItems, deleteEvidenceItem, initialLoading, isLoadingEvidence } = useEvidence();
+
+  const isDataLoading = initialLoading || (isLoadingEvidence && evidenceItems.length === 0);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredItems = evidenceItems.filter((item) => {
     const matchesSearch =
@@ -138,14 +142,72 @@ export default function EvidenceLibraryPage() {
 
         {/* Results Counter */}
         <div className="flex items-center justify-between text-xs font-bold text-[#1C1C1C]/70 px-1">
-          <span>Showing {filteredItems.length} of {evidenceItems.length} evidence records</span>
+          {isDataLoading ? (
+            <div className="h-4 w-48 bg-[#1C1C1C]/15 rounded animate-pulse" />
+          ) : (
+            <span>Showing {filteredItems.length} of {evidenceItems.length} evidence records</span>
+          )}
         </div>
 
         {/* Evidence List Rows */}
-        {filteredItems.length === 0 ? (
+        {isDataLoading ? (
+          <div className="bg-[#FBF6DF] rounded-[24px] border-[1.5px] border-[#1C1C1C] overflow-hidden shadow-[3px_3px_0_0_#1C1C1C] p-6 space-y-4">
+            <div className="flex items-center gap-2.5 pb-4 border-b border-[#1C1C1C]/15">
+              <div className="w-4 h-4 rounded-full border-2 border-[#1C1C1C] border-t-transparent animate-spin" />
+              <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/80">
+                Loading Evidence Library...
+              </span>
+            </div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((n) => (
+                <div
+                  key={n}
+                  className="p-5 rounded-2xl bg-[#FBF1CF]/50 border border-[#1C1C1C]/15 flex flex-col lg:flex-row lg:items-center justify-between gap-5 animate-pulse"
+                >
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-md bg-[#1C1C1C]/15" />
+                      <div className="h-3 w-16 bg-[#1C1C1C]/15 rounded" />
+                      <div className="h-4 w-52 bg-[#1C1C1C]/20 rounded" />
+                    </div>
+                    <div className="h-3 w-4/5 bg-[#1C1C1C]/10 rounded" />
+                    <div className="h-2.5 w-48 bg-[#1C1C1C]/10 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="h-6 w-20 bg-[#1C1C1C]/15 rounded-full" />
+                    <div className="h-6 w-20 bg-[#1C1C1C]/15 rounded-full" />
+                    <div className="h-7 w-20 bg-[#1C1C1C]/20 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="p-12 text-center rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3">
-            <p className="text-base font-black text-[#1C1C1C]">No evidence records match your criteria.</p>
-            <p className="text-xs text-[#1C1C1C]/60">Try clearing the search bar or filters.</p>
+            <p className="text-base font-black text-[#1C1C1C]">
+              {evidenceItems.length === 0 ? "No evidence records yet." : "No evidence records match your criteria."}
+            </p>
+            <p className="text-xs text-[#1C1C1C]/60">
+              {evidenceItems.length === 0
+                ? "Upload your resume, certificates, or code to start building your Skill Passport."
+                : "Try clearing the search bar or filters."}
+            </p>
+            {evidenceItems.length === 0 && (
+              <div className="pt-2 flex justify-center gap-3">
+                <Link
+                  href="/app/onboarding"
+                  className="pill-btn pill-btn-primary text-xs py-2 px-4"
+                >
+                  START ONBOARDING
+                </Link>
+                <Link
+                  href="/app/evidence/upload"
+                  className="pill-btn pill-btn-secondary text-xs py-2 px-4"
+                >
+                  UPLOAD WORK
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-[#FBF6DF] rounded-[24px] border-[1.5px] border-[#1C1C1C] overflow-hidden shadow-[3px_3px_0_0_#1C1C1C]">
@@ -194,15 +256,27 @@ export default function EvidenceLibraryPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm(`Remove demo artifact "${item.title}"?`)) {
-                            deleteEvidenceItem(item.id);
+                        disabled={deletingId === item.id}
+                        onClick={async () => {
+                          if (confirm(`Remove evidence record "${item.title}"?`)) {
+                            try {
+                              setDeletingId(item.id);
+                              await deleteEvidenceItem(item.id);
+                            } catch (e) {
+                              // error toast handled in context
+                            } finally {
+                              setDeletingId(null);
+                            }
                           }
                         }}
-                        className="p-2 rounded-full border border-[#1C1C1C] bg-white hover:bg-[#F6C8D6] text-[#C85A54] transition-all"
+                        className="p-2 rounded-full border border-[#1C1C1C] bg-white hover:bg-[#F6C8D6] text-[#C85A54] transition-all disabled:opacity-50"
                         title="Delete item"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === item.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>

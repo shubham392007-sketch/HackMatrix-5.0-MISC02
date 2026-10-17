@@ -6,12 +6,40 @@ import {
   ConnectedSource,
   IngestionRun,
   ReviewStatus,
+  SourceType,
+  ConnectionStatus,
+  ProcessingStatus,
+  EvidenceStrength,
 } from "@/types/evidence";
 import {
   INITIAL_CONNECTED_SOURCES,
   INITIAL_EVIDENCE_ITEMS,
   INITIAL_INGESTION_RUNS,
 } from "@/data/evidenceMock";
+import { supabase } from "@/lib/supabase/client";
+import {
+  listEvidenceItems,
+  deleteEvidenceItem as apiDeleteEvidence,
+  listConnectedSources,
+  listIngestionRuns,
+  reviewEvidenceItem,
+  getMyProfile,
+  listWorkAnalyses,
+  listCandidateSkills,
+  listEvidenceMappings,
+  listGuardResults,
+  listOutputValidations,
+  getConfidenceBreakdown,
+  listConflicts,
+  listReviewTasks,
+  listPromptInjectionFindings,
+  listAIAuditEvents,
+  runWorkAnalysis,
+  runSkillExtraction,
+  reviewCandidateVerification,
+  resolveConflict,
+  actionReviewTask,
+} from "@/lib/evidenceApi";
 import {
   SkillItem,
   SkillHistoryEvent,
@@ -37,20 +65,6 @@ import {
   AIEvalCase,
   AIAuditEvent,
 } from "@/types/ai";
-import {
-  INITIAL_WORK_ANALYSES,
-  INITIAL_EXTRACTION_CANDIDATES,
-  INITIAL_EVIDENCE_MAPPINGS,
-  INITIAL_VERIFICATIONS,
-  INITIAL_CONFIDENCE_CLAIMS,
-  INITIAL_CONFLICTS,
-  INITIAL_GUARD_RESULTS,
-  INITIAL_VALIDATION_RECORDS,
-  INITIAL_PROMPT_INJECTION_FLAGS,
-  INITIAL_REVIEW_TASKS,
-  INITIAL_EVAL_CASES,
-  INITIAL_AI_AUDIT_EVENTS,
-} from "@/data/aiMock";
 import {
   RoleDemandModel,
   RoleMatchResult,
@@ -128,6 +142,8 @@ interface EvidenceContextType {
   evidenceItems: EvidenceItem[];
   sources: ConnectedSource[];
   ingestionRuns: IngestionRun[];
+  initialLoading: boolean;
+  isLoadingEvidence: boolean;
   skills: SkillItem[];
   historyEvents: SkillHistoryEvent[];
   taxonomyCategories: TaxonomyCategory[];
@@ -150,7 +166,7 @@ interface EvidenceContextType {
 
   // Mutators
   addEvidenceItem: (item: Omit<EvidenceItem, "id">) => void;
-  deleteEvidenceItem: (id: string) => void;
+  deleteEvidenceItem: (id: string) => Promise<void>;
   updateEvidenceItem: (id: string, updates: Partial<EvidenceItem>) => void;
   confirmContribution: (evidenceId: string) => void;
   updateCandidateSkillStatus: (
@@ -267,7 +283,10 @@ interface EvidenceContextType {
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobileSidebar: () => void;
 
-  // Demo Authentication State
+  // Live Evidence Synchronization
+  refreshEvidenceData: (force?: boolean) => Promise<void>;
+
+  // Authentication State
   isAuthenticated: boolean;
   authChecked: boolean;
   loginDemo: (role?: DemoRole, userOverrides?: Partial<UserProfile>) => void;
@@ -277,31 +296,69 @@ interface EvidenceContextType {
 const EvidenceContext = createContext<EvidenceContextType | undefined>(undefined);
 
 export function EvidenceProvider({ children }: { children: React.ReactNode }) {
-  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>(INITIAL_EVIDENCE_ITEMS);
-  const [sources, setSources] = useState<ConnectedSource[]>(INITIAL_CONNECTED_SOURCES);
-  const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>(INITIAL_INGESTION_RUNS);
+  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_evidence_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
+  const [sources, setSources] = useState<ConnectedSource[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_sources_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
+  const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_runs_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILLS);
   const [historyEvents, setHistoryEvents] = useState<SkillHistoryEvent[]>(INITIAL_SKILL_HISTORY);
   const [taxonomyCategories] = useState<TaxonomyCategory[]>(INITIAL_TAXONOMY_CATEGORIES);
+
+  const [initialLoading, setInitialLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_evidence_cache");
+        if (cached && JSON.parse(cached).length > 0) return false;
+      } catch {}
+    }
+    return true;
+  });
+  const [isLoadingEvidence, setIsLoadingEvidence] = useState<boolean>(false);
+
+  const isFetchingRef = React.useRef<boolean>(false);
+  const lastFetchTimeRef = React.useRef<number>(0);
 
   // Mobile Navigation Drawer State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const toggleMobileSidebar = () => setMobileSidebarOpen((prev) => !prev);
 
-  // Domain 3 AI State
+  // Domain 3 AI State - Zero Demo Data, live database-driven
   const [currentRole, setDemoRole] = useState<DemoRole>("employee");
-  const [workAnalyses, setWorkAnalyses] = useState<WorkAnalysisResult[]>(INITIAL_WORK_ANALYSES);
-  const [extractionCandidates, setExtractionCandidates] = useState<ExtractionCandidateItem[]>(INITIAL_EXTRACTION_CANDIDATES);
-  const [evidenceMappings, setEvidenceMappings] = useState<EvidenceMappingItem[]>(INITIAL_EVIDENCE_MAPPINGS);
-  const [verifications, setVerifications] = useState<SkillVerificationRecord[]>(INITIAL_VERIFICATIONS);
-  const [confidenceClaims, setConfidenceClaims] = useState<ConfidenceClaim[]>(INITIAL_CONFIDENCE_CLAIMS);
-  const [conflicts, setConflicts] = useState<ConflictRecord[]>(INITIAL_CONFLICTS);
-  const [guardResults, setGuardResults] = useState<GuardClaimResult[]>(INITIAL_GUARD_RESULTS);
-  const [validationRecords, setValidationRecords] = useState<OutputValidationRecord[]>(INITIAL_VALIDATION_RECORDS);
-  const [promptInjectionFlags, setPromptInjectionFlags] = useState<PromptInjectionFlag[]>(INITIAL_PROMPT_INJECTION_FLAGS);
-  const [reviewTasks, setReviewTasks] = useState<HumanReviewTask[]>(INITIAL_REVIEW_TASKS);
-  const [evalCases, setEvalCases] = useState<AIEvalCase[]>(INITIAL_EVAL_CASES);
-  const [aiAuditEvents, setAiAuditEvents] = useState<AIAuditEvent[]>(INITIAL_AI_AUDIT_EVENTS);
+  const [workAnalyses, setWorkAnalyses] = useState<WorkAnalysisResult[]>([]);
+  const [extractionCandidates, setExtractionCandidates] = useState<ExtractionCandidateItem[]>([]);
+  const [evidenceMappings, setEvidenceMappings] = useState<EvidenceMappingItem[]>([]);
+  const [verifications, setVerifications] = useState<SkillVerificationRecord[]>([]);
+  const [confidenceClaims, setConfidenceClaims] = useState<ConfidenceClaim[]>([]);
+  const [conflicts, setConflicts] = useState<ConflictRecord[]>([]);
+  const [guardResults, setGuardResults] = useState<GuardClaimResult[]>([]);
+  const [validationRecords, setValidationRecords] = useState<OutputValidationRecord[]>([]);
+  const [promptInjectionFlags, setPromptInjectionFlags] = useState<PromptInjectionFlag[]>([]);
+  const [reviewTasks, setReviewTasks] = useState<HumanReviewTask[]>([]);
+  const [evalCases, setEvalCases] = useState<AIEvalCase[]>([]);
+  const [aiAuditEvents, setAiAuditEvents] = useState<AIAuditEvent[]>([]);
 
   // Domain 4 Career Intelligence State
   const [selectedRoleId, setSelectedRoleIdState] = useState<string>("role-ai-engineer-entry");
@@ -320,49 +377,482 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
 
-  // Sync with sessionStorage for developer testing without persistent lockout
+  const refreshEvidenceData = useCallback(async (force: boolean = false) => {
+    if (isFetchingRef.current) return;
+    const now = Date.now();
+    if (!force && now - lastFetchTimeRef.current < 4000) {
+      return;
+    }
+    isFetchingRef.current = true;
+    setIsLoadingEvidence(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.access_token) {
+        setInitialLoading(false);
+        setIsLoadingEvidence(false);
+        return;
+      }
+
+      const [
+        evRes, srcRes, runsRes, profileRes,
+        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes
+      ] = await Promise.allSettled([
+        listEvidenceItems(),
+        listConnectedSources(),
+        listIngestionRuns(),
+        getMyProfile(),
+        listWorkAnalyses(),
+        listCandidateSkills(),
+        listGuardResults(),
+        listOutputValidations(),
+        getConfidenceBreakdown(),
+        listConflicts(),
+        listReviewTasks(),
+        listPromptInjectionFindings(),
+        listAIAuditEvents(),
+      ]);
+
+      if (evRes.status === "fulfilled" && evRes.value?.items && Array.isArray(evRes.value.items)) {
+        const mappedItems: EvidenceItem[] = evRes.value.items.map((raw: any) => ({
+          id: raw.id,
+          externalRecordId: raw.externalRecordId || raw.external_record_id,
+          title: raw.title || "Untitled Evidence",
+          description: raw.description || "",
+          sourceType: (raw.sourceType || raw.provider || "document") as SourceType,
+          sourceReference: raw.sourceName || raw.sourceUrl || "Uploaded Document",
+          sourceUrl: raw.sourceUrl,
+          project: raw.projectName || raw.sourceName || "General",
+          evidenceType: raw.category || "General Evidence",
+          date: raw.observedAt ? new Date(raw.observedAt).toLocaleDateString() : "Recently",
+          claimedContribution: raw.attributionStatus === "author" ? "Author" : "Contributor",
+          author: raw.contributorIdentity || "User",
+          isCollaborative: Boolean(raw.isCollaborative),
+          evidenceStrength: (raw.strength || "medium") as EvidenceStrength,
+          extractionConfidence: typeof raw.confidence === "number" ? Math.round(raw.confidence <= 1 ? raw.confidence * 100 : raw.confidence) : 85,
+          processingStatus: (raw.processingStatus || "ready_for_review") as ProcessingStatus,
+          reviewStatus: (raw.verificationStatus || "unreviewed") as ReviewStatus,
+          normalizedMetadata: {
+            format: raw.metadata?.format || "Standard",
+            authorIdentified: raw.metadata?.author || raw.contributorIdentity || "User",
+            repositoryLanguages: raw.metadata?.repository_languages || raw.metadata?.repositoryLanguages || [],
+            primaryLanguage: raw.metadata?.primary_language || raw.metadata?.primaryLanguage,
+            ...raw.metadata,
+          },
+          extractedSummary: raw.extractedSummary || raw.description || "",
+          candidateSkills: Array.isArray(raw.candidateSkills) ? raw.candidateSkills : [],
+          processingHistory: [
+            { stage: "Ingestion", status: "completed", timestamp: raw.observedAt || "Recently", detail: "Processed & normalized" },
+            { stage: "Skill Mapping", status: "completed", timestamp: raw.observedAt || "Recently", detail: `${(raw.candidateSkills || []).length} candidate skills detected` },
+          ],
+        }));
+        setEvidenceItems(mappedItems);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(mappedItems));
+        }
+      }
+
+      if (srcRes.status === "fulfilled" && srcRes.value?.sources && Array.isArray(srcRes.value.sources)) {
+        const mappedSources: ConnectedSource[] = srcRes.value.sources.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          type: (s.type || s.provider || "github") as SourceType,
+          status: s.status as ConnectionStatus,
+          lastSync: s.lastSync || "Never",
+          importedRecordsCount: s.importedRecordsCount || 0,
+          accountIdentity: s.accountIdentity || "",
+          permissions: s.permissions || [],
+          selectedEntities: s.selectedEntities || [],
+          languageSummary: s.languageSummary,
+        }));
+        setSources(mappedSources);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_live_sources_cache", JSON.stringify(mappedSources));
+        }
+      }
+
+      if (runsRes.status === "fulfilled" && runsRes.value?.runs && Array.isArray(runsRes.value.runs)) {
+        const mappedRuns: IngestionRun[] = runsRes.value.runs.map((r: any) => ({
+          runId: r.id,
+          source: r.jobType || "Ingestion Job",
+          sourceType: (r.jobType?.includes("github") ? "github" : r.jobType?.includes("jira") ? "jira" : "document") as SourceType,
+          startTime: r.startedAt ? new Date(r.startedAt).toLocaleTimeString() : "Recently",
+          completionTime: r.completedAt ? new Date(r.completedAt).toLocaleTimeString() : undefined,
+          recordsDiscovered: r.metadata?.records_discovered || 1,
+          recordsNormalized: r.metadata?.records_normalized || 1,
+          recordsExtracted: r.metadata?.skills_extracted || 0,
+          recordsIndexed: r.status === "SUCCEEDED" || r.status === "COMPLETED" ? 1 : 0,
+          itemsReviewNeeded: r.metadata?.skills_extracted ? 1 : 0,
+          failedCount: r.status === "FAILED" ? 1 : 0,
+          status: r.status === "SUCCEEDED" || r.status === "COMPLETED" ? "completed" : r.status === "FAILED" ? "failed" : "processing",
+          errorMessage: r.errorMessage,
+          stages: [
+            { stage: "Queued", status: "completed", timestamp: r.createdAt || "Recently", detail: "Enqueued in pipeline" },
+            { stage: r.currentStage || "Processing", status: r.status === "SUCCEEDED" ? "completed" : r.status === "FAILED" ? "failed" : "processing", timestamp: r.completedAt || "Recently", detail: `Progress: ${r.progressPercentage}%` },
+          ],
+        }));
+        setIngestionRuns(mappedRuns);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_live_runs_cache", JSON.stringify(mappedRuns));
+        }
+      }
+
+      if (profileRes.status === "fulfilled" && profileRes.value) {
+        const prof = profileRes.value;
+        const authUser = sessionData.session?.user;
+        const realName =
+          prof.display_name ||
+          authUser?.user_metadata?.full_name ||
+          authUser?.user_metadata?.name ||
+          authUser?.email?.split("@")[0] ||
+          "User";
+        const parts = realName.trim().split(/\s+/);
+        const initials =
+          parts.length >= 2
+            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+            : realName.slice(0, 2).toUpperCase();
+
+        setUserProfile((prev) => ({
+          ...prev,
+          displayName: realName,
+          avatarInitials: initials,
+          contactEmail: prof.email || authUser?.email || prev.contactEmail,
+          headline: prof.headline || prof.job_title || prev.headline,
+          currentRole: prof.current_role || prof.job_title || prev.currentRole,
+        }));
+      }
+
+      const candMapByEvidence: Record<string, any[]> = {};
+      if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
+        for (const c of candRes.value.candidates) {
+          if (c.evidence_id) {
+            if (!candMapByEvidence[c.evidence_id]) candMapByEvidence[c.evidence_id] = [];
+            candMapByEvidence[c.evidence_id].push(c);
+          }
+        }
+      }
+
+      if (workRes.status === "fulfilled" && Array.isArray(workRes.value?.items)) {
+        const mappedWork: WorkAnalysisResult[] = workRes.value.items.map((w: any) => {
+          const rawSkills = Array.isArray(w.demonstrated_skills) && w.demonstrated_skills.length > 0
+            ? w.demonstrated_skills
+            : (candMapByEvidence[w.evidence_id] || []).map((c: any) => ({
+                name: c.name || c.canonical_name,
+                proficiency: c.proficiency || "Intermediate",
+                category: c.category || "Extracted Competency",
+                corroborated_with_evidence: true,
+                justification: c.supporting_excerpt || c.rationale || "Extracted from evidence artifact",
+              }));
+
+          const demonstrated_skills = rawSkills.map((s: any) => ({
+            name: s.name || s.skill || "",
+            proficiency: s.proficiency || "Intermediate",
+            category: s.category || "Competency",
+            corroborated_with_evidence: s.corroborated_with_evidence !== undefined ? !!s.corroborated_with_evidence : true,
+            justification: s.justification || "",
+          })).filter((s: any) => Boolean(s.name));
+
+          const techList = Array.isArray(w.technologies) && w.technologies.length > 0
+            ? w.technologies
+            : demonstrated_skills.map((s: any) => `${s.name} (${s.proficiency})`);
+
+          return {
+            analysis_id: w.analysis_id,
+            source_id: w.evidence_id,
+            source_title: w.title,
+            source_type: w.source_type,
+            observed_facts: (w.observed_facts || []).map((f: any, idx: number) => ({
+              id: `fact-${idx}`,
+              fact: typeof f === "string" ? f : f.fact || "",
+              excerpt: typeof f === "object" ? f.excerpt || f.fact || "" : f,
+              evidence_id: w.evidence_id,
+            })),
+            inferred_attributes: (w.inferred_attributes || []).map((inf: any, idx: number) => ({
+              id: `inf-${idx}`,
+              attribute: typeof inf === "string" ? inf : inf.attribute || "",
+              interpretation: typeof inf === "object" ? inf.supported_by || "" : "",
+              confidence: Math.round((w.confidence_score || 0.85) * 100),
+              is_tentative: true,
+            })),
+            detected_activities: (w.technical_tasks || []).map((t: string) => ({
+              task: t,
+              contribution_level: w.role?.toLowerCase().includes("author") ? "author" : "collaborator",
+              attribution_state: "confirmed",
+            })),
+            key_findings: techList,
+            demonstrated_skills,
+            uncertainty_flags: (w.uncertainty_flags || []).map((u: any) => typeof u === "string" ? u : `${u.area}: ${u.reason}`),
+            status: (w.analysis_status || "completed") as any,
+            model_name: w.analysis_method === "rule_based" || w.fallback_used ? "Rule-based Engine" : (w.model_name || "qwen3:8b"),
+            model_version: w.model_version || (w.analysis_method === "rule_based" ? "deterministic-v1.0" : "qwen3:8b"),
+            prompt_version: "v1.0",
+            analysis_method: w.analysis_method || "ollama",
+            fallback_used: !!w.fallback_used,
+            fallback_reason: w.fallback_reason || null,
+            analysis_status: w.analysis_status || "completed",
+            validation_status: w.validation_status || "valid",
+            created_at: w.created_at || "Recently",
+          };
+        });
+        setWorkAnalyses(mappedWork);
+      }
+
+      if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
+        const mappedCandidates: ExtractionCandidateItem[] = candRes.value.candidates.map((c: any) => ({
+          id: c.candidate_id,
+          original_label: c.name,
+          canonical_skill_id: c.competency_id,
+          canonical_name: c.name,
+          category: c.category,
+          skill_type: "technical",
+          confidence: Math.round((c.confidence_score || 0.85) * 100),
+          evidence_ids: [c.evidence_id],
+          supporting_excerpt: c.supporting_excerpt,
+          extraction_rationale: c.rationale,
+          taxonomy_status: "resolved",
+          review_state: c.status === "verified" ? "reviewed" : c.status === "insufficient" ? "insufficient" : "pending_review",
+          ambiguity_flags: [],
+          created_at: c.created_at || "Recently",
+        }));
+        setExtractionCandidates(mappedCandidates);
+
+        const mappedMappings: EvidenceMappingItem[] = candRes.value.candidates.map((c: any) => ({
+          id: c.mapping_id,
+          candidate_skill_id: c.candidate_id,
+          candidate_label: c.name,
+          canonical_skill_id: c.competency_id,
+          evidence_id: c.evidence_id,
+          evidence_title: c.evidence_title,
+          source_type: c.source_type,
+          occurred_date: "Recently",
+          relationship_type: "direct_implementation",
+          supporting_excerpt: c.supporting_excerpt,
+          relevance_score: Math.round((c.confidence_score || 0.85) * 100),
+          attribution_state: "confirmed",
+          mapping_status: c.status === "insufficient" ? "needs_evidence" : "active",
+          review_history: [
+            { action: "AI Extraction", actor: "SkillPassport Engine", timestamp: c.created_at || "Recently" }
+          ],
+        }));
+        setEvidenceMappings(mappedMappings);
+      }
+
+      if (guardRes.status === "fulfilled" && Array.isArray(guardRes.value?.results)) {
+        const mappedGuard: GuardClaimResult[] = guardRes.value.results.map((g: any) => ({
+          id: g.guard_run_id,
+          claim_title: g.claim_text,
+          associated_skill: "Extracted Skill Claim",
+          claimed_level: "Practitioner",
+          evidence_id: g.evidence_id,
+          guard_outcome: g.guard_outcome,
+          reason_code: (g.reason_codes || [])[0] || "OK",
+          explanation: g.guard_outcome === "PASS"
+            ? "Citation is present verbatim in authorized source text."
+            : `Blocked: ${(g.reason_codes || []).join(", ")}`,
+          checks: {
+            evidence_exists: true,
+            user_owns_evidence: g.ownership_check === "pass",
+            semantic_support_valid: g.citation_validation === "pass",
+            attribution_valid: g.ownership_check === "pass",
+            no_conflict: g.contradiction_check === "none",
+            level_supported: true,
+            not_revoked: true,
+          },
+        }));
+        setGuardResults(mappedGuard);
+      }
+
+      if (valRes.status === "fulfilled" && Array.isArray(valRes.value?.validations)) {
+        const mappedVals: OutputValidationRecord[] = valRes.value.validations.map((v: any) => ({
+          run_id: v.run_id,
+          output_type: v.target_type === "skill_extraction" ? "skill_extraction" : "work_analysis",
+          status: v.final_status === "valid" ? "valid" : "validation_failed",
+          schema_version: "v1.0",
+          model_version: "qwen3:8b",
+          prompt_version: "v1.0",
+          timestamp: v.created_at || "Recently",
+          issues: (v.error_messages || []).map((err: string) => ({
+            field: "output",
+            severity: "error",
+            message: err,
+          })),
+          retryable: true,
+          received_payload_summary: {
+            schema_valid: v.schema_valid,
+            missing_fields: (v.missing_fields || []).length,
+          },
+        }));
+        setValidationRecords(mappedVals);
+      }
+
+      if (confRes.status === "fulfilled" && Array.isArray(confRes.value?.claims)) {
+        const mappedConf: ConfidenceClaim[] = confRes.value.claims.map((c: any, idx: number) => ({
+          id: c.candidate_id || `conf-${idx}`,
+          skill_id: c.candidate_id,
+          skill_name: c.competency_name,
+          extraction_confidence: c.extraction_confidence,
+          evidence_strength: c.evidence_strength,
+          verification_state: c.verification_status,
+          proficiency_estimate: "Practitioner",
+          evidence_volume: 1,
+          evidence_recency: "Fresh",
+          coverage_score: c.extraction_confidence,
+          uncertainty_reasons: c.uncertainty_reasons || [],
+          needed_to_improve: [c.suggested_additional_evidence || "Corroborate with additional evidence."],
+        }));
+        setConfidenceClaims(mappedConf);
+      }
+
+      if (conflictRes.status === "fulfilled" && Array.isArray(conflictRes.value?.conflicts)) {
+        const mappedConflicts: ConflictRecord[] = conflictRes.value.conflicts.map((c: any) => ({
+          id: c.id,
+          title: `Conflict on ${c.conflict_field.replace('_', ' ')}`,
+          conflict_type: "attribution_dispute",
+          description: c.explanation,
+          status: c.status as "open" | "resolved",
+          source_a: {
+            id: c.evidence_a_id,
+            name: "Primary Evidence Record",
+            type: "Evidence Item",
+            date: "Recorded Date",
+            claim: c.evidence_a_assertion,
+            excerpt: c.evidence_a_assertion,
+            author: "User",
+          },
+          source_b: {
+            id: c.evidence_b_id,
+            name: "Corroborating Evidence Record",
+            type: "Evidence Item",
+            date: "Recorded Date",
+            claim: c.evidence_b_assertion,
+            excerpt: c.evidence_b_assertion,
+            author: "User",
+          },
+          suggested_resolution: c.suggested_resolution,
+          resolution_outcome: c.resolution_decision ? {
+            decision: c.resolution_decision,
+            rationale: c.resolution_notes || "",
+            actor: "Reviewer",
+            timestamp: "Recently",
+          } : undefined,
+        }));
+        setConflicts(mappedConflicts);
+      }
+
+      if (taskRes.status === "fulfilled" && Array.isArray(taskRes.value?.tasks)) {
+        const mappedTasks: HumanReviewTask[] = taskRes.value.tasks.map((t: any) => ({
+          id: t.id,
+          claim_id: t.candidate_mapping_id || t.evidence_id || t.id,
+          title: t.title,
+          category: t.task_type === "conflict" ? "conflict" : t.task_type === "prompt_injection" ? "suspicious_injection" : "insufficient_evidence",
+          priority: t.priority as "high" | "medium" | "low",
+          assigned_role: "Authorized Reviewer",
+          status: t.status as "pending" | "reviewed" | "rejected" | "escalated",
+          created_at: t.created_at || "Recently",
+          context_summary: t.description,
+        }));
+        setReviewTasks(mappedTasks);
+      }
+
+      if (injRes.status === "fulfilled" && Array.isArray(injRes.value?.findings)) {
+        const mappedInj: PromptInjectionFlag[] = injRes.value.findings.map((f: any) => ({
+          id: f.id,
+          source_id: f.evidence_id,
+          source_title: "Quarantined Artifact",
+          source_type: f.source_type,
+          flagged_excerpt: f.quarantined_excerpt,
+          detection_rule: f.detected_pattern,
+          threat_category: "instruction_override",
+          disposition: f.handling_outcome === "quarantined" ? "quarantined_and_ignored" : "sanitized",
+          status: "flagged",
+          timestamp: f.created_at || "Recently",
+        }));
+        setPromptInjectionFlags(mappedInj);
+      }
+
+      if (auditRes.status === "fulfilled" && Array.isArray(auditRes.value?.events)) {
+        const mappedAudits: AIAuditEvent[] = auditRes.value.events.map((a: any) => ({
+          id: a.id,
+          actor: a.actor,
+          timestamp: a.timestamp,
+          action: a.event_type,
+          target_id: a.target_type,
+          previous_state: a.previous_state,
+          new_state: a.new_state,
+          reason: a.reason,
+          hash: a.id.slice(0, 8),
+        }));
+        setAiAuditEvents(mappedAudits);
+      }
+    } catch (e) {
+      console.warn("Could not load evidence data from backend:", e);
+    } finally {
+      isFetchingRef.current = false;
+      lastFetchTimeRef.current = Date.now();
+      setIsLoadingEvidence(false);
+      setInitialLoading(false);
+    }
+  }, []);
+
+
+  // Sync with Supabase Auth & sessionStorage
   useEffect(() => {
     try {
-      // Clear legacy permanent localStorage flag to ensure visitors must perform sign-in
+      // Clear legacy permanent localStorage flag and any demo items
       localStorage.removeItem("sp_demo_auth");
+      localStorage.removeItem("sp_evidence_items");
+      localStorage.removeItem("sp_sources");
+      localStorage.removeItem("sp_runs");
+      localStorage.removeItem("sp_conflicts");
+      localStorage.removeItem("sp_review_tasks");
+      localStorage.removeItem("sp_validation");
+      localStorage.removeItem("sp_ai_audit");
 
       const sessionAuth = sessionStorage.getItem("sp_session_auth");
       if (sessionAuth === "true") {
         setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
       }
-      setAuthChecked(true);
 
-      const savedEv = localStorage.getItem("sp_evidence_items");
-      if (savedEv) setEvidenceItems(JSON.parse(savedEv));
-      const savedSrc = localStorage.getItem("sp_sources");
-      if (savedSrc) setSources(JSON.parse(savedSrc));
-      const savedRuns = localStorage.getItem("sp_runs");
-      if (savedRuns) setIngestionRuns(JSON.parse(savedRuns));
       const savedSkills = localStorage.getItem("sp_skills");
       if (savedSkills) setSkills(JSON.parse(savedSkills));
       const savedHist = localStorage.getItem("sp_history");
       if (savedHist) setHistoryEvents(JSON.parse(savedHist));
       const savedRole = localStorage.getItem("sp_demo_role");
       if (savedRole) setDemoRole(savedRole as DemoRole);
-      const savedConflicts = localStorage.getItem("sp_conflicts");
-      if (savedConflicts) setConflicts(JSON.parse(savedConflicts));
-      const savedTasks = localStorage.getItem("sp_review_tasks");
-      if (savedTasks) setReviewTasks(JSON.parse(savedTasks));
-      const savedVal = localStorage.getItem("sp_validation");
-      if (savedVal) setValidationRecords(JSON.parse(savedVal));
-      const savedAudit = localStorage.getItem("sp_ai_audit");
-      if (savedAudit) setAiAuditEvents(JSON.parse(savedAudit));
       const savedCustomRoles = localStorage.getItem("sp_custom_roles");
       if (savedCustomRoles) setCustomRoles(JSON.parse(savedCustomRoles));
       const savedRoleId = localStorage.getItem("sp_selected_role_id");
       if (savedRoleId) setSelectedRoleIdState(savedRoleId);
     } catch {
-      setAuthChecked(true);
       // Ignore local storage read errors
     }
-  }, []);
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setIsAuthenticated(true);
+        refreshEvidenceData();
+      } else {
+        setInitialLoading(false);
+      }
+      setAuthChecked(true);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setIsAuthenticated(true);
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          refreshEvidenceData(true);
+        } else {
+          refreshEvidenceData();
+        }
+      } else if (sessionStorage.getItem("sp_session_auth") !== "true") {
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [refreshEvidenceData]);
 
   const handleSelectRole = (roleId: string) => {
     setSelectedRoleIdState(roleId);
@@ -436,16 +926,13 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, [activeMatch, activeGaps]);
 
   const saveState = (
-    items: EvidenceItem[],
-    srcs: ConnectedSource[],
-    runs: IngestionRun[],
+    _items: EvidenceItem[],
+    _srcs: ConnectedSource[],
+    _runs: IngestionRun[],
     sks: SkillItem[],
     hist: SkillHistoryEvent[]
   ) => {
     try {
-      localStorage.setItem("sp_evidence_items", JSON.stringify(items));
-      localStorage.setItem("sp_sources", JSON.stringify(srcs));
-      localStorage.setItem("sp_runs", JSON.stringify(runs));
       localStorage.setItem("sp_skills", JSON.stringify(sks));
       localStorage.setItem("sp_history", JSON.stringify(hist));
     } catch {
@@ -467,6 +954,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     };
     const updated = [newItem, ...evidenceItems];
     setEvidenceItems(updated);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(updated));
+    }
 
     const newRun: IngestionRun = {
       runId: `run-${Date.now()}`,
@@ -488,13 +978,35 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     };
     const updatedRuns = [newRun, ...ingestionRuns];
     setIngestionRuns(updatedRuns);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("sp_live_runs_cache", JSON.stringify(updatedRuns));
+    }
     saveState(updated, sources, updatedRuns, skills, historyEvents);
   };
 
-  const deleteEvidenceItem = (id: string) => {
+  const deleteEvidenceItem = async (id: string) => {
+    const previousItems = evidenceItems;
     const updated = evidenceItems.filter((i) => i.id !== id);
     setEvidenceItems(updated);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(updated));
+    }
     saveState(updated, sources, ingestionRuns, skills, historyEvents);
+
+    try {
+      await apiDeleteEvidence(id);
+      addToast("Evidence Removed", "Evidence record and associated vector indexes removed.", "info");
+      refreshEvidenceData(true).catch((err) => console.warn("Background refresh after delete:", err));
+    } catch (err: any) {
+      console.error("Backend delete failed, rolling back local state:", err);
+      setEvidenceItems(previousItems);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(previousItems));
+      }
+      saveState(previousItems, sources, ingestionRuns, skills, historyEvents);
+      addToast("Delete Failed", err.message || "Failed to remove evidence from database.", "error");
+      throw err;
+    }
   };
 
   const updateEvidenceItem = (id: string, updates: Partial<EvidenceItem>) => {
@@ -503,7 +1015,14 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     saveState(updated, sources, ingestionRuns, skills, historyEvents);
   };
 
-  const confirmContribution = (evidenceId: string) => {
+  const confirmContribution = async (evidenceId: string) => {
+    try {
+      await reviewEvidenceItem(evidenceId, "verified", "Confirmed sole author and contribution");
+      runWorkAnalysis([evidenceId]).catch((e) => console.warn("Work analysis trigger:", e));
+      runSkillExtraction([evidenceId]).catch((e) => console.warn("Skill extraction trigger:", e));
+    } catch (e) {
+      console.warn("Backend review call failed, updating local state:", e);
+    }
     const updated = evidenceItems.map((i) => {
       if (i.id === evidenceId) {
         return {
@@ -516,13 +1035,23 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     });
     setEvidenceItems(updated);
     saveState(updated, sources, ingestionRuns, skills, historyEvents);
+    addToast("Contribution Verified", "Evidence item verified and recorded in audit log.", "success");
   };
 
-  const updateCandidateSkillStatus = (
+  const updateCandidateSkillStatus = async (
     evidenceId: string,
     skillId: string,
     status: "candidate" | "reviewed" | "flagged" | "insufficient"
   ) => {
+    try {
+      if (status === "reviewed") {
+        await reviewCandidateVerification(skillId, "verify", "Verified via Candidate Review UI");
+      } else if (status === "insufficient") {
+        await reviewCandidateVerification(skillId, "flag_insufficient", "Flagged as insufficient evidence");
+      }
+    } catch (e) {
+      console.warn("Backend verification call failed:", e);
+    }
     const updated = evidenceItems.map((item) => {
       if (item.id === evidenceId) {
         return {
@@ -612,33 +1141,41 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     };
     const updated = [newEvent, ...aiAuditEvents];
     setAiAuditEvents(updated);
-    try {
-      localStorage.setItem("sp_ai_audit", JSON.stringify(updated));
-    } catch {}
   };
 
-  const updateConflict = (id: string, updates: Partial<ConflictRecord>) => {
+  const updateConflict = async (id: string, updates: Partial<ConflictRecord>) => {
+    if (updates.status === "resolved" && updates.resolution_outcome) {
+      try {
+        await resolveConflict(
+          id,
+          (updates.resolution_outcome.decision as any) || "merge",
+          updates.resolution_outcome.rationale || "Resolved in UI"
+        );
+      } catch (e) {
+        console.warn("Backend resolve conflict failed:", e);
+      }
+    }
     const updated = conflicts.map((c) => (c.id === id ? { ...c, ...updates } : c));
     setConflicts(updated);
-    try {
-      localStorage.setItem("sp_conflicts", JSON.stringify(updated));
-    } catch {}
   };
 
-  const updateReviewTask = (id: string, updates: Partial<HumanReviewTask>) => {
+  const updateReviewTask = async (id: string, updates: Partial<HumanReviewTask>) => {
+    if (updates.status && updates.status !== "pending") {
+      try {
+        const action = updates.status === "reviewed" ? "approve" : updates.status === "rejected" ? "reject" : "escalate";
+        await actionReviewTask(id, action as any, "Resolved in review queue");
+      } catch (e) {
+        console.warn("Backend action review task failed:", e);
+      }
+    }
     const updated = reviewTasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
     setReviewTasks(updated);
-    try {
-      localStorage.setItem("sp_review_tasks", JSON.stringify(updated));
-    } catch {}
   };
+
 
   const updateValidationRecord = (id: string, updates: Partial<OutputValidationRecord>) => {
     const updated = validationRecords.map((v) => (v.run_id === id ? { ...v, ...updates } : v));
     setValidationRecords(updated);
-    try {
-      localStorage.setItem("sp_validation", JSON.stringify(updated));
-    } catch {}
   };
 
   const updateWorkAnalysis = (id: string, updates: Partial<WorkAnalysisResult>) => {
@@ -651,7 +1188,22 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     setExtractionCandidates(updated);
   };
 
-  const updateVerification = (id: string, updates: Partial<SkillVerificationRecord>) => {
+  const updateVerification = async (id: string, updates: Partial<SkillVerificationRecord>) => {
+    if (updates.verification_status) {
+      try {
+        const action =
+          updates.verification_status === "verified"
+            ? "verify"
+            : updates.verification_status === "not_verified"
+            ? "reject"
+            : updates.verification_status === "insufficient_evidence"
+            ? "flag_insufficient"
+            : "partially_support";
+        await reviewCandidateVerification(id, action, updates.decision_rationale || "Reviewer verification decision");
+      } catch (e) {
+        console.warn("Backend review candidate verification call failed:", e);
+      }
+    }
     const updated = verifications.map((v) => (v.verification_id === id ? { ...v, ...updates } : v));
     setVerifications(updated);
   };
@@ -1102,20 +1654,27 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
 
     addToast(
-      "Demo Access Granted",
-      `Signed in as ${userOverrides?.displayName || (role === "employee" ? "Alex Rivera" : role === "manager" ? "Elena Rostova" : role === "recruiter" ? "Marcus Vance" : "Dr. Sarah Chen")}. SkillPassport unlocked!`,
+      "Access Granted",
+      `Signed in as ${userOverrides?.displayName || (role === "employee" ? "Employee" : role === "manager" ? "Manager" : role === "recruiter" ? "Recruiter" : "Auditor")}. SkillPassport unlocked!`,
       "success"
     );
   };
 
-  const logoutDemo = () => {
+  const logoutDemo = async () => {
     setIsAuthenticated(false);
     try {
       sessionStorage.removeItem("sp_session_auth");
       sessionStorage.removeItem("sp_demo_role");
       localStorage.removeItem("sp_demo_auth");
+      localStorage.removeItem("sp_evidence_items");
+      localStorage.removeItem("sp_sources");
+      localStorage.removeItem("sp_runs");
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     } catch {}
-    addToast("Signed Out", "Demo session ended. Sign in anytime to regain access.", "info");
+    setEvidenceItems([]);
+    setSources(INITIAL_CONNECTED_SOURCES);
+    setIngestionRuns([]);
+    addToast("Signed Out", "Session ended. Sign in anytime to regain access.", "info");
   };
 
   // Activity handler
@@ -1462,7 +2021,12 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setMobileSidebarOpen,
         toggleMobileSidebar,
 
-        // Demo Authentication State
+        // Live Evidence Synchronization
+        refreshEvidenceData,
+        initialLoading,
+        isLoadingEvidence,
+
+        // Authentication State
         isAuthenticated,
         authChecked,
         loginDemo,

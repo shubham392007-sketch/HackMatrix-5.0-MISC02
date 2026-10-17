@@ -23,7 +23,7 @@ export function SourceStatusBadge({ status }: { status: ConnectionStatus }) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#4A7A4E]" />
-          DEMO CONNECTED
+          {status === "connected" ? "CONNECTED" : "DEMO CONNECTED"}
         </span>
       );
     case "syncing":
@@ -71,6 +71,13 @@ export function ProcessingStatusBadge({ status }: { status: ProcessingStatus }) 
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#FBF6DF] border border-[#1C1C1C]">
           <Layers className="w-3 h-3 text-[#1C1C1C]" />
           EXTRACTED
+        </span>
+      );
+    case "insufficient_content":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#F6C8D6] border border-[#1C1C1C] text-[#C85A54]">
+          <AlertTriangle className="w-3 h-3 text-[#C85A54]" />
+          INSUFFICIENT CONTENT
         </span>
       );
     case "failed":
@@ -129,6 +136,8 @@ export function EvidenceStrengthBadge({ strength }: { strength: EvidenceStrength
       ? "bg-[#DFE968] text-[#1C1C1C]"
       : strength === "medium"
       ? "bg-[#F6BB84] text-[#1C1C1C]"
+      : strength === "insufficient"
+      ? "bg-[#F6C8D6] text-[#C85A54]"
       : "bg-[#FBF6DF] text-[#1C1C1C]/70";
 
   return (

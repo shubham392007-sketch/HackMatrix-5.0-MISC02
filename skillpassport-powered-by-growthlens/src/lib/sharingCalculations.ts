@@ -11,12 +11,11 @@ import {
 } from "@/types/sharing";
 
 export const DEFAULT_CANDIDATE_PROFILE = {
-  displayName: "Alex Rivera",
-  headline: "Senior Software Engineer & Data Intelligence Specialist",
-  summary:
-    "Full-stack engineer with 5+ years of experience building resilient microservices, async messaging systems, and telemetry data pipelines. Proven background delivering high-throughput Python backends and sensor fusion architectures.",
-  contactEmail: "alex.rivera@example.com",
-  contactLinkedIn: "linkedin.com/in/alex-rivera-dev",
+  displayName: "",
+  headline: "",
+  summary: "",
+  contactEmail: "",
+  contactLinkedIn: "",
 };
 
 export const DEFAULT_SHARE_PERMISSIONS: SharePermissionsConfig = {

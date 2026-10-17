@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { useState, use } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import AppTopBar from "@/components/app/AppTopBar";
@@ -20,7 +20,11 @@ import {
   AlertTriangle,
   Sparkles,
   Trash2,
+  Code2,
+  RefreshCw,
 } from "lucide-react";
+import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
+import { reprocessUploadedDocument } from "@/lib/evidenceApi";
 
 export default function EvidenceDetailPage({
   params,
@@ -29,9 +33,28 @@ export default function EvidenceDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { evidenceItems, confirmContribution, deleteEvidenceItem } = useEvidence();
+  const { evidenceItems, confirmContribution, deleteEvidenceItem, refreshEvidenceData } = useEvidence();
+  const [reprocessing, setReprocessing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [reprocessMsg, setReprocessMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
   const item = evidenceItems.find((e) => e.id === id);
+
+  const handleReprocess = async () => {
+    if (!item) return;
+    try {
+      setReprocessing(true);
+      setReprocessMsg(null);
+      const docId = (item as any).externalRecordId || item.id;
+      await reprocessUploadedDocument(docId);
+      await refreshEvidenceData();
+      setReprocessMsg({ text: "Artifact successfully reprocessed with OCR and AI!" });
+    } catch (err: any) {
+      setReprocessMsg({ text: err.message || "Failed to reprocess document", error: true });
+    } finally {
+      setReprocessing(false);
+    }
+  };
 
   if (!item) {
     return (
@@ -52,22 +75,57 @@ export default function EvidenceDetailPage({
         backHref="/app/evidence/library"
         backLabel="Evidence Library"
       >
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm(`Remove evidence item "${item.title}"?`)) {
-              deleteEvidenceItem(item.id);
-              router.push("/app/evidence/library");
-            }
-          }}
-          className="pill-btn pill-btn-secondary text-xs text-[#C85A54] py-2 px-3 flex items-center gap-1.5"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span>REMOVE</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {item.sourceType === "document" || item.sourceType === "certificate" ? (
+            <button
+              type="button"
+              disabled={reprocessing}
+              onClick={handleReprocess}
+              className="pill-btn pill-btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${reprocessing ? "animate-spin" : ""}`} />
+              <span>{reprocessing ? "REPROCESSING ···" : "REPROCESS ARTIFACT"}</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={async () => {
+              if (confirm(`Remove evidence item "${item.title}"?`)) {
+                try {
+                  setDeleting(true);
+                  await deleteEvidenceItem(item.id);
+                  router.push("/app/evidence/library");
+                } catch (e) {
+                  setDeleting(false);
+                }
+              }
+            }}
+            className="pill-btn pill-btn-secondary text-xs text-[#C85A54] py-2 px-3 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {deleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            <span>{deleting ? "REMOVING ···" : "REMOVE"}</span>
+          </button>
+        </div>
       </AppTopBar>
 
       <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+        {reprocessMsg && (
+          <div
+            className={`p-4 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+              reprocessMsg.error
+                ? "bg-[#F6C8D6] border-[#1C1C1C] text-[#C85A54]"
+                : "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C]"
+            }`}
+          >
+            {reprocessMsg.error ? (
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#4A7A4E]" />
+            )}
+            <span>{reprocessMsg.text}</span>
+          </div>
+        )}
         {/* A. Evidence Overview & Status Bar */}
         <div className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-wrap items-center justify-between gap-4 shadow-[3px_3px_0_0_#1C1C1C]">
           <div className="space-y-1">
@@ -139,7 +197,59 @@ export default function EvidenceDetailPage({
           </div>
         </div>
 
-        {/* C. Contribution Attribution & Human Review Action */}
+        {/* C. Repository Languages Contextual Panel (when evidence originates from GitHub) */}
+        {item.sourceType === "github" && (
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1C1C1C]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <Code2 className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  Repository Languages • Contextual Technology Signal
+                </h3>
+              </div>
+              <Link
+                href="/app/evidence/sources/github"
+                className="text-xs font-bold underline text-[#1C1C1C] hover:opacity-75 inline-flex items-center gap-1"
+              >
+                <span>View Full Repository Analysis</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <p className="text-xs text-[#1C1C1C]/75">
+              Surrounding codebase composition for repository <span className="font-mono font-bold text-[#1C1C1C]">{item.project || item.sourceReference}</span>.
+              <span className="italic block mt-1 text-[#1C1C1C]/60">
+                Notice: Repository-level language distribution indicates the codebase environment and is preserved as context. It does not infer this specific pull request or commit contains these exact proportions.
+              </span>
+            </p>
+
+            {item.normalizedMetadata?.repositoryLanguages && item.normalizedMetadata.repositoryLanguages.length > 0 ? (
+              <div className="pt-2">
+                <RepositoryLanguageBar
+                  languages={item.normalizedMetadata.repositoryLanguages.map((l) => ({
+                    name: l.name,
+                    bytes: l.bytes || 0,
+                    percentage: l.percentage,
+                  }))}
+                  compact={true}
+                  showTitle={false}
+                />
+              </div>
+            ) : (
+              <div className="p-3 bg-white/70 rounded-xl border border-[#1C1C1C]/20 text-xs text-[#1C1C1C]/60 flex items-center justify-between">
+                <span>Repository language statistics available in Connected Sources.</span>
+                <Link
+                  href="/app/evidence/sources/github"
+                  className="pill-btn pill-btn-secondary text-[10px] py-1 px-2.5"
+                >
+                  INSPECT REPO
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* D. Contribution Attribution & Human Review Action */}
         <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
@@ -167,38 +277,59 @@ export default function EvidenceDetailPage({
             Extracted Candidate Skills ({item.candidateSkills.length})
           </h3>
 
-          <div className="space-y-3">
-            {item.candidateSkills.map((sk) => (
-              <div
-                key={sk.id}
-                className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-white flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
-                      {sk.category}
-                    </span>
-                    <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>
+          {item.candidateSkills.length === 0 ? (
+            <div className="p-8 rounded-2xl border-[1.5px] border-dashed border-[#1C1C1C] bg-[#FBF1CF] text-center space-y-3">
+              <AlertTriangle className="w-8 h-8 text-[#C85A54] mx-auto" />
+              <h4 className="text-sm font-black text-[#1C1C1C]">No Supported Candidate Competencies</h4>
+              <p className="text-xs font-medium text-[#1C1C1C]/75 max-w-lg mx-auto">
+                The source artifact contained insufficient verifiable text to propose candidate competencies. SkillPassport enforces strict grounding: skills are never fabricated from person names or file names alone.
+              </p>
+              {(item.sourceType === "document" || item.sourceType === "certificate") && (
+                <button
+                  type="button"
+                  onClick={handleReprocess}
+                  disabled={reprocessing}
+                  className="pill-btn pill-btn-primary text-xs py-2 px-5 inline-flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{reprocessing ? "Reprocessing Artifact ···" : "Reprocess with OCR & AI"}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {item.candidateSkills.map((sk) => (
+                <div
+                  key={sk.id}
+                  className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-white flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
+                        {sk.category}
+                      </span>
+                      <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>
+                    </div>
+                    <p className="text-xs font-medium text-[#1C1C1C]/75">
+                      Excerpt: &ldquo;{sk.excerpt}&rdquo;
+                    </p>
+                    <p className="text-[10.5px] text-[#1C1C1C]/60 italic">
+                      Reason: {sk.associationReason}
+                    </p>
                   </div>
-                  <p className="text-xs font-medium text-[#1C1C1C]/75">
-                    Excerpt: &ldquo;{sk.excerpt}&rdquo;
-                  </p>
-                  <p className="text-[10.5px] text-[#1C1C1C]/60 italic">
-                    Reason: {sk.associationReason}
-                  </p>
-                </div>
 
-                <div className="shrink-0 flex items-center gap-3">
-                  <span className="text-[11px] font-black uppercase text-[#1C1C1C]/70">
-                    LEVEL: {sk.proficiencyLevel}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#FBF1CF]">
-                    {sk.status.toUpperCase()}
-                  </span>
+                  <div className="shrink-0 flex items-center gap-3">
+                    <span className="text-[11px] font-black uppercase text-[#1C1C1C]/70">
+                      LEVEL: {sk.proficiencyLevel}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#FBF1CF]">
+                      {sk.status.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import { Menu, Bell, ShieldCheck } from "lucide-react";
 
 export default function MobileTopNav() {
@@ -12,6 +13,23 @@ export default function MobileTopNav() {
     userProfile,
     currentRole,
   } = useEvidence();
+  const { user: authUser, profile: authProfile } = useAuth();
+
+  const realDisplayName =
+    authProfile?.display_name ||
+    (authUser?.user_metadata?.full_name as string) ||
+    (authUser?.user_metadata?.name as string) ||
+    (authUser?.email ? authUser.email.split("@")[0] : null) ||
+    userProfile?.displayName ||
+    "User";
+
+  const realInitials = (() => {
+    const parts = realDisplayName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return realDisplayName.slice(0, 2).toUpperCase();
+  })();
 
   return (
     <div className="lg:hidden sticky top-0 z-30 bg-[#FBF6DF] border-b-[1.5px] border-[#1C1C1C] px-3.5 py-2.5 flex items-center justify-between shrink-0 shadow-sm">
@@ -64,7 +82,7 @@ export default function MobileTopNav() {
           className="w-7 h-7 rounded-full bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center font-black text-[10px] shadow-[1px_1px_0_0_#1C1C1C] hover:opacity-90 transition-opacity"
           aria-label="User profile"
         >
-          {userProfile?.avatarInitials || "AR"}
+          {realInitials}
         </Link>
       </div>
     </div>

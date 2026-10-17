@@ -24,6 +24,14 @@ export interface DetectedActivity {
   attribution_state: "confirmed" | "pending_confirmation";
 }
 
+export interface DemonstratedSkill {
+  name: string;
+  proficiency: "Foundational" | "Intermediate" | "Advanced" | string;
+  category?: string;
+  corroborated_with_evidence: boolean;
+  justification?: string;
+}
+
 export interface WorkAnalysisResult {
   analysis_id: string;
   source_id: string;
@@ -33,12 +41,18 @@ export interface WorkAnalysisResult {
   inferred_attributes: InferredAttribute[];
   detected_activities: DetectedActivity[];
   key_findings: string[];
+  demonstrated_skills?: DemonstratedSkill[];
   uncertainty_flags: string[];
   status: AnalysisStatus;
   model_name: string;
   model_version: string;
   prompt_version: string;
   created_at: string;
+  analysis_method?: "ollama" | "rule_based" | string;
+  fallback_used?: boolean;
+  fallback_reason?: string | null;
+  analysis_status?: string;
+  validation_status?: string;
 }
 
 export interface ExtractionCandidateItem {

@@ -13,6 +13,7 @@ import {
   X,
   ShieldAlert,
 } from "lucide-react";
+import LoadingAnimation from "@/components/ui/LoadingAnimation";
 
 /* =========================================================================
    1. REUSABLE EMPTY STATE
@@ -89,9 +90,9 @@ export function LoadingState({
 }: LoadingStateProps) {
   return (
     <div
-      className={`p-10 text-center rounded-2xl bg-white/60 border border-ink/15 space-y-3 ${className}`}
+      className={`p-8 text-center rounded-2xl bg-white/60 border border-ink/15 space-y-2 flex flex-col items-center justify-center ${className}`}
     >
-      <div className="w-10 h-10 rounded-full border-2 border-ink/20 border-t-ink animate-spin mx-auto" />
+      <LoadingAnimation size="md" className="-my-2" />
       <div className="space-y-1">
         <h4 className="text-sm font-bold text-ink">{label}</h4>
         {detail && <p className="text-xs text-ink/60">{detail}</p>}

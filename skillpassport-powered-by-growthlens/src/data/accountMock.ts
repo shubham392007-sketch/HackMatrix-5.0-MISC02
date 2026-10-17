@@ -9,19 +9,18 @@ import {
 } from "@/types/account";
 
 export const INITIAL_USER_PROFILE: UserProfile = {
-  id: "user-alex-rivera",
-  displayName: "Alex Rivera",
-  headline: "Senior Software Engineer & Data Intelligence Specialist",
-  currentRole: "Senior Software Engineer",
-  summary:
-    "Full-stack engineer with 5+ years of experience building resilient microservices, async messaging systems, and telemetry data pipelines. Proven background delivering high-throughput Python backends, sensor fusion architectures, and observable cloud microservices.",
-  organization: "GrowthLens Engineering Lab",
-  location: "San Francisco, CA (Hybrid / Remote)",
-  avatarInitials: "AR",
-  contactEmail: "alex.rivera@example.com",
-  contactLinkedIn: "linkedin.com/in/alex-rivera-dev",
-  portfolioUrl: "https://alexrivera.dev",
-  lastUpdated: "Today, 10:15 AM",
+  id: "",
+  displayName: "",
+  headline: "",
+  currentRole: "",
+  summary: "",
+  organization: "",
+  location: "",
+  avatarInitials: "",
+  contactEmail: "",
+  contactLinkedIn: "",
+  portfolioUrl: "",
+  lastUpdated: "",
 };
 
 export const INITIAL_APP_SETTINGS: AppSettings = {

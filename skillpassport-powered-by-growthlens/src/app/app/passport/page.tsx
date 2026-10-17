@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 export default function PassportOverviewPage() {
-  const { skills, historyEvents, evidenceItems } = useEvidence();
+  const { skills, historyEvents, evidenceItems, userProfile } = useEvidence();
 
   const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
   const candidateSkills = skills.filter((s) => s.verificationState === "candidate");
@@ -62,13 +62,15 @@ export default function PassportOverviewPage() {
               INDIVIDUAL CAPABILITY RECORD
             </span>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl sm:text-3xl font-black text-[#1C1C1C]">Alex Rivera</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#1C1C1C]">
+                {userProfile.displayName || "SkillPassport Member"}
+              </h2>
               <span className="px-3 py-1 rounded-full text-[10px] font-black bg-[#DFE968] border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C]">
                 PASSPORT ACTIVE
               </span>
             </div>
             <p className="text-xs font-medium text-[#1C1C1C]/75 max-w-xl">
-              Software Developer • Specialized in Backend Architecture, Telemetry Pipelines, and Algorithmic Regression.
+              {userProfile.headline || userProfile.currentRole || "Specialized in Software Architecture, Full-Stack Development, and Applied AI."}
             </p>
           </div>
 

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   ArrowLeft,
   Bell,
@@ -60,6 +61,30 @@ export default function AppTopBar({
     removeToast,
     logoutDemo,
   } = useEvidence();
+  const { user: authUser, profile: authProfile, signOut } = useAuth();
+
+  const realDisplayName =
+    authProfile?.display_name ||
+    (authUser?.user_metadata?.full_name as string) ||
+    (authUser?.user_metadata?.name as string) ||
+    (authUser?.email ? authUser.email.split("@")[0] : null) ||
+    userProfile?.displayName ||
+    "User";
+
+  const realInitials = (() => {
+    const parts = realDisplayName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return realDisplayName.slice(0, 2).toUpperCase();
+  })();
+
+  const realHeadline =
+    authProfile?.headline ||
+    authProfile?.job_title ||
+    authProfile?.current_role ||
+    userProfile?.headline ||
+    "Software Developer";
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -189,9 +214,9 @@ export default function AppTopBar({
           >
             {title}
           </h1>
-          {badge !== "" && (
+          {Boolean(badge) && badge !== "DEMO DATA" && (
             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0 whitespace-nowrap ${badgeColor || "bg-[#DFE968]"}`}>
-              {badge || "DEMO DATA"}
+              {badge}
             </span>
           )}
         </div>
@@ -319,10 +344,10 @@ export default function AppTopBar({
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/80 border border-ink/20 hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
           >
             <div className="w-6 h-6 rounded-full bg-[#DFE968] border border-ink font-black text-[10px] flex items-center justify-center text-ink">
-              {userProfile?.avatarInitials || "AR"}
+              {realInitials}
             </div>
-            <span className="text-xs font-bold text-ink hidden sm:inline max-w-[100px] truncate">
-              {userProfile?.displayName || "Alex Rivera"}
+            <span className="text-xs font-bold text-ink hidden sm:inline max-w-[120px] truncate">
+              {realDisplayName}
             </span>
           </button>
 
@@ -330,10 +355,10 @@ export default function AppTopBar({
             <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border-2 border-ink shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
               <div className="p-2.5 border-b border-ink/10 space-y-0.5">
                 <div className="font-bold text-ink truncate">
-                  {userProfile?.displayName || "Alex Rivera"}
+                  {realDisplayName}
                 </div>
                 <div className="text-[10px] text-ink/60 truncate">
-                  {userProfile?.headline || "Software Developer"}
+                  {realHeadline}
                 </div>
               </div>
 
@@ -375,15 +400,15 @@ export default function AppTopBar({
               <div className="pt-1 border-t border-ink/10">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setIsProfileOpen(false);
-                    logoutDemo();
+                    await signOut();
                     router.push("/login");
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-rose-700 hover:bg-rose-50 font-bold transition-colors text-left"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Demo Sign Out</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>

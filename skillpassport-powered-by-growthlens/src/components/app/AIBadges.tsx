@@ -19,6 +19,7 @@ import {
   User,
   Shield,
   SlidersHorizontal,
+  Cpu,
 } from "lucide-react";
 
 export function GuardOutcomeBadge({ outcome }: { outcome: GuardOutcome }) {
@@ -92,6 +93,40 @@ export function AnalysisStatusBadge({ status }: { status: AnalysisStatus }) {
         </span>
       );
   }
+}
+
+export function AnalysisMethodBadge({
+  method,
+  modelName,
+  fallbackUsed,
+  fallbackReason,
+}: {
+  method?: "ollama" | "rule_based" | string;
+  modelName?: string | null;
+  fallbackUsed?: boolean;
+  fallbackReason?: string | null;
+}) {
+  if (method === "rule_based" || fallbackUsed) {
+    return (
+      <span
+        title={fallbackReason ? `Fallback reason: ${fallbackReason}` : "Rule-based Deterministic Engine"}
+        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FFF6E9] text-[#B07219] border border-[#F0D5B5]"
+      >
+        <AlertTriangle className="w-3 h-3 text-[#B07219]" />
+        Rule-Based Fallback
+      </span>
+    );
+  }
+
+  return (
+    <span
+      title={`Local LLM Inference (${modelName || "Qwen-3 8B"})`}
+      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#EBF3ED] text-[#2E6941] border border-[#B8D7C2]"
+    >
+      <Cpu className="w-3 h-3 text-[#2E6941]" />
+      AI ({modelName || "Qwen-3 8B"})
+    </span>
+  );
 }
 
 export function ValidationStatusBadge({

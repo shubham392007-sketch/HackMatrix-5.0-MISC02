@@ -4,6 +4,7 @@ import "./globals.css";
 import PageTransition from "@/components/layout/PageTransition";
 import SkillPassportBootScreen from "@/components/layout/SkillPassportBootScreen";
 import { EvidenceProvider } from "@/context/EvidenceContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const poppins = Poppins({
   variable: "--font-primary",
@@ -29,15 +30,17 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Yellowtail&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Pacifico&family=Yellowtail&display=swap"
           rel="stylesheet"
         />
       </head>
       <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
         <SkillPassportBootScreen />
-        <EvidenceProvider>
-          <PageTransition>{children}</PageTransition>
-        </EvidenceProvider>
+        <AuthProvider>
+          <EvidenceProvider>
+            <PageTransition>{children}</PageTransition>
+          </EvidenceProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -21,11 +21,20 @@ interface SkillPassportBootScreenProps {
  */
 export default function SkillPassportBootScreen({
   onComplete,
-  minDurationMs = 5200,
+  minDurationMs = 2100,
 }: SkillPassportBootScreenProps) {
   const [phase, setPhase] = useState<"init" | "drawing" | "holding" | "fading" | "done">("init");
   const [isReducedMotion, setIsReducedMotion] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const dismissBoot = () => {
+    setPhase("fading");
+    setTimeout(() => {
+      setPhase("done");
+      sessionStorage.setItem("skillpassport_boot_seen", "true");
+      onComplete?.();
+    }, 200);
+  };
 
   useEffect(() => {
     // 1. Session storage check — only play once per browser session
@@ -48,38 +57,34 @@ export default function SkillPassportBootScreen({
           setPhase("done");
           sessionStorage.setItem("skillpassport_boot_seen", "true");
           onComplete?.();
-        }, 300);
-      }, 700);
+        }, 200);
+      }, 400);
       return () => clearTimeout(timer);
     }
 
-    // 3. Prevent scroll and accidental interaction during boot sequence
+    // 3. Prevent accidental interaction during boot sequence
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // 4. Timing sequence:
-    // 0 - 150ms: Clean background setup
-    // 150ms - 3800ms: Wordmark handwriting and stroke-dashoffset reveal
-    // 3800ms - 4800ms: Completed wordmark hold
-    // 4800ms - 5400ms: Soft dissolve transition into main website
+    // 4. Snappy Apple-style timing sequence (~2.1s total)
     const drawTimer = setTimeout(() => {
       setPhase("drawing");
-    }, 150);
+    }, 80);
 
     const holdTimer = setTimeout(() => {
       setPhase("holding");
-    }, 3800);
+    }, 1350);
 
     const fadeTimer = setTimeout(() => {
       setPhase("fading");
-    }, 4800);
+    }, 1750);
 
     const completeTimer = setTimeout(() => {
       setPhase("done");
       document.body.style.overflow = originalOverflow;
       sessionStorage.setItem("skillpassport_boot_seen", "true");
       onComplete?.();
-    }, 5450);
+    }, minDurationMs);
 
     return () => {
       clearTimeout(drawTimer);
@@ -88,7 +93,7 @@ export default function SkillPassportBootScreen({
       clearTimeout(completeTimer);
       document.body.style.overflow = originalOverflow;
     };
-  }, [onComplete]);
+  }, [onComplete, minDurationMs]);
 
   if (phase === "done") {
     return null;
@@ -101,8 +106,9 @@ export default function SkillPassportBootScreen({
       ref={containerRef}
       role="status"
       aria-live="polite"
-      aria-label="SkillPassport Loading Screen"
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none pointer-events-none transition-all duration-700 ease-out ${
+      aria-label="SkillPassport Loading Screen (Click to skip)"
+      onClick={dismissBoot}
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer transition-all duration-500 ease-out ${
         phase === "fading" ? "opacity-0 scale-[0.99] blur-[1px]" : "opacity-100 scale-100"
       }`}
       style={{

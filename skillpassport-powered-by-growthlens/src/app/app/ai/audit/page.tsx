@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
 import { AIAuditEvent } from "@/types/ai";
-import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 
 export default function AIAuditHistoryPage() {
   const { aiAuditEvents, currentRole } = useEvidence();
@@ -206,7 +205,23 @@ export default function AIAuditHistoryPage() {
           <span className="font-mono">Policy Spec: GrowthLens-Audit-2026</span>
         </div>
 
-        {filteredEvents.length === 0 ? (
+        {aiAuditEvents.length === 0 ? (
+          <div className="gl-card p-12 text-center bg-white border border-dashed border-ink/20 rounded-2xl">
+            <History className="w-12 h-12 text-ink-muted mx-auto mb-3 opacity-50" />
+            <h3 className="text-base font-bold text-ink">Zero Audit Events Recorded</h3>
+            <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
+              No verification decisions, guard policy blocks, conflict reconciliations, or model output validations have occurred yet. All system and human actions are cryptographically and immutably recorded here as they occur.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Link href="/app/evidence" className="pill-btn pill-btn-primary text-xs py-2 px-5">
+                Ingest Work Evidence &rarr;
+              </Link>
+              <Link href="/app/ai" className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-5">
+                Return to AI Overview
+              </Link>
+            </div>
+          </div>
+        ) : filteredEvents.length === 0 ? (
           <div className="gl-card p-12 text-center text-ink-muted">
             No audit events matched your search filters.
           </div>

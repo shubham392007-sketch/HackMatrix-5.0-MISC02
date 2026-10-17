@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
-import { DemoDataNotice } from "@/components/app/AIBadges";
 import {
   SkillVerificationBadge,
   ProficiencyBadge,
@@ -29,16 +28,23 @@ export default function SkillVerificationReviewPage() {
   const {
     verifications,
     evidenceItems,
+    userProfile,
     updateVerification,
     addAIAuditEvent,
   } = useEvidence();
 
   const [selectedVerificationId, setSelectedVerificationId] = useState<string>(
-    verifications[0]?.verification_id || "ver-01"
+    verifications[0]?.verification_id || ""
   );
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [simulatedActionMessage, setSimulatedActionMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!selectedVerificationId && verifications.length > 0) {
+      setSelectedVerificationId(verifications[0].verification_id);
+    }
+  }, [verifications, selectedVerificationId]);
 
   const activeVerification = verifications.find(
     (v) => v.verification_id === selectedVerificationId
@@ -81,7 +87,7 @@ export default function SkillVerificationReviewPage() {
       previous_state: activeVerification.verification_status,
       new_state: newStatus,
       reason: `Simulated reviewer action: ${action.toUpperCase()}`,
-      actor: "Reviewer (Alex Rivera)",
+      actor: userProfile.displayName ? `Reviewer (${userProfile.displayName})` : "Authorized Reviewer",
       model_or_policy_version: activeVerification.verification_policy_version,
     });
 
@@ -189,8 +195,15 @@ export default function SkillVerificationReviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0EBE1]">
-                {filteredList.map((ver) => {
-                  const isSelected = ver.verification_id === selectedVerificationId;
+                {filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-xs text-[#8C827A]">
+                      No verification records found. Candidate skills will appear here for verification review.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredList.map((ver) => {
+                    const isSelected = ver.verification_id === selectedVerificationId;
 
                   return (
                     <tr
@@ -229,7 +242,7 @@ export default function SkillVerificationReviewPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>

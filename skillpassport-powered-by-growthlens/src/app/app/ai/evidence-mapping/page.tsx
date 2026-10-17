@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
-import { DemoDataNotice } from "@/components/app/AIBadges";
 import {
   Layers,
   Search,
@@ -27,16 +26,23 @@ export default function EvidenceMappingReviewPage() {
     evidenceMappings,
     extractionCandidates,
     evidenceItems,
+    userProfile,
     addAIAuditEvent,
   } = useEvidence();
 
   const [selectedMappingId, setSelectedMappingId] = useState<string>(
-    evidenceMappings[0]?.id || "map-01"
+    evidenceMappings[0]?.id || ""
   );
   const [search, setSearch] = useState("");
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flagReason, setFlagReason] = useState("");
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!selectedMappingId && evidenceMappings.length > 0) {
+      setSelectedMappingId(evidenceMappings[0].id);
+    }
+  }, [evidenceMappings, selectedMappingId]);
 
   const activeMapping = evidenceMappings.find((m) => m.id === selectedMappingId);
   const matchingEvidence = activeMapping
@@ -78,7 +84,7 @@ export default function EvidenceMappingReviewPage() {
       affected_entity_id: activeMapping.candidate_skill_id,
       new_state: "Mapping Flagged by Reviewer",
       reason: flagReason,
-      actor: "Reviewer (Alex Rivera)",
+      actor: userProfile.displayName ? `Reviewer (${userProfile.displayName})` : "Authorized Reviewer",
     });
 
     setFeedbackToast(`Mapping reported for calibration: "${flagReason}"`);
@@ -139,8 +145,15 @@ export default function EvidenceMappingReviewPage() {
           </div>
 
           <div className="space-y-2 max-h-[620px] overflow-y-auto pr-1">
-            {filteredMappings.map((map) => {
-              const isSelected = map.id === selectedMappingId;
+            {filteredMappings.length === 0 ? (
+              <div className="py-12 text-center text-xs text-[#8C827A] space-y-2">
+                <Layers className="w-8 h-8 text-[#8C827A] mx-auto opacity-50" />
+                <p className="font-bold text-[#1F1E1D]">No Evidence Mappings Found</p>
+                <p>Run skill extraction on your ingested sources to map candidate skills to evidence.</p>
+              </div>
+            ) : (
+              filteredMappings.map((map) => {
+                const isSelected = map.id === selectedMappingId;
               const relMeta = getRelationshipBadge(map.relationship_type);
 
               return (
@@ -174,7 +187,7 @@ export default function EvidenceMappingReviewPage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 

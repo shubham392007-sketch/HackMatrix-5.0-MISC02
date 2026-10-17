@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
@@ -23,8 +23,6 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 import { PromptInjectionFlag } from "@/types/ai";
 import {
-  DemoDataNotice,
-  DemoRoleSelector,
   RestrictedAccessCard,
 } from "@/components/app/AIBadges";
 
@@ -37,8 +35,15 @@ export default function PromptInjectionProtectionPage() {
   } = useEvidence();
 
   const [selectedFlagId, setSelectedFlagId] = useState<string>(
-    promptInjectionFlags[0]?.id || "pi-01"
+    promptInjectionFlags[0]?.id || ""
   );
+
+  useEffect(() => {
+    if (!selectedFlagId && promptInjectionFlags.length > 0) {
+      setSelectedFlagId(promptInjectionFlags[0].id);
+    }
+  }, [promptInjectionFlags, selectedFlagId]);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const selectedFlag =
@@ -82,7 +87,7 @@ export default function PromptInjectionProtectionPage() {
     const actor =
       currentRole === "admin"
         ? "Security Administrator"
-        : "Authorized Reviewer (Alex Rivera)";
+        : "Authorized Reviewer";
 
     updatePromptInjectionFlag(flag.id, {
       status: newStatus,
@@ -170,6 +175,23 @@ export default function PromptInjectionProtectionPage() {
       </div>
 
       {/* Flagged Items and Inspection Console */}
+      {promptInjectionFlags.length === 0 ? (
+        <div className="gl-card p-12 text-center bg-white border border-dashed border-ink/20 rounded-2xl">
+          <ShieldCheck className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-ink">Zero Prompt-Injection Flags Detected</h3>
+          <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
+            No indirect prompt injection attempts or malicious instruction overrides have been detected across your ingested work artifacts. The pre-tokenization AST delimiter sanitizer automatically scans all codebases, commits, and documents upon ingestion.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/app/evidence" className="pill-btn pill-btn-primary text-xs py-2 px-5">
+              Ingest New Evidence &rarr;
+            </Link>
+            <Link href="/app/ai" className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-5">
+              Return to AI Overview
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Flagged Files List */}
         <div className="lg:col-span-5 space-y-4">
@@ -346,6 +368,7 @@ export default function PromptInjectionProtectionPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   </div>
   );

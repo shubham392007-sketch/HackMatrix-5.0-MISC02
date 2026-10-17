@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
@@ -22,8 +22,6 @@ import {
 import { useEvidence } from "@/context/EvidenceContext";
 import { HumanReviewTask } from "@/types/ai";
 import {
-  DemoDataNotice,
-  DemoRoleSelector,
   RestrictedAccessCard,
 } from "@/components/app/AIBadges";
 
@@ -31,8 +29,15 @@ export default function HumanReviewQueuePage() {
   const { currentRole, reviewTasks, updateReviewTask, addAIAuditEvent } =
     useEvidence();
   const [selectedTaskId, setSelectedTaskId] = useState<string>(
-    reviewTasks[0]?.id || "rev-01"
+    reviewTasks[0]?.id || ""
   );
+
+  useEffect(() => {
+    if (!selectedTaskId && reviewTasks.length > 0) {
+      setSelectedTaskId(reviewTasks[0].id);
+    }
+  }, [reviewTasks, selectedTaskId]);
+
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [reviewNote, setReviewNote] = useState<string>("");
@@ -83,8 +88,8 @@ export default function HumanReviewQueuePage() {
   ) => {
     const actor =
       currentRole === "admin"
-        ? "Demo Administrator"
-        : "Authorized Reviewer (Alex Rivera)";
+        ? "Administrator"
+        : "Authorized Reviewer";
 
     const note = reviewNote.trim() || `Adjudicated as ${decisionLabel} via Human Review Queue.`;
 
@@ -210,6 +215,23 @@ export default function HumanReviewQueuePage() {
       </div>
 
       {/* Main Grid: Task List + Action Drawer */}
+      {reviewTasks.length === 0 ? (
+        <div className="gl-card p-12 text-center bg-white border border-dashed border-ink/20 rounded-2xl">
+          <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-ink">Human Review Queue is Clear</h3>
+          <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
+            No candidate skills or evidence claims currently require manual escalation. Claims flagged for ambiguous taxonomy mapping, low model confidence, or conflicting source attributions will appear here for review.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/app/ai/skill-extraction" className="pill-btn pill-btn-primary text-xs py-2 px-5">
+              View Candidate Skills &rarr;
+            </Link>
+            <Link href="/app/ai" className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-5">
+              Return to AI Overview
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Tasks Triage Table */}
         <div className="lg:col-span-5 space-y-4">
@@ -262,18 +284,23 @@ export default function HumanReviewQueuePage() {
           </div>
 
           <div className="space-y-3">
-            {filteredTasks.map((task) => {
-              const isSelected = task.id === selectedTaskId;
-              return (
-                <div
-                  key={task.id}
-                  onClick={() => setSelectedTaskId(task.id)}
-                  className={`gl-card p-4 cursor-pointer transition-all border ${
-                    isSelected
-                      ? "ring-2 ring-ink border-ink bg-white shadow-md"
-                      : "bg-white/80 hover:bg-white border-ink/10"
-                  }`}
-                >
+            {filteredTasks.length === 0 ? (
+              <div className="gl-card p-6 text-center text-ink-muted text-xs bg-white">
+                No review tasks match the selected filters.
+              </div>
+            ) : (
+              filteredTasks.map((task) => {
+                const isSelected = task.id === selectedTaskId;
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => setSelectedTaskId(task.id)}
+                    className={`gl-card p-4 cursor-pointer transition-all border ${
+                      isSelected
+                        ? "ring-2 ring-ink border-ink bg-white shadow-md"
+                        : "bg-white/80 hover:bg-white border-ink/10"
+                    }`}
+                  >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="text-[11px] font-mono text-ink-muted">{task.id}</span>
                     <div className="flex items-center gap-1.5">
@@ -295,7 +322,7 @@ export default function HumanReviewQueuePage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 
@@ -439,6 +466,7 @@ export default function HumanReviewQueuePage() {
           )}
         </div>
       </div>
+      )}
     </div>
   </div>
   );

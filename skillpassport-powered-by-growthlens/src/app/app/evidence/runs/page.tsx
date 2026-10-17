@@ -5,7 +5,8 @@ import { useEvidence } from "@/context/EvidenceContext";
 import { Activity, CheckCircle2, XCircle, RotateCcw, Clock } from "lucide-react";
 
 export default function IngestionRunsPage() {
-  const { ingestionRuns, retryIngestionRun } = useEvidence();
+  const { ingestionRuns, retryIngestionRun, initialLoading, isLoadingEvidence } = useEvidence();
+  const isDataLoading = initialLoading || (isLoadingEvidence && ingestionRuns.length === 0);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -20,13 +21,45 @@ export default function IngestionRunsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-black text-[#1C1C1C]">Recent Pipeline Executions</h3>
-            <span className="text-xs font-bold text-[#1C1C1C]/60">
-              {ingestionRuns.length} Total Runs
-            </span>
+            {isDataLoading ? (
+              <div className="h-4 w-24 bg-[#1C1C1C]/15 rounded animate-pulse" />
+            ) : (
+              <span className="text-xs font-bold text-[#1C1C1C]/60">
+                {ingestionRuns.length} Total Runs
+              </span>
+            )}
           </div>
 
           <div className="space-y-4">
-            {ingestionRuns.map((run) => (
+            {isDataLoading ? (
+              <div className="p-8 rounded-[24px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-4 shadow-[2px_2px_0_0_#1C1C1C]">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-[#1C1C1C]/15">
+                  <div className="w-4 h-4 rounded-full border-2 border-[#1C1C1C] border-t-transparent animate-spin" />
+                  <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/80">
+                    Loading Ingestion Runs...
+                  </span>
+                </div>
+                {[1, 2].map((i) => (
+                  <div key={i} className="p-5 rounded-2xl bg-[#FBF1CF]/50 border border-[#1C1C1C]/15 space-y-3 animate-pulse">
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 w-44 bg-[#1C1C1C]/20 rounded" />
+                      <div className="h-5 w-20 bg-[#1C1C1C]/15 rounded-full" />
+                    </div>
+                    <div className="h-3 w-3/4 bg-[#1C1C1C]/10 rounded" />
+                    <div className="h-2 w-full bg-[#1C1C1C]/10 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : ingestionRuns.length === 0 ? (
+              <div className="p-10 rounded-[24px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] text-center space-y-3 shadow-[2px_2px_0_0_#1C1C1C]">
+                <Activity className="w-8 h-8 text-[#1C1C1C]/40 mx-auto" />
+                <h4 className="text-base font-black text-[#1C1C1C]">No Ingestion Runs Yet</h4>
+                <p className="text-xs text-[#1C1C1C]/70 max-w-sm mx-auto">
+                  When you upload documents or trigger syncs from connected sources, their step-by-step pipeline execution and logs will appear here.
+                </p>
+              </div>
+            ) : (
+              ingestionRuns.map((run) => (
               <div
                 key={run.runId}
                 className="p-6 rounded-[24px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-4 shadow-[2.5px_2.5px_0_0_#1C1C1C]"
@@ -94,7 +127,7 @@ export default function IngestionRunsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </main>

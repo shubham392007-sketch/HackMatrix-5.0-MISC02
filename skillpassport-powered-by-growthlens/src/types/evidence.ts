@@ -24,7 +24,8 @@ export type ProcessingStatus =
   | "indexed"
   | "ready_for_review"
   | "processing"
-  | "failed";
+  | "failed"
+  | "insufficient_content";
 
 export type ReviewStatus =
   | "unreviewed"
@@ -36,7 +37,7 @@ export type ReviewStatus =
   | "verified"
   | "rejected";
 
-export type EvidenceStrength = "high" | "medium" | "low";
+export type EvidenceStrength = "high" | "medium" | "low" | "insufficient";
 
 export interface CandidateSkill {
   id: string;
@@ -57,6 +58,7 @@ export interface ProcessingStageRecord {
 
 export interface EvidenceItem {
   id: string;
+  externalRecordId?: string;
   title: string;
   description: string;
   sourceType: SourceType;
@@ -78,6 +80,8 @@ export interface EvidenceItem {
     authorIdentified: string;
     commitCount?: number;
     issueKey?: string;
+    repositoryLanguages?: Array<{ name: string; percentage: number; bytes?: number }>;
+    primaryLanguage?: string;
   };
   extractedSummary: string;
   candidateSkills: CandidateSkill[];
@@ -117,4 +121,10 @@ export interface ConnectedSource {
   accountIdentity: string;
   permissions: string[];
   selectedEntities: string[]; // repos or projects
+  languageSummary?: {
+    analyzed_repositories_count?: number;
+    total_selected_repositories?: number;
+    distinct_languages_count?: number;
+    languages?: string[];
+  };
 }
