@@ -151,48 +151,53 @@ export default function GlobalPageTransitionLoader() {
   const previousPathnameRef = useRef<string>(pathname);
 
   const startTransition = useCallback((destinationUrl?: string) => {
-    if (destinationUrl) {
-      setTargetContext(getNavigationContext(destinationUrl));
-    }
+    // Always defer state updates to macrotask queue so it NEVER runs inside useInsertionEffect or render phase
+    setTimeout(() => {
+      if (destinationUrl) {
+        setTargetContext(getNavigationContext(destinationUrl));
+      }
 
-    setIsNavigating(true);
-    setProgress((prev) => (prev > 15 ? prev : 22));
+      setIsNavigating(true);
+      setProgress((prev) => (prev > 15 ? prev : 22));
 
-    // Fast debounce: show overlay if navigation takes longer than 75ms
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setShowOverlay(true);
-    }, 75);
+      // Fast debounce: show overlay if navigation takes longer than 75ms
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setShowOverlay(true);
+      }, 75);
 
-    // Increment progress bar smoothly
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    progressIntervalRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev < 60) return prev + Math.floor(Math.random() * 12) + 8;
-        if (prev < 88) return prev + Math.floor(Math.random() * 4) + 2;
-        if (prev < 94) return prev + 1;
-        return prev;
-      });
-    }, 120);
+      // Increment progress bar smoothly
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 60) return prev + Math.floor(Math.random() * 12) + 8;
+          if (prev < 88) return prev + Math.floor(Math.random() * 4) + 2;
+          if (prev < 94) return prev + 1;
+          return prev;
+        });
+      }, 120);
 
-    // Safety timeout: never freeze the screen permanently if navigation fails
-    if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
-    safetyTimeoutRef.current = setTimeout(() => {
-      endTransition();
-    }, 5500);
+      // Safety timeout: never freeze the screen permanently if navigation fails
+      if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = setTimeout(() => {
+        endTransition();
+      }, 5500);
+    }, 0);
   }, []);
 
   const endTransition = useCallback(() => {
-    setProgress(100);
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
-
     setTimeout(() => {
-      setIsNavigating(false);
-      setShowOverlay(false);
-      setTimeout(() => setProgress(0), 250);
-    }, 180);
+      setProgress(100);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+
+      setTimeout(() => {
+        setIsNavigating(false);
+        setShowOverlay(false);
+        setTimeout(() => setProgress(0), 250);
+      }, 180);
+    }, 0);
   }, []);
 
   // 1. Intercept internal anchor link clicks
@@ -271,9 +276,9 @@ export default function GlobalPageTransitionLoader() {
     window.addEventListener("app:navigate-start", handleCustomNavigateStart);
     window.addEventListener("app:navigate-end", handleCustomNavigateEnd);
 
-    // 2. Monkey-patch window.history.pushState and replaceState to capture router.push()
+    // 2. Safely capture router.push() via history.pushState deferred to macrotask
+    // Note: We never intercept replaceState as Next.js uses it internally for React tree hydration
     const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
 
     window.history.pushState = function (...args) {
       const url = args[2];
@@ -284,27 +289,13 @@ export default function GlobalPageTransitionLoader() {
             nextUrl.pathname !== window.location.pathname ||
             nextUrl.search !== window.location.search
           ) {
-            startTransition(nextUrl.pathname);
+            setTimeout(() => {
+              startTransition(nextUrl.pathname);
+            }, 0);
           }
         } catch {}
       }
       return originalPushState.apply(this, args);
-    };
-
-    window.history.replaceState = function (...args) {
-      const url = args[2];
-      if (url) {
-        try {
-          const nextUrl = new URL(url.toString(), window.location.origin);
-          if (
-            nextUrl.pathname !== window.location.pathname ||
-            nextUrl.search !== window.location.search
-          ) {
-            startTransition(nextUrl.pathname);
-          }
-        } catch {}
-      }
-      return originalReplaceState.apply(this, args);
     };
 
     return () => {
@@ -313,7 +304,6 @@ export default function GlobalPageTransitionLoader() {
       window.removeEventListener("app:navigate-start", handleCustomNavigateStart);
       window.removeEventListener("app:navigate-end", handleCustomNavigateEnd);
       window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
     };
   }, [startTransition, endTransition]);
 
