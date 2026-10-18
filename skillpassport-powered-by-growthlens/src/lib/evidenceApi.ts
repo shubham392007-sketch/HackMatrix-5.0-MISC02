@@ -186,15 +186,39 @@ export async function updateSelectedRepositories(repositories: any[]) {
 
 export async function removeSelectedGitHubRepository(repositoryIdOrFullName: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}`, {
-    method: "DELETE",
-    headers,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to remove repository" }));
-    throw new Error(err.detail || "Failed to remove repository from active sources");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const encoded = encodeURIComponent(repositoryIdOrFullName);
+    const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}`, {
+      method: "DELETE",
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
   }
-  return res.json();
+
+  // Fallback to POST /connections/github/repositories/remove with JSON body
+  try {
+    const postRes = await fetch(`${API_BASE}/connections/github/repositories/remove`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ repository: repositoryIdOrFullName }),
+    });
+    if (postRes.ok) {
+      return await postRes.json();
+    }
+    const err = await postRes.json().catch(() => ({ detail: "Failed to remove repository" }));
+    throw new Error(err.detail || "Failed to remove repository from active sources");
+  } catch (e: any) {
+    throw new Error(e.message || "Failed to remove repository from active sources");
+  }
 }
 
 export async function triggerGitHubSync(repository?: string) {

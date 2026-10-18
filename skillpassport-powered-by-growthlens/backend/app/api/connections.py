@@ -6,6 +6,7 @@ from sqlalchemy import func
 from datetime import datetime, timezone
 import uuid
 import json
+import urllib.parse
 
 from backend.app.db.session import get_db
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
@@ -112,6 +113,10 @@ class RepositorySelectionRequest(BaseModel):
 
 class SyncRequest(BaseModel):
     repository: Optional[str] = None
+
+
+class RemoveRepositoryRequest(BaseModel):
+    repository: str
 
 
 class JiraTestRequest(BaseModel):
@@ -370,10 +375,14 @@ async def list_github_repositories(
         ]
 
     # Cross-reference with selected_resources and existing language & README snapshots
-    selected_resources_map = {
-        r.external_resource_id: r
-        for r in connection.selected_resources
-    }
+    selected_resources_map = {}
+    for res_obj in connection.selected_resources:
+        if res_obj.external_resource_id:
+            selected_resources_map[res_obj.external_resource_id] = res_obj
+            selected_resources_map[res_obj.external_resource_id.lower()] = res_obj
+        if res_obj.name:
+            selected_resources_map[res_obj.name] = res_obj
+            selected_resources_map[res_obj.name.lower()] = res_obj
 
     resource_ids = [r.id for r in connection.selected_resources if r.is_selected]
 
@@ -404,7 +413,14 @@ async def list_github_repositories(
     readme_by_res_id = {s.selected_resource_id: s for s in readme_snapshots}
 
     for r in repos:
-        res = selected_resources_map.get(r["full_name"])
+        full_n = r.get("full_name") or ""
+        short_n = r.get("name") or ""
+        res = (
+            selected_resources_map.get(full_n)
+            or selected_resources_map.get(full_n.lower())
+            or selected_resources_map.get(short_n)
+            or selected_resources_map.get(short_n.lower())
+        )
         is_sel = bool(res and res.is_selected)
         r["selected"] = is_sel
         if res:
@@ -619,6 +635,85 @@ async def _sync_single_github_repo_internal(
         for b in (lang_snap.breakdowns if lang_snap else [])
     ]
     top_language = repo_lang_breakdowns[0]["name"] if repo_lang_breakdowns else None
+
+    # 2.A Ingest or update EvidenceItem for Repository Language Composition
+    if repo_lang_breakdowns:
+        discovered += 1
+        lang_content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:languages:{repo_full}").hex
+        existing_lang_evidence = db.query(EvidenceItem).filter(
+            EvidenceItem.owner_user_id == user.id,
+            EvidenceItem.source_provider == "github",
+            EvidenceItem.source_type == "code_repository",
+            EvidenceItem.source_name == repo_full,
+        ).first()
+
+        lang_summary_text = f"Repository {repo_full} code composition:\n" + "\n".join(
+            [f"- {l['name']}: {l['bytes']} bytes ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
+        )
+
+        if not existing_lang_evidence:
+            lang_evidence = EvidenceItem(
+                id=uuid.uuid4(),
+                owner_user_id=user.id,
+                source_provider="github",
+                source_type="code_repository",
+                external_record_id=f"gh:languages:{repo_full}",
+                source_url=f"https://github.com/{repo_full}",
+                source_name=repo_full,
+                evidence_category="engineering",
+                title=f"Code Composition & Languages: {repo_full}",
+                description=f"Primary repository codebase languages in {repo_full}: {', '.join([l['name'] for l in repo_lang_breakdowns])}",
+                extracted_excerpt=lang_summary_text,
+                observed_timestamp=now,
+                contributor_identity=connection.account_identity,
+                attribution_status="author",
+                project_name=repo_name,
+                evidence_strength="high",
+                extraction_confidence=0.95,
+                verification_status="unreviewed",
+                processing_status="ready_for_review",
+                provenance={
+                    "repo": repo_full,
+                    "repository_languages": repo_lang_breakdowns,
+                    "primary_language": top_language,
+                },
+                normalized_metadata={
+                    "repo": repo_full,
+                    "repository_languages": repo_lang_breakdowns,
+                    "primary_language": top_language,
+                },
+                content_hash=lang_content_hash,
+            )
+            db.add(lang_evidence)
+            db.flush()
+        else:
+            lang_evidence = existing_lang_evidence
+            lang_evidence.extracted_excerpt = lang_summary_text
+            lang_evidence.provenance = {
+                "repo": repo_full,
+                "repository_languages": repo_lang_breakdowns,
+                "primary_language": top_language,
+            }
+            lang_evidence.normalized_metadata = {
+                "repo": repo_full,
+                "repository_languages": repo_lang_breakdowns,
+                "primary_language": top_language,
+            }
+            db.flush()
+
+        try:
+            await extraction_engine.process_and_persist_evidence(
+                db=db,
+                evidence_item=lang_evidence,
+                content_text=lang_summary_text,
+                source_provider="github",
+                category="engineering",
+                user_id=user.id,
+                fast_mode=True,
+            )
+            imported += 1
+        except Exception as e:
+            logger.error(f"Error extracting candidate skills from languages for {repo_full}: {e}")
 
     # 2.B Fetch & persist real repository README and extract candidate competencies
     readme_snap, readme_ok = await sync_repository_readme(
@@ -867,12 +962,51 @@ async def _sync_single_github_repo_internal(
                     source_provider="github",
                     category="engineering",
                     user_id=user.id,
+                    fast_mode=True,
                 )
             except Exception as e:
                 logger.error(f"Error extracting candidate skills for commit {commit_sha[:7]}: {e}")
 
             imported += 1
             repo_commits_imported += 1
+        else:
+            # Backfill candidate competencies for existing commits if mappings don't exist yet
+            existing_evidence = db.query(EvidenceItem).filter(
+                EvidenceItem.owner_user_id == user.id,
+                EvidenceItem.source_provider == "github",
+                EvidenceItem.source_type == "commit",
+                EvidenceItem.external_record_id == commit_sha,
+            ).first()
+            if existing_evidence:
+                mapping_count = db.query(EvidenceCompetencyMapping).filter(
+                    EvidenceCompetencyMapping.evidence_id == existing_evidence.id
+                ).count()
+                if mapping_count == 0:
+                    commit_msg = commit.get("message") or ""
+                    commit_text = (
+                        f"Git Commit in {repo_full}\n"
+                        f"Commit SHA: {commit_sha}\n"
+                        f"Author: {commit.get('author_name') or 'Contributor'}\n"
+                        f"Message: {commit_msg}\n"
+                    )
+                    if repo_lang_breakdowns:
+                        lang_names = [f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
+                        commit_text += f"\nTechnologies and Languages in Repository: {', '.join(lang_names)}\n"
+                    try:
+                        await extraction_engine.process_and_persist_evidence(
+                            db=db,
+                            evidence_item=existing_evidence,
+                            content_text=commit_text,
+                            source_provider="github",
+                            category="engineering",
+                            user_id=user.id,
+                            fast_mode=True,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error backfilling candidate skills for commit {commit_sha[:7]}: {e}")
+
+    # Commit all newly created evidence, snapshots, and candidate mappings
+    db.commit()
 
     return {
         "repository_id": str(res_record.id),
@@ -881,7 +1015,7 @@ async def _sync_single_github_repo_internal(
         "detected_languages": len(repo_lang_breakdowns),
         "top_language": top_language,
         "total_bytes": lang_snap.total_bytes if lang_snap else 0,
-        "readme_status": readme_snap.sync_status if readme_snap else "failed",
+        "readme_status": readme_snap.sync_status if readme_snap else "not_found",
         "has_readme": bool(readme_snap and readme_snap.sync_status == "success" and readme_snap.raw_content),
         "prs_imported": repo_imported,
         "commits_imported": repo_commits_imported,
@@ -1192,6 +1326,15 @@ async def refresh_repository_readme(
     return data
 
 
+@router.post("/github/repositories/remove")
+def remove_selected_repository_post(
+    payload: RemoveRepositoryRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return remove_selected_repository(payload.repository, user, db)
+
+
 @router.delete("/github/repositories/{repository_id:path}")
 @router.post("/github/repositories/{repository_id:path}/remove")
 def remove_selected_repository(
@@ -1215,25 +1358,49 @@ def remove_selected_repository(
             detail="No active GitHub connection found",
         )
 
-    # Resolve resource
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
+    # 1. Resolve resource by UUID
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    # 2. Match by external_resource_id or name
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
+    # 3. Match by short name (e.g. if owner was omitted)
     if not resource:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Repository {repository_id} not found in connected source",
-        )
+        short_name = decoded_id.split("/")[-1] if "/" in decoded_id else decoded_id
+        resource = db.query(SelectedResource).filter(
+            (SelectedResource.name.ilike(f"%{short_name}%"))
+            | (SelectedResource.external_resource_id.ilike(f"%{short_name}%")),
+            SelectedResource.connection_id == connection.id,
+        ).first()
+
+    # 4. If still not found, return idempotent success rather than failing with 404
+    if not resource:
+        return {
+            "status": "removed",
+            "repository_id": repository_id,
+            "repository_name": decoded_id,
+            "is_selected": False,
+            "message": f"Repository {decoded_id} is already unselected.",
+        }
 
     resource.is_selected = False
 
@@ -1281,21 +1448,31 @@ async def sync_single_repository(
             detail="No active GitHub connection to synchronize",
         )
 
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
     # Resolve resource
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
-    repo_full = resource.external_resource_id if resource else repository_id
+    repo_full = resource.external_resource_id if resource else decoded_id
     if "/" not in repo_full:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

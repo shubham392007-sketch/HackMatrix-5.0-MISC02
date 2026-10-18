@@ -115,6 +115,7 @@ export default function GitHubSourceFlow() {
   // Removal State
   const [repoToRemove, setRepoToRemove] = useState<GitHubRepoItem | null>(null);
   const [removingRepo, setRemovingRepo] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   // Single Repo Sync & AI Analysis State
   const [syncingSingleRepo, setSyncingSingleRepo] = useState<string | null>(null);
@@ -129,9 +130,29 @@ export default function GitHubSourceFlow() {
   const handleSyncSingleRepo = async (repoName: string) => {
     setSyncingSingleRepo(repoName);
     setStatusMessage(null);
+    setConnectError(null);
     try {
       const outcome = await syncSingleGitHubRepository(repoName);
-      setStatusMessage(`Synchronized ${repoName}: ${outcome.commits_imported || 0} commits, ${outcome.prs_imported || 0} PRs imported.`);
+      setStatusMessage(
+        `Synchronized ${repoName}: ${outcome.commits_imported || 0} commits, ${outcome.prs_imported || 0} PRs, ${outcome.detected_languages || 0} languages.`
+      );
+      // Immediately reflect active sync status and details in local state
+      setRepositories((prev) =>
+        prev.map((r) => {
+          if (r.full_name === repoName) {
+            return {
+              ...r,
+              selected: true,
+              languages_status: outcome.languages_status || "success",
+              detected_languages_count: outcome.detected_languages ?? r.detected_languages_count,
+              total_language_bytes: outcome.total_bytes ?? r.total_language_bytes,
+              readme_status: outcome.readme_status || (outcome.has_readme ? "success" : "not_found"),
+              has_readme: Boolean(outcome.has_readme),
+            };
+          }
+          return r;
+        })
+      );
       await loadRepositories();
       await loadLanguagesSummary();
       await refreshEvidenceData();
@@ -363,19 +384,24 @@ export default function GitHubSourceFlow() {
   const handleConfirmRemove = async () => {
     if (!repoToRemove) return;
     setRemovingRepo(true);
+    setRemoveError(null);
+    const targetFullName = repoToRemove.full_name;
+
     try {
-      await removeSelectedGitHubRepository(repoToRemove.full_name);
+      await removeSelectedGitHubRepository(targetFullName);
       setRepositories((prev) =>
-        prev.map((r) => (r.full_name === repoToRemove.full_name ? { ...r, selected: false } : r))
+        prev.map((r) => (r.full_name === targetFullName ? { ...r, selected: false } : r))
       );
       setStatusMessage(
-        `Repository ${repoToRemove.full_name} removed from active evidence sources. Previously imported evidence is preserved.`
+        `Repository ${targetFullName} removed from active evidence sources. Previously imported evidence is preserved.`
       );
       setRepoToRemove(null);
-      await refreshEvidenceData();
-      await loadLanguagesSummary();
+
+      // Run background refreshes without blocking modal close
+      refreshEvidenceData().catch((e) => console.warn("Background refresh evidence:", e));
+      loadLanguagesSummary().catch((e) => console.warn("Background refresh lang summary:", e));
     } catch (err: any) {
-      setConnectError(err.message || "Failed to remove repository.");
+      setRemoveError(err.message || "Failed to remove repository.");
     } finally {
       setRemovingRepo(false);
     }
@@ -920,6 +946,8 @@ export default function GitHubSourceFlow() {
                                 {hasLangs ? `${repo.languages!.length} languages` : "No languages"} •{" "}
                                 {repo.readme_status === "success"
                                   ? `${repo.readme_sections_count || 0} README sections indexed`
+                                  : repo.readme_status === "not_found"
+                                  ? "No README"
                                   : "README unindexed"}
                               </span>
                             ) : (
@@ -1291,6 +1319,13 @@ export default function GitHubSourceFlow() {
                 Are you sure you want to remove <strong>{repoToRemove.full_name}</strong> from active evidence sources?
               </p>
 
+              {removeError && (
+                <div className="p-3 rounded-xl bg-[#F6C8D6] border border-[#C85A54] text-[11px] text-[#C85A54] space-y-1">
+                  <p className="font-bold">Error removing repository:</p>
+                  <p>{removeError}</p>
+                </div>
+              )}
+
               <div className="p-3 rounded-xl bg-white border border-[#1C1C1C]/20 text-[11px] text-[#1C1C1C]/70 space-y-1">
                 <p className="font-bold text-[#1C1C1C]">What happens next:</p>
                 <ul className="list-disc list-inside space-y-0.5">
@@ -1303,19 +1338,39 @@ export default function GitHubSourceFlow() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setRepoToRemove(null)}
+                  onClick={() => {
+                    setRepoToRemove(null);
+                    setRemoveError(null);
+                  }}
                   className="pill-btn bg-white border border-[#1C1C1C] text-xs py-2 px-4 font-bold"
                 >
                   KEEP REPOSITORY
                 </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmRemove}
-                  disabled={removingRepo}
-                  className="pill-btn bg-[#C85A54] text-white border border-[#1C1C1C] text-xs py-2 px-4 font-black uppercase tracking-wider hover:bg-[#a9443e]"
-                >
-                  <span>{removingRepo ? "REMOVING ···" : "CONFIRM REMOVAL"}</span>
-                </button>
+                {removeError ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = repoToRemove.full_name;
+                      setRepositories((prev) =>
+                        prev.map((r) => (r.full_name === target ? { ...r, selected: false } : r))
+                      );
+                      setRepoToRemove(null);
+                      setRemoveError(null);
+                    }}
+                    className="pill-btn bg-stone-700 text-white border border-[#1C1C1C] text-xs py-2 px-4 font-bold"
+                  >
+                    FORCE DESELECT
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConfirmRemove}
+                    disabled={removingRepo}
+                    className="pill-btn bg-[#C85A54] text-white border border-[#1C1C1C] text-xs py-2 px-4 font-black uppercase tracking-wider hover:bg-[#a9443e]"
+                  >
+                    <span>{removingRepo ? "REMOVING ···" : "CONFIRM REMOVAL"}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

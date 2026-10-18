@@ -32,21 +32,34 @@ class Domain1ExtractionEngine:
         source_provider: str,
         category: str,
         user_id: uuid.UUID,
+        fast_mode: bool = False,
     ) -> Dict[str, Any]:
         """
         Executes first-pass skill extraction, taxonomy alignment,
         relational persistence, and vector indexing.
         """
-        logger.info(f"Extracting candidate competencies for evidence {evidence_item.id} (provider={source_provider}, cat={category})")
+        logger.info(f"Extracting candidate competencies for evidence {evidence_item.id} (provider={source_provider}, cat={category}, fast={fast_mode})")
 
         # 1. First-pass structured extraction (LLM + deterministic fallback)
         # Note: db=None avoids holding an idle database connection during long LLM inference
-        extraction_result = await ai_extractor.extract_structured_evidence(
-            text_content=content_text,
-            source_provider=source_provider,
-            db=None,
-            source_metadata=evidence_item.provenance or {},
-        )
+        if fast_mode:
+            extraction_result = ai_extractor._rule_based_extraction(
+                text=content_text,
+                source_provider=source_provider,
+                source_metadata=evidence_item.provenance or {},
+            )
+            raw_comps = extraction_result.get("competencies") or []
+            from backend.app.ai.extractor import validate_and_filter_competencies
+            extraction_result["competencies"] = validate_and_filter_competencies(raw_comps, content_text)
+            if not extraction_result["competencies"]:
+                extraction_result["evidence_strength"] = "insufficient"
+        else:
+            extraction_result = await ai_extractor.extract_structured_evidence(
+                text_content=content_text,
+                source_provider=source_provider,
+                db=None,
+                source_metadata=evidence_item.provenance or {},
+            )
 
         # 2. Revalidate database session in case connection was recycled during inference
         try:
