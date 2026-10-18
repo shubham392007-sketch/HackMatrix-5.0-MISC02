@@ -41,10 +41,10 @@ export default function AIAuditHistoryPage() {
 
   const filteredEvents = aiAuditEvents.filter((ev) => {
     if (eventTypeFilter !== "all" && ev.event_type !== eventTypeFilter) return false;
-    if (entityFilter !== "all" && ev.affected_entity_type !== entityFilter) return false;
+    if (entityFilter !== "all" && (ev.affected_entity_type || "") !== entityFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchText = `${ev.id} ${ev.affected_entity_id} ${ev.reason} ${ev.actor} ${ev.new_state}`.toLowerCase();
+      const matchText = `${ev.id || ""} ${ev.affected_entity_id || ""} ${ev.reason || ""} ${ev.actor || ""} ${ev.new_state || ""}`.toLowerCase();
       if (!matchText.includes(q)) return false;
     }
     return true;
@@ -256,10 +256,10 @@ export default function AIAuditHistoryPage() {
                     </span>
                     <div className="font-semibold text-ink flex items-center gap-1.5">
                       <code className="text-ink font-mono bg-sand/30 px-1.5 py-0.5 rounded">
-                        {ev.affected_entity_id}
+                        {ev.affected_entity_id || (ev.id ? ev.id.slice(0, 8) : "entity")}
                       </code>
                       <span className="text-ink-muted font-normal capitalize">
-                        ({ev.affected_entity_type.replace("_", " ")})
+                        ({(ev.affected_entity_type || "candidate_skill").replace(/_/g, " ")})
                       </span>
                     </div>
                   </div>

@@ -815,6 +815,7 @@ async def list_ai_audit_events(
                 "actor": user.metadata.get("full_name") or user.email or "Authorized User",
                 "timestamp": e.event_timestamp.strftime("%Y-%m-%d %H:%M:%S") if e.event_timestamp else "Recently",
                 "target_type": e.target_record_type,
+                "target_id": str(e.target_record_id) if e.target_record_id else "",
                 "event_type": e.event_type,
                 "previous_state": e.previous_state or "unreviewed",
                 "new_state": e.new_state or "candidate",

@@ -803,18 +803,58 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (auditRes.status === "fulfilled" && Array.isArray(auditRes.value?.events)) {
-        const mappedAudits: AIAuditEvent[] = auditRes.value.events.map((a: any) => ({
-          id: a.id,
-          actor: a.actor,
-          timestamp: a.timestamp,
-          action: a.event_type,
-          target_id: a.target_type,
-          previous_state: a.previous_state,
-          new_state: a.new_state,
-          reason: a.reason,
-          hash: a.id.slice(0, 8),
-        }));
-        setAiAuditEvents(mappedAudits);
+        const mappedAudits: AIAuditEvent[] = auditRes.value.events.map((a: any) => {
+          let entityType: AIAuditEvent["affected_entity_type"] = "candidate_skill";
+          const rawTargetType = (a.target_type || a.affected_entity_type || "").toLowerCase();
+          if (rawTargetType.includes("evidence") || rawTargetType.includes("source")) {
+            entityType = "source";
+          } else if (rawTargetType.includes("conflict")) {
+            entityType = "conflict";
+          } else if (rawTargetType.includes("validation")) {
+            entityType = "validation_run";
+          } else if (rawTargetType.includes("verification")) {
+            entityType = "verification";
+          }
+
+          let eventType: AIAuditEvent["event_type"] = "review_decision";
+          const rawEventType = (a.event_type || a.action || "").toLowerCase();
+          if (rawEventType.includes("guard") || rawEventType.includes("block")) {
+            eventType = "guard_blocked";
+          } else if (rawEventType.includes("candidate") || rawEventType.includes("extraction")) {
+            eventType = "candidate_extracted";
+          } else if (rawEventType.includes("conflict")) {
+            eventType = "conflict_recorded";
+          } else if (rawEventType.includes("injection") || rawEventType.includes("quarantine")) {
+            eventType = "injection_quarantined";
+          } else if (rawEventType.includes("validation") || rawEventType.includes("retry")) {
+            eventType = "validation_retried";
+          } else if (rawEventType.includes("analysis")) {
+            eventType = "analysis_completed";
+          }
+
+          return {
+            id: a.id || `audit-${Math.random().toString(36).substring(2, 9)}`,
+            actor: a.actor || "SkillPassport Policy Engine",
+            timestamp: a.timestamp || "Recently",
+            event_type: eventType,
+            affected_entity_type: entityType,
+            affected_entity_id: a.target_id || a.affected_entity_id || (a.id ? a.id.slice(0, 8) : "entity-ref"),
+            previous_state: a.previous_state || undefined,
+            new_state: a.new_state || "Recorded",
+            reason: a.reason || "Audited system or human action",
+            model_or_policy_version: a.metadata?.policy_version || a.model_or_policy_version || "audit-v2026.1",
+            run_id: a.metadata?.run_id || a.run_id || undefined,
+          };
+        });
+
+        setAiAuditEvents((prev) => {
+          const map = new Map<string, AIAuditEvent>();
+          mappedAudits.forEach((item) => map.set(item.id, item));
+          prev.forEach((item) => {
+            if (!map.has(item.id)) map.set(item.id, item);
+          });
+          return Array.from(map.values());
+        });
       }
     } catch (e) {
       console.warn("Could not load evidence data from backend:", e);
