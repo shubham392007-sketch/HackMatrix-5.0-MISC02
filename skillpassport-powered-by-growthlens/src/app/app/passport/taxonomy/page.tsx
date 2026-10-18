@@ -23,10 +23,9 @@ import AppTopBar from "@/components/app/AppTopBar";
 
 export default function SkillTaxonomyPage() {
   const { taxonomyCategories, skills } = useEvidence();
-  const [selectedCatId, setSelectedCatId] = useState<string>(
-    taxonomyCategories[0]?.id || "cat-programming"
-  );
+  const [selectedCatId, setSelectedCatId] = useState<string>("");
   const [search, setSearch] = useState("");
+
 
   const activeCategory =
     taxonomyCategories.find((c) => c.id === selectedCatId) || taxonomyCategories[0];

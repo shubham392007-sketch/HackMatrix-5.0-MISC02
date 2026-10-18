@@ -39,6 +39,10 @@ import {
   reviewCandidateVerification,
   resolveConflict,
   actionReviewTask,
+  listPassportSkills,
+  listPassportTaxonomy,
+  listPassportHistory,
+  reviewPassportCandidate,
 } from "@/lib/evidenceApi";
 import {
   SkillItem,
@@ -46,12 +50,8 @@ import {
   TaxonomyCategory,
 } from "@/types/passport";
 import {
-  INITIAL_SKILLS,
-  INITIAL_SKILL_HISTORY,
-  INITIAL_TAXONOMY_CATEGORIES,
-} from "@/data/passportMock";
-import {
   DemoRole,
+
   WorkAnalysisResult,
   ExtractionCandidateItem,
   EvidenceMappingItem,
@@ -147,6 +147,14 @@ interface EvidenceContextType {
   skills: SkillItem[];
   historyEvents: SkillHistoryEvent[];
   taxonomyCategories: TaxonomyCategory[];
+  passportMetrics?: {
+    total_skills: number;
+    verified_count: number;
+    candidate_count: number;
+    coverage_rate: number;
+    top_proficiency: string;
+    avg_confidence: number;
+  } | null;
   
   // Domain 3 AI State
   currentRole: DemoRole;
@@ -179,6 +187,11 @@ interface EvidenceContextType {
   retryIngestionRun: (runId: string) => void;
   updateSkill: (id: string, updates: Partial<SkillItem>) => void;
   addHistoryEvent: (event: Omit<SkillHistoryEvent, "id">) => void;
+  reviewCandidateSkill: (
+    mappingId: string,
+    action: "verify" | "reject" | "flag_insufficient",
+    rationale: string
+  ) => Promise<any>;
 
   // Domain 3 Mutators
   addAIAuditEvent: (event: Omit<AIAuditEvent, "id">) => void;
@@ -323,9 +336,18 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
     return [];
   });
-  const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILLS);
-  const [historyEvents, setHistoryEvents] = useState<SkillHistoryEvent[]>(INITIAL_SKILL_HISTORY);
-  const [taxonomyCategories] = useState<TaxonomyCategory[]>(INITIAL_TAXONOMY_CATEGORIES);
+  const [skills, setSkills] = useState<SkillItem[]>([]);
+  const [historyEvents, setHistoryEvents] = useState<SkillHistoryEvent[]>([]);
+  const [taxonomyCategories, setTaxonomyCategories] = useState<TaxonomyCategory[]>([]);
+  const [passportMetrics, setPassportMetrics] = useState<{
+    total_skills: number;
+    verified_count: number;
+    candidate_count: number;
+    coverage_rate: number;
+    top_proficiency: string;
+    avg_confidence: number;
+  } | null>(null);
+
 
   const [initialLoading, setInitialLoading] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -514,9 +536,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       setInitialLoading(false);
       setIsLoadingEvidence(false);
 
-      // Stage 2: Background AI & Governance Hydration (Domain 3: AI Overview, Work Analysis, Reviews)
+      // Stage 2: Background AI, Governance & Domain 2 Skill Passport Hydration
       const [
-        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes
+        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes,
+        passportSkillsRes, passportTaxonomyRes, passportHistoryRes
       ] = await Promise.allSettled([
         listWorkAnalyses(),
         listCandidateSkills(),
@@ -527,7 +550,11 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         listReviewTasks(),
         listPromptInjectionFindings(),
         listAIAuditEvents(),
+        listPassportSkills(),
+        listPassportTaxonomy(),
+        listPassportHistory(),
       ]);
+
 
       const candMapByEvidence: Record<string, any[]> = {};
       if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
@@ -856,6 +883,28 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           return Array.from(map.values());
         });
       }
+
+      // Domain 2: Skill Intelligence & Passport Hydration
+      if (passportSkillsRes.status === "fulfilled" && passportSkillsRes.value) {
+        if (Array.isArray(passportSkillsRes.value.skills)) {
+          setSkills(passportSkillsRes.value.skills);
+        }
+        if (passportSkillsRes.value.metrics) {
+          setPassportMetrics(passportSkillsRes.value.metrics);
+        }
+      }
+
+      if (passportTaxonomyRes.status === "fulfilled" && passportTaxonomyRes.value) {
+        if (Array.isArray(passportTaxonomyRes.value.categories)) {
+          setTaxonomyCategories(passportTaxonomyRes.value.categories);
+        }
+      }
+
+      if (passportHistoryRes.status === "fulfilled" && passportHistoryRes.value) {
+        if (Array.isArray(passportHistoryRes.value.events)) {
+          setHistoryEvents(passportHistoryRes.value.events);
+        }
+      }
     } catch (e) {
       console.warn("Could not load evidence data from backend:", e);
     } finally {
@@ -876,6 +925,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("sp_sources");
       localStorage.removeItem("sp_runs");
       localStorage.removeItem("sp_conflicts");
+      localStorage.removeItem("sp_skills");
+      localStorage.removeItem("sp_history");
+
       localStorage.removeItem("sp_review_tasks");
       localStorage.removeItem("sp_validation");
       localStorage.removeItem("sp_ai_audit");
@@ -1204,6 +1256,16 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     const updated = [newEvent, ...historyEvents];
     setHistoryEvents(updated);
     saveState(evidenceItems, sources, ingestionRuns, skills, updated);
+  };
+
+  const reviewCandidateSkill = async (
+    mappingId: string,
+    action: "verify" | "reject" | "flag_insufficient",
+    rationale: string
+  ) => {
+    const res = await reviewPassportCandidate(mappingId, action, rationale);
+    await refreshEvidenceData(true);
+    return res;
   };
 
   // Domain 3 Mutators
@@ -2012,7 +2074,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         skills,
         historyEvents,
         taxonomyCategories,
+        passportMetrics,
+        reviewCandidateSkill,
         currentRole,
+
         setDemoRole: handleSetRole,
         workAnalyses,
         extractionCandidates,

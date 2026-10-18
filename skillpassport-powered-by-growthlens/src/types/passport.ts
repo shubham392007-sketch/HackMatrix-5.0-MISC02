@@ -55,7 +55,7 @@ export interface SkillHistoryEvent {
   newValue: string;
   reason: string;
   relatedEvidenceId?: string;
-  actor: "System Pipeline" | "Reviewer (Alex Rivera)" | "Verification Guard";
+  actor: string;
 }
 
 export interface TaxonomyCategory {

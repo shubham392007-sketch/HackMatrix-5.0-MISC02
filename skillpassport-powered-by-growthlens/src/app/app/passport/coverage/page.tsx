@@ -105,28 +105,29 @@ export default function EvidenceCoveragePage() {
         <div className="mt-6 pt-4 border-t border-[#E8E1D5]">
           <div className="h-3 w-full bg-[#E5DFD5] rounded-full overflow-hidden flex">
             <div
-              style={{ width: `${(sufficientSkills.length / totalSkills) * 100}%` }}
+              style={{ width: `${totalSkills > 0 ? (sufficientSkills.length / totalSkills) * 100 : 0}%` }}
               className="bg-[#2E6941] h-full"
               title="Sufficient"
             />
             <div
-              style={{ width: `${(incompleteSkills.length / totalSkills) * 100}%` }}
+              style={{ width: `${totalSkills > 0 ? (incompleteSkills.length / totalSkills) * 100 : 0}%` }}
               className="bg-[#B07219] h-full"
               title="Incomplete"
             />
             <div
-              style={{ width: `${(insufficientSkills.length / totalSkills) * 100}%` }}
+              style={{ width: `${totalSkills > 0 ? (insufficientSkills.length / totalSkills) * 100 : 0}%` }}
               className="bg-[#BA1A1A] h-full"
               title="Insufficient"
             />
             <div
-              style={{ width: `${(conflictingSkills.length / totalSkills) * 100}%` }}
+              style={{ width: `${totalSkills > 0 ? (conflictingSkills.length / totalSkills) * 100 : 0}%` }}
               className="bg-[#8A38F5] h-full"
               title="Conflicting"
             />
           </div>
         </div>
       </div>
+
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-2">
@@ -180,7 +181,17 @@ export default function EvidenceCoveragePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EBE1]">
-              {filteredSkills.map((skill) => {
+              {filteredSkills.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-xs text-[#8C827A]">
+                    {skills.length === 0
+                      ? "No competencies catalogued yet. Ingest workplace artifacts or review candidates to track evidence coverage."
+                      : "No competencies match this coverage filter."}
+                  </td>
+                </tr>
+              ) : (
+                filteredSkills.map((skill) => {
+
                 const linkedCount = skill.evidenceIds.length;
 
                 return (
@@ -228,8 +239,9 @@ export default function EvidenceCoveragePage() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
+
           </table>
         </div>
       </div>

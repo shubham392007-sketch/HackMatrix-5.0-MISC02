@@ -23,7 +23,7 @@ import {
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function VerifiedSkillsPage() {
-  const { skills, evidenceItems } = useEvidence();
+  const { skills, evidenceItems, passportMetrics } = useEvidence();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProficiency, setSelectedProficiency] = useState("all");
@@ -116,8 +116,14 @@ export default function VerifiedSkillsPage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Top Proficiency</span>
             <Layers className="w-4 h-4 text-[#8A38F5]" />
           </div>
-          <div className="text-3xl font-extrabold text-[#1F1E1D]">Advanced</div>
-          <p className="text-xs text-[#8C827A] mt-1">Python & Technical Writing</p>
+          <div className="text-3xl font-extrabold text-[#1F1E1D]">
+            {typeof passportMetrics?.top_proficiency === "object"
+              ? (passportMetrics.top_proficiency as any)?.level || "None Established"
+              : passportMetrics?.top_proficiency || (verifiedSkills.length > 0 ? "Established" : "None Established")}
+          </div>
+          <p className="text-xs text-[#8C827A] mt-1">
+            {verifiedSkills.length > 0 ? "Highest verified tier" : "No verified competencies"}
+          </p>
         </div>
 
         <div className="gl-card p-5">
@@ -136,6 +142,7 @@ export default function VerifiedSkillsPage() {
           <p className="text-xs text-[#8C827A] mt-1">Model calibration score</p>
         </div>
       </div>
+
 
       {/* Filter and Search Bar */}
       <div className="gl-card p-5 space-y-4">
@@ -185,14 +192,30 @@ export default function VerifiedSkillsPage() {
 
       {/* Skills Grid */}
       {filteredSkills.length === 0 ? (
-        <div className="gl-card p-12 text-center space-y-3">
+        <div className="gl-card p-12 text-center space-y-4">
           <AlertCircle className="w-8 h-8 text-[#8C827A] mx-auto" />
-          <h3 className="text-base font-bold text-[#1F1E1D]">No verified skills found</h3>
-          <p className="text-xs text-[#8C827A] max-w-sm mx-auto">
-            Try adjusting your search criteria or head to Candidate Review to evaluate unverified items.
+          <h3 className="text-base font-bold text-[#1F1E1D]">
+            {verifiedSkills.length === 0 ? "No verified competencies yet" : "No matching competencies found"}
+          </h3>
+          <p className="text-xs text-[#8C827A] max-w-md mx-auto">
+            {verifiedSkills.length === 0
+              ? "All competencies extracted by AI from your work sources start in Candidate Review. Once verified via authoritative human review, they receive formal accreditation and appear here."
+              : "Try adjusting your search criteria or category and proficiency filters."}
           </p>
+          {verifiedSkills.length === 0 && (
+            <div className="pt-2">
+              <Link
+                href="/app/passport/candidates"
+                className="pill-btn pill-btn-primary inline-flex text-xs items-center gap-1.5"
+              >
+                Go to Candidate Review
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredSkills.map((skill) => {
             const linkedEvItems = evidenceItems.filter((e) =>

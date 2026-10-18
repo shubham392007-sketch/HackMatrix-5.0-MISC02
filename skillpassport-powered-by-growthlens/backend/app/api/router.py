@@ -7,6 +7,7 @@ from backend.app.api.evidence import router as evidence_router
 from backend.app.api.ingestion_runs import router as ingestion_runs_router
 from backend.app.api.profile import router as profile_router
 from backend.app.api.ai import router as ai_router
+from backend.app.api.passport import router as passport_router
 
 api_router = APIRouter()
 
@@ -33,3 +34,7 @@ api_router.include_router(ingestion_runs_router)
 
 # AI Intelligence & Trust Governance
 api_router.include_router(ai_router)
+
+# Skill Intelligence & Passport (Domain 2)
+api_router.include_router(passport_router)
+

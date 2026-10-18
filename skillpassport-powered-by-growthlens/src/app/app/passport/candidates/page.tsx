@@ -28,11 +28,11 @@ export default function CandidateSkillReviewPage() {
   const {
     skills,
     evidenceItems,
-    updateSkill,
-    addHistoryEvent,
+    reviewCandidateSkill,
   } = useEvidence();
 
   const [search, setSearch] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     text: string;
     type: "success" | "warning" | "error";
@@ -52,89 +52,84 @@ export default function CandidateSkillReviewPage() {
     );
   });
 
-  const handlePromote = (skillId: string) => {
+  const handlePromote = async (skillId: string) => {
     const skill = skills.find((s) => s.id === skillId);
     if (!skill) return;
 
-    updateSkill(skillId, {
-      verificationState: "verified",
-      verifiedProficiency: skill.estimatedProficiency,
-      coverageState: "sufficient",
-    });
-
-    addHistoryEvent({
-      timestamp: "Just now",
-      skillId: skill.id,
-      skillName: skill.canonicalName,
-      eventType: "verified_state_changed",
-      previousValue: "Candidate",
-      newValue: `Verified (Level: ${skill.estimatedProficiency})`,
-      reason: "Promoted to verified passport via candidate review queue.",
-      relatedEvidenceId: skill.evidenceIds[0],
-      actor: "Reviewer (Alex Rivera)",
-    });
-
-    setFeedbackMessage({
-      text: `Promoted "${skill.canonicalName}" to Verified Competencies.`,
-      type: "success",
-    });
-    setTimeout(() => setFeedbackMessage(null), 4000);
+    setIsSubmitting(skillId);
+    try {
+      await reviewCandidateSkill(
+        skillId,
+        "verify",
+        `Promoted to verified competency via candidate review queue.`
+      );
+      setFeedbackMessage({
+        text: `Promoted "${skill.canonicalName}" to Verified Competencies.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackMessage({
+        text: `Failed to promote "${skill.canonicalName}": ${err.message || "Unknown error"}`,
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(null);
+      setTimeout(() => setFeedbackMessage(null), 4000);
+    }
   };
 
-  const handleFlagIncorrect = (skillId: string) => {
+  const handleFlagIncorrect = async (skillId: string) => {
     const skill = skills.find((s) => s.id === skillId);
     if (!skill) return;
 
-    updateSkill(skillId, {
-      verificationState: "rejected",
-    });
-
-    addHistoryEvent({
-      timestamp: "Just now",
-      skillId: skill.id,
-      skillName: skill.canonicalName,
-      eventType: "conflict_flagged",
-      previousValue: "Candidate",
-      newValue: "Rejected (Flagged as Incorrect)",
-      reason: "Rejected by reviewer: superficial keyword match without substantial depth.",
-      relatedEvidenceId: skill.evidenceIds[0],
-      actor: "Reviewer (Alex Rivera)",
-    });
-
-    setFeedbackMessage({
-      text: `Flagged "${skill.canonicalName}" as incorrect extraction.`,
-      type: "error",
-    });
-    setTimeout(() => setFeedbackMessage(null), 4000);
+    setIsSubmitting(skillId);
+    try {
+      await reviewCandidateSkill(
+        skillId,
+        "reject",
+        `Rejected by reviewer: superficial keyword match without substantial depth.`
+      );
+      setFeedbackMessage({
+        text: `Flagged "${skill.canonicalName}" as incorrect extraction.`,
+        type: "error",
+      });
+    } catch (err: any) {
+      setFeedbackMessage({
+        text: `Failed to reject "${skill.canonicalName}": ${err.message || "Unknown error"}`,
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(null);
+      setTimeout(() => setFeedbackMessage(null), 4000);
+    }
   };
 
-  const handleMarkInsufficient = (skillId: string) => {
+  const handleMarkInsufficient = async (skillId: string) => {
     const skill = skills.find((s) => s.id === skillId);
     if (!skill) return;
 
-    updateSkill(skillId, {
-      verificationState: "insufficient_evidence",
-      coverageState: "insufficient",
-    });
-
-    addHistoryEvent({
-      timestamp: "Just now",
-      skillId: skill.id,
-      skillName: skill.canonicalName,
-      eventType: "verified_state_changed",
-      previousValue: skill.verificationState,
-      newValue: "Insufficient Evidence",
-      reason: "Needs corroborating workplace codebase artifacts.",
-      relatedEvidenceId: skill.evidenceIds[0],
-      actor: "Reviewer (Alex Rivera)",
-    });
-
-    setFeedbackMessage({
-      text: `Marked "${skill.canonicalName}" as Insufficient Evidence.`,
-      type: "warning",
-    });
-    setTimeout(() => setFeedbackMessage(null), 4000);
+    setIsSubmitting(skillId);
+    try {
+      await reviewCandidateSkill(
+        skillId,
+        "flag_insufficient",
+        `Flagged as insufficient evidence. Needs corroborating workplace codebase artifacts.`
+      );
+      setFeedbackMessage({
+        text: `Marked "${skill.canonicalName}" as Insufficient Evidence.`,
+        type: "warning",
+      });
+    } catch (err: any) {
+      setFeedbackMessage({
+        text: `Failed to mark "${skill.canonicalName}": ${err.message || "Unknown error"}`,
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(null);
+      setTimeout(() => setFeedbackMessage(null), 4000);
+    }
   };
+
 
   return (
     <div className="flex-1 flex flex-col">
@@ -311,7 +306,8 @@ export default function CandidateSkillReviewPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleFlagIncorrect(cand.id)}
-                        className="pill-btn pill-btn-secondary text-xs text-[#BA1A1A] hover:bg-[#FBE8E8] flex items-center gap-1.5"
+                        disabled={isSubmitting === cand.id}
+                        className="pill-btn pill-btn-secondary text-xs text-[#BA1A1A] hover:bg-[#FBE8E8] flex items-center gap-1.5 disabled:opacity-50"
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         Reject / Flag Incorrect
@@ -319,7 +315,8 @@ export default function CandidateSkillReviewPage() {
 
                       <button
                         onClick={() => handleMarkInsufficient(cand.id)}
-                        className="pill-btn pill-btn-secondary text-xs text-[#B07219] hover:bg-[#FFF6E9] flex items-center gap-1.5"
+                        disabled={isSubmitting === cand.id}
+                        className="pill-btn pill-btn-secondary text-xs text-[#B07219] hover:bg-[#FFF6E9] flex items-center gap-1.5 disabled:opacity-50"
                       >
                         <AlertTriangle className="w-3.5 h-3.5" />
                         Insufficient Evidence
@@ -327,12 +324,14 @@ export default function CandidateSkillReviewPage() {
 
                       <button
                         onClick={() => handlePromote(cand.id)}
-                        className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+                        disabled={isSubmitting === cand.id}
+                        className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 disabled:opacity-50"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Confirm & Promote to Verified
+                        {isSubmitting === cand.id ? "Promoting..." : "Confirm & Promote to Verified"}
                       </button>
                     </div>
+
                   </div>
                 </div>
               );

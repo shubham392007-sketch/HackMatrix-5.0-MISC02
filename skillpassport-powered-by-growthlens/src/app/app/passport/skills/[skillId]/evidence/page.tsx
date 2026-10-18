@@ -64,8 +64,9 @@ export default function EvidenceToSkillMappingPage({ params }: PageProps) {
       newValue: "Mapping Flagged by Employee",
       reason: flagReason,
       relatedEvidenceId: flagModalItem,
-      actor: "Reviewer (Alex Rivera)",
+      actor: "Authenticated User",
     });
+
 
     setFlagSuccessMessage(`Mapping for ${flagModalItem} reported and queued for calibration.`);
     setFlagModalItem(null);

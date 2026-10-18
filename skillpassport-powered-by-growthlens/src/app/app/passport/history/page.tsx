@@ -26,6 +26,11 @@ export default function SkillHistoryPage() {
   const [search, setSearch] = useState("");
   const [selectedEventType, setSelectedEventType] = useState("all");
   const [selectedActor, setSelectedActor] = useState("all");
+  const availableActors = [
+    "all",
+    ...Array.from(new Set(historyEvents.map((e) => e.actor).filter(Boolean))),
+  ];
+
 
   const filteredEvents = historyEvents.filter((ev) => {
     const q = search.toLowerCase();
@@ -41,6 +46,7 @@ export default function SkillHistoryPage() {
 
     return matchesSearch && matchesType && matchesActor;
   });
+
 
   const getActorIcon = (actor: string) => {
     if (actor.includes("Pipeline")) {
@@ -129,11 +135,13 @@ export default function SkillHistoryPage() {
               onChange={(e) => setSelectedActor(e.target.value)}
               className="pill-input text-xs py-2 px-3 pr-8 bg-white cursor-pointer"
             >
-              <option value="all">All Actors</option>
-              <option value="System Pipeline">System Pipeline</option>
-              <option value="Reviewer (Alex Rivera)">Reviewer (Alex Rivera)</option>
-              <option value="Verification Guard">Verification Guard</option>
+              {availableActors.map((act) => (
+                <option key={act} value={act}>
+                  {act === "all" ? "All Actors" : act}
+                </option>
+              ))}
             </select>
+
           </div>
         </div>
       </div>
@@ -147,10 +155,19 @@ export default function SkillHistoryPage() {
         </div>
 
         {filteredEvents.length === 0 ? (
-          <div className="gl-card p-12 text-center text-xs text-[#8C827A]">
-            No historical events match this query.
+          <div className="gl-card p-12 text-center space-y-3">
+            <History className="w-8 h-8 text-[#8C827A] mx-auto" />
+            <h3 className="text-base font-bold text-[#1F1E1D]">
+              {historyEvents.length === 0 ? "No Audit Events Yet" : "No Matching Historical Events"}
+            </h3>
+            <p className="text-xs text-[#8C827A] max-w-sm mx-auto">
+              {historyEvents.length === 0
+                ? "Every candidate promotion, evidence corroboration, and calibration event is logged here with full audit integrity as you review competencies."
+                : "Try adjusting your search query or actor and event type filters."}
+            </p>
           </div>
         ) : (
+
           <div className="relative pl-6 sm:pl-8 space-y-6 before:content-[''] before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E0D9CD]">
             {filteredEvents.map((ev) => {
               const typeMeta = getEventTypeLabel(ev.eventType);

@@ -886,3 +886,105 @@ export async function listAIAuditEvents() {
   if (!res.ok) throw new Error("Failed to load AI audit events");
   return res.json();
 }
+
+// ==============================================================================
+// Domain 2: Skill Intelligence & Passport API
+// ==============================================================================
+
+export async function listPassportSkills(): Promise<{
+  skills: any[];
+  metrics: {
+    total_skills: number;
+    verified_count: number;
+    candidate_count: number;
+    coverage_rate: number;
+    top_proficiency: string;
+    avg_confidence: number;
+  };
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/skills`, { headers });
+  if (!res.ok) throw new Error("Failed to load passport skills");
+  return res.json();
+}
+
+export async function getPassportSkill(skillId: string): Promise<{
+  skill: any;
+  rubric: Record<string, string>;
+  related_skills: any[];
+  prerequisite_skills: any[];
+  evidence: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/skills/${skillId}`, { headers });
+  if (!res.ok) throw new Error(`Failed to load passport skill ${skillId}`);
+  return res.json();
+}
+
+export async function listPassportTaxonomy(): Promise<{
+  categories: any[];
+  competencies: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/taxonomy`, { headers });
+  if (!res.ok) throw new Error("Failed to load passport taxonomy");
+  return res.json();
+}
+
+export async function listPassportCandidates(): Promise<{
+  candidates: any[];
+  total: number;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/candidates`, { headers });
+  if (!res.ok) throw new Error("Failed to load passport candidates");
+  return res.json();
+}
+
+export async function reviewPassportCandidate(
+  mappingId: string,
+  action: "verify" | "reject" | "flag_insufficient",
+  rationale: string
+): Promise<{
+  success: boolean;
+  decision_id: string;
+  status: string;
+  message: string;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/candidates/${mappingId}/review`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ action, rationale }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Candidate review failed" }));
+    throw new Error(err.detail || "Candidate review failed");
+  }
+  return res.json();
+}
+
+export async function getPassportCoverage(): Promise<{
+  health_score: number;
+  sufficient_count: number;
+  incomplete_count: number;
+  insufficient_count: number;
+  conflicting_count: number;
+  total_skills: number;
+  coverage_items: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/coverage`, { headers });
+  if (!res.ok) throw new Error("Failed to load passport coverage");
+  return res.json();
+}
+
+export async function listPassportHistory(): Promise<{
+  events: any[];
+  total: number;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/passport/history`, { headers });
+  if (!res.ok) throw new Error("Failed to load passport history");
+  return res.json();
+}
