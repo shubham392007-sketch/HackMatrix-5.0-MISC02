@@ -9,7 +9,9 @@ from backend.app.models.audit import ReviewAuditEvent
 from backend.app.models.web_crawl import WebCrawlRecord
 from backend.app.models.user_profile import UserProfile
 from backend.app.models.language import RepositoryLanguageSnapshot, RepositoryLanguageBreakdown
+from backend.app.models.readme import RepositoryReadmeSnapshot
 from backend.app.models.ai_governance import (
+
     AIAnalysisRun,
     WorkAnalysisResult,
     EvidenceQualityAssessment,
@@ -42,7 +44,9 @@ __all__ = [
     "UserProfile",
     "RepositoryLanguageSnapshot",
     "RepositoryLanguageBreakdown",
+    "RepositoryReadmeSnapshot",
     "AIAnalysisRun",
+
     "WorkAnalysisResult",
     "EvidenceQualityAssessment",
     "VerificationDecision",

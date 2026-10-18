@@ -32,7 +32,15 @@ export default function WorkAnalysisPage({
         description="Inspect how unstructured project artifacts are normalized into candidate competency signals."
         backHref="/app/evidence/library"
         backLabel="Evidence Library"
-      />
+      >
+        <Link
+          href={`/app/ai/work-analysis?evidence_id=${item.id}`}
+          className="pill-btn pill-btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>VIEW AI WORK ANALYSIS</span>
+        </Link>
+      </AppTopBar>
 
       <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
         {/* Illustrative AI Disclaimer */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -21,10 +22,16 @@ import {
   AlertTriangle,
   Activity,
   Plus,
+  Sparkles,
+  Loader2,
+  Cpu,
 } from "lucide-react";
+import { runWorkAnalysis } from "@/lib/evidenceApi";
 
 export default function EvidenceCenterPage() {
-  const { evidenceItems, sources, ingestionRuns, initialLoading, isLoadingEvidence } = useEvidence();
+  const { evidenceItems, sources, ingestionRuns, initialLoading, isLoadingEvidence, workAnalyses, refreshEvidenceData } = useEvidence();
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analysisStatusMsg, setAnalysisStatusMsg] = useState<{ id: string; text: string; error?: boolean } | null>(null);
 
   const isDataLoading = initialLoading || (isLoadingEvidence && evidenceItems.length === 0);
 
@@ -370,40 +377,102 @@ export default function EvidenceCenterPage() {
               </div>
             ) : (
               <div className="divide-y divide-[#1C1C1C]/15">
-                {evidenceItems.slice(0, 4).map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FBF1CF]/60 transition-colors"
-                  >
-                    <div className="space-y-1 max-w-xl">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60 uppercase">
-                          [{ev.sourceType.toUpperCase()}]
-                        </span>
-                        <h4 className="text-sm font-black text-[#1C1C1C]">{ev.title}</h4>
-                      </div>
-                      <p className="text-xs font-medium text-[#1C1C1C]/75 line-clamp-1">
-                        {ev.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-[#1C1C1C]/60 pt-1">
-                        <span>Project: {ev.project}</span>
-                        <span>•</span>
-                        <span>Date: {ev.date}</span>
-                      </div>
-                    </div>
+                {evidenceItems.slice(0, 4).map((ev) => {
+                  const analysis = workAnalyses.find((a) => a.source_id === ev.id);
+                  const isOllamaAnalyzed = analysis && analysis.status === "completed" && analysis.analysis_method === "ollama";
+                  const isRuleBased = analysis && (analysis.analysis_method === "rule_based" || analysis.fallback_used);
+                  const isAnalyzingThis = analyzingId === ev.id;
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <ProcessingStatusBadge status={ev.processingStatus} />
-                      <ReviewStatusBadge status={ev.reviewStatus} />
-                      <Link
-                        href={`/app/evidence/library/${ev.id}`}
-                        className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3"
-                      >
-                        INSPECT
-                      </Link>
+                  return (
+                    <div
+                      key={ev.id}
+                      className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FBF1CF]/60 transition-colors"
+                    >
+                      <div className="space-y-1 max-w-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60 uppercase">
+                            [{ev.sourceType.toUpperCase()}]
+                          </span>
+                          <h4 className="text-sm font-black text-[#1C1C1C]">{ev.title}</h4>
+                        </div>
+                        <p className="text-xs font-medium text-[#1C1C1C]/75 line-clamp-1">
+                          {ev.description}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-[#1C1C1C]/60 pt-1">
+                          <span>Project: {ev.project}</span>
+                          <span>•</span>
+                          <span>Date: {ev.date}</span>
+                        </div>
+                        {analysisStatusMsg && analysisStatusMsg.id === ev.id && (
+                          <div className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 inline-block ${
+                            analysisStatusMsg.error ? "text-[#C85A54] bg-[#F6C8D6]" : "text-[#4A7A4E] bg-[#DFE968]/60"
+                          }`}>
+                            {analysisStatusMsg.text}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <ProcessingStatusBadge status={ev.processingStatus} />
+                        <ReviewStatusBadge status={ev.reviewStatus} />
+
+                        {isOllamaAnalyzed ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+                            <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                            {analysis.model_name || "qwen3:8b"}
+                          </span>
+                        ) : isRuleBased ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-[#1C1C1C] bg-[#FBF1CF] text-[#1C1C1C]/70">
+                            RULE-BASED
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-[#1C1C1C]/40 bg-white text-[#1C1C1C]/50">
+                            NOT ANALYZED
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isAnalyzingThis}
+                          onClick={async () => {
+                            try {
+                              setAnalyzingId(ev.id);
+                              setAnalysisStatusMsg(null);
+                              await runWorkAnalysis([ev.id]);
+                              await refreshEvidenceData();
+                              setAnalysisStatusMsg({ id: ev.id, text: "Ollama analysis succeeded!" });
+                            } catch (err: any) {
+                              setAnalysisStatusMsg({ id: ev.id, text: err?.message || "Analysis failed", error: true });
+                            } finally {
+                              setAnalyzingId(null);
+                            }
+                          }}
+                          className="pill-btn pill-btn-primary text-[10.5px] py-1.5 px-3 flex items-center gap-1 disabled:opacity-50"
+                          title="Analyze evidence item using local Ollama (qwen3:8b)"
+                        >
+                          {isAnalyzingThis ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>ANALYZING...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" />
+                              <span>{analysis ? "RE-ANALYZE" : "ANALYZE WITH OLLAMA"}</span>
+                            </>
+                          )}
+                        </button>
+
+                        <Link
+                          href={`/app/evidence/library/${ev.id}`}
+                          className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3"
+                        >
+                          INSPECT
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

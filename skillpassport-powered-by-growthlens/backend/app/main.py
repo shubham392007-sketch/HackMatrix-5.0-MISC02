@@ -44,6 +44,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Response Compression for large payloads
+    from fastapi.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
     # Centralized Exception Handler for Domain Exceptions
     @app.exception_handler(SkillPassportError)
     async def skill_passport_error_handler(request: Request, exc: SkillPassportError):

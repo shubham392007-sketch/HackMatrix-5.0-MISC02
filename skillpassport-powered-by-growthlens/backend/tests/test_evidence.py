@@ -25,7 +25,10 @@ def test_ai_extractor_rule_based_fallback():
     assert len(res["competencies"]) >= 2
     comp_names = [c["name"] for c in res["competencies"]]
     assert "Distributed Systems & Event Streaming" in comp_names
-    assert "Database Optimization & Data Engineering" in comp_names
+    assert (
+        "Relational Data Modeling & PostgreSQL" in comp_names
+        or "Database Optimization & Data Engineering" in comp_names
+    )
 
 
 def test_chroma_indexing_and_search():

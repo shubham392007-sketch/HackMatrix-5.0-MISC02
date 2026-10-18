@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -25,55 +26,61 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-export default function AIWorkAnalysisPage() {
+function WorkAnalysisContent() {
   const {
     evidenceItems,
     workAnalyses,
-    updateWorkAnalysis,
     addAIAuditEvent,
     refreshEvidenceData,
   } = useEvidence();
 
+  const searchParams = useSearchParams();
+  const evidenceIdParam = searchParams.get("evidence_id") || searchParams.get("source_id");
+
   const [selectedSourceId, setSelectedSourceId] = useState<string>(
-    workAnalyses[0]?.source_id || evidenceItems[0]?.id || ""
+    evidenceIdParam || workAnalyses[0]?.source_id || evidenceItems[0]?.id || ""
   );
   const [isSimulating, setIsSimulating] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!selectedSourceId && evidenceItems.length > 0) {
+    if (evidenceIdParam && evidenceItems.some((e) => e.id === evidenceIdParam)) {
+      setSelectedSourceId(evidenceIdParam);
+    } else if (!selectedSourceId && evidenceItems.length > 0) {
       setSelectedSourceId(evidenceItems[0].id);
     }
-  }, [evidenceItems, selectedSourceId]);
+  }, [evidenceIdParam, evidenceItems, selectedSourceId]);
 
   const selectedEvidence = evidenceItems.find((e) => e.id === selectedSourceId);
   const activeAnalysis = workAnalyses.find((a) => a.source_id === selectedSourceId);
 
-  const handleSimulateAnalysis = async () => {
+  const handleRunAnalysis = async () => {
     if (!selectedSourceId) return;
     setIsSimulating(true);
+    setAnalysisError(null);
 
     try {
       const { runWorkAnalysis } = await import("@/lib/evidenceApi");
-      await runWorkAnalysis([selectedSourceId]);
+      const res = await runWorkAnalysis([selectedSourceId]);
       await refreshEvidenceData();
+
+      const itemResult = res?.analyses?.[0];
+      const modelName = itemResult?.model_name || "qwen3:8b";
+      const isFallback = itemResult?.fallback_used || itemResult?.analysis_method === "rule_based";
+
       addAIAuditEvent({
         timestamp: "Just now",
         event_type: "analysis_completed",
         affected_entity_type: "source",
         affected_entity_id: selectedSourceId,
         new_state: "Analysis Completed",
-        reason: `Analyzed work artifacts for ${selectedEvidence?.title || selectedSourceId}`,
-        actor: "Ingestion Pipeline (Qwen-3 8B)",
-        model_or_policy_version: "qwen3:8b",
+        reason: `Analyzed work artifacts for ${selectedEvidence?.title || selectedSourceId} via ${isFallback ? "Deterministic Engine" : `Ollama (${modelName})`}`,
+        actor: isFallback ? "Rule-based Fallback Pipeline" : `Ollama LLM Pipeline (${modelName})`,
+        model_or_policy_version: modelName,
       });
-    } catch (e) {
-      console.warn("Backend analysis error, updating local state:", e);
-      if (activeAnalysis) {
-        updateWorkAnalysis(activeAnalysis.analysis_id, {
-          status: "completed",
-          created_at: "Just now",
-        });
-      }
+    } catch (e: any) {
+      console.error("Backend analysis error:", e);
+      setAnalysisError(e?.message || "Ollama work analysis failed. Please verify Ollama is running and qwen3:8b is loaded.");
     } finally {
       setIsSimulating(false);
     }
@@ -142,15 +149,31 @@ export default function AIWorkAnalysisPage() {
                   </div>
                 )}
                 <button
-                  onClick={handleSimulateAnalysis}
+                  onClick={handleRunAnalysis}
                   disabled={isSimulating}
-                  className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+                  className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 disabled:opacity-50"
+                  title="Run real Ollama (qwen3:8b) inference on this work artifact"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSimulating ? "animate-spin" : ""}`} />
-                  {isSimulating ? "Analyzing..." : "Analyze Work"}
+                  {isSimulating ? "Analyzing with Ollama..." : "Analyze with Ollama"}
                 </button>
               </div>
             </div>
+            {analysisError && (
+              <div className="p-3.5 rounded-xl border border-[#1C1C1C] bg-[#F6C8D6] text-xs font-bold text-[#C85A54] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{analysisError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAnalysisError(null)}
+                  className="text-[10px] font-black underline uppercase"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
           </div>
 
       {/* Two-Column Analysis Workspace */}
@@ -472,5 +495,13 @@ export default function AIWorkAnalysisPage() {
       )}
     </div>
   </div>
+  );
+}
+
+export default function AIWorkAnalysisPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs font-bold text-[#8C827A]">Loading Work Analysis Workspace...</div>}>
+      <WorkAnalysisContent />
+    </Suspense>
   );
 }

@@ -21,10 +21,20 @@ import {
   Award,
   BookOpen,
   Loader2,
+  Sparkles,
+  Cpu,
 } from "lucide-react";
+import { runWorkAnalysis } from "@/lib/evidenceApi";
 
 export default function EvidenceLibraryPage() {
-  const { evidenceItems, deleteEvidenceItem, initialLoading, isLoadingEvidence } = useEvidence();
+  const {
+    evidenceItems,
+    deleteEvidenceItem,
+    initialLoading,
+    isLoadingEvidence,
+    workAnalyses,
+    refreshEvidenceData,
+  } = useEvidence();
 
   const isDataLoading = initialLoading || (isLoadingEvidence && evidenceItems.length === 0);
 
@@ -32,6 +42,8 @@ export default function EvidenceLibraryPage() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const filteredItems = evidenceItems.filter((item) => {
     const matchesSearch =
@@ -140,6 +152,19 @@ export default function EvidenceLibraryPage() {
           </div>
         </div>
 
+        {actionError && (
+          <div className="p-3.5 rounded-xl border border-[#1C1C1C] bg-[#F6C8D6] text-xs font-bold text-[#C85A54] flex items-center justify-between">
+            <span>{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="text-[10px] font-black underline uppercase"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Results Counter */}
         <div className="flex items-center justify-between text-xs font-bold text-[#1C1C1C]/70 px-1">
           {isDataLoading ? (
@@ -212,76 +237,129 @@ export default function EvidenceLibraryPage() {
         ) : (
           <div className="bg-[#FBF6DF] rounded-[24px] border-[1.5px] border-[#1C1C1C] overflow-hidden shadow-[3px_3px_0_0_#1C1C1C]">
             <div className="divide-y divide-[#1C1C1C]/15">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-[#FBF1CF]/60 transition-colors"
-                >
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-white border border-[#1C1C1C] flex items-center justify-center shrink-0">
-                        {getSourceIcon(item.sourceType)}
+              {filteredItems.map((item) => {
+                const analysis = workAnalyses.find((a) => a.source_id === item.id);
+                const isOllamaAnalyzed = analysis && analysis.status === "completed" && analysis.analysis_method === "ollama";
+                const isRuleBased = analysis && (analysis.analysis_method === "rule_based" || analysis.fallback_used);
+                const isAnalyzingThis = analyzingId === item.id;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-[#FBF1CF]/60 transition-colors"
+                  >
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md bg-white border border-[#1C1C1C] flex items-center justify-center shrink-0">
+                          {getSourceIcon(item.sourceType)}
+                        </div>
+                        <span className="text-[10px] font-mono font-bold uppercase text-[#1C1C1C]/60">
+                          {item.sourceType}
+                        </span>
+                        <span className="text-xs text-[#1C1C1C]/30">•</span>
+                        <h4 className="text-sm font-black text-[#1C1C1C]">{item.title}</h4>
                       </div>
-                      <span className="text-[10px] font-mono font-bold uppercase text-[#1C1C1C]/60">
-                        {item.sourceType}
-                      </span>
-                      <span className="text-xs text-[#1C1C1C]/30">•</span>
-                      <h4 className="text-sm font-black text-[#1C1C1C]">{item.title}</h4>
+
+                      <p className="text-xs font-medium text-[#1C1C1C]/75 line-clamp-2">
+                        {item.description}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-[#1C1C1C]/65 pt-1">
+                        <span>Project: {item.project}</span>
+                        <span>•</span>
+                        <span>Date: {item.date}</span>
+                        <span>•</span>
+                        <span>Extraction Confidence: {item.extractionConfidence}%</span>
+                      </div>
                     </div>
 
-                    <p className="text-xs font-medium text-[#1C1C1C]/75 line-clamp-2">
-                      {item.description}
-                    </p>
+                    {/* Badges & Actions */}
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                      <EvidenceStrengthBadge strength={item.evidenceStrength} />
+                      <ReviewStatusBadge status={item.reviewStatus} />
 
-                    <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-[#1C1C1C]/65 pt-1">
-                      <span>Project: {item.project}</span>
-                      <span>•</span>
-                      <span>Date: {item.date}</span>
-                      <span>•</span>
-                      <span>Extraction Confidence: {item.extractionConfidence}%</span>
-                    </div>
-                  </div>
+                      {isOllamaAnalyzed ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+                          <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                          {analysis.model_name || "qwen3:8b"}
+                        </span>
+                      ) : isRuleBased ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-[#1C1C1C] bg-[#FBF1CF] text-[#1C1C1C]/70">
+                          RULE-BASED
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-[#1C1C1C]/40 bg-white text-[#1C1C1C]/50">
+                          NOT ANALYZED
+                        </span>
+                      )}
 
-                  {/* Badges & Actions */}
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
-                    <EvidenceStrengthBadge strength={item.evidenceStrength} />
-                    <ReviewStatusBadge status={item.reviewStatus} />
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/app/evidence/library/${item.id}`}
-                        className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3.5"
-                      >
-                        DETAILS
-                      </Link>
-                      <button
-                        type="button"
-                        disabled={deletingId === item.id}
-                        onClick={async () => {
-                          if (confirm(`Remove evidence record "${item.title}"?`)) {
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isAnalyzingThis}
+                          onClick={async () => {
                             try {
-                              setDeletingId(item.id);
-                              await deleteEvidenceItem(item.id);
-                            } catch (e) {
-                              // error toast handled in context
+                              setAnalyzingId(item.id);
+                              setActionError(null);
+                              await runWorkAnalysis([item.id]);
+                              await refreshEvidenceData();
+                            } catch (err: any) {
+                              setActionError(err?.message || "Failed to analyze evidence with Ollama");
                             } finally {
-                              setDeletingId(null);
+                              setAnalyzingId(null);
                             }
-                          }
-                        }}
-                        className="p-2 rounded-full border border-[#1C1C1C] bg-white hover:bg-[#F6C8D6] text-[#C85A54] transition-all disabled:opacity-50"
-                        title="Delete item"
-                      >
-                        {deletingId === item.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                          }}
+                          className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50"
+                          title="Analyze or re-analyze evidence with Ollama"
+                        >
+                          {isAnalyzingThis ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>ANALYZING...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>{analysis ? "RE-ANALYZE" : "ANALYZE WITH OLLAMA"}</span>
+                            </>
+                          )}
+                        </button>
+
+                        <Link
+                          href={`/app/evidence/library/${item.id}`}
+                          className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3.5"
+                        >
+                          DETAILS
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={deletingId === item.id}
+                          onClick={async () => {
+                            if (confirm(`Remove evidence record "${item.title}"?`)) {
+                              try {
+                                setDeletingId(item.id);
+                                await deleteEvidenceItem(item.id);
+                              } catch (e) {
+                                // error toast handled in context
+                              } finally {
+                                setDeletingId(null);
+                              }
+                            }
+                          }}
+                          className="p-2 rounded-full border border-[#1C1C1C] bg-white hover:bg-[#F6C8D6] text-[#C85A54] transition-all disabled:opacity-50"
+                          title="Delete item"
+                        >
+                          {deletingId === item.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

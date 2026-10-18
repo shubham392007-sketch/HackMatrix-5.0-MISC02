@@ -122,7 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error("Error retrieving Supabase session:", error);
+          console.warn("Stale or invalid Supabase session detected; clearing local token:", error.message);
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {}
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("sp_user_profile");
+          }
         }
         if (mounted) {
           setSession(initialSession);

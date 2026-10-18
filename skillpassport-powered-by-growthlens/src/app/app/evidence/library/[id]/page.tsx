@@ -22,9 +22,10 @@ import {
   Trash2,
   Code2,
   RefreshCw,
+  Cpu,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
-import { reprocessUploadedDocument } from "@/lib/evidenceApi";
+import { reprocessUploadedDocument, runWorkAnalysis } from "@/lib/evidenceApi";
 
 export default function EvidenceDetailPage({
   params,
@@ -33,8 +34,9 @@ export default function EvidenceDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { evidenceItems, confirmContribution, deleteEvidenceItem, refreshEvidenceData } = useEvidence();
+  const { evidenceItems, confirmContribution, deleteEvidenceItem, refreshEvidenceData, workAnalyses } = useEvidence();
   const [reprocessing, setReprocessing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reprocessMsg, setReprocessMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
@@ -53,6 +55,21 @@ export default function EvidenceDetailPage({
       setReprocessMsg({ text: err.message || "Failed to reprocess document", error: true });
     } finally {
       setReprocessing(false);
+    }
+  };
+
+  const handleOllamaAnalyze = async () => {
+    if (!item) return;
+    try {
+      setAnalyzing(true);
+      setReprocessMsg(null);
+      await runWorkAnalysis([item.id]);
+      await refreshEvidenceData();
+      setReprocessMsg({ text: "Evidence item successfully analyzed using local Ollama (qwen3:8b)!" });
+    } catch (err: any) {
+      setReprocessMsg({ text: err.message || "Failed to analyze evidence with Ollama", error: true });
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -76,6 +93,16 @@ export default function EvidenceDetailPage({
         backLabel="Evidence Library"
       >
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={analyzing}
+            onClick={handleOllamaAnalyze}
+            className="pill-btn pill-btn-primary text-xs py-2 px-3 flex items-center gap-1.5 disabled:opacity-50"
+            title="Run genuine Ollama LLM work analysis on this item"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${analyzing ? "animate-spin" : ""}`} />
+            <span>{analyzing ? "ANALYZING WITH OLLAMA ···" : "ANALYZE WITH OLLAMA"}</span>
+          </button>
           {item.sourceType === "document" || item.sourceType === "certificate" ? (
             <button
               type="button"
@@ -127,28 +154,50 @@ export default function EvidenceDetailPage({
           </div>
         )}
         {/* A. Evidence Overview & Status Bar */}
-        <div className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-wrap items-center justify-between gap-4 shadow-[3px_3px_0_0_#1C1C1C]">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
-              VERIFICATION STATUS
-            </span>
-            <div className="flex items-center gap-3">
-              <ReviewStatusBadge status={item.reviewStatus} />
-              <ProcessingStatusBadge status={item.processingStatus} />
-              <EvidenceStrengthBadge strength={item.evidenceStrength} />
-            </div>
-          </div>
+        {(() => {
+          const analysis = workAnalyses.find((a) => a.source_id === item.id);
+          const isOllamaAnalyzed = analysis && analysis.status === "completed" && analysis.analysis_method === "ollama";
+          const isRuleBased = analysis && (analysis.analysis_method === "rule_based" || analysis.fallback_used);
 
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/app/evidence/analysis/${item.id}`}
-              className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>INSPECT AI ANALYSIS</span>
-            </Link>
-          </div>
-        </div>
+          return (
+            <div className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-wrap items-center justify-between gap-4 shadow-[3px_3px_0_0_#1C1C1C]">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+                  VERIFICATION STATUS
+                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <ReviewStatusBadge status={item.reviewStatus} />
+                  <ProcessingStatusBadge status={item.processingStatus} />
+                  <EvidenceStrengthBadge strength={item.evidenceStrength} />
+                  {isOllamaAnalyzed ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+                      <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                      {analysis.model_name || "qwen3:8b"}
+                    </span>
+                  ) : isRuleBased ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-[#1C1C1C] bg-[#FBF1CF] text-[#1C1C1C]/70">
+                      RULE-BASED
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-dashed border-[#1C1C1C]/40 bg-white text-[#1C1C1C]/50">
+                      NOT ANALYZED
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/app/ai/work-analysis?evidence_id=${item.id}`}
+                  className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>INSPECT AI ANALYSIS</span>
+                </Link>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* B. Original vs Normalized Metadata */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

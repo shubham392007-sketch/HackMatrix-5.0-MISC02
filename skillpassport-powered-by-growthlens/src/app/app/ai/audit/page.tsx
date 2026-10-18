@@ -62,7 +62,7 @@ export default function AIAuditHistoryPage() {
       encodeURIComponent(JSON.stringify(aiAuditEvents, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `growthlens-ai-audit-log-${Date.now()}.json`);
+    downloadAnchor.setAttribute("download", `skillpassport-ai-audit-log-${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -110,7 +110,7 @@ export default function AIAuditHistoryPage() {
       default:
         return (
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase bg-ink/5 text-ink">
-            {type.replace("_", " ")}
+            {(type || "EVENT").replace(/_/g, " ")}
           </span>
         );
     }
@@ -202,7 +202,7 @@ export default function AIAuditHistoryPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs text-ink-muted px-1">
           <span>Showing {filteredEvents.length} audit trail records</span>
-          <span className="font-mono">Policy Spec: GrowthLens-Audit-2026</span>
+          <span className="font-mono">Policy Spec: SkillPassport-Audit-2026</span>
         </div>
 
         {aiAuditEvents.length === 0 ? (

@@ -8,11 +8,34 @@ import { supabase } from "@/lib/supabase/client";
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
 const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
+let cachedToken: string | null = null;
+let tokenExpiresAt: number = 0;
+
+export function invalidateAuthTokenCache() {
+  cachedToken = null;
+  tokenExpiresAt = 0;
+}
+
+if (typeof window !== "undefined") {
+  supabase.auth.onAuthStateChange(() => {
+    invalidateAuthTokenCache();
+  });
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
   try {
+    const now = Date.now();
+    if (cachedToken && now < tokenExpiresAt) {
+      return {
+        Authorization: `Bearer ${cachedToken}`,
+      };
+    }
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (token) {
+      cachedToken = token;
+      const expiresAt = data.session?.expires_at ? data.session.expires_at * 1000 : now + 60000;
+      tokenExpiresAt = Math.min(now + 60000, expiresAt - 5000);
       return {
         Authorization: `Bearer ${token}`,
       };
@@ -22,6 +45,31 @@ async function getAuthHeaders(): Promise<HeadersInit> {
   }
   return {};
 }
+
+// In-flight GET request deduplication
+const inFlightRequests = new Map<string, Promise<Response>>();
+const _nativeFetch = globalThis.fetch.bind(globalThis);
+
+async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const method = (init?.method || "GET").toUpperCase();
+  if (method !== "GET") {
+    return _nativeFetch(input, init);
+  }
+  const key = typeof input === "string" ? input : input.toString();
+  if (inFlightRequests.has(key)) {
+    const pending = inFlightRequests.get(key)!;
+    return pending.then((res) => res.clone());
+  }
+
+  const promise = _nativeFetch(input, init).finally(() => {
+    inFlightRequests.delete(key);
+  });
+  inFlightRequests.set(key, promise);
+  const response = await promise;
+  return response.clone();
+}
+
+const fetch = fetchWithDedupe;
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -100,11 +148,21 @@ export async function connectGitHub(token: string, repositories: string[] = []) 
   return res.json();
 }
 
-export async function listGitHubRepositories(page: number = 1, perPage: number = 30) {
+export async function listGitHubRepositories(
+  page: number = 1,
+  perPage: number = 30,
+  allAccessible: boolean = false,
+  search?: string
+) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/github/repositories?page=${page}&per_page=${perPage}`, {
-    headers,
-  });
+  let url = `${API_BASE}/connections/github/repositories?page=${page}&per_page=${perPage}`;
+  if (allAccessible) {
+    url += "&all_accessible=true";
+  }
+  if (search && search.trim()) {
+    url += `&search=${encodeURIComponent(search.trim())}`;
+  }
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error("Failed to load GitHub repositories");
   return res.json();
 }
@@ -122,6 +180,19 @@ export async function updateSelectedRepositories(repositories: any[]) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Failed to update repositories" }));
     throw new Error(err.detail || "Repository update failed");
+  }
+  return res.json();
+}
+
+export async function removeSelectedGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to remove repository" }));
+    throw new Error(err.detail || "Failed to remove repository from active sources");
   }
   return res.json();
 }
@@ -152,6 +223,51 @@ export interface RepositoryLanguagesResponse {
   languages: LanguageBreakdownItem[];
   error_summary: string | null;
 }
+
+export interface RepositoryReadmeSection {
+  level: number;
+  title: string;
+  line_number?: number;
+  char_offset?: number;
+}
+
+export interface RepositoryReadmeResponse {
+  repository_id: string;
+  repository_name: string;
+  sync_status: "success" | "not_found" | "forbidden" | "rate_limited" | "failed" | "not_synced" | string;
+  readme_path: string;
+  blob_sha: string | null;
+  html_url: string | null;
+  content_hash: string | null;
+  raw_content: string | null;
+  sections: RepositoryReadmeSection[];
+  retrieval_timestamp: string | null;
+  error_summary: string | null;
+}
+
+export async function getRepositoryReadme(repositoryIdOrFullName: string): Promise<RepositoryReadmeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/readme`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to load repository README" }));
+    throw new Error(err.detail || "Failed to load repository README");
+  }
+  return res.json();
+}
+
+export async function refreshRepositoryReadme(repositoryIdOrFullName: string): Promise<RepositoryReadmeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/readme/refresh`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to refresh repository README" }));
+    throw new Error(err.detail || "Failed to refresh repository README");
+  }
+  return res.json();
+}
+
 
 export interface RepositorySummaryItem {
   repository_id: string;
@@ -203,6 +319,63 @@ export async function refreshRepositoryLanguages(repositoryIdOrFullName: string)
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Failed to refresh repository languages" }));
     throw new Error(err.detail || "Failed to refresh repository languages");
+  }
+  return res.json();
+}
+
+export interface DiagnosticCheckItem {
+  id: number;
+  name: string;
+  category: string;
+  status: "pass" | "warning" | "fail";
+  message: string;
+  details: Record<string, any>;
+  duration_ms: number;
+}
+
+export interface GitHubDiagnosticResponse {
+  overall_status: "pass" | "warning" | "fail";
+  passed: number;
+  warnings: number;
+  failed: number;
+  total: number;
+  diagnostic_score_pct: number;
+  timestamp: string;
+  checks: DiagnosticCheckItem[];
+}
+
+export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/sync`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
+    throw new Error(err.detail || "Repository sync failed");
+  }
+  return res.json();
+}
+
+export async function analyzeGitHubRepository(repositoryIdOrFullName: string, limit: number = 5) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/analyze?limit=${limit}`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Repository AI analysis failed" }));
+    throw new Error(err.detail || "Repository AI analysis failed");
+  }
+  return res.json();
+}
+
+export async function getGitHubDiagnostic(): Promise<GitHubDiagnosticResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/github/diagnostic`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to run GitHub diagnostic" }));
+    throw new Error(err.detail || "Failed to run GitHub diagnostic");
   }
   return res.json();
 }
@@ -582,10 +755,11 @@ export async function listVerificationRecords() {
 }
 
 export async function evaluateGuardClaim(params: {
-  evidence_id: string;
+  evidence_id?: string | null;
   claim_text: string;
-  supporting_excerpt: string;
+  supporting_excerpt?: string;
   claimed_skill_name?: string;
+  claimed_level?: string;
 }) {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/ai/guard/evaluate`, {

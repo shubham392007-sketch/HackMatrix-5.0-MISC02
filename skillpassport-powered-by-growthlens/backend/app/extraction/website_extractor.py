@@ -70,7 +70,7 @@ class WebsiteExtractor:
         Safely extracts single page content with SSRF protection and Trafilatura parsing.
         """
         validation = validate_url_safe(url)
-        cleaned_url = validation["cleaned_url"]
+        cleaned_url = validation["cleaned_url"] if isinstance(validation, dict) else str(validation)
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:

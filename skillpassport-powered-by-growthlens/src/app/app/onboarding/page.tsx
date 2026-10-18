@@ -216,9 +216,25 @@ export default function UnifiedOnboardingPage() {
 
   // Load existing profile & onboarding state on mount
   const loadState = useCallback(async () => {
+    // Failsafe: ensure wizard renders within 1200ms maximum even if network is slow
+    const failsafe = setTimeout(() => {
+      setLoadingInitialState(false);
+    }, 1200);
+
     try {
-      const p = await getMyProfile();
-      if (p) {
+      const [profileRes, summaryRes] = await Promise.allSettled([
+        getMyProfile(),
+        getMyOnboardingSummary(),
+      ]);
+
+      let summary: any = null;
+      if (summaryRes.status === "fulfilled" && summaryRes.value) {
+        summary = summaryRes.value;
+        setSummaryData(summary);
+      }
+
+      if (profileRes.status === "fulfilled" && profileRes.value) {
+        const p = profileRes.value;
         setFullName(p.display_name || user?.user_metadata?.full_name || "");
         setJobTitle(p.job_title || p.headline || "");
         setDepartmentOrTeam(p.department_or_team || "");
@@ -235,15 +251,6 @@ export default function UnifiedOnboardingPage() {
         } else if (p.onboarding_current_step && p.onboarding_current_step >= 1 && p.onboarding_current_step <= 5) {
           setCurrentStep(p.onboarding_current_step);
         }
-      }
-
-      // Fetch summary counts
-      let summary: any = null;
-      try {
-        summary = await getMyOnboardingSummary();
-        setSummaryData(summary);
-      } catch (err) {
-        console.warn("Could not load onboarding summary:", err);
       }
 
       // Check if GitHub is already connected
@@ -267,6 +274,7 @@ export default function UnifiedOnboardingPage() {
         setFullName((prev) => prev || user.user_metadata.full_name);
       }
     } finally {
+      clearTimeout(failsafe);
       setLoadingInitialState(false);
     }
   }, [router, sources, user]);
@@ -409,9 +417,9 @@ export default function UnifiedOnboardingPage() {
   };
 
   const handleToggleRepo = async (repoName: string) => {
-    const next = selectedRepos.includes(repoName)
-      ? selectedRepos.filter((r) => r !== repoName)
-      : [...selectedRepos, repoName];
+    // ENFORCE EXACTLY ONE REPOSITORY SELECTION DURING ONBOARDING
+    // Clicking an unselected repo selects ONLY that repo. Clicking the currently selected repo toggles it off.
+    const next = selectedRepos.includes(repoName) ? [] : [repoName];
     setSelectedRepos(next);
     try {
       await updateSelectedRepositories(next);
@@ -436,6 +444,10 @@ export default function UnifiedOnboardingPage() {
 
   const handleContinueFromGitHub = async () => {
     try {
+      if (isGitHubConnected && selectedRepos.length === 1 && !githubSyncing) {
+        // Trigger initial repository ingestion for the chosen repository
+        triggerGitHubSync(selectedRepos[0]).catch((err) => console.warn("Initial sync trigger:", err));
+      }
       await updateMyProfile({
         onboarding_current_step: 3,
       });
@@ -443,6 +455,7 @@ export default function UnifiedOnboardingPage() {
     } catch (e) {
       setCurrentStep(3);
     }
+
   };
 
   // Step 3: Jira Handlers
@@ -1047,14 +1060,21 @@ export default function UnifiedOnboardingPage() {
                     </button>
                   </div>
 
-                  {/* Repository Picker */}
+                  {/* Repository Picker - Single Select for Initial Setup */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
-                        Select Repositories to Connect
+                        Select 1 Repository for Initial Setup
                       </label>
-                      <span className="text-[11px] font-bold text-[#1C1C1C]/60">
-                        {selectedRepos.length} of {githubRepos.length} selected
+                      <span className="text-[11px] font-bold text-[#1C1C1C]/70">
+                        {selectedRepos.length === 1 ? "1 repository selected" : "Select 1 repository"}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#DFE968]/30 border border-[#1C1C1C] flex items-center gap-2.5 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
+                      <ShieldCheck className="w-4 h-4 text-[#4A7A4E] shrink-0" />
+                      <span className="font-bold text-[#1C1C1C] leading-snug">
+                        Select <strong>exactly 1 repository</strong> for your initial evidence import. You can discover and add additional repositories anytime from <strong>Connected Sources</strong> after completing onboarding.
                       </span>
                     </div>
 
@@ -1074,6 +1094,11 @@ export default function UnifiedOnboardingPage() {
                         <LoadingAnimation size="sm" className="mx-auto -my-3" />
                         <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">FETCHING REPOSITORIES FROM GITHUB ···</p>
                       </div>
+                    ) : filteredRepos.length === 0 ? (
+                      <div className="p-6 text-center bg-white rounded-xl border border-[#1C1C1C]/20 space-y-1">
+                        <p className="text-xs font-bold text-[#1C1C1C]">No accessible repositories found</p>
+                        <p className="text-[11px] text-[#1C1C1C]/60">Check that your PAT has access to repositories under your account.</p>
+                      </div>
                     ) : (
                       <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                         {filteredRepos.map((repo) => {
@@ -1089,7 +1114,19 @@ export default function UnifiedOnboardingPage() {
                               }`}
                             >
                               <div className="space-y-0.5">
-                                <div className="text-xs font-extrabold">{repo.full_name || repo.name}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-extrabold">{repo.full_name || repo.name}</span>
+                                  {repo.language && (
+                                    <span className="text-[10px] font-mono font-bold bg-[#FBF1CF] px-1.5 py-0.5 rounded border border-[#1C1C1C]/20 text-[#1C1C1C]/70">
+                                      {repo.language}
+                                    </span>
+                                  )}
+                                  {repo.is_private && (
+                                    <span className="text-[9px] font-black uppercase tracking-wider bg-stone-100 px-1.5 py-0.5 rounded border border-[#1C1C1C]/20 text-stone-600">
+                                      Private
+                                    </span>
+                                  )}
+                                </div>
                                 {repo.description && (
                                   <div className="text-[11px] text-[#1C1C1C]/60 truncate max-w-md">
                                     {repo.description}
@@ -1097,11 +1134,11 @@ export default function UnifiedOnboardingPage() {
                                 )}
                               </div>
                               <div
-                                className={`w-5 h-5 rounded-md border-[1.5px] border-[#1C1C1C] flex items-center justify-center ${
+                                className={`w-5 h-5 rounded-full border-[1.5px] border-[#1C1C1C] flex items-center justify-center shrink-0 ${
                                   isSel ? "bg-[#DFE968]" : "bg-white"
                                 }`}
                               >
-                                {isSel && <Check className="w-3 h-3 stroke-[3]" />}
+                                {isSel && <div className="w-2.5 h-2.5 rounded-full bg-[#1C1C1C]" />}
                               </div>
                             </div>
                           );
@@ -1111,6 +1148,7 @@ export default function UnifiedOnboardingPage() {
                   </div>
                 </div>
               )}
+
 
               {/* Navigation Actions */}
               <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-between">

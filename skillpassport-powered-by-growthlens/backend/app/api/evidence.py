@@ -3,8 +3,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import or_, func
 
 from backend.app.db.session import get_db
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
@@ -80,21 +80,39 @@ def list_evidence(
         )
 
     total_count = query.count()
-    items = query.order_by(EvidenceItem.observed_timestamp.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items = (
+        query.options(
+            selectinload(EvidenceItem.competency_mappings).selectinload(EvidenceCompetencyMapping.competency)
+        )
+        .order_by(EvidenceItem.observed_timestamp.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
 
-    # Calculate summary metrics for Evidence Center
-    all_user_items = db.query(EvidenceItem).filter(
+    # Calculate summary metrics via single-pass SQL aggregations instead of loading all rows
+    status_counts_rows = db.query(
+        EvidenceItem.verification_status,
+        func.count(EvidenceItem.id)
+    ).filter(
         EvidenceItem.owner_user_id == user.id,
         EvidenceItem.is_deleted == False,
-    ).all()
-    verified_count = sum(1 for i in all_user_items if i.verification_status == "verified")
-    unreviewed_count = sum(1 for i in all_user_items if i.verification_status == "unreviewed")
-    disputed_count = sum(1 for i in all_user_items if i.verification_status == "disputed")
-    
-    # Provider breakdown
-    provider_counts: Dict[str, int] = {}
-    for i in all_user_items:
-        provider_counts[i.source_provider] = provider_counts.get(i.source_provider, 0) + 1
+    ).group_by(EvidenceItem.verification_status).all()
+    status_counts = dict(status_counts_rows)
+    verified_count = status_counts.get("verified", 0)
+    unreviewed_count = status_counts.get("unreviewed", 0)
+    disputed_count = status_counts.get("disputed", 0)
+    total_user_items = sum(status_counts.values())
+
+    # Provider breakdown via SQL aggregation
+    provider_counts_rows = db.query(
+        EvidenceItem.source_provider,
+        func.count(EvidenceItem.id)
+    ).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.is_deleted == False,
+    ).group_by(EvidenceItem.source_provider).all()
+    provider_counts = dict(provider_counts_rows)
 
     results = []
     for item in items:
@@ -140,7 +158,7 @@ def list_evidence(
         "page": page,
         "pageSize": page_size,
         "summary": {
-            "totalEvidence": len(all_user_items),
+            "totalEvidence": total_user_items,
             "verifiedEvidence": verified_count,
             "unreviewedEvidence": unreviewed_count,
             "disputedEvidence": disputed_count,
@@ -161,11 +179,18 @@ def get_evidence_detail(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid evidence UUID")
 
-    item = db.query(EvidenceItem).filter(
-        EvidenceItem.id == e_uuid,
-        EvidenceItem.owner_user_id == user.id,
-        EvidenceItem.is_deleted == False,
-    ).first()
+    item = (
+        db.query(EvidenceItem)
+        .options(
+            selectinload(EvidenceItem.competency_mappings).selectinload(EvidenceCompetencyMapping.competency)
+        )
+        .filter(
+            EvidenceItem.id == e_uuid,
+            EvidenceItem.owner_user_id == user.id,
+            EvidenceItem.is_deleted == False,
+        )
+        .first()
+    )
 
     if not item:
         raise HTTPException(status_code=404, detail="Evidence item not found")

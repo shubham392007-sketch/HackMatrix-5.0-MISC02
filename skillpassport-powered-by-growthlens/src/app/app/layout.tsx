@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import AppSidebar from "@/components/app/AppSidebar";
 import MobileTopNav from "@/components/app/MobileTopNav";
 import AppAuthGuard from "@/components/app/AppAuthGuard";
+import PageTransitionLoader from "@/components/app/PageTransitionLoader";
 
 export default function WorkspaceLayout({
   children,
@@ -15,6 +16,7 @@ export default function WorkspaceLayout({
 
   return (
     <AppAuthGuard>
+      <PageTransitionLoader />
       {isOnboarding ? (
         <main
           className="min-h-screen w-full flex flex-col text-[#1C1C1C] overflow-y-auto"

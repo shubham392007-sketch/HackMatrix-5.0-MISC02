@@ -12,11 +12,12 @@ settings = get_settings()
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    pool_recycle=60,
-    pool_size=5,
-    max_overflow=10,
+    pool_recycle=1800,  # Keep connections healthy for 30 minutes instead of aggressive 60s teardown
+    pool_size=15,       # Support concurrent dashboard endpoint requests without queue starvation
+    max_overflow=20,
+    pool_timeout=30.0,
     connect_args={
-        "connect_timeout": 20,
+        "connect_timeout": 15,
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,

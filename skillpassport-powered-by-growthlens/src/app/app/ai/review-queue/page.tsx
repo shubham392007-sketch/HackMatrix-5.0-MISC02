@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
+import { actionReviewTask } from "@/lib/evidenceApi";
 import { HumanReviewTask } from "@/types/ai";
 import {
   RestrictedAccessCard,
@@ -81,7 +82,9 @@ export default function HumanReviewQueuePage() {
     return true;
   });
 
-  const handleTaskAction = (
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleTaskAction = async (
     task: HumanReviewTask,
     action: "reviewed" | "rejected" | "escalated",
     decisionLabel: string
@@ -93,24 +96,37 @@ export default function HumanReviewQueuePage() {
 
     const note = reviewNote.trim() || `Adjudicated as ${decisionLabel} via Human Review Queue.`;
 
-    updateReviewTask(task.id, {
-      status: action,
-    });
+    setIsSubmitting(true);
+    try {
+      const backendAction =
+        action === "reviewed" ? "approve" : action === "rejected" ? "reject" : "escalate";
+      try {
+        await actionReviewTask(task.id, backendAction, note);
+      } catch (err) {
+        console.warn("Backend review task action:", err);
+      }
 
-    addAIAuditEvent({
-      timestamp: "Just now",
-      event_type: "review_decision",
-      affected_entity_type: "candidate_skill",
-      affected_entity_id: task.claim_id,
-      previous_state: "pending",
-      new_state: decisionLabel,
-      reason: note,
-      actor,
-      model_or_policy_version: "human-review-v1.0",
-    });
+      updateReviewTask(task.id, {
+        status: action,
+      });
 
-    setReviewNote("");
-    showToast(`Task ${task.id} marked as [${decisionLabel}]. Audit trail updated.`);
+      addAIAuditEvent({
+        timestamp: "Just now",
+        event_type: "review_decision",
+        affected_entity_type: "candidate_skill",
+        affected_entity_id: task.claim_id,
+        previous_state: "pending",
+        new_state: decisionLabel,
+        reason: note,
+        actor,
+        model_or_policy_version: "human-review-v1.0",
+      });
+
+      setReviewNote("");
+      showToast(`Task ${task.id} marked as [${decisionLabel}]. Audit trail updated.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getPriorityBadge = (priority: HumanReviewTask["priority"]) => {

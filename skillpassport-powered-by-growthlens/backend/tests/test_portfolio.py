@@ -64,7 +64,7 @@ async def test_safe_website_extraction_mocked():
     </body>
     </html>
     """
-    with patch("backend.app.extraction.website_extractor.validate_url_safe", return_value="https://alexchen.dev"), \
+    with patch("backend.app.extraction.website_extractor.validate_url_safe", return_value={"cleaned_url": "https://alexchen.dev", "is_safe": True}), \
          patch("httpx.AsyncClient.get") as mock_get:
         mock_resp = MagicMock()
         mock_resp.status_code = 200

@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func, case
 
 from backend.app.db.session import get_db
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
@@ -47,10 +47,11 @@ class SkillExtractionRunRequest(BaseModel):
 
 
 class GuardEvaluateRequest(BaseModel):
-    evidence_id: str
-    claim_text: str
-    supporting_excerpt: str
+    evidence_id: Optional[str] = Field(default=None, description="Evidence UUID or 'none' for self-claims")
+    claim_text: str = Field(..., description="Skill claim to evaluate")
+    supporting_excerpt: Optional[str] = Field(default="", description="Verbatim citation from source")
     claimed_skill_name: Optional[str] = None
+    claimed_level: Optional[str] = Field(default="Practitioner", description="Claimed proficiency level")
 
 
 class VerificationReviewRequest(BaseModel):
@@ -82,25 +83,38 @@ async def get_ai_overview(
     owner_uuid = uuid.UUID(user.id)
 
     total_analyses = db.query(WorkAnalysisResult).filter(WorkAnalysisResult.owner_user_id == owner_uuid).count()
-    candidate_skills = db.query(EvidenceCompetencyMapping).filter(
-        EvidenceCompetencyMapping.owner_user_id == owner_uuid,
-        EvidenceCompetencyMapping.status == "candidate",
-    ).count()
-    verified_skills = db.query(EvidenceCompetencyMapping).filter(
-        EvidenceCompetencyMapping.owner_user_id == owner_uuid,
-        EvidenceCompetencyMapping.status == "verified",
-    ).count()
+
+    # Combine candidate and verified counts in single group-by query
+    mapping_counts = dict(
+        db.query(
+            EvidenceCompetencyMapping.status,
+            func.count(EvidenceCompetencyMapping.id)
+        ).filter(
+            EvidenceCompetencyMapping.owner_user_id == owner_uuid
+        ).group_by(EvidenceCompetencyMapping.status).all()
+    )
+    candidate_skills = mapping_counts.get("candidate", 0)
+    verified_skills = mapping_counts.get("verified", 0)
+
     claims_blocked = db.query(HallucinationGuardResult).filter(
         HallucinationGuardResult.owner_user_id == owner_uuid,
         HallucinationGuardResult.guard_outcome == "BLOCK",
     ).count()
+
     open_conflicts = db.query(EvidenceConflictRecord).filter(
         EvidenceConflictRecord.owner_user_id == owner_uuid,
         EvidenceConflictRecord.status == "open",
     ).count()
-    validation_runs = db.query(OutputValidationRun).filter(OutputValidationRun.owner_user_id == owner_uuid).all()
-    valid_count = sum(1 for v in validation_runs if v.final_status == "valid")
-    total_validations = len(validation_runs)
+
+    # Aggregate validation runs in single query without pulling rows into memory
+    val_stats = db.query(
+        func.count(OutputValidationRun.id),
+        func.count(case((OutputValidationRun.final_status == "valid", 1)))
+    ).filter(
+        OutputValidationRun.owner_user_id == owner_uuid
+    ).first()
+    total_validations = val_stats[0] if val_stats else 0
+    valid_count = val_stats[1] if val_stats else 0
 
     pending_reviews = db.query(HumanReviewTask).filter(
         HumanReviewTask.owner_user_id == owner_uuid,
@@ -434,18 +448,29 @@ async def evaluate_guard_claim(
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     owner_uuid = uuid.UUID(user.id)
+    ev_uuid = None
+    raw_ev = req.evidence_id
+    if raw_ev and raw_ev.strip() and raw_ev.strip().lower() not in ["none", "null"]:
+        try:
+            ev_uuid = uuid.UUID(raw_ev.strip())
+        except ValueError:
+            # Synthetic / probe ID like "ev-fake-999"
+            ev_uuid = None
+
     try:
-        ev_uuid = uuid.UUID(req.evidence_id)
         res = hallucination_guard.evaluate_claim(
             db=db,
             owner_user_id=owner_uuid,
             evidence_id=ev_uuid,
             claim_text=req.claim_text,
-            supporting_excerpt=req.supporting_excerpt,
+            supporting_excerpt=req.supporting_excerpt or "",
             claimed_skill_name=req.claimed_skill_name,
+            claimed_level=req.claimed_level,
+            raw_evidence_id_str=raw_ev,
         )
         return res
     except Exception as e:
+        logger.error(f"Guard evaluation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -459,24 +484,49 @@ async def list_guard_results(
         HallucinationGuardResult.owner_user_id == owner_uuid,
     ).order_by(desc(HallucinationGuardResult.created_at)).limit(100).all()
 
-    return {
-        "results": [
-            {
-                "guard_run_id": str(r.id),
-                "evidence_id": str(r.evidence_id),
-                "claim_text": r.claim_text,
-                "guard_outcome": r.guard_outcome,
-                "citation_validation": r.citation_validation,
-                "citation_verbatim_found": r.citation_verbatim_found,
-                "ownership_check": r.ownership_check,
-                "semantic_support_score": r.semantic_support_score,
-                "contradiction_check": r.contradiction_check,
-                "reason_codes": r.reason_codes,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in records
-        ]
-    }
+    results_out = []
+    for r in records:
+        reasons = r.reason_codes or []
+        checks = {
+            "evidence_exists": r.evidence_id is not None and "EVIDENCE_ID_NOT_FOUND" not in reasons and "INVENTED_EVIDENCE_ID" not in reasons and "ZERO_ATTRIBUTABLE_ARTIFACTS" not in reasons,
+            "user_owns_evidence": r.ownership_check == "pass" and "OWNERSHIP_MISMATCH" not in reasons,
+            "semantic_support_valid": r.citation_validation == "pass" and "CITATION_FABRICATED" not in reasons and "CITATION_NOT_FOUND" not in reasons and "CITATION_MISSING" not in reasons,
+            "attribution_valid": "ATTRIBUTION_UNCERTAIN" not in reasons and "ATTRIBUTION_MISMATCH" not in reasons,
+            "no_conflict": r.contradiction_check == "none" and "CONTRADICTORY_ATTRIBUTION" not in reasons,
+            "level_supported": "LEVEL_NOT_SUPPORTED" not in reasons,
+            "not_revoked": "EVIDENCE_REVOKED_OR_INVALIDATED" not in reasons and "CREDENTIAL_EXPIRED_OR_REVOKED" not in reasons,
+        }
+
+        # Extract claimed_skill_name and claimed_level if present in reason tags
+        claimed_skill = "Extracted Skill Claim"
+        claimed_level = "Practitioner"
+        clean_reasons = []
+        for code in reasons:
+            if code.startswith("SKILL:"):
+                claimed_skill = code[len("SKILL:"):]
+            elif code.startswith("LEVEL:"):
+                claimed_level = code[len("LEVEL:"):]
+            else:
+                clean_reasons.append(code)
+
+        results_out.append({
+            "guard_run_id": str(r.id),
+            "evidence_id": str(r.evidence_id) if r.evidence_id else None,
+            "claim_text": r.claim_text,
+            "claimed_skill_name": claimed_skill,
+            "claimed_level": claimed_level,
+            "guard_outcome": r.guard_outcome,
+            "citation_validation": r.citation_validation,
+            "citation_verbatim_found": r.citation_verbatim_found,
+            "ownership_check": r.ownership_check,
+            "semantic_support_score": r.semantic_support_score,
+            "contradiction_check": r.contradiction_check,
+            "reason_codes": clean_reasons,
+            "checks": checks,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+
+    return {"results": results_out}
 
 
 # --- 6. Output Validation ---

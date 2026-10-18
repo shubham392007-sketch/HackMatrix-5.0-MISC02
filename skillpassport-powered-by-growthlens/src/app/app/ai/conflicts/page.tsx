@@ -149,7 +149,7 @@ export default function EvidenceConflictsPage() {
 
       <AppTopBar
         title="Evidence Conflict Resolution"
-        description="When disparate ingestion sources report contradictory attribution, dates, or claims, GrowthLens preserves both audit trails and halts automated verification."
+        description="When disparate ingestion sources report contradictory attribution, dates, or claims, Skill Passport preserves both audit trails and halts automated verification."
         badge="CONTRADICTION GUARD"
         badgeColor="bg-amber-200 text-amber-950"
       />
@@ -163,7 +163,7 @@ export default function EvidenceConflictsPage() {
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-ink">Zero Silent Overwrites Guarantee</h4>
             <p className="text-xs text-ink/80 leading-relaxed">
-              In naive AI extraction systems, the latest ingested document silences previous evidence. GrowthLens
+              In naive AI extraction systems, the latest ingested document silences previous evidence. Skill Passport
               explicitly models conflicts as first-class objects. If Jira asserts a solo task but Git shows a co-authored
               trailer, both claims are preserved side-by-side with provenance, requiring policy-based reconciliation.
             </p>
@@ -399,11 +399,11 @@ export default function EvidenceConflictsPage() {
                 </div>
               </div>
 
-              {/* GrowthLens AI Suggested Resolution */}
+              {/* Skill Passport AI Suggested Resolution */}
               <div className="p-4 rounded-xl bg-sand/30 border border-sand space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-ink">
                   <Sparkles className="w-4 h-4 text-ink" />
-                  GrowthLens Discrepancy Policy Engine
+                  Skill Passport Discrepancy Policy Engine
                 </div>
                 <p className="text-xs text-ink/90 leading-relaxed font-mono">
                   {selectedConflict.suggested_resolution}

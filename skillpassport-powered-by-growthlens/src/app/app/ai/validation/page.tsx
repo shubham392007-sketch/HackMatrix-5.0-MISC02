@@ -143,7 +143,7 @@ export default function AIOutputValidationPage() {
           <CheckCircle2 className="w-12 h-12 text-sky-600 mx-auto mb-3" />
           <h3 className="text-base font-bold text-ink">Zero Model Output Violations</h3>
           <p className="text-xs text-ink/70 max-w-md mx-auto mt-1 mb-6">
-            GrowthLens strictly quarantines raw model inference streams and validates them against Pydantic schemas and numerical boundary rules before candidate skills are accepted. When AI Work Analysis or Candidate Extraction jobs execute, schema conformance checks will be recorded here.
+            Skill Passport strictly quarantines raw model inference streams and validates them against Pydantic schemas and numerical boundary rules before candidate skills are accepted. When AI Work Analysis or Candidate Extraction jobs execute, schema conformance checks will be recorded here.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/app/ai/work-analysis" className="pill-btn pill-btn-primary text-xs py-2 px-5">

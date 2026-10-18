@@ -393,23 +393,12 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const [
-        evRes, srcRes, runsRes, profileRes,
-        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes
-      ] = await Promise.allSettled([
+      // Stage 1: Fast Core Domain 1 Ingestion Data (Evidence, Sources, Runs, Profile)
+      const [evRes, srcRes, runsRes, profileRes] = await Promise.allSettled([
         listEvidenceItems(),
         listConnectedSources(),
         listIngestionRuns(),
         getMyProfile(),
-        listWorkAnalyses(),
-        listCandidateSkills(),
-        listGuardResults(),
-        listOutputValidations(),
-        getConfidenceBreakdown(),
-        listConflicts(),
-        listReviewTasks(),
-        listPromptInjectionFindings(),
-        listAIAuditEvents(),
       ]);
 
       if (evRes.status === "fulfilled" && evRes.value?.items && Array.isArray(evRes.value.items)) {
@@ -520,6 +509,25 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           currentRole: prof.current_role || prof.job_title || prev.currentRole,
         }));
       }
+
+      // Unblock UI rendering immediately: Core Domain 1 data is loaded
+      setInitialLoading(false);
+      setIsLoadingEvidence(false);
+
+      // Stage 2: Background AI & Governance Hydration (Domain 3: AI Overview, Work Analysis, Reviews)
+      const [
+        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes
+      ] = await Promise.allSettled([
+        listWorkAnalyses(),
+        listCandidateSkills(),
+        listGuardResults(),
+        listOutputValidations(),
+        getConfidenceBreakdown(),
+        listConflicts(),
+        listReviewTasks(),
+        listPromptInjectionFindings(),
+        listAIAuditEvents(),
+      ]);
 
       const candMapByEvidence: Record<string, any[]> = {};
       if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
@@ -637,28 +645,53 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (guardRes.status === "fulfilled" && Array.isArray(guardRes.value?.results)) {
-        const mappedGuard: GuardClaimResult[] = guardRes.value.results.map((g: any) => ({
-          id: g.guard_run_id,
-          claim_title: g.claim_text,
-          associated_skill: "Extracted Skill Claim",
-          claimed_level: "Practitioner",
-          evidence_id: g.evidence_id,
-          guard_outcome: g.guard_outcome,
-          reason_code: (g.reason_codes || [])[0] || "OK",
-          explanation: g.guard_outcome === "PASS"
-            ? "Citation is present verbatim in authorized source text."
-            : `Blocked: ${(g.reason_codes || []).join(", ")}`,
-          checks: {
-            evidence_exists: true,
-            user_owns_evidence: g.ownership_check === "pass",
-            semantic_support_valid: g.citation_validation === "pass",
-            attribution_valid: g.ownership_check === "pass",
-            no_conflict: g.contradiction_check === "none",
-            level_supported: true,
-            not_revoked: true,
-          },
-        }));
-        setGuardResults(mappedGuard);
+        const mappedGuard: GuardClaimResult[] = guardRes.value.results.map((g: any) => {
+          let skillName = g.claimed_skill_name || "Extracted Skill Claim";
+          let skillLevel = g.claimed_level || "Practitioner";
+          const reasons: string[] = g.reason_codes || [];
+          reasons.forEach((r: string) => {
+            if (typeof r === "string") {
+              if (r.startsWith("SKILL:")) skillName = r.substring(6);
+              if (r.startsWith("LEVEL:")) skillLevel = r.substring(6);
+            }
+          });
+          const cleanReasons = reasons.filter(
+            (r: string) => typeof r === "string" && !r.startsWith("SKILL:") && !r.startsWith("LEVEL:")
+          );
+
+          return {
+            id: g.guard_run_id,
+            claim_title: g.claim_text,
+            associated_skill: skillName,
+            claimed_level: skillLevel,
+            evidence_id: g.evidence_id,
+            guard_outcome: g.guard_outcome,
+            reason_code: cleanReasons[0] || (g.guard_outcome === "PASS" ? "OK" : g.guard_outcome),
+            explanation: g.explanation || (g.guard_outcome === "PASS"
+              ? "Citation is present verbatim in authorized source text."
+              : `Blocked: ${cleanReasons.join(", ")}`),
+            checks: g.checks || {
+              evidence_exists: true,
+              user_owns_evidence: g.ownership_check === "pass",
+              semantic_support_valid: g.citation_validation === "pass",
+              attribution_valid: g.ownership_check === "pass",
+              no_conflict: g.contradiction_check === "none",
+              level_supported: true,
+              not_revoked: true,
+            },
+          };
+        });
+
+        setGuardResults((prev) => {
+          const map = new Map<string, GuardClaimResult>();
+          mappedGuard.forEach((item) => map.set(item.id, item));
+          prev.forEach((item) => {
+            if (!map.has(item.id)) {
+              map.set(item.id, item);
+            }
+          });
+          return Array.from(map.values());
+        });
       }
 
       if (valRes.status === "fulfilled" && Array.isArray(valRes.value?.validations)) {
@@ -1168,14 +1201,28 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         console.warn("Backend action review task failed:", e);
       }
     }
-    const updated = reviewTasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
-    setReviewTasks(updated);
+    setReviewTasks((prev) => {
+      const idx = prev.findIndex((t) => t.id === id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updates };
+        return next;
+      }
+      return [updates as HumanReviewTask, ...prev];
+    });
   };
 
 
   const updateValidationRecord = (id: string, updates: Partial<OutputValidationRecord>) => {
-    const updated = validationRecords.map((v) => (v.run_id === id ? { ...v, ...updates } : v));
-    setValidationRecords(updated);
+    setValidationRecords((prev) => {
+      const idx = prev.findIndex((v) => v.run_id === id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updates };
+        return next;
+      }
+      return [updates as OutputValidationRecord, ...prev];
+    });
   };
 
   const updateWorkAnalysis = (id: string, updates: Partial<WorkAnalysisResult>) => {
@@ -1209,13 +1256,27 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateGuardResult = (id: string, updates: Partial<GuardClaimResult>) => {
-    const updated = guardResults.map((g) => (g.id === id ? { ...g, ...updates } : g));
-    setGuardResults(updated);
+    setGuardResults((prev) => {
+      const idx = prev.findIndex((g) => g.id === id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updates };
+        return next;
+      }
+      return [updates as GuardClaimResult, ...prev];
+    });
   };
 
   const updatePromptInjectionFlag = (id: string, updates: Partial<PromptInjectionFlag>) => {
-    const updated = promptInjectionFlags.map((p) => (p.id === id ? { ...p, ...updates } : p));
-    setPromptInjectionFlags(updated);
+    setPromptInjectionFlags((prev) => {
+      const idx = prev.findIndex((p) => p.id === id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...updates };
+        return next;
+      }
+      return [updates as PromptInjectionFlag, ...prev];
+    });
   };
 
   // Domain 5 Learning Intelligence State

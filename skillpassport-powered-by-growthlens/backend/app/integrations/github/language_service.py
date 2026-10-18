@@ -1,7 +1,7 @@
 import uuid
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 
 from backend.app.models.connection import ConnectedSource, SelectedResource
@@ -254,11 +254,16 @@ def get_repository_languages_response(
         return None
 
     # 2. Get current snapshot
-    snapshot = db.query(RepositoryLanguageSnapshot).filter(
-        RepositoryLanguageSnapshot.selected_resource_id == resource.id,
-        RepositoryLanguageSnapshot.owner_user_id == user_id,
-        RepositoryLanguageSnapshot.is_current == True,
-    ).first()
+    snapshot = (
+        db.query(RepositoryLanguageSnapshot)
+        .options(selectinload(RepositoryLanguageSnapshot.breakdowns))
+        .filter(
+            RepositoryLanguageSnapshot.selected_resource_id == resource.id,
+            RepositoryLanguageSnapshot.owner_user_id == user_id,
+            RepositoryLanguageSnapshot.is_current == True,
+        )
+        .first()
+    )
 
     if not snapshot:
         return {
@@ -330,12 +335,17 @@ def get_user_languages_summary(db: Session, user_id: uuid.UUID) -> Dict[str, Any
             "repositories": [],
         }
 
-    # Fetch current snapshots for selected resources
-    snapshots = db.query(RepositoryLanguageSnapshot).filter(
-        RepositoryLanguageSnapshot.selected_resource_id.in_(resource_ids),
-        RepositoryLanguageSnapshot.owner_user_id == user_id,
-        RepositoryLanguageSnapshot.is_current == True,
-    ).all()
+    # Fetch current snapshots for selected resources with eager loaded breakdowns
+    snapshots = (
+        db.query(RepositoryLanguageSnapshot)
+        .options(selectinload(RepositoryLanguageSnapshot.breakdowns))
+        .filter(
+            RepositoryLanguageSnapshot.selected_resource_id.in_(resource_ids),
+            RepositoryLanguageSnapshot.owner_user_id == user_id,
+            RepositoryLanguageSnapshot.is_current == True,
+        )
+        .all()
+    )
 
     # Calculate weighted aggregate
     agg_result = calculate_aggregate_languages(snapshots)

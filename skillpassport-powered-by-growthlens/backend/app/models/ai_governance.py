@@ -148,10 +148,10 @@ class HallucinationGuardResult(Base, TimestampMixin):
         ForeignKey("evidence_competency_mappings.id", ondelete="SET NULL"),
         nullable=True,
     )
-    evidence_id: Mapped[uuid.UUID] = mapped_column(
+    evidence_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("evidence_items.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 

@@ -10,7 +10,7 @@ logger = get_logger("ai.prompt_injection")
 
 INJECTION_PATTERNS = [
     {
-        "pattern": r"(?i)(ignore\s+(all\s+)?(previous|prior|above)\s+instructions)",
+        "pattern": r"(?i)(ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|rules|prompts|directives))",
         "label": "Instruction Override",
         "risk": "high",
         "action": "Strip override directive and flag for human review",
@@ -22,13 +22,13 @@ INJECTION_PATTERNS = [
         "action": "Strip role-play directive and flag",
     },
     {
-        "pattern": r"(?i)(grant\s+(full\s+)?verification|mark\s+(all\s+skills\s+as\s+)?verified|bypass\s+verification)",
+        "pattern": r"(?i)(grant\s+(full\s+)?verification|grant\s+.*(?:expert|verified)|mark\s+(all\s+skills\s+as\s+)?verified|bypass\s+verification)",
         "label": "Privilege Escalation Request",
         "risk": "critical",
         "action": "Block verification escalation and log security finding",
     },
     {
-        "pattern": r"(?i)(\[system\]|<system>|###\s*system|###\s*instruction|\"role\":\s*\"system\")",
+        "pattern": r"(?i)(\[system\]|<system>|<!--\s*system|###\s*system|###\s*instruction|\"role\":\s*\"system\"|system\s+instruction)",
         "label": "System Prompt Delimiter Injection",
         "risk": "high",
         "action": "Escape markdown/json delimiter tags",

@@ -15,7 +15,7 @@ export default function PageTransition({
   }, [pathname]);
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-0">
+    <div key={pathname} className="w-full flex-1 flex flex-col min-h-0 gl-page-enter">
       {children}
     </div>
   );

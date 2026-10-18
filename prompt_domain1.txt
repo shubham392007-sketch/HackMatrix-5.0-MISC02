@@ -1,0 +1,1168 @@
+<USER_REQUEST>
+# SKILL PASSPORT — DOMAIN 1
+# GITHUB MULTI-REPOSITORY MANAGEMENT, README EXTRACTION & EVIDENCE PROCESSING
+
+## MISSION
+
+Extend the existing Skill Passport Domain 1 — Evidence Intelligence & Work Ingestion — to support connecting one GitHub repository during initial setup and adding additional repositories later.
+
+The existing application already has:
+
+- Supabase authentication.
+- GitHub Personal Access Token (PAT) connection.
+- GitHub repository selection.
+- Repository cards.
+- Repository language statistics.
+- A refresh action.
+- Evidence Workspace.
+- Connected Sources.
+- Upload Work & Docs.
+- Evidence Library.
+- Ingestion Runs.
+- Data & Permissions.
+- The existing document extraction and candidate skill analysis pipeline.
+- PostgreSQL persistence, Celery/Redis and ChromaDB, according to the existing architecture.
+
+**Integrate this functionality into the existing implementation. Do not build a new GitHub connector, a separate evidence pipeline, another database or a second skill-extraction engine.**
+
+The intended behavior is:
+
+1. During first-time setup, the user connects GitHub and selects exactly one repository for the initial import.
+2. That repository is processed through the existing Domain 1 ingestion pipeline.
+3. After completing setup, the user can open Connected Sources and see the repositories their current GitHub credentials are authorized to access.
+4. The user can explicitly select additional repositories.
+5. Each selected repository is imported, extracted, analysed and indexed using the existing processing infrastructure.
+6. Repository language statistics and actual README content are available as source context.
+7. The evidence and candidate competency results appear in the existing Evidence Workspace.
+8. The user can refresh or stop using a repository without unnecessarily disconnecting the entire GitHub account.
+
+There must be no hardcoded repository list, sample language percentages, fabricated README content or fake `ANALYZED` status.
+
+---
+
+# PHASE 0 — INSPECT THE EXISTING GITHUB IMPLEMENTATION
+
+Before modifying anything, inspect the actual project.
+
+Identify:
+
+- The initial setup wizard's GitHub step.
+- PAT validation and storage.
+- GitHub API client.
+- Existing user and source-connection models.
+- Existing repository selection models.
+- Existing GitHub repository cards.
+- Current repository language endpoint integration.
+- Current language percentage calculations.
+- Existing README retrieval, if any.
+- Commit, pull request, review and issue ingestion.
+- Ingestion jobs and Celery tasks.
+- Repository and evidence database models.
+- Evidence provenance fields.
+- Current Qwen/Ollama extraction service.
+- Candidate competency mapping and validation.
+- ChromaDB indexing.
+- Evidence Library and Evidence Detail API integration.
+- Connected Sources routes.
+- Settings & Access integration.
+- Existing tests and migration history.
+
+Determine which functionality already works and which is incomplete.
+
+Preserve compatible implementation. If a feature already exists partially, repair or extend it instead of duplicating it.
+
+Do not delete real repository records, reset the database or recreate the GitHub connection unnecessarily.
+
+All work must remain inside:
+
+`skillpassport-powered-by-growthlens/`
+
+Preserve the existing Vercel Root Directory and other application domains.
+
+---
+
+# PHASE 1 — INITIAL SETUP: SELECT EXACTLY ONE REPOSITORY
+
+Modify the existing four-step setup wizard only where necessary.
+
+## 1.1 GitHub authentication
+
+Keep the current GitHub connection process.
+
+The user must:
+
+1. Enter a PAT through the existing secure credential form.
+2. Test the connection against the real GitHub API.
+3. Identify the authenticated GitHub account.
+4. Retrieve the accessible repository list.
+5. Select exactly one repository for the initial evidence import.
+6. Confirm the selection.
+7. Save the repository selection through the backend.
+8. Start the actual ingestion workflow.
+9. Continue setup according to the existing onboarding state.
+
+Do not allow the initial wizard to select multiple repositories for ingestion.
+
+Do not confuse connecting the GitHub account with selecting repositories. The account connection is shared; each repository has its own selection and ingestion state.
+
+## 1.2 Repository list in the wizard
+
+Show real repositories returned by the backend.
+
+For each repository, display available metadata such as:
+
+- Repository name.
+- Owner.
+- Actual description.
+- Primary or most prominent language if available.
+- Public/private visibility.
+- Last updated timestamp if returned.
+- Repository URL.
+
+Allow the user to select one repository.
+
+If there are no accessible repositories, show an accurate empty/error state with recovery instructions.
+
+Do not use example repositories to fill the list.
+
+Do not automatically select a repository the user did not choose.
+
+## 1.3 First repository ingestion
+
+After selection:
+
+1. Persist the selection.
+2. Start a real ingestion run.
+3. Fetch repository metadata.
+4. Retrieve language statistics.
+5. Retrieve the README if accessible.
+6. Ingest other source types already supported by the existing Domain 1 GitHub connector.
+7. Process the extracted context through the existing pipeline.
+8. Persist the resulting source and evidence records.
+9. Show actual processing progress.
+
+If the user skips GitHub, preserve that behavior. Do not create a fake GitHub connection or repository selection.
+
+If the repository import is still running, persist the job state so setup can resume accurately.
+
+## 1.4 After onboarding
+
+Once the first repository is selected, the initial wizard must not force the user to select or import every other repository.
+
+Continue the existing setup flow normally.
+
+The user should reach the regular Evidence Center with the first repository and its genuine processing state.
+
+**Acceptance gate:** Initial setup imports only the one repository explicitly selected by the user, while keeping the existing account connection available for later repository management.
+
+---
+
+# PHASE 2 — SHOW ALL ACCESSIBLE REPOSITORIES AFTER SETUP
+
+Implement or extend the existing page:
+
+`/app/evidence/sources/github`
+
+Use the existing project routes if they differ.
+
+This page is the permanent place to manage the repositories connected to Skill Passport.
+
+## 2.1 Discover repositories
+
+Provide a clearly visible action:
+
+**Discover / Refresh Repositories**
+
+When selected, call the backend to retrieve the repositories the authenticated GitHub account and PAT are authorized to access.
+
+Use GitHub's official repository-list API.
+
+Conceptual endpoint:
+
+`GET /user/repos`
+
+Follow pagination correctly. Do not assume the default response contains every repository.
+
+Retrieve the actual pages of results supported by the current token, using bounded requests and the existing API-client conventions.
+
+Support repositories that the authenticated GitHub account can access, subject to the token's permissions and GitHub's access restrictions.
+
+This includes repositories owned by the user and other repositories they can access where the API and token permit them.
+
+**Important:** The result must contain all repositories available to the current credentials, not every repository on GitHub. If a PAT is restricted to one repository, do not pretend that inaccessible repositories are available. Explain that the token's access must be adjusted or the connection updated to discover them.
+
+## 2.2 Do not replace real repository records
+
+When refreshing the repository list:
+
+- Match records using stable GitHub repository IDs.
+- Update actual metadata.
+- Preserve current repository selection.
+- Preserve ingestion history.
+- Preserve saved language snapshots.
+- Preserve README extraction history.
+- Preserve candidate skill and review history.
+- Add genuinely newly discovered repositories.
+- Mark no-longer-accessible repositories accurately.
+
+Do not create duplicate repository records when the same repository is returned on a later refresh.
+
+Do not mark a repository disconnected merely because one metadata request temporarily failed.
+
+Do not delete a repository's previously imported evidence just because it is currently inaccessible.
+
+## 2.3 Repository list UI
+
+Display actual repositories in a searchable, paginated list of cards consistent with the existing Skill Passport styling.
+
+Each repository card should show available real data:
+
+- Repository owner/name.
+- Description or `No description provided` when genuinely absent.
+- Repository visibility where available.
+- Default branch where available.
+- Last updated timestamp where available.
+- Actual language count.
+- Current selected/active state.
+- Latest synchronization status.
+- README retrieval/extraction state.
+- Language analysis state.
+- Last successful sync.
+- Relevant warnings.
+
+Provide a search field for repository name, owner and description, where those fields are available.
+
+Provide useful filters, such as:
+
+- All accessible repositories.
+- Selected for evidence.
+- Available to add.
+- Processing.
+- Needs attention.
+- Previously imported.
+
+Only show a status if the backend has the information required to establish it.
+
+Do not generate a description, language, timestamp or status simply because a component expects a value.
+
+## 2.4 Preserve existing selections
+
+If the user has already selected the initial repository, it must continue to appear selected.
+
+Do not silently deselect it when the repository catalogue is refreshed.
+
+Repositories that are accessible but not imported must appear as available to add, not as already processed.
+
+Do not automatically import every repository just because its metadata has been discovered.
+
+**Acceptance gate:** The page displays the real paginated list of accessible repositories while preserving each repository's actual selection and processing state.
+
+---
+
+# PHASE 3 — ALLOW USERS TO ADD MORE REPOSITORIES
+
+Extend the same GitHub management page with a clear action:
+
+**Add Selected Repositories**
+
+Allow users to select additional repositories after onboarding.
+
+## 3.1 Multi-selection after onboarding
+
+The post-onboarding page may support selecting more than one repository at a time.
+
+The rule is:
+
+- Initial setup: exactly one repository selection.
+- After setup: users may select one or more additional repositories.
+
+Show a selection control on each available repository card.
+
+Provide actions such as:
+
+- Add Repository.
+- Add Selected Repositories.
+- Cancel Selection.
+- Sync Selected.
+- View Details.
+
+Do not require the user to re-enter their PAT when their existing connection is still valid and authorized.
+
+## 3.2 Confirm the import
+
+Before adding multiple repositories, show a confirmation summary with the real selections.
+
+Display the actual repository names and how many repositories were selected for import.
+
+Explain that each selected repository will be processed through the evidence workflow and that multiple selections are queued and processed sequentially.
+
+Do not display a confirmation count based on stale or fabricated state.
+
+## 3.3 Repository lifecycle states
+
+Use existing statuses where available, or add a consistent repository lifecycle contract if required.
+
+Distinguish states such as:
+
+- `AVAILABLE`
+- `SELECTED`
+- `QUEUED`
+- `SYNCING`
+- `ANALYZING`
+- `READY_FOR_REVIEW`
+- `ACTIVE`
+- `PARTIAL`
+- `FAILED`
+- `NEEDS_ATTENTION`
+- `PAUSED`
+- `REMOVED_FROM_ACTIVE_SOURCES`
+
+Do not use `ANALYZED` as a default status.
+
+Set lifecycle states only when the corresponding operations have actually occurred.
+
+A language fetch can succeed while README extraction fails. The UI must display the distinct outcomes rather than claiming that the complete repository analysis succeeded.
+
+## 3.4 Queue behavior
+
+When more than one repository is selected:
+
+1. Validate all submitted repository IDs against the authenticated user's connected account.
+2. Persist each explicit selection.
+3. Create or reuse idempotent ingestion jobs.
+4. Queue the repositories in a deterministic order.
+5. Process one repository's AI/extraction work at a time.
+6. Persist the results and processing state.
+7. Continue to the next selected repository after the prior item reaches a terminal processing state.
+
+The existing Domain 1 requirement of one active evidence-extraction job at a time must remain intact.
+
+Do not send README contents from multiple repositories to Qwen concurrently unless the existing architecture has an explicitly approved and tested concurrency policy.
+
+A failure for one repository must not erase the successful results from another.
+
+## 3.5 Do not duplicate imports
+
+If a user adds a repository that is already selected, do not create a duplicate source selection.
+
+If an identical repository sync is already running, reuse the active job or report that it is already in progress.
+
+If a user imports a repository that was imported previously, reuse canonical records and update changed content rather than duplicating every evidence record.
+
+**Acceptance gate:** Users can add repositories at any time, and their content is imported through the existing pipeline without duplicate records or unbounded concurrent inference.
+
+---
+
+# PHASE 4 — FETCH ACTUAL REPOSITORY LANGUAGE STATISTICS
+
+For every selected repository, call GitHub's official repository-language endpoint:
+
+`GET /repos/{owner}/{repo}/languages`
+
+Use the existing authenticated backend API client.
+
+Do not create a separate PAT flow for language analysis.
+
+## 4.1 Persist real API values
+
+The endpoint returns language names and byte counts.
+
+For every successful result, persist:
+
+- GitHub repository ID.
+- Existing Skill Passport repository record ID.
+- Authenticated owner ID.
+- Language name.
+- Actual byte count.
+- Calculated percentage.
+- Snapshot ID or version.
+- Retrieval timestamp.
+- Associated sync-run ID.
+- Status.
+- Safe error details if applicable.
+
+Reuse existing tables and models when compatible. Create a reviewed additive migration only if required.
+
+## 4.2 Correct percentages
+
+Calculate:
+
+`language_percentage = language_bytes / total_reported_language_bytes * 100`
+
+where the total is the sum of all returned language byte counts for that repository.
+
+Use full precision for calculations and round only for display.
+
+Do not hardcode language percentages or language-color mappings as data.
+
+A color can help identify a language visually, but the language name, byte count and percentage must come from actual retrieved data.
+
+## 4.3 Empty and unavailable results
+
+Handle these cases distinctly:
+
+- Valid non-empty language response.
+- Empty language mapping.
+- Zero total bytes.
+- Repository inaccessible.
+- Permission error.
+- API rate limit.
+- Network failure.
+- Missing or invalid repository record.
+
+An empty language mapping can be a valid result, while an API failure is not.
+
+Do not turn a failed request into an empty language list without recording the actual failure.
+
+Do not assign a default language to a repository with no reported language data.
+
+## 4.4 Aggregate language analysis
+
+When the user has multiple selected repositories, support an optional aggregate language view.
+
+Calculate aggregate percentages by summing each language's byte counts across all selected repositories before dividing by the combined total.
+
+Do not average per-repository percentages.
+
+Exclude repositories that the user has not selected for evidence ingestion.
+
+Show whether the view represents:
+
+- One repository.
+- The selected-repository aggregate.
+
+Do not interpret a repository's language percentage as the user's personal proficiency.
+
+**Acceptance gate:** Language cards and aggregate views use real persisted byte counts and correctly calculated percentages.
+
+---
+
+# PHASE 5 — RETRIEVE THE ACTUAL README FOR EACH SELECTED REPOSITORY
+
+For every selected repository, retrieve its actual README through GitHub's official API:
+
+`GET /repos/{owner}/{repo}/readme`
+
+Use the existing server-side API client and stored credential.
+
+The README is an important source of project context for Skill Passport.
+
+Do not depend solely on a repository description or language statistics.
+
+## 5.1 README retrieval
+
+For every selected repository:
+
+1. Request the README through the official API.
+2. Handle the repository's actual default branch.
+3. Decode the returned content according to the API response format.
+4. Validate the response and content encoding.
+5. Preserve the README path and Git blob SHA when available.
+6. Preserve the GitHub HTML/source URL.
+7. Compute or record a content hash.
+8. Record the retrieval timestamp.
+9. Store the actual README content in the existing private evidence/storage architecture where that is consistent with the current model.
+10. Make the content available to the existing evidence-extraction pipeline.
+
+Do not fetch arbitrary raw files directly using a URL constructed from an untrusted model output.
+
+Resolve source paths and links through the correct authorized repository context.
+
+## 5.2 Preserve useful README structure
+
+Extract meaningful README sections, including where present:
+
+- Project title and summary.
+- Problem being solved.
+- Goals and features.
+- Technologies and frameworks.
+- Architecture.
+- Setup and installation.
+- Implementation details.
+- Usage examples.
+- API descriptions.
+- Testing and evaluation.
+- Results or screenshots described by the README.
+- Limitations.
+- Contribution notes.
+- Deployment details.
+- Relevant project documentation links.
+
+Preserve Markdown headings and section relationships.
+
+Retain useful code blocks where appropriate and within configured size limits.
+
+Normalize formatting where necessary but do not discard technical context simply to produce a short summary.
+
+Remove duplicated boilerplate when safe, but preserve source text and its provenance.
+
+## 5.3 No README available
+
+Some repositories do not contain a README, or the token may lack the permission required to retrieve its contents.
+
+Handle these separately.
+
+If the repository legitimately has no README:
+
+- Record that the README is unavailable.
+- Continue with other permitted source data.
+- Do not fabricate a README summary.
+
+If access failed because of an actual permission error:
+
+- Record the permission failure.
+- Explain what permission or connection update is required.
+- Do not treat the README as empty or successfully extracted.
+
+If the README is too large or uses a format the extractor does not support:
+
+- Report the actual condition.
+- Apply documented size/format limits.
+- Offer an appropriate recovery path.
+
+## 5.4 README provenance
+
+Preserve:
+
+- Repository ID.
+- README path.
+- README Blob SHA/version.
+- Original GitHub URL.
+- Extracted section/headings.
+- Exact text chunks.
+- Content hash.
+- Extraction method/version.
+- Retrieved timestamp.
+- Processing state.
+
+Candidate skills extracted from a README must be traceable to the actual README section that supports them.
+
+**Acceptance gate:** Every selected repository's README is retrieved and processed when available and accessible. Missing READMEs and permission failures are represented honestly.
+
+---
+
+# PHASE 6 — USE LANGUAGES, README AND OTHER GITHUB RECORDS TOGETHER
+
+The repository's language breakdown and README must be integrated into the existing Domain 1 evidence workflow.
+
+Do not build a separate language-only AI engine.
+
+For every selected repository, construct a source-aware project context from the actual available records.
+
+## 6.1 Repository-level context
+
+Include:
+
+- Repository metadata.
+- Description and topics where available.
+- Language names and byte counts.
+- Calculated language percentages.
+- Actual README content.
+- README headings and supporting excerpts.
+- Relevant repository metadata.
+- Actual contributor-related records available through the existing connector.
+- Existing commit/PR/issue evidence, where already supported.
+
+Keep language statistics and README text as distinct sources.
+
+Do not insert language statistics into the README or pretend they were extracted from its content.
+
+## 6.2 Use the existing evidence pipeline
+
+Process repository content through the same architecture already used for other evidence:
+
+**Repository Selection → Real GitHub Retrieval → Language Statistics & README Retrieval → Normalization → Source-Aware Content Extraction → Shared Candidate-Skill Extraction → Validation → PostgreSQL Persistence → ChromaDB Indexing → Evidence Workspace Display**
+
+Reuse the existing:
+
+- Source adapters.
+- Evidence schemas.
+- Qwen/Ollama client.
+- Candidate-skill extraction service.
+- Canonical competency taxonomy.
+- Evidence-to-skill mapping logic.
+- Evidence-strength and extraction-confidence calculations.
+- Validation rules.
+- Processing events.
+- Queue and retry logic.
+- ChromaDB service.
+
+Do not call a separate, hardcoded skill classifier just for repositories.
+
+Do not create a second evidence table.
+
+## 6.3 Other existing GitHub evidence
+
+If the existing GitHub connector already supports commits, pull requests, reviews, issue comments or changed-file metadata, preserve and reuse that functionality.
+
+For a selected repository, gather the supported source records already covered by the current Domain 1 implementation.
+
+Do not fetch or clone the entire source-code tree by default.
+
+Do not assume that every file in a repository should be processed as evidence.
+
+Use bounded, authorized source retrieval.
+
+If detailed PR data requires additional permissions, report that requirement and preserve the existing usable functionality rather than pretending the data was retrieved.
+
+## 6.4 Shared candidate skill extraction
+
+Use the actual repository metadata, README sections and attributable work records to enrich the existing extraction context.
+
+Examples of possible context signals:
+
+- Language statistics indicate the repository contains Python.
+- The README describes a Python backend.
+- Relevant pull requests document an API implementation.
+- Commit metadata links the work to an identifiable contributor.
+
+The extractor may propose relevant candidate competencies if the supporting material is sufficient.
+
+However:
+
+- A language percentage is not evidence of individual proficiency.
+- Repository ownership does not prove that the owner implemented every file.
+- A README claim is still a claim unless adequately corroborated.
+- A list of technologies does not prove implementation experience.
+- A successful import does not verify a skill.
+
+Preserve attribution and uncertainty.
+
+Every candidate skill must link to real supporting evidence.
+
+No unsupported competency may be invented to make the repository look useful.
+
+**Acceptance gate:** Repository languages and README content enrich the existing evidence-based candidate extraction process, without generating fabricated or automatically verified skills.
+
+---
+
+# PHASE 7 — STORE REPOSITORY AND EVIDENCE RECORDS CORRECTLY
+
+Inspect the existing schema before adding tables.
+
+Reuse the existing GitHub connection and repository models wherever possible.
+
+The persistence model should distinguish:
+
+1. GitHub account connection.
+2. Accessible repository catalogue.
+3. User-selected/active repositories.
+4. Repository synchronization runs.
+5. Language snapshots and breakdowns.
+6. README content and extraction versions.
+7. Commit/PR/issue source records.
+8. Candidate evidence items.
+9. Evidence-to-skill mappings.
+10. Processing and audit events.
+11. ChromaDB indexing status.
+
+These are logical responsibilities, not a requirement to create a table for every bullet if compatible tables already exist.
+
+## 7.1 Stable repository identity
+
+Use GitHub's stable repository ID, not only the repository name, as the durable identity.
+
+Repository names can change or be transferred.
+
+Preserve the original and current owner/name fields where appropriate.
+
+Ensure a repository remains correctly associated with the authenticated user's connection and source selection.
+
+## 7.2 Language snapshot history
+
+Maintain a current language summary and versioned snapshots where useful.
+
+On refresh:
+
+- Update changed language values.
+- Persist the actual retrieval timestamp.
+- Retain history if already supported by the existing data model.
+- Avoid creating duplicate rows for the same unchanged snapshot.
+- Record failure states honestly.
+
+## 7.3 README version tracking
+
+Use a content hash and Git Blob SHA/version where available.
+
+If the README has not changed, reuse the existing extracted result when appropriate.
+
+If the README changes:
+
+1. Create a new retrieval/extraction version.
+2. Preserve the previous extraction history.
+3. Reprocess the changed content as required.
+4. Update current candidate output according to the existing versioning rules.
+5. Flag substantive changes for re-review when necessary.
+
+Do not overwrite a previously reviewed candidate result without retaining history.
+
+## 7.4 Evidence links
+
+Every repository-derived candidate must have a relationship to the proper source, such as:
+
+- Repository metadata.
+- README section.
+- Commit.
+- Pull request.
+- Review record.
+- Issue.
+
+Do not point every candidate to the repository homepage when a more precise supporting source exists.
+
+Use actual URLs and IDs returned by GitHub.
+
+## 7.5 Idempotency
+
+Repeated repository syncs must not create duplicate evidence for unchanged content.
+
+Use stable external source IDs, hashes and idempotency keys.
+
+Do not create a new candidate skill on every language refresh.
+
+Do not repeat expensive model inference unless the source content, extraction configuration or existing reprocessing policy requires it.
+
+## 7.6 Ownership and authorization
+
+All source and evidence records must be scoped to the authenticated user and the appropriate connected GitHub account.
+
+Never trust an arbitrary repository ID sent by the frontend without verifying that it belongs to the authenticated user's authorized repository catalogue.
+
+Enforce ownership and permissions on the backend.
+
+**Acceptance gate:** Repository data, README versions, language snapshots and derived evidence persist correctly without duplicate records or cross-user access.
+
+---
+
+# PHASE 8 — API DESIGN AND FRONTEND INTEGRATION
+
+Inspect the existing API routes and conventions. Reuse compatible routes instead of creating duplicates.
+
+The following are examples of capabilities the backend must provide.
+
+## Repository discovery
+
+An existing or equivalent route that:
+
+- Retrieves accessible repositories.
+- Supports pagination.
+- Supports searching/filtering where appropriate.
+- Preserves actual source-connection identity.
+- Returns real repository metadata.
+- Never exposes the PAT.
+
+## Repository selection
+
+An existing or equivalent route that:
+
+- Adds selected repositories.
+- Enforces the one-repository limit during initial setup.
+- Allows multiple explicit selections after setup.
+- Preserves existing selections.
+- Starts actual ingestion jobs.
+- Prevents duplicate selection and import operations.
+
+## Language data
+
+An existing or equivalent route that retrieves:
+
+- The latest language summary.
+- Language breakdown.
+- Snapshot timestamp.
+- Language-fetch status.
+- A safe refresh operation.
+
+## README data
+
+An existing or equivalent route that retrieves:
+
+- README availability.
+- README path and URL.
+- Content version/hash.
+- Extraction state.
+- Safe preview of actual extracted text.
+- Extraction warnings.
+
+Do not return unrestricted private repository contents to unrelated users.
+
+## Repository sync
+
+An existing or equivalent route that:
+
+- Starts a sync.
+- Returns the real job ID.
+- Returns the actual processing state.
+- Allows safe retries.
+- Prevents duplicate active jobs where appropriate.
+- Does not claim completion prematurely.
+
+Adapt the endpoint names to the actual repository architecture.
+
+All APIs must validate authentication, ownership and the selected-repository relationship.
+
+---
+
+# PHASE 9 — CONNECTED SOURCES UI
+
+Integrate with the existing Connected Sources GitHub interface.
+
+Do not create a second repository-management page unless the current route cannot support the required functionality.
+
+## 9.1 Repository cards
+
+Each card should display actual persisted information:
+
+- Repository name and owner.
+- Description where available.
+- Selected/available state.
+- Language bar using actual percentages.
+- Language names and byte counts.
+- Number of reported languages.
+- Last successful language retrieval.
+- README availability and extraction state.
+- Latest repository sync status.
+- Last successful sync timestamp.
+- Number of persisted evidence items where actually available.
+- Any current error or permission warning.
+
+The screenshot's language-bar design can be preserved.
+
+Do not hardcode language names, values, percentages, descriptions or repository examples.
+
+## 9.2 Available repositories
+
+Repositories accessible to the current token but not selected must offer an explicit **Add Repository** action.
+
+Do not process their README or code merely because they appear in the catalogue.
+
+A repository should become part of the evidence ingestion workflow only after explicit selection.
+
+## 9.3 Selected repositories
+
+Selected repositories must show their actual ingestion state.
+
+Provide:
+
+- View Evidence.
+- View README Analysis.
+- View Language Analysis.
+- Sync Now.
+- Refresh Language Data.
+- Refresh README.
+- Manage/Remove from Active Sources.
+
+Actions must invoke the backend and reflect its returned state.
+
+Disable or guard actions that are not available while a relevant operation is running.
+
+## 9.4 README preview
+
+Let the user inspect the extracted README context.
+
+Display the actual source content or a source-preserving normalized view, with clear headings and source links.
+
+If only partial content is available, explain that.
+
+Do not display a generated project summary in place of the actual README without labelling it as a summary.
+
+## 9.5 Empty and error states
+
+Handle:
+
+- No repositories accessible.
+- Repository listing still loading.
+- PAT revoked or expired.
+- Insufficient permissions.
+- No README.
+- README retrieval failed.
+- Language API failed.
+- Repository sync partial/failure.
+- No candidate skills supported.
+- Ollama unavailable.
+- ChromaDB indexing failure.
+
+Never show `ANALYZED` merely because a repository record exists.
+
+**Acceptance gate:** The existing UI lets users browse available repositories, explicitly add more, inspect actual language/README data and track real processing state.
+
+---
+
+# PHASE 10 — SETTINGS & ACCESS AND DISCONNECT BEHAVIOR
+
+Use the existing Settings & Access/Connected Accounts architecture.
+
+Do not create an independent settings system.
+
+Users must be able to manage repositories after initial setup.
+
+Support:
+
+- Discover available repositories.
+- Add additional repositories.
+- Change selected repositories.
+- Refresh repository metadata.
+- Refresh language statistics.
+- Refresh README content.
+- Check current connection status.
+- Replace a credential when necessary.
+- Disconnect the GitHub account.
+
+## Removing a repository
+
+Removing one repository from active evidence sources must:
+
+- Stop future syncs for that repository.
+- Prevent new evidence ingestion from it.
+- Preserve its existing evidence by default.
+- Require an explicit, separate confirmation if the user wants to delete imported evidence as well.
+- Record the operation where audit history is supported.
+
+Do not disconnect the entire GitHub account merely because one repository is removed.
+
+## Disconnecting GitHub
+
+Disconnecting the account must:
+
+- Stop future synchronization.
+- Remove the stored credential securely.
+- Prevent new authenticated API calls.
+- Mark the source connection accordingly.
+- Preserve existing imported evidence unless the user explicitly requests permitted deletion.
+
+Do not silently erase all repository evidence when a credential is disconnected.
+
+---
+
+# PHASE 11 — GITHUB PERMISSIONS AND CREDENTIAL SAFETY
+
+Reuse the existing PAT mechanism.
+
+Do not request broader access than the enabled features require.
+
+For fine-grained PATs, ensure the backend validates the permissions needed for the implemented endpoints:
+
+- Repository discovery and language statistics require the appropriate repository Metadata read access.
+- README retrieval requires repository Contents read access.
+- Commit retrieval requires the appropriate Contents read access.
+- Pull request ingestion requires the relevant Pull requests read permission.
+- Issue ingestion requires the relevant permissions for the configured issue endpoints.
+
+The exact permission set must be verified against the current GitHub endpoint requirements and the integration features actually enabled.
+
+If a permission is missing:
+
+1. Record the real API error.
+2. Explain which feature could not be fetched and why.
+3. Tell the user how to update the token permissions or authorized repository selection.
+4. Allow already permitted operations to succeed where appropriate.
+5. Do not fake the missing data.
+
+Never print, return or log PAT values.
+
+Keep credentials server-side and encrypted using the application's existing credential-storage approach.
+
+Do not store the PAT in browser local storage or session storage.
+
+Do not place the PAT in URLs, response models, exception messages or audit events.
+
+Use the existing authentication and authorization model and retain the required user ownership checks.
+
+---
+
+# PHASE 12 — PROCESSING AND STATUS ACCURACY
+
+The repository workflow must integrate with the same Domain 1 processing system as other evidence.
+
+The correct conceptual pipeline is:
+
+**Authorized GitHub Connection → Accessible Repository Catalogue → Explicit Repository Selection → Metadata Retrieval → Language Snapshot → README Retrieval → Existing Source Activity Ingestion → Normalization → Candidate Evidence Extraction → Competency Mapping → Validation → PostgreSQL Persistence → ChromaDB Indexing → Evidence Workspace Display**
+
+Every stage must have an actual status.
+
+Do not show complete success if only metadata or language retrieval succeeded.
+
+For example:
+
+- Repository metadata succeeded.
+- Language retrieval succeeded.
+- README retrieval failed due to permissions.
+- Commits imported successfully.
+- AI extraction is pending.
+- ChromaDB indexing is unavailable.
+
+This should be represented as partial processing with the real sub-stage outcomes.
+
+Do not collapse all these results into a single success badge.
+
+## Sequential work
+
+Process repository extraction one repository at a time by default.
+
+Do not submit all README content to Qwen in parallel.
+
+Keep each repository's extraction run and failure state separate.
+
+A failure on one selected repository must not destroy other successful repository results.
+
+Retries must not duplicate evidence or overwrite reviewed results without preserving history.
+
+---
+
+# PHASE 13 — TESTS
+
+Create and execute unit, integration, security and frontend tests.
+
+Use isolated synthetic fixtures for tests. Never insert test repositories or fabricated language data into real user accounts.
+
+## Setup tests
+
+- GitHub connection succeeds with valid credentials.
+- The wizard lists genuine accessible repositories.
+- Exactly one repository can be selected for initial import.
+- The selected repository is persisted.
+- The user can complete setup after the initial import starts according to the established flow.
+- Existing selections survive refresh and re-login.
+
+## Repository discovery tests
+
+- One page of repositories.
+- Multiple pages.
+- Search/filter behavior.
+- Public and private accessible repositories.
+- Empty repository list.
+- Revoked/invalid PAT.
+- Rate limiting.
+- Insufficient permissions.
+- Newly discovered repository.
+- Repository renamed or transferred.
+- Repository no longer accessible.
+
+Verify that pagination works and duplicate repository records are not created.
+
+## Language tests
+
+- Multiple languages.
+- One language.
+- Empty language mapping.
+- Zero byte total.
+- Correct percentage calculation.
+- Multiple-repository aggregation.
+- No averaging of percentages.
+- Failed API request.
+- Permission error.
+- Repeated refresh without duplicate snapshots.
+
+## README tests
+
+- README exists and is readable.
+- README contains headings, lists, links and code blocks.
+- Empty or minimal README.
+- No README.
+- README in an applicable alternate supported format when the connector supports it.
+- README too large for configured limits.
+- Permission denied.
+- Rate limited.
+- README content changes between syncs.
+- Identical README fetched twice.
+- Invalid API response.
+- Malformed encoded content.
+
+Verify that actual README content reaches the existing extraction pipeline and that source references resolve.
+
+## Evidence and AI tests
+
+- README supports a candidate competency.
+- README only mentions a technology.
+- Language statistics exist but no personal contribution evidence exists.
+- Contributor attribution is ambiguous.
+- No defensible candidate skill exists.
+- Ollama is unavailable.
+- Structured model output is invalid.
+- Supporting citation is fabricated.
+- ChromaDB indexing fails.
+
+Expected behavior: use only actual extracted evidence, preserve uncertainty and report incomplete processing honestly.
+
+## Multi-repository tests
+
+- Add one additional repository after onboarding.
+- Add several repositories after onboarding.
+- Attempt to add the same repository twice.
+- Refresh a repository while another is processing.
+- Re-run an unchanged repository.
+- Re-run a repository whose README changed.
+- Remove one repository without disconnecting GitHub.
+- Disconnect GitHub without deleting imported evidence.
+
+Verify that selected repositories process sequentially and idempotently.
+
+## Security tests
+
+- Another user cannot read the current user's repository metadata or evidence.
+- A forged repository ID cannot bypass ownership checks.
+- PAT values never appear in frontend storage or API responses.
+- Permission failures do not reveal credentials.
+- Unselected repository content is not processed.
+- Unauthorized repository operations are rejected.
+
+## UI tests
+
+Confirm that the current Connected Sources and Evidence Workspace pages display actual backend data.
+
+There must be no sample repository cards, hardcoded language statistics, fabricated README excerpts or fake analyzed statuses.
+
+---
+
+# PHASE 14 — FINAL ACCEPTANCE CRITERIA
+
+This implementation is complete only when:
+
+1. Initial setup imports exactly one explicitly selected repository.
+2. The existing GitHub account connection remains valid for later repository management.
+3. The user can discover all repositories available to the current authorization.
+4. Repository discovery handles pagination.
+5. Additional repositories can be explicitly selected after setup.
+6. Repository selection persists across sessions.
+7. Language statistics come from the real GitHub API.
+8. Language percentages are calculated correctly from returned byte counts.
+9. The real README is retrieved and processed when available.
+10. README content and supporting sections preserve source provenance.
+11. Other existing GitHub source ingestion still works.
+12. Languages, README content and attributable activity feed into the same candidate evidence pipeline.
+13. Every candidate competency has real, traceable source evidence or remains unsupported/unmapped.
+14. Language composition is not interpreted as personal proficiency.
+15. Processing remains sequential by default.
+16. Repeated syncs are idempotent.
+17. PostgreSQL and ChromaDB states are accurately represented.
+18. Failed/partial operations are reported honestly.
+19. The UI displays live user-specific repository data only.
+20. Repository removal does not automatically delete evidence.
+21. GitHub disconnection does not silently erase imported records.
+22. The relevant tests actually pass.
+23. No demo repositories or fake language/README records appear in the live UI.
+
+---
+
+# FINAL EXECUTION INSTRUCTION
+
+Implement this as an extension to the existing Domain 1 GitHub connection and evidence pipeline.
+
+During the initial wizard, allow the user to choose exactly one repository for their first import.
+
+After setup, let the user open Connected Sources, browse the real repositories accessible to their current token, and add more whenever needed.
+
+For each selected repository, retrieve its actual language statistics, fetch and extract its README when available, ingest any other supported source records already provided by the existing connector, and process everything through the same evidence extraction, competency mapping, validation, persistence and indexing architecture used by the rest of Domain 1.
+
+Preserve repository identity, README version, language snapshots, provenance and processing history.
+
+Do not duplicate the connector, pipeline, taxonomy or evidence records. Do not invent a result when a permission, API, model or indexing operation fails.
+
+**The final user experience must let a user start with one repository and gradually build a multi-repository evidence profile over time, while every repository's language data, README context and resulting candidate skills remain authentic, traceable and correctly processed.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-18T11:24:12+05:30.
+
+The user has uploaded 2 image(s):
+- C:/Users/Shubham/.gemini/antigravity/brain/329e0906-5b49-42ca-bf02-fe41202db160/.user_uploaded/media_1792302405094_c58f9a03.png
+- C:/Users/Shubham/.gemini/antigravity/brain/329e0906-5b49-42ca-bf02-fe41202db160/.user_uploaded/media_1792302418695_07094b41.png
+You can embed these images in an artifact if you need the USER to review them.
+</ADDITIONAL_METADATA>
