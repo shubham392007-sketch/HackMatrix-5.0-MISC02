@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -55,6 +56,7 @@ import {
   Clock,
   HelpCircle,
   X,
+  Loader2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -186,6 +188,12 @@ interface SidebarContentProps {
 
 function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarContentProps) {
   const pathname = usePathname();
+  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNavigatingHref(null);
+  }, [pathname]);
+
   const { currentRole, setDemoRole, userProfile } = useEvidence();
   const { user: authUser, profile: authProfile } = useAuth();
 
@@ -274,14 +282,23 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                     ? pathname === "/app/ai"
                     : pathname === item.href || pathname.startsWith(item.href + "/"));
 
+                const isNavigatingThis = navigatingHref === item.href && !isActive;
+
                 return (
                   <Link
                     key={item.label}
                     href={item.href}
-                    onClick={onLinkClick}
+                    onClick={() => {
+                      if (!item.external && item.href !== pathname) {
+                        setNavigatingHref(item.href);
+                      }
+                      onLinkClick?.();
+                    }}
                     className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
                         ? "bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+                        : isNavigatingThis
+                        ? "bg-[#FBF1CF] border border-[#1C1C1C]/40 text-[#1C1C1C]"
                         : "text-[#1C1C1C]/75 hover:bg-[#FBF1CF] hover:text-[#1C1C1C]"
                     }`}
                   >
@@ -290,12 +307,15 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                       <span className="truncate">{item.label}</span>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {isNavigatingThis && (
+                        <Loader2 className="w-3.5 h-3.5 text-[#1C1C1C] animate-spin flex-shrink-0" />
+                      )}
                       {item.restricted && (
                         <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#1C1C1C]/10 text-[#1C1C1C]">
                           {item.restricted}
                         </span>
                       )}
-                      {isActive && <ChevronRight className="w-3 h-3 text-[#1C1C1C]" />}
+                      {isActive && !isNavigatingThis && <ChevronRight className="w-3 h-3 text-[#1C1C1C]" />}
                     </div>
                   </Link>
                 );

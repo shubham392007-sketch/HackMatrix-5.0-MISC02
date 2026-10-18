@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import PageTransition from "@/components/layout/PageTransition";
 import SkillPassportBootScreen from "@/components/layout/SkillPassportBootScreen";
+import GlobalPageTransitionLoader from "@/components/layout/GlobalPageTransitionLoader";
 import { EvidenceProvider } from "@/context/EvidenceContext";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -36,6 +37,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
         <SkillPassportBootScreen />
+        <GlobalPageTransitionLoader />
         <AuthProvider>
           <EvidenceProvider>
             <PageTransition>{children}</PageTransition>

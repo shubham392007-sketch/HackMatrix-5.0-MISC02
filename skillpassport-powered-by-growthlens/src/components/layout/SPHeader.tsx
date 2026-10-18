@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight, ShieldCheck, User } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, ArrowRight, ShieldCheck, User, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useEvidence } from "@/context/EvidenceContext";
 
 const publicNav = [
@@ -17,13 +17,25 @@ const publicNav = [
 export default function SPHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navigatingTarget, setNavigatingTarget] = useState<string | null>(null);
   const { isAuthenticated, logoutDemo } = useEvidence();
+
+  useEffect(() => {
+    setNavigatingTarget(null);
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C]">
       <div className="max-w-[1400px] mx-auto px-5 md:px-10 flex items-center justify-between h-16">
         {/* Brand Logo & Wordmark */}
-        <Link href="/" className="flex flex-col justify-center group select-none">
+        <Link
+          href="/"
+          onClick={() => {
+            if (pathname !== "/") setNavigatingTarget("/");
+          }}
+          className="flex flex-col justify-center group select-none"
+        >
           <div className="flex items-center gap-2">
             <span
               className="text-2xl sm:text-3xl text-[#1C1C1C] leading-none"
@@ -50,17 +62,25 @@ export default function SPHeader() {
               item.href === "/"
                 ? pathname === "/"
                 : pathname === item.href || pathname.startsWith(item.href);
+            const isNavigating = navigatingTarget === item.href && !isActive;
+
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`text-[11px] font-extrabold tracking-[0.12em] uppercase transition-all py-1 relative ${
+                onClick={() => {
+                  if (pathname !== item.href) setNavigatingTarget(item.href);
+                }}
+                className={`text-[11px] font-extrabold tracking-[0.12em] uppercase transition-all py-1 relative inline-flex items-center gap-1.5 ${
                   isActive
                     ? "text-[#1C1C1C] border-b-2 border-[#1C1C1C]"
                     : "text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
                 }`}
               >
-                {item.label}
+                {isNavigating && (
+                  <Loader2 className="w-3 h-3 text-[#1C1C1C] animate-spin" />
+                )}
+                <span>{item.label}</span>
               </Link>
             );
           })}
@@ -72,10 +92,20 @@ export default function SPHeader() {
             <>
               <Link
                 href="/app/evidence"
+                onClick={() => setNavigatingTarget("/app/evidence")}
                 className="bg-[#DFE968] hover:bg-[#d6e058] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
               >
-                <span>ENTER WORKSPACE</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                {navigatingTarget === "/app/evidence" ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>ENTERING ···</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ENTER WORKSPACE</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </Link>
               <button
                 onClick={logoutDemo}
@@ -89,16 +119,30 @@ export default function SPHeader() {
             <>
               <Link
                 href="/login"
-                className="bg-transparent border border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-bold tracking-[0.08em] uppercase px-4 py-2 rounded-full hover:bg-[#1C1C1C]/5 transition-all"
+                onClick={() => setNavigatingTarget("/login")}
+                className="bg-transparent border border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-bold tracking-[0.08em] uppercase px-4 py-2 rounded-full hover:bg-[#1C1C1C]/5 transition-all inline-flex items-center gap-1.5"
               >
-                SIGN IN
+                {navigatingTarget === "/login" && (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                )}
+                <span>SIGN IN</span>
               </Link>
               <Link
                 href="/login?redirect=/app/onboarding"
+                onClick={() => setNavigatingTarget("/login?redirect=/app/onboarding")}
                 className="bg-[#DFE968] hover:bg-[#d6e058] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
               >
-                <span>ENTER WORKSPACE</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                {navigatingTarget === "/login?redirect=/app/onboarding" ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>ENTERING ···</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ENTER WORKSPACE</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </Link>
             </>
           )}
@@ -128,10 +172,16 @@ export default function SPHeader() {
             <Link
               key={item.label}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className="block py-2 text-xs font-bold tracking-[0.1em] uppercase text-[#1C1C1C]"
+              onClick={() => {
+                setNavigatingTarget(item.href);
+                setMobileOpen(false);
+              }}
+              className="py-2 text-xs font-bold tracking-[0.1em] uppercase text-[#1C1C1C] flex items-center justify-between"
             >
-              {item.label}
+              <span>{item.label}</span>
+              {navigatingTarget === item.href && (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              )}
             </Link>
           ))}
 
@@ -140,10 +190,22 @@ export default function SPHeader() {
               <>
                 <Link
                   href="/app/evidence"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    setNavigatingTarget("/app/evidence");
+                    setMobileOpen(false);
+                  }}
                   className="flex-1 text-center py-2.5 text-xs font-black uppercase bg-[#DFE968] border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1.5"
                 >
-                  Enter Workspace <ArrowRight className="w-3.5 h-3.5" />
+                  {navigatingTarget === "/app/evidence" ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Entering ···</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Enter Workspace</span> <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </Link>
                 <button
                   onClick={() => {
@@ -159,17 +221,35 @@ export default function SPHeader() {
               <>
                 <Link
                   href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 text-center py-2 text-xs font-black uppercase border border-[#1C1C1C] rounded-full"
+                  onClick={() => {
+                    setNavigatingTarget("/login");
+                    setMobileOpen(false);
+                  }}
+                  className="flex-1 text-center py-2 text-xs font-black uppercase border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1"
                 >
-                  Sign In
+                  {navigatingTarget === "/login" && (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  )}
+                  <span>Sign In</span>
                 </Link>
                 <Link
                   href="/login?redirect=/app/onboarding"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    setNavigatingTarget("/login?redirect=/app/onboarding");
+                    setMobileOpen(false);
+                  }}
                   className="flex-1 text-center py-2 text-xs font-black uppercase bg-[#DFE968] border border-[#1C1C1C] rounded-full flex items-center justify-center gap-1"
                 >
-                  Enter Workspace <ArrowRight className="w-3.5 h-3.5" />
+                  {navigatingTarget === "/login?redirect=/app/onboarding" ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Entering ···</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Enter Workspace</span> <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </Link>
               </>
             )}

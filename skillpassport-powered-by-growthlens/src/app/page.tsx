@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import SPHeader from "@/components/layout/SPHeader";
 import SPFooter from "@/components/layout/SPFooter";
@@ -19,11 +20,13 @@ import {
   Sliders,
   Users,
   Compass,
+  Loader2,
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
 
 export default function LandingPage() {
   const { isAuthenticated, logoutDemo } = useEvidence();
+  const [navigatingTarget, setNavigatingTarget] = useState<string | null>(null);
   return (
     <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
       <SPHeader />
@@ -118,10 +121,20 @@ export default function LandingPage() {
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
                 <Link
                   href={isAuthenticated ? "/app/evidence" : "/login?redirect=/app/onboarding"}
+                  onClick={() => setNavigatingTarget("primary-cta")}
                   className="bg-[#F6BB84] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:opacity-95 transition-all shadow-[3px_3px_0px_#1C1C1C] hover:translate-y-[-1px]"
                 >
-                  ENTER EVIDENCE CENTER
-                  <ArrowRight className="w-4 h-4" />
+                  {navigatingTarget === "primary-cta" ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>ENTERING EVIDENCE CENTER ···</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>ENTER EVIDENCE CENTER</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </Link>
                 {isAuthenticated ? (
                   <button
@@ -133,9 +146,17 @@ export default function LandingPage() {
                 ) : (
                   <Link
                     href="/login?redirect=/app/onboarding"
+                    onClick={() => setNavigatingTarget("demo-login")}
                     className="bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1C1C1C]/5 transition-all shadow-[2px_2px_0px_#1C1C1C]"
                   >
-                    DEMO SIGN IN →
+                    {navigatingTarget === "demo-login" ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>OPENING DEMO ···</span>
+                      </>
+                    ) : (
+                      <span>DEMO SIGN IN →</span>
+                    )}
                   </Link>
                 )}
               </div>
@@ -426,16 +447,34 @@ export default function LandingPage() {
           <div className="mt-14 text-center flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/features"
+              onClick={() => setNavigatingTarget("/features")}
               className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-[3px_3px_0px_#1C1C1C]"
             >
-              EXPLORE THE ARCHITECTURE
-              <ArrowRight className="w-4 h-4" />
+              {navigatingTarget === "/features" ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>EXPLORING ARCHITECTURE ···</span>
+                </>
+              ) : (
+                <>
+                  <span>EXPLORE THE ARCHITECTURE</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </Link>
             <Link
               href="/about"
+              onClick={() => setNavigatingTarget("/about")}
               className="bg-white border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#FBF6DF] transition-all shadow-[2px_2px_0px_#1C1C1C]"
             >
-              READ OUR MANIFESTO
+              {navigatingTarget === "/about" ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>OPENING MANIFESTO ···</span>
+                </>
+              ) : (
+                <span>READ OUR MANIFESTO</span>
+              )}
             </Link>
           </div>
         </section>
