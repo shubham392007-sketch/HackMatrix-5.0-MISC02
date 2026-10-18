@@ -182,7 +182,7 @@ async def run_work_analysis(
 
 @router.get("/analysis")
 async def list_work_analyses(
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):

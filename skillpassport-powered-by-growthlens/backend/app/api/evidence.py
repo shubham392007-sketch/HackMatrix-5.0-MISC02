@@ -48,7 +48,7 @@ def list_evidence(
     status_filter: Optional[str] = Query(None, alias="status"),
     search: Optional[str] = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(500, le=1000),
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -139,6 +139,7 @@ def list_evidence(
             "sourceType": item.source_type,
             "sourceName": item.source_name,
             "sourceUrl": item.source_url,
+            "projectName": item.project_name,
             "extractedExcerpt": item.extracted_excerpt,
             "extractedSummary": item.extracted_summary or item.description,
             "candidateSkills": candidate_skills,

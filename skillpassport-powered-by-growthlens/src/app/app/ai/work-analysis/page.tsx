@@ -24,6 +24,9 @@ import {
   Info,
   CheckCircle2,
   AlertTriangle,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 function WorkAnalysisContent() {
@@ -42,6 +45,75 @@ function WorkAnalysisContent() {
   );
   const [isSimulating, setIsSimulating] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<"ALL" | "GITHUB" | "DOCUMENTS" | "PORTFOLIO">("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDirectory, setShowDirectory] = useState(false);
+
+  const sourceCounts = React.useMemo(() => {
+    let github = 0;
+    let documents = 0;
+    let portfolio = 0;
+    for (const item of evidenceItems) {
+      const st = (item.sourceType || "").toLowerCase();
+      if (["github", "commit", "pull_request", "readme", "code_repository"].includes(st)) {
+        github++;
+      } else if (["document", "certificate", "resume"].includes(st)) {
+        documents++;
+      } else if (["portfolio", "web_page", "website"].includes(st)) {
+        portfolio++;
+      }
+    }
+    return { all: evidenceItems.length, github, documents, portfolio };
+  }, [evidenceItems]);
+
+  const filteredItems = React.useMemo(() => {
+    return evidenceItems.filter((item) => {
+      const st = (item.sourceType || "").toLowerCase();
+      if (filterCategory === "GITHUB" && !["github", "commit", "pull_request", "readme", "code_repository"].includes(st)) {
+        return false;
+      }
+      if (filterCategory === "DOCUMENTS" && !["document", "certificate", "resume"].includes(st)) {
+        return false;
+      }
+      if (filterCategory === "PORTFOLIO" && !["portfolio", "web_page", "website"].includes(st)) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchTitle = item.title.toLowerCase().includes(q);
+        const matchProject = (item.project || "").toLowerCase().includes(q);
+        const matchExt = (item.externalRecordId || "").toLowerCase().includes(q);
+        return matchTitle || matchProject || matchExt;
+      }
+      return true;
+    });
+  }, [evidenceItems, filterCategory, searchQuery]);
+
+  const groupedSources = React.useMemo(() => {
+    const groups: { [key: string]: typeof evidenceItems } = {};
+    for (const ev of filteredItems) {
+      let groupKey = ev.project || "Other Sources";
+      const st = (ev.sourceType || "").toLowerCase();
+      if (["github", "commit", "pull_request", "readme", "code_repository"].includes(st)) {
+        groupKey = `Repository: ${ev.project || "GitHub"}`;
+      } else if (["document", "certificate", "resume"].includes(st)) {
+        groupKey = `Document: ${ev.project || "Uploaded Files"}`;
+      } else if (["portfolio", "web_page", "website"].includes(st)) {
+        groupKey = `Web / Portfolio: ${ev.project || "Web Articles"}`;
+      }
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(ev);
+    }
+    return groups;
+  }, [filteredItems]);
+
+  const formatOptionLabel = (ev: typeof evidenceItems[0]) => {
+    const shortSha = ev.externalRecordId && ev.externalRecordId.length >= 7 
+      ? ` [${ev.externalRecordId.slice(0, 7)}]` 
+      : "";
+    const dateStr = ev.date && ev.date !== "Recently" ? ` • ${ev.date}` : "";
+    return `${ev.title}${shortSha} (${ev.sourceType.toUpperCase()})${dateStr}`;
+  };
 
   React.useEffect(() => {
     if (evidenceIdParam && evidenceItems.some((e) => e.id === evidenceIdParam)) {
@@ -118,27 +190,59 @@ function WorkAnalysisContent() {
         <>
           {/* Source Selector Bar & Actions */}
           <div className="gl-card p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#8C827A] uppercase tracking-wider">
-                  Ingested Source:
-                </span>
-                <select
-                  value={selectedSourceId}
-                  onChange={(e) => setSelectedSourceId(e.target.value)}
-                  className="pill-input text-xs py-2 px-3 pr-8 bg-white cursor-pointer font-medium"
-                >
-                  {evidenceItems.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.title} ({ev.sourceType.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-bold text-[#8C827A] uppercase tracking-wider">
+                    Ingested Source:
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#EFECE6] text-[#1C1C1C] border border-[#E4DDD3]">
+                    {evidenceItems.length} Available
+                  </span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <select
+                    value={selectedSourceId}
+                    onChange={(e) => setSelectedSourceId(e.target.value)}
+                    className="pill-input text-xs py-2 px-3 pr-8 bg-white cursor-pointer font-medium w-full truncate border-[#1C1C1C]"
+                  >
+                    {selectedEvidence && !filteredItems.some((i) => i.id === selectedSourceId) && (
+                      <option value={selectedEvidence.id}>
+                        * Selected: {formatOptionLabel(selectedEvidence)}
+                      </option>
+                    )}
+                    {Object.entries(groupedSources).map(([groupTitle, items]) => (
+                      <optgroup key={groupTitle} label={`${groupTitle} (${items.length})`}>
+                        {items.map((ev) => (
+                          <option key={ev.id} value={ev.id}>
+                            {formatOptionLabel(ev)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowDirectory(!showDirectory)}
+                  className={`pill-btn text-xs py-2 px-3 flex items-center gap-1.5 transition-all ${
+                    showDirectory
+                      ? "bg-[#DFE968] text-[#1C1C1C] font-bold border-[#1C1C1C]"
+                      : "pill-btn-secondary"
+                  }`}
+                  title="Browse all ingested sources in an organized directory view"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>{showDirectory ? "Hide Directory" : `Browse All Sources (${evidenceItems.length})`}</span>
+                  {showDirectory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+
                 {activeAnalysis && (
-                  <div className="flex items-center gap-2">
+                  <div className="hidden sm:flex items-center gap-2">
                     <AnalysisMethodBadge
                       method={activeAnalysis.analysis_method}
                       modelName={activeAnalysis.model_name}
@@ -148,6 +252,7 @@ function WorkAnalysisContent() {
                     <AnalysisStatusBadge status={activeAnalysis.status} />
                   </div>
                 )}
+
                 <button
                   onClick={handleRunAnalysis}
                   disabled={isSimulating}
@@ -159,6 +264,162 @@ function WorkAnalysisContent() {
                 </button>
               </div>
             </div>
+
+            {/* Quick Filter Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#F0EBE1]">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase text-[#8C827A] mr-1">Filter Sources:</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterCategory("ALL")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
+                    filterCategory === "ALL"
+                      ? "bg-[#1C1C1C] text-white"
+                      : "bg-[#F4EFE6] text-[#5A5550] hover:bg-[#EAE4D9]"
+                  }`}
+                >
+                  All ({sourceCounts.all})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterCategory("GITHUB")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
+                    filterCategory === "GITHUB"
+                      ? "bg-[#1C1C1C] text-white"
+                      : "bg-[#F4EFE6] text-[#5A5550] hover:bg-[#EAE4D9]"
+                  }`}
+                >
+                  GitHub ({sourceCounts.github})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterCategory("DOCUMENTS")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
+                    filterCategory === "DOCUMENTS"
+                      ? "bg-[#1C1C1C] text-white"
+                      : "bg-[#F4EFE6] text-[#5A5550] hover:bg-[#EAE4D9]"
+                  }`}
+                >
+                  Documents ({sourceCounts.documents})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterCategory("PORTFOLIO")}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
+                    filterCategory === "PORTFOLIO"
+                      ? "bg-[#1C1C1C] text-white"
+                      : "bg-[#F4EFE6] text-[#5A5550] hover:bg-[#EAE4D9]"
+                  }`}
+                >
+                  Web Portfolio ({sourceCounts.portfolio})
+                </button>
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8C827A]" />
+                <input
+                  type="text"
+                  placeholder="Filter sources by title, repo, or sha..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pill-input text-xs py-1.5 pl-8 pr-3 w-full bg-[#FAF8F5] border-[#E4DDD3]"
+                />
+              </div>
+            </div>
+
+            {/* Collapsible Full Ingested Sources Directory */}
+            {showDirectory && (
+              <div className="pt-3 border-t border-[#F0EBE1] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-black uppercase text-[#1C1C1C]">
+                      Ingested Sources Directory ({filteredItems.length} of {evidenceItems.length})
+                    </h3>
+                    <p className="text-[11px] text-[#8C827A]">
+                      Select any ingested evidence source below to inspect its extracted activities and run AI analysis.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto divide-y divide-[#F0EBE1] border border-[#E4DDD3] rounded-xl bg-white">
+                  {filteredItems.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[#8C827A]">
+                      No ingested sources match the current filter.
+                    </div>
+                  ) : (
+                    filteredItems.map((ev) => {
+                      const isSelected = ev.id === selectedSourceId;
+                      const hasAnalysis = workAnalyses.some((a) => a.source_id === ev.id);
+                      const shortSha = ev.externalRecordId && ev.externalRecordId.length >= 7 
+                        ? ev.externalRecordId.slice(0, 7) 
+                        : null;
+                      return (
+                        <div
+                          key={ev.id}
+                          onClick={() => {
+                            setSelectedSourceId(ev.id);
+                          }}
+                          className={`p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer transition-colors ${
+                            isSelected
+                              ? "bg-[#DFE968]/20 border-l-4 border-l-[#1C1C1C]"
+                              : "hover:bg-[#FAF8F5]"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-[#1F1E1D] truncate">
+                                {ev.title}
+                              </span>
+                              {shortSha && (
+                                <code className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#EFECE6] text-[#1C1C1C]">
+                                  {shortSha}
+                                </code>
+                              )}
+                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#EAE4D9] text-[#5A5550]">
+                                {ev.sourceType}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] text-[#8C827A]">
+                              <span>Project: <strong className="text-[#1C1C1C] font-semibold">{ev.project}</strong></span>
+                              <span>•</span>
+                              <span>Date: {ev.date}</span>
+                              {ev.author && (
+                                <>
+                                  <span>•</span>
+                                  <span>Author: {ev.author}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasAnalysis ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D4EDDA] text-[#155724] border border-[#C3E6CB] flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Analyzed
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FAF8F5] text-[#8C827A] border border-[#E4DDD3]">
+                                Ready for Analysis
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className={`pill-btn text-[11px] py-1 px-3 ${
+                                isSelected ? "pill-btn-primary" : "pill-btn-secondary"
+                              }`}
+                            >
+                              {isSelected ? "Active" : "Select"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
             {analysisError && (
               <div className="p-3.5 rounded-xl border border-[#1C1C1C] bg-[#F6C8D6] text-xs font-bold text-[#C85A54] flex items-center justify-between">
                 <div className="flex items-center gap-2">

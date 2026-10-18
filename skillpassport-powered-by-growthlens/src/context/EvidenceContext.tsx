@@ -417,7 +417,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
       // Stage 1: Fast Core Domain 1 Ingestion Data (Evidence, Sources, Runs, Profile)
       const [evRes, srcRes, runsRes, profileRes] = await Promise.allSettled([
-        listEvidenceItems(),
+        listEvidenceItems({ pageSize: 500 }),
         listConnectedSources(),
         listIngestionRuns(),
         getMyProfile(),
@@ -432,7 +432,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           sourceType: (raw.sourceType || raw.provider || "document") as SourceType,
           sourceReference: raw.sourceName || raw.sourceUrl || "Uploaded Document",
           sourceUrl: raw.sourceUrl,
-          project: raw.projectName || raw.sourceName || "General",
+          project: raw.projectName || raw.project_name || raw.sourceName || "General",
           evidenceType: raw.category || "General Evidence",
           date: raw.observedAt ? new Date(raw.observedAt).toLocaleDateString() : "Recently",
           claimedContribution: raw.attributionStatus === "author" ? "Author" : "Contributor",
