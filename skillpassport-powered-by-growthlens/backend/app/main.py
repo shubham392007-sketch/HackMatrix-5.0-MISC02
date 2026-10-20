@@ -20,6 +20,12 @@ async def lifespan(app: FastAPI):
     )
     yield
     logger.info(f"Shutting down {settings.app_name}")
+    try:
+        from backend.app.db.session import engine
+        engine.dispose()
+        logger.info("Database engine connection pool disposed cleanly")
+    except Exception as e:
+        logger.warning(f"Error disposing database engine: {e}")
 
 
 def create_app() -> FastAPI:
