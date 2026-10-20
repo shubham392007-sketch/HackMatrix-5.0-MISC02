@@ -159,7 +159,7 @@ async def run_work_analysis(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    owner_uuid = uuid.UUID(user.id)
+    owner_uuid = uuid.UUID(str(user.id))
     results = []
 
     for ev_id_str in req.evidence_ids:
@@ -181,6 +181,25 @@ async def run_work_analysis(
             except Exception as se_err:
                 logger.warning(f"Skill extraction during work analysis for {ev_id_str}: {se_err}")
 
+            # Populate demonstrated skills from evidence competency mappings for immediate response
+            cand_skills = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(
+                CompetencyTaxonomy, EvidenceCompetencyMapping.competency_id == CompetencyTaxonomy.id
+            ).filter(
+                EvidenceCompetencyMapping.evidence_id == ev_uuid,
+                EvidenceCompetencyMapping.owner_user_id == owner_uuid,
+            ).all()
+            if cand_skills:
+                res["demonstrated_skills"] = [
+                    {
+                        "name": tax.canonical_name,
+                        "category": tax.category,
+                        "proficiency": m.proficiency_level or "Intermediate",
+                        "corroborated_with_evidence": True,
+                        "justification": m.supporting_excerpt or m.rationale or "",
+                    }
+                    for m, tax in cand_skills
+                ]
+
             # Auto-detect conflicts on newly analyzed evidence
             conflict_service.detect_conflicts_for_evidence(db=db, owner_user_id=owner_uuid, evidence_id=ev_uuid)
             results.append(res)
@@ -197,7 +216,7 @@ def list_work_analyses(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    owner_uuid = uuid.UUID(user.id)
+    owner_uuid = uuid.UUID(str(user.id))
     analyses = db.query(WorkAnalysisResult).filter(
         WorkAnalysisResult.owner_user_id == owner_uuid,
     ).order_by(desc(WorkAnalysisResult.created_at)).limit(limit).all()

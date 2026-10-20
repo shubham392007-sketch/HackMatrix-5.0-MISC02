@@ -201,6 +201,7 @@ interface EvidenceContextType {
   updateReviewTask: (id: string, updates: Partial<HumanReviewTask>) => void;
   updateValidationRecord: (id: string, updates: Partial<OutputValidationRecord>) => void;
   updateWorkAnalysis: (id: string, updates: Partial<WorkAnalysisResult>) => void;
+  upsertWorkAnalysis: (analysis: WorkAnalysisResult) => void;
   updateExtractionCandidate: (id: string, updates: Partial<ExtractionCandidateItem>) => void;
   updateVerification: (id: string, updates: Partial<SkillVerificationRecord>) => void;
   updateGuardResult: (id: string, updates: Partial<GuardClaimResult>) => void;
@@ -373,7 +374,15 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
   // Domain 3 AI State - Zero Demo Data, live database-driven
   const [currentRole, setDemoRole] = useState<DemoRole>("employee");
-  const [workAnalyses, setWorkAnalyses] = useState<WorkAnalysisResult[]>([]);
+  const [workAnalyses, setWorkAnalyses] = useState<WorkAnalysisResult[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_work_analyses_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [extractionCandidates, setExtractionCandidates] = useState<ExtractionCandidateItem[]>([]);
   const [evidenceMappings, setEvidenceMappings] = useState<EvidenceMappingItem[]>([]);
   const [verifications, setVerifications] = useState<SkillVerificationRecord[]>([]);
@@ -658,6 +667,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           };
         });
         setWorkAnalyses(mappedWork);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_live_work_analyses_cache", JSON.stringify(mappedWork));
+        }
       }
 
       if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
@@ -1414,6 +1426,30 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const updateWorkAnalysis = (id: string, updates: Partial<WorkAnalysisResult>) => {
     const updated = workAnalyses.map((a) => (a.analysis_id === id ? { ...a, ...updates } : a));
     setWorkAnalyses(updated);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("sp_live_work_analyses_cache", JSON.stringify(updated));
+    }
+  };
+
+  const upsertWorkAnalysis = (analysis: WorkAnalysisResult) => {
+    setWorkAnalyses((prev) => {
+      const idx = prev.findIndex(
+        (a) =>
+          (analysis.source_id && a.source_id === analysis.source_id) ||
+          (analysis.analysis_id && a.analysis_id === analysis.analysis_id)
+      );
+      let updated: WorkAnalysisResult[];
+      if (idx >= 0) {
+        updated = [...prev];
+        updated[idx] = { ...updated[idx], ...analysis };
+      } else {
+        updated = [analysis, ...prev];
+      }
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("sp_live_work_analyses_cache", JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const updateExtractionCandidate = (id: string, updates: Partial<ExtractionCandidateItem>) => {
@@ -2190,6 +2226,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         updateReviewTask,
         updateValidationRecord,
         updateWorkAnalysis,
+        upsertWorkAnalysis,
         updateExtractionCandidate,
         updateVerification,
         updateGuardResult,
