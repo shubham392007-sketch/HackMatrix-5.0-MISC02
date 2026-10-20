@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -180,6 +180,9 @@ export const WORKSPACE_NAV: NavSection[] = [
   },
 ];
 
+// Persistent module-level scroll tracking so sidebar scroll position survives route changes and renders
+let globalSidebarScrollTop = 0;
+
 interface SidebarContentProps {
   onLinkClick?: () => void;
   showCloseButton?: boolean;
@@ -189,9 +192,42 @@ interface SidebarContentProps {
 function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarContentProps) {
   const pathname = usePathname();
   const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
+  const navScrollRef = useRef<HTMLDivElement>(null);
 
+  // Clear navigating state when pathname updates
   useEffect(() => {
     setNavigatingHref(null);
+  }, [pathname]);
+
+  // Handle scroll and persist position in memory and session storage
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    globalSidebarScrollTop = top;
+    try {
+      sessionStorage.setItem("skillpassport_sidebar_scroll", String(top));
+    } catch {}
+  };
+
+  // Restore scroll position on initial mount
+  useEffect(() => {
+    const saved =
+      globalSidebarScrollTop ||
+      (typeof window !== "undefined"
+        ? Number(sessionStorage.getItem("skillpassport_sidebar_scroll") || "0")
+        : 0);
+
+    if (navScrollRef.current && saved > 0) {
+      navScrollRef.current.scrollTop = saved;
+    }
+  }, []);
+
+  // Ensure sidebar scroll position stays intact across route transitions
+  useEffect(() => {
+    if (navScrollRef.current && globalSidebarScrollTop > 0) {
+      if (Math.abs(navScrollRef.current.scrollTop - globalSidebarScrollTop) > 2) {
+        navScrollRef.current.scrollTop = globalSidebarScrollTop;
+      }
+    }
   }, [pathname]);
 
   const { currentRole, setDemoRole, userProfile } = useEvidence();
@@ -225,6 +261,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       <div className="p-4 sm:p-5 pb-3.5 shrink-0 border-b border-[#1C1C1C]/10 bg-[#FBF6DF] flex items-center justify-between">
         <Link
           href="/app/passport"
+          scroll={false}
           onClick={onLinkClick}
           className="block group select-none"
         >
@@ -259,8 +296,12 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
         )}
       </div>
 
-      {/* Navigation Categories (Scrolls Independently) */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar">
+      {/* Navigation Categories (Scrolls Independently & Preserves Scroll Position) */}
+      <div
+        ref={navScrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar"
+      >
         {WORKSPACE_NAV.map((section, idx) => (
           <div key={section.category}>
             <p
@@ -288,6 +329,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                   <Link
                     key={item.label}
                     href={item.href}
+                    scroll={false}
                     onClick={() => {
                       if (!item.external && item.href !== pathname) {
                         setNavigatingHref(item.href);
@@ -336,6 +378,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       <div className="p-3.5 border-t border-[#1C1C1C]/15 bg-[#FBF1CF]/70 space-y-2.5 shrink-0">
         <Link
           href="/app/settings/profile"
+          scroll={false}
           onClick={onLinkClick}
           className="flex items-center gap-2.5 group hover:opacity-85 transition-opacity"
         >

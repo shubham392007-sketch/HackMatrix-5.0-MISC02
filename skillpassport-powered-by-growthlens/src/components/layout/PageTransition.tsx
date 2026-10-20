@@ -11,11 +11,16 @@ export default function PageTransition({
   const pathname = usePathname();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
+    // Only scroll window on public pages (home, about, features, etc.)
+    // In-app workspace routes (/app/*) maintain their own main content scroll container
+    // so the persistent sidebar scroll position is never disturbed.
+    if (!pathname.startsWith("/app")) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   }, [pathname]);
 
   return (
-    <div key={pathname} className="w-full flex-1 flex flex-col min-h-0 gl-page-enter">
+    <div className="w-full flex-1 flex flex-col min-h-0">
       {children}
     </div>
   );
