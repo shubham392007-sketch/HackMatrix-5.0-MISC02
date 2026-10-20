@@ -574,14 +574,8 @@ main > div > div > [class*="space-y-"]:first-child {
 .growthlens-boot-outline {
   stroke-dasharray: 2200;
   stroke-dashoffset: 2200;
-  animation: growthlens-draw-outline 3.8s cubic-bezier(0.42, 0, 0.25, 1) forwards;
+  animation: growthlens-draw-outline 0.85s cubic-bezier(0.35, 0, 0.2, 1) forwards;
   will-change: stroke-dashoffset, fill-opacity;
-}
-
-.growthlens-reveal-mask {
-  width: 0%;
-  animation: growthlens-sweep-reveal 3.6s cubic-bezier(0.38, 0, 0.2, 1) forwards;
-  animation-delay: 0.15s;
 }
 
 @keyframes growthlens-draw-outline {
@@ -589,22 +583,13 @@ main > div > div > [class*="space-y-"]:first-child {
     stroke-dashoffset: 2200;
     fill-opacity: 0;
   }
-  75% {
+  55% {
     stroke-dashoffset: 0;
-    fill-opacity: 0.15;
+    fill-opacity: 0.3;
   }
   100% {
     stroke-dashoffset: 0;
     fill-opacity: 1;
-  }
-}
-
-@keyframes growthlens-sweep-reveal {
-  0% {
-    width: 0%;
-  }
-  100% {
-    width: 100%;
   }
 }
 
@@ -613,10 +598,6 @@ main > div > div > [class*="space-y-"]:first-child {
     animation: none !important;
     stroke-dashoffset: 0 !important;
     fill-opacity: 1 !important;
-  }
-  .growthlens-reveal-mask {
-    animation: none !important;
-    width: 100% !important;
   }
 }
 

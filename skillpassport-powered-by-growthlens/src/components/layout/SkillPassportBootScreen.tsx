@@ -18,10 +18,13 @@ interface SkillPassportBootScreenProps {
  * Renders the authentic Yellowtail brand wordmark "SkillPassport" animated with
  * stroke-drawing and progressive handwriting reveal sequence, accompanied by
  * the "Powered by GrowthLens" subtitle and the Moonwood sunset gradient.
+ *
+ * Ensures the entire splash screen appears completely, holds steadily, and then
+ * smoothly transitions to reveal the home screen.
  */
 export default function SkillPassportBootScreen({
   onComplete,
-  minDurationMs = 2100,
+  minDurationMs = 2950,
 }: SkillPassportBootScreenProps) {
   const [phase, setPhase] = useState<"init" | "drawing" | "holding" | "fading" | "done">("init");
   const [isReducedMotion, setIsReducedMotion] = useState(false);
@@ -31,17 +34,23 @@ export default function SkillPassportBootScreen({
     setPhase("fading");
     setTimeout(() => {
       setPhase("done");
-      sessionStorage.setItem("skillpassport_boot_seen", "true");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("skillpassport_boot_seen", "true");
+      }
       onComplete?.();
-    }, 200);
+    }, 250);
   };
 
   useEffect(() => {
-    // 1. Session storage check — only play once per browser session
+    // 1. Session storage check — only skip on deep internal pages if already seen in this session.
+    // On the root home page ('/'), allow the complete splash sequence to play cleanly.
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    const isHomePage = pathname === "/" || pathname === "";
     const hasSeenBoot =
       typeof window !== "undefined" &&
       sessionStorage.getItem("skillpassport_boot_seen");
-    if (hasSeenBoot === "true") {
+
+    if (!isHomePage && hasSeenBoot === "true") {
       setPhase("done");
       onComplete?.();
       return;
@@ -58,26 +67,30 @@ export default function SkillPassportBootScreen({
           sessionStorage.setItem("skillpassport_boot_seen", "true");
           onComplete?.();
         }, 200);
-      }, 400);
+      }, 500);
       return () => clearTimeout(timer);
     }
 
-    // 3. Prevent accidental interaction during boot sequence
+    // 3. Prevent scrolling during boot sequence
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // 4. Snappy Apple-style timing sequence (~2.1s total)
+    // 4. Calibrated Apple-style timing sequence
+    // - 60ms: start stroke drawing
+    // - 1650ms: all 13 letters fully drawn & solid filled -> enter "holding" phase
+    // - 2500ms: start smooth fade-out (~850ms hold showing complete brand)
+    // - 2950ms: mark done, restore overflow, reveal home screen
     const drawTimer = setTimeout(() => {
       setPhase("drawing");
-    }, 80);
+    }, 60);
 
     const holdTimer = setTimeout(() => {
       setPhase("holding");
-    }, 1350);
+    }, 1650);
 
     const fadeTimer = setTimeout(() => {
       setPhase("fading");
-    }, 1750);
+    }, 2500);
 
     const completeTimer = setTimeout(() => {
       setPhase("done");
@@ -99,7 +112,7 @@ export default function SkillPassportBootScreen({
     return null;
   }
 
-  const viewBoxW = SKILLPASSPORT_VIEWBOX_WIDTH || 1244;
+  const viewBoxW = SKILLPASSPORT_VIEWBOX_WIDTH || 1320;
 
   return (
     <aside
@@ -109,7 +122,7 @@ export default function SkillPassportBootScreen({
       aria-label="SkillPassport Loading Screen (Click to skip)"
       onClick={dismissBoot}
       className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer transition-all duration-500 ease-out ${
-        phase === "fading" ? "opacity-0 scale-[0.99] blur-[1px]" : "opacity-100 scale-100"
+        phase === "fading" ? "opacity-0 scale-[0.99] blur-[1px] pointer-events-none" : "opacity-100 scale-100"
       }`}
       style={{
         background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
@@ -122,46 +135,41 @@ export default function SkillPassportBootScreen({
       <span className="sr-only">SkillPassport Powered by GrowthLens is loading.</span>
 
       {/* Centerpiece Container */}
-      <div className="relative w-[92vw] sm:w-[84vw] md:w-[72vw] lg:w-[60vw] max-w-[960px] flex flex-col items-center justify-center px-2">
+      <div className="relative w-[92vw] sm:w-[84vw] md:w-[72vw] lg:w-[60vw] max-w-[980px] flex flex-col items-center justify-center px-2">
         <svg
-          viewBox={`0 0 ${viewBoxW} 260`}
+          viewBox={`0 0 ${viewBoxW} 280`}
           className="w-full h-auto overflow-visible"
           preserveAspectRatio="xMidYMid meet"
           aria-hidden="true"
         >
           <defs>
-            {/* Linear clip-path mask that smoothly sweeps across the letters */}
-            <clipPath id="skillpassport-write-mask">
-              <rect
-                x="0"
-                y="0"
-                height="260"
-                className={isReducedMotion ? "" : "growthlens-reveal-mask"}
-                style={isReducedMotion ? { width: "100%" } : undefined}
-              />
-            </clipPath>
-
-            {/* Subtle soft gradient definition for the pen flourish highlight */}
+            {/* Subtle soft gradient definition for ambient glow */}
             <radialGradient id="sp-ambient-glow" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#DFE968" stopOpacity="0.28" />
               <stop offset="100%" stopColor="#DFE968" stopOpacity="0" />
             </radialGradient>
           </defs>
 
-          {/* Group masked by progressive write-sweep to produce authentic handwriting revelation */}
-          <g clipPath="url(#skillpassport-write-mask)">
-            {/* Ambient subtle blur shadow stroke behind authentic letterforms */}
+          {/* Group containing authentic Yellowtail brand wordmark */}
+          <g>
+            {/* Soft depth shadow underneath letterforms */}
             <path
               d={SKILLPASSPORT_COMBINED_PATH}
-              fill="rgba(28, 28, 28, 0.08)"
-              stroke="rgba(28, 28, 28, 0.08)"
+              fill="rgba(28, 28, 28, 0.07)"
+              stroke="rgba(28, 28, 28, 0.07)"
               strokeWidth="5"
               strokeLinecap="round"
               strokeLinejoin="round"
               transform="translate(0, 3)"
+              className="transition-opacity duration-700 ease-out"
+              style={{
+                opacity: phase === "holding" || phase === "drawing" ? 1 : 0,
+                transitionDelay: "0.5s",
+              }}
             />
 
-            {/* Authentic Yellowtail Glyphs: Drawing with stroke-dashoffset + fill settle */}
+            {/* Authentic Yellowtail Glyphs: 13 letters (SkillPassport) */}
+            {/* Stroke-drawing + solid ink fill sequence */}
             {SKILLPASSPORT_GLYPHS.map((glyph, idx) => (
               <path
                 key={glyph.char + idx}
@@ -171,9 +179,9 @@ export default function SkillPassportBootScreen({
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="growthlens-boot-outline"
+                className={phase === "init" ? "opacity-0" : "growthlens-boot-outline"}
                 style={{
-                  animationDelay: `${idx * 0.11}s`,
+                  animationDelay: isReducedMotion ? "0s" : `${idx * 0.055}s`,
                 }}
               />
             ))}
@@ -197,7 +205,7 @@ export default function SkillPassportBootScreen({
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-2"
           }`}
-          style={{ transitionDelay: "1.2s" }}
+          style={{ transitionDelay: "0.85s" }}
         >
           <span className="text-[11px] sm:text-[13px] md:text-[14px] font-bold tracking-[0.25em] text-[#1C1C1C]/75 uppercase font-mono">
             Powered by GrowthLens
@@ -210,6 +218,7 @@ export default function SkillPassportBootScreen({
         className={`absolute bottom-10 md:bottom-14 text-center tracking-[0.22em] uppercase text-[10px] sm:text-[11px] md:text-[12px] font-semibold text-[#1C1C1C]/65 transition-opacity duration-700 ease-out ${
           phase === "holding" || phase === "drawing" ? "opacity-100" : "opacity-0"
         }`}
+        style={{ transitionDelay: "1.05s" }}
       >
         <span className="font-mono">VERIFIABLE SKILLS & EVIDENCE INTELLIGENCE</span>
       </div>
