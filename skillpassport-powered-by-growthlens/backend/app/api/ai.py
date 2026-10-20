@@ -76,7 +76,7 @@ class EvaluationRunRequest(BaseModel):
 # --- 1. AI Overview ---
 
 @router.get("/overview")
-async def get_ai_overview(
+def get_ai_overview(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -181,7 +181,7 @@ async def run_work_analysis(
 
 
 @router.get("/analysis")
-async def list_work_analyses(
+def list_work_analyses(
     limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -257,7 +257,7 @@ async def list_work_analyses(
 
 
 @router.get("/analysis/runs/{run_id}")
-async def get_analysis_run(
+def get_analysis_run(
     run_id: str,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -310,7 +310,7 @@ async def run_skill_extraction(
 
 
 @router.get("/candidate-skills")
-async def list_candidate_skills(
+def list_candidate_skills(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -350,15 +350,15 @@ async def list_candidate_skills(
 
 
 @router.get("/evidence-mappings")
-async def list_evidence_mappings(
+def list_evidence_mappings(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    return await list_candidate_skills(db, user)
+    return list_candidate_skills(db, user)
 
 
 @router.get("/evidence-mappings/{mapping_id}")
-async def get_evidence_mapping(
+def get_evidence_mapping(
     mapping_id: str,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -392,7 +392,7 @@ async def get_evidence_mapping(
 # --- 4. Verification Review ---
 
 @router.get("/verification")
-async def list_verification_records(
+def list_verification_records(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -475,7 +475,7 @@ async def evaluate_guard_claim(
 
 
 @router.get("/guard/results")
-async def list_guard_results(
+def list_guard_results(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -532,7 +532,7 @@ async def list_guard_results(
 # --- 6. Output Validation ---
 
 @router.get("/validation")
-async def list_output_validations(
+def list_output_validations(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -563,7 +563,7 @@ async def list_output_validations(
 # --- 7. Confidence & Uncertainty ---
 
 @router.get("/confidence")
-async def get_confidence_breakdown(
+def get_confidence_breakdown(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -603,7 +603,7 @@ async def get_confidence_breakdown(
 # --- 8. Conflict Resolution ---
 
 @router.get("/conflicts")
-async def list_conflicts(
+def list_conflicts(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -634,7 +634,7 @@ async def list_conflicts(
 
 
 @router.post("/conflicts/{conflict_id}/resolve")
-async def resolve_conflict(
+def resolve_conflict(
     conflict_id: str,
     req: ConflictResolveRequest,
     db: Session = Depends(get_db),
@@ -658,7 +658,7 @@ async def resolve_conflict(
 # --- 9. Human Review Queue ---
 
 @router.get("/review-queue")
-async def list_review_tasks(
+def list_review_tasks(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -689,7 +689,7 @@ async def list_review_tasks(
 
 
 @router.post("/review-queue/{task_id}/actions")
-async def action_review_task(
+def action_review_task(
     task_id: str,
     req: ReviewTaskActionRequest,
     db: Session = Depends(get_db),
@@ -713,7 +713,7 @@ async def action_review_task(
 # --- 10. Prompt-Injection Protection ---
 
 @router.get("/prompt-injection/findings")
-async def list_prompt_injection_findings(
+def list_prompt_injection_findings(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -743,12 +743,12 @@ async def list_prompt_injection_findings(
 # --- 11. AI Evaluation Suite ---
 
 @router.get("/evaluation/suites")
-async def list_evaluation_suites():
+def list_evaluation_suites():
     return {"suites": evaluation_service.list_suites()}
 
 
 @router.post("/evaluation/runs")
-async def run_evaluation_suite(
+def run_evaluation_suite(
     req: EvaluationRunRequest,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -762,7 +762,7 @@ async def run_evaluation_suite(
 
 
 @router.get("/evaluation/runs/{run_id}")
-async def get_evaluation_run(
+def get_evaluation_run(
     run_id: str,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
@@ -787,18 +787,18 @@ async def get_evaluation_run(
 
 
 @router.get("/evaluation/runs/{run_id}/results")
-async def get_evaluation_run_results(
+def get_evaluation_run_results(
     run_id: str,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    return await get_evaluation_run(run_id, db, user)
+    return get_evaluation_run(run_id, db, user)
 
 
 # --- 12. AI Audit Trail ---
 
 @router.get("/audit")
-async def list_ai_audit_events(
+def list_ai_audit_events(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),

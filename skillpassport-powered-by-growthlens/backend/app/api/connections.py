@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import func
 from datetime import datetime, timezone
 import uuid
 import json
 import urllib.parse
 
-from backend.app.db.session import get_db
+from backend.app.db.session import get_db, SessionLocal
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.models.connection import ConnectedSource, SelectedResource
 from backend.app.models.sync_run import SourceSyncRun, RawSourceRecord
@@ -337,26 +337,43 @@ async def connect_github(
 @router.get("/github/repositories")
 async def list_github_repositories(
     user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
     page: int = 1,
     per_page: int = 30,
     all_accessible: bool = False,
     search: Optional[str] = None,
 ):
     """Lists repositories accessible to the user's connected GitHub account."""
-    connection = db.query(ConnectedSource).filter(
-        ConnectedSource.owner_user_id == user.id,
-        ConnectedSource.provider == "github",
-        ConnectedSource.connection_status == "connected",
-    ).first()
-
-    if not connection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active GitHub connection found for this account",
+    # Step 1: Rapid scoped checkout to retrieve credentials and selected resources
+    with SessionLocal() as db:
+        connection = (
+            db.query(ConnectedSource)
+            .options(joinedload(ConnectedSource.selected_resources))
+            .filter(
+                ConnectedSource.owner_user_id == user.id,
+                ConnectedSource.provider == "github",
+                ConnectedSource.connection_status == "connected",
+            )
+            .first()
         )
 
-    pat = decrypt_credential(connection.encrypted_credentials)
+        if not connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active GitHub connection found for this account",
+            )
+
+        pat = decrypt_credential(connection.encrypted_credentials)
+        selected_res_data = [
+            {
+                "id": r.id,
+                "external_resource_id": r.external_resource_id,
+                "name": r.name,
+                "is_selected": r.is_selected,
+            }
+            for r in (connection.selected_resources or [])
+        ]
+    # DB connection is immediately released back to QueuePool before any external HTTP call!
+
     client = GitHubClient(pat)
 
     if all_accessible:
@@ -376,41 +393,44 @@ async def list_github_repositories(
 
     # Cross-reference with selected_resources and existing language & README snapshots
     selected_resources_map = {}
-    for res_obj in connection.selected_resources:
-        if res_obj.external_resource_id:
-            selected_resources_map[res_obj.external_resource_id] = res_obj
-            selected_resources_map[res_obj.external_resource_id.lower()] = res_obj
-        if res_obj.name:
-            selected_resources_map[res_obj.name] = res_obj
-            selected_resources_map[res_obj.name.lower()] = res_obj
+    for res_obj in selected_res_data:
+        ext_id = res_obj.get("external_resource_id")
+        name = res_obj.get("name")
+        if ext_id:
+            selected_resources_map[ext_id] = res_obj
+            selected_resources_map[ext_id.lower()] = res_obj
+        if name:
+            selected_resources_map[name] = res_obj
+            selected_resources_map[name.lower()] = res_obj
 
-    resource_ids = [r.id for r in connection.selected_resources if r.is_selected]
+    resource_ids = [r["id"] for r in selected_res_data if r["is_selected"]]
 
-    snapshots = (
-        db.query(RepositoryLanguageSnapshot)
-        .filter(
-            RepositoryLanguageSnapshot.selected_resource_id.in_(resource_ids),
-            RepositoryLanguageSnapshot.owner_user_id == user.id,
-            RepositoryLanguageSnapshot.is_current == True,
-        )
-        .all()
-        if resource_ids
-        else []
-    )
-    snap_by_res_id = {s.selected_resource_id: s for s in snapshots}
+    snap_by_res_id = {}
+    readme_by_res_id = {}
+    if resource_ids:
+        with SessionLocal() as db:
+            snapshots = (
+                db.query(RepositoryLanguageSnapshot)
+                .options(joinedload(RepositoryLanguageSnapshot.breakdowns))
+                .filter(
+                    RepositoryLanguageSnapshot.selected_resource_id.in_(resource_ids),
+                    RepositoryLanguageSnapshot.owner_user_id == user.id,
+                    RepositoryLanguageSnapshot.is_current == True,
+                )
+                .all()
+            )
+            snap_by_res_id = {s.selected_resource_id: s for s in snapshots}
 
-    readme_snapshots = (
-        db.query(RepositoryReadmeSnapshot)
-        .filter(
-            RepositoryReadmeSnapshot.selected_resource_id.in_(resource_ids),
-            RepositoryReadmeSnapshot.owner_user_id == user.id,
-            RepositoryReadmeSnapshot.is_current == True,
-        )
-        .all()
-        if resource_ids
-        else []
-    )
-    readme_by_res_id = {s.selected_resource_id: s for s in readme_snapshots}
+            readme_snapshots = (
+                db.query(RepositoryReadmeSnapshot)
+                .filter(
+                    RepositoryReadmeSnapshot.selected_resource_id.in_(resource_ids),
+                    RepositoryReadmeSnapshot.owner_user_id == user.id,
+                    RepositoryReadmeSnapshot.is_current == True,
+                )
+                .all()
+            )
+            readme_by_res_id = {s.selected_resource_id: s for s in readme_snapshots}
 
     for r in repos:
         full_n = r.get("full_name") or ""
@@ -421,11 +441,11 @@ async def list_github_repositories(
             or selected_resources_map.get(short_n)
             or selected_resources_map.get(short_n.lower())
         )
-        is_sel = bool(res and res.is_selected)
+        is_sel = bool(res and res.get("is_selected"))
         r["selected"] = is_sel
         if res:
-            r["resource_id"] = str(res.id)
-            snap = snap_by_res_id.get(res.id)
+            r["resource_id"] = str(res["id"])
+            snap = snap_by_res_id.get(res["id"])
             if snap:
                 r["languages_status"] = snap.sync_status
                 r["detected_languages_count"] = len(snap.breakdowns)
@@ -450,7 +470,7 @@ async def list_github_repositories(
                 r["last_language_sync_at"] = None
                 r["languages"] = []
 
-            readme_snap = readme_by_res_id.get(res.id)
+            readme_snap = readme_by_res_id.get(res["id"])
             if readme_snap:
                 r["readme_status"] = readme_snap.sync_status
                 r["readme_sha"] = readme_snap.blob_sha
@@ -1665,7 +1685,6 @@ async def analyze_repository_evidence(
 @router.get("/github/diagnostic")
 async def get_github_diagnostic(
     user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """
     Phase 11 Diagnostic Engine:
@@ -1713,20 +1732,35 @@ async def get_github_diagnostic(
             "duration_ms": duration_ms,
         })
 
-    # Retrieve connection
-    connection = db.query(ConnectedSource).filter(
-        ConnectedSource.owner_user_id == user.id,
-        ConnectedSource.provider == "github",
-        ConnectedSource.connection_status == "connected",
-    ).first()
-
+    # Retrieve connection in scoped session to avoid holding connection during external calls
+    connection_status = None
+    account_identity = None
+    sample_repo = None
     client: Optional[GitHubClient] = None
-    if connection and connection.encrypted_credentials:
-        try:
-            pat = decrypt_credential(connection.encrypted_credentials)
-            client = GitHubClient(pat)
-        except Exception as e:
-            logger.warning(f"Diagnostic credential decryption failed: {e}")
+
+    with SessionLocal() as db:
+        connection = (
+            db.query(ConnectedSource)
+            .options(joinedload(ConnectedSource.selected_resources))
+            .filter(
+                ConnectedSource.owner_user_id == user.id,
+                ConnectedSource.provider == "github",
+                ConnectedSource.connection_status == "connected",
+            )
+            .first()
+        )
+        if connection:
+            connection_status = connection.connection_status
+            account_identity = connection.account_identity
+            selected = [r for r in (connection.selected_resources or []) if r.is_selected]
+            if selected:
+                sample_repo = selected[0].name
+            if connection.encrypted_credentials:
+                try:
+                    pat = decrypt_credential(connection.encrypted_credentials)
+                    client = GitHubClient(pat)
+                except Exception as e:
+                    logger.warning(f"Diagnostic credential decryption failed: {e}")
 
     # Check 1: PAT Validation
     t0 = time.time()
@@ -1745,11 +1779,11 @@ async def get_github_diagnostic(
 
     # Check 2: Account Identity
     t0 = time.time()
-    if connection and client:
+    if connection_status and client:
         try:
             t_res = await client.test_connection()
             actual_login = t_res.get("login") or t_res.get("username") or ""
-            stored_login = connection.account_identity
+            stored_login = account_identity or ""
             if actual_login.lower() == stored_login.lower():
                 add_check(2, "Account Identity Match", "GitHub Auth", "pass", f"Identity verified: {actual_login}", {"account": actual_login}, int((time.time() - t0) * 1000))
             else:
@@ -1885,15 +1919,16 @@ async def get_github_diagnostic(
 
     # Check 10: PostgreSQL Evidence Persistence
     t0 = time.time()
-    gh_evidence_count = db.query(EvidenceItem).filter(
-        EvidenceItem.owner_user_id == user.id,
-        EvidenceItem.source_provider == "github",
-        EvidenceItem.is_deleted == False,
-    ).count()
-    raw_count = db.query(RawSourceRecord).filter(
-        RawSourceRecord.owner_user_id == user.id,
-        RawSourceRecord.provider == "github",
-    ).count()
+    with SessionLocal() as db:
+        gh_evidence_count = db.query(EvidenceItem).filter(
+            EvidenceItem.owner_user_id == user.id,
+            EvidenceItem.source_provider == "github",
+            EvidenceItem.is_deleted == False,
+        ).count()
+        raw_count = db.query(RawSourceRecord).filter(
+            RawSourceRecord.owner_user_id == user.id,
+            RawSourceRecord.provider == "github",
+        ).count()
     add_check(10, "PostgreSQL Evidence Persistence", "Data Persistence", "pass" if gh_evidence_count > 0 else "warning", f"Verified PostgreSQL storage: {gh_evidence_count} EvidenceItems, {raw_count} RawSourceRecords", {"evidence_items": gh_evidence_count, "raw_records": raw_count}, int((time.time() - t0) * 1000))
 
     # Check 11: Idempotency Verification
@@ -1986,14 +2021,16 @@ async def get_github_diagnostic(
 
     # Check 17: Candidate Competency Extraction & Taxonomy
     t0 = time.time()
-    taxonomy_count = db.query(CompetencyTaxonomy).count()
-    mapping_count = db.query(EvidenceCompetencyMapping).filter(EvidenceCompetencyMapping.owner_user_id == user.id).count()
+    with SessionLocal() as db:
+        taxonomy_count = db.query(CompetencyTaxonomy).count()
+        mapping_count = db.query(EvidenceCompetencyMapping).filter(EvidenceCompetencyMapping.owner_user_id == user.id).count()
     add_check(17, "Competency Taxonomy & Candidate Skills", "Taxonomy Engine", "pass" if taxonomy_count > 0 else "warning", f"Taxonomy verified: {taxonomy_count} competencies in taxonomy, {mapping_count} user skill mappings", {"taxonomy_count": taxonomy_count, "mappings_count": mapping_count}, int((time.time() - t0) * 1000))
 
     # Check 18: PostgreSQL Analysis Persistence
     t0 = time.time()
-    analyses_count = db.query(WorkAnalysisResult).filter(WorkAnalysisResult.owner_user_id == user.id).count()
-    runs_count = db.query(AIAnalysisRun).filter(AIAnalysisRun.owner_user_id == user.id).count()
+    with SessionLocal() as db:
+        analyses_count = db.query(WorkAnalysisResult).filter(WorkAnalysisResult.owner_user_id == user.id).count()
+        runs_count = db.query(AIAnalysisRun).filter(AIAnalysisRun.owner_user_id == user.id).count()
     add_check(18, "Work Analysis Result Persistence", "Data Persistence", "pass", f"WorkAnalysisResult records in DB: {analyses_count} (Analysis runs: {runs_count})", {"analyses_count": analyses_count, "runs_count": runs_count}, int((time.time() - t0) * 1000))
 
     # Check 19: ChromaDB Vector Indexing & Search
@@ -2007,8 +2044,8 @@ async def get_github_diagnostic(
 
     # Check 20: Frontend API Readiness
     t0 = time.time()
-    all_ready = connection is not None and connection.connection_status == "connected"
-    add_check(20, "Frontend API Retrieval Readiness", "API Integration", "pass" if all_ready else "warning", "Evidence and Repository endpoints ready for frontend retrieval", {"connection_status": connection.connection_status if connection else "none"}, int((time.time() - t0) * 1000))
+    all_ready = connection_status == "connected"
+    add_check(20, "Frontend API Retrieval Readiness", "API Integration", "pass" if all_ready else "warning", "Evidence and Repository endpoints ready for frontend retrieval", {"connection_status": connection_status or "none"}, int((time.time() - t0) * 1000))
 
     passed_count = sum(1 for c in checks if c["status"] == "pass")
     warning_count = sum(1 for c in checks if c["status"] == "warning")
@@ -2193,30 +2230,35 @@ async def connect_jira(
 @router.get("/jira/projects")
 async def list_jira_projects(
     user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """Lists projects from the connected Jira instance."""
-    connection = db.query(ConnectedSource).filter(
-        ConnectedSource.owner_user_id == user.id,
-        ConnectedSource.provider == "jira",
-        ConnectedSource.connection_status == "connected",
-    ).first()
-
-    if not connection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active Jira connection found",
+    with SessionLocal() as db:
+        connection = (
+            db.query(ConnectedSource)
+            .options(joinedload(ConnectedSource.selected_resources))
+            .filter(
+                ConnectedSource.owner_user_id == user.id,
+                ConnectedSource.provider == "jira",
+                ConnectedSource.connection_status == "connected",
+            )
+            .first()
         )
 
-    creds = json.loads(decrypt_credential(connection.encrypted_credentials))
+        if not connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active Jira connection found",
+            )
+
+        creds = json.loads(decrypt_credential(connection.encrypted_credentials))
+        selected_keys = {
+            r.external_resource_id
+            for r in (connection.selected_resources or [])
+            if r.is_selected
+        }
+
     client = JiraCloudClient(creds["site_url"], creds["email"], creds["api_token"])
     projects = await client.list_projects()
-
-    selected_keys = {
-        r.external_resource_id
-        for r in connection.selected_resources
-        if r.is_selected
-    }
 
     for p in projects:
         p["selected"] = p["key"] in selected_keys

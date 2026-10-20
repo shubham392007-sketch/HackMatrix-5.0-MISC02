@@ -9,15 +9,17 @@ logger = get_logger("db.session")
 settings = get_settings()
 
 # Engine creation with strictly bounded pooling for Supabase session-mode pooler (limit 15 total)
-# pool_size=3 with max_overflow=0 guarantees this service will never exceed 3 connections,
-# leaving ample headroom for other processes and preventing EMAXCONNSESSION errors.
+# pool_size=10 with max_overflow=0 guarantees this service will NEVER exceed 10 connections total,
+# perfectly supporting concurrent frontend requests while leaving a guaranteed 5-connection headroom
+# on Supabase to prevent EMAXCONNSESSION errors.
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
     pool_recycle=300,   # Recycle idle connections every 5 minutes
-    pool_size=3,        # Bounded pool size suitable for Supabase session mode
-    max_overflow=0,     # Disallow overflow beyond pool_size to prevent pooler exhaustion
-    pool_timeout=15.0,  # Wait up to 15s in queue if all 3 connections are momentarily active
+    pool_size=10,       # Bounded pool size supporting dashboard concurrency
+    max_overflow=0,     # max_overflow=0 guarantees strict connection bounds below Supabase's 15 limit
+    pool_timeout=30.0,  # Wait up to 30s in queue during high concurrency bursts
+    pool_reset_on_return="rollback",
     connect_args={
         "connect_timeout": 10,
         "keepalives": 1,

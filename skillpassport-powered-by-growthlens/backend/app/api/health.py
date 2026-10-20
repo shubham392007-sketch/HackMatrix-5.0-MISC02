@@ -141,9 +141,8 @@ async def readiness(response: Response):
 
     # 4. ChromaDB
     try:
-        import chromadb
-        client = chromadb.PersistentClient(path=settings.chroma_persist_directory)
-        heartbeat = client.heartbeat()
+        from backend.app.rag.chroma import chroma_store
+        heartbeat = chroma_store.client.heartbeat()
         services["chromadb"] = {
             "status": "healthy",
             "connected": True,
