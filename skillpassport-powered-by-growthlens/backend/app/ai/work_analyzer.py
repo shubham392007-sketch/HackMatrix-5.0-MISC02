@@ -29,8 +29,9 @@ STRICT GROUNDING & SEPARATION RULES:
 5. `technologies`: Explicit technologies, frameworks, and libraries observed (e.g. ["Python", "FastAPI", "PostgreSQL", "Docker"]).
 6. `demonstrated_skills`: Professional competencies and skills demonstrated by the user in this artifact (e.g. [{"skill": "Statistical Modeling", "proficiency": "Advanced", "justification": "Implemented Weibull survival model"}, {"skill": "Automated Testing", "proficiency": "Intermediate", "justification": "Wrote 11 unit tests with pytest"}]). Cross-reference with candidate skills extracted from the evidence.
 7. `uncertainty_flags`: Genuine uncertainties (e.g. "Collaborative commit where contribution percentage is unconfirmed", "No test files present in diff").
-8. If text is empty or insufficient: return empty lists with an uncertainty flag explaining why.
-9. Output ONLY a valid JSON object matching the exact schema below, with NO markdown backticks or extra commentary.
+8. Dynamic Confidence Score: Evaluate and output a realistic, evidence-grounded `confidence_score` (float between 0.10 and 0.99). Never output a hardcoded or fixed 0.85. Base it on demonstrable code/commit depth, verifiable tasks, and concrete outputs.
+9. If text is empty or insufficient: return empty lists with an uncertainty flag explaining why.
+10. Output ONLY a valid JSON object matching the exact schema below, with NO markdown backticks or extra commentary.
 
 Schema:
 {
@@ -53,7 +54,7 @@ Schema:
   "uncertainty_flags": [
     {"area": "Attribution | Completeness | Scope", "reason": "Specific uncertainty explanation"}
   ],
-  "confidence_score": 0.85
+  "confidence_score": 0.89
 }
 """
 
@@ -496,6 +497,25 @@ class WorkAnalyzerService:
     ) -> Dict[str, Any]:
         """Saves WorkAnalysisResult and updates AIAnalysisRun with explicit audit metadata."""
         result_id = uuid.uuid4()
+        raw_cs = data.get("confidence_score")
+        calc_conf = None
+        if raw_cs is not None:
+            try:
+                cs_val = float(str(raw_cs).replace("%", "").strip())
+                if cs_val > 1.0:
+                    cs_val = cs_val / 100.0
+                if 0.10 <= cs_val <= 0.99:
+                    calc_conf = round(cs_val, 2)
+            except (ValueError, TypeError):
+                pass
+
+        if calc_conf is None:
+            n_facts = len(data.get("observed_facts", []))
+            n_tasks = len(data.get("technical_tasks", []))
+            n_techs = len(data.get("technologies", []))
+            n_skills = len(data.get("demonstrated_skills", []))
+            calc_conf = round(min(0.60 + (n_facts * 0.04) + (n_tasks * 0.05) + (n_techs * 0.03) + (n_skills * 0.03), 0.95), 2)
+
         work_res = WorkAnalysisResult(
             id=result_id,
             run_id=analysis_run.id,
@@ -507,7 +527,7 @@ class WorkAnalyzerService:
             technical_tasks=data.get("technical_tasks", []),
             technologies=data.get("technologies", []),
             uncertainty_flags=data.get("uncertainty_flags", []),
-            confidence_score=float(data.get("confidence_score", 0.70 if fallback_used else 0.85)),
+            confidence_score=calc_conf,
             summary=data.get("summary", ""),
             role_identified=data.get("role", "Contributor"),
             analysis_method=analysis_method,

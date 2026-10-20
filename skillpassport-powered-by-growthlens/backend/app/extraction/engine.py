@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMapping
-from backend.app.ai.extractor import ai_extractor
+from backend.app.ai.extractor import ai_extractor, compute_dynamic_confidence_score
 from backend.app.rag.chroma import chroma_store
 from backend.app.core.logging import get_logger
 
@@ -87,8 +87,18 @@ class Domain1ExtractionEngine:
             evidence_item.evidence_strength = strength
             evidence_item.processing_status = "ready_for_review"
             evidence_item.verification_status = "unreviewed"
-            avg_conf = sum(float(c.get("confidence_score", 0.85)) for c in competencies) / len(competencies)
-            # True confidence score - never artificially clamp to 0.70
+            # Calculate dynamic evidence-grounded confidence from competencies
+            scores = [
+                compute_dynamic_confidence_score(
+                    c.get("confidence_score") or c.get("relevance_score"),
+                    text_content=content_text,
+                    justification=c.get("justification") or "",
+                    demonstration_level=c.get("demonstration_level", "intermediate"),
+                    skill_name=c.get("name", ""),
+                )
+                for c in competencies
+            ]
+            avg_conf = sum(scores) / len(scores) if scores else 0.80
             evidence_item.extraction_confidence = round(min(max(avg_conf, 0.10), 0.98), 2)
 
         # Merge work context into normalized metadata
@@ -116,10 +126,19 @@ class Domain1ExtractionEngine:
                 continue
 
             comp_cat = comp.get("category", "General Engineering")
-            conf_score = float(comp.get("confidence_score", 0.85))
             demo_level = comp.get("demonstration_level", "intermediate").capitalize()
             justification = comp.get("justification") or content_text[:300]
             canonical_tax_id = comp.get("canonical_taxonomy_id")
+
+            # Dynamic confidence score computation (never hardcoded)
+            conf_score = compute_dynamic_confidence_score(
+                comp.get("confidence_score") or comp.get("relevance_score"),
+                text_content=content_text,
+                justification=justification,
+                demonstration_level=demo_level,
+                skill_name=comp_name,
+            )
+            comp["confidence_score"] = conf_score
 
             # Resolve taxonomy record
             tax_record = None
@@ -162,7 +181,7 @@ class Domain1ExtractionEngine:
                     mapping_method="first_pass_extraction",
                     relevance_score=conf_score,
                     supporting_excerpt=justification[:1000],
-                    rationale=f"Demonstrated in {source_provider} ({demo_level} proficiency)",
+                    rationale=f"Demonstrated in {source_provider} ({demo_level} proficiency, {int(conf_score * 100)}% model confidence)",
                     status="candidate",  # Never auto-verified in Domain 1
                     proficiency_level=demo_level,
                 )
@@ -170,6 +189,11 @@ class Domain1ExtractionEngine:
                 db.flush()
                 mapping_id = str(mapping.id)
             else:
+                existing_mapping.relevance_score = conf_score
+                existing_mapping.proficiency_level = demo_level
+                existing_mapping.supporting_excerpt = justification[:1000]
+                existing_mapping.rationale = f"Demonstrated in {source_provider} ({demo_level} proficiency, {int(conf_score * 100)}% model confidence)"
+                db.flush()
                 mapping_id = str(existing_mapping.id)
 
             candidate_skills_output.append({

@@ -967,6 +967,8 @@ async def _sync_single_github_repo_internal(
 
     # 9. Query candidate skills for truthful reporting to UI
     from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
+    from backend.app.ai.extractor import compute_dynamic_confidence_score
+
     mappings = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(
         CompetencyTaxonomy, EvidenceCompetencyMapping.competency_id == CompetencyTaxonomy.id
     ).filter(
@@ -977,9 +979,14 @@ async def _sync_single_github_repo_internal(
         {
             "name": tax.canonical_name,
             "category": tax.category,
-            "proficiency": m.proficiency_level,
-            "justification": m.supporting_excerpt or m.rationale or "",
-            "confidence": m.confidence_score,
+            "proficiency": getattr(m, "proficiency_level", "Practitioner"),
+            "justification": getattr(m, "supporting_excerpt", "") or getattr(m, "rationale", "") or "",
+            "confidence": getattr(m, "relevance_score", None) or getattr(m, "confidence_score", None) or compute_dynamic_confidence_score(
+                None,
+                justification=getattr(m, "supporting_excerpt", "") or getattr(m, "rationale", ""),
+                demonstration_level=getattr(m, "proficiency_level", "Practitioner"),
+                skill_name=tax.canonical_name,
+            ),
         }
         for m, tax in mappings
     ]

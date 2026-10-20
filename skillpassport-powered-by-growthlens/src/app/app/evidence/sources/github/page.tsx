@@ -1484,6 +1484,11 @@ export default function GitHubSourceFlow() {
                               <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#DFE968] border border-[#1C1C1C] text-[#4A7A4E]">
                                 {skill.proficiency || "Intermediate"}
                               </span>
+                              {skill.confidence !== undefined && skill.confidence !== null && (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 border border-[#1C1C1C] text-emerald-900">
+                                  {Math.round(skill.confidence > 1 ? skill.confidence : skill.confidence * 100)}% CONF
+                                </span>
+                              )}
                             </div>
                           </div>
                           {skill.justification && (

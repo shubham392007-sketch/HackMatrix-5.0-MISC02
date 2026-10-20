@@ -214,3 +214,48 @@ async def test_sync_single_repository_isolation_and_languages():
         assert data["candidate_skills"][0]["name"] == "Python"
 
     app.dependency_overrides.clear()
+
+
+def test_evidence_competency_mapping_attributes():
+    from backend.app.models.taxonomy import EvidenceCompetencyMapping
+    mapping = EvidenceCompetencyMapping(
+        relevance_score=0.92,
+        proficiency_level="Advanced",
+        supporting_excerpt="Demonstrated advanced Python concurrency",
+        rationale="Used async patterns",
+    )
+    assert mapping.relevance_score == 0.92
+    assert mapping.confidence_score == 0.92
+    assert mapping.proficiency_level == "Advanced"
+
+
+def test_dynamic_confidence_score_not_hardcoded():
+    from backend.app.ai.extractor import compute_dynamic_confidence_score
+    
+    # 1. Model provides dynamic float score
+    s1 = compute_dynamic_confidence_score(0.93, skill_name="Distributed Systems")
+    assert s1 == 0.93
+    
+    # 2. Model provides percentage string
+    s2 = compute_dynamic_confidence_score("87%", skill_name="Kafka Architecture")
+    assert s2 == 0.87
+    
+    # 3. Model score omitted -> dynamic computation based on evidence depth, not fixed 0.85
+    s_adv = compute_dynamic_confidence_score(
+        None,
+        text_content="Built scalable microservices in Python with FastAPI and PostgreSQL",
+        justification="Built scalable microservices in Python with FastAPI",
+        demonstration_level="Advanced",
+        skill_name="Python Backend Architecture",
+    )
+    s_fnd = compute_dynamic_confidence_score(
+        None,
+        text_content="Brief mention of tool",
+        justification="tool",
+        demonstration_level="Foundational",
+        skill_name="CSS Styling",
+    )
+    assert s_adv != s_fnd
+    assert s_adv > s_fnd
+
+

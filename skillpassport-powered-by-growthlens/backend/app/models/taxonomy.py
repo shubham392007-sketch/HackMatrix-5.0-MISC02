@@ -57,6 +57,10 @@ class EvidenceCompetencyMapping(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="candidate", nullable=False)  # "candidate", "reviewed", "flagged", "insufficient"
     proficiency_level: Mapped[str] = mapped_column(String(50), default="Practitioner", nullable=False)  # "Foundation", "Working", "Practitioner", "Advanced"
 
+    @property
+    def confidence_score(self) -> float:
+        return self.relevance_score
+
     evidence_item = relationship("EvidenceItem", back_populates="competency_mappings")
     competency = relationship("CompetencyTaxonomy", back_populates="mappings")
 

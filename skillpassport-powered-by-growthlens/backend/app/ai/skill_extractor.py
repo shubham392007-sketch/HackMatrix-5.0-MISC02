@@ -8,7 +8,7 @@ from backend.app.core.logging import get_logger
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMapping
 from backend.app.models.ai_governance import AIAnalysisRun, WorkAnalysisResult
-from backend.app.ai.extractor import ai_extractor
+from backend.app.ai.extractor import ai_extractor, compute_dynamic_confidence_score
 from backend.app.ai.guard import hallucination_guard
 from backend.app.ai.output_validator import output_validator
 
@@ -56,10 +56,18 @@ class SkillExtractionService:
         for comp in candidates:
             c_name = comp.get("name", "").strip()
             c_cat = comp.get("category", "General Engineering")
-            c_score = float(comp.get("confidence_score", 0.85))
             c_just = comp.get("justification", "").strip()
             c_level = comp.get("demonstration_level", "intermediate")
             c_tax_id = comp.get("canonical_taxonomy_id")
+
+            # Dynamically compute or normalize confidence score (never hardcoded)
+            c_score = compute_dynamic_confidence_score(
+                comp.get("confidence_score") or comp.get("relevance_score"),
+                text_content=evidence.extracted_excerpt or evidence.description,
+                justification=c_just,
+                demonstration_level=c_level,
+                skill_name=c_name,
+            )
 
             if not c_name or not c_just:
                 continue

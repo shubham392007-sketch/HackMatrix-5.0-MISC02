@@ -339,6 +339,7 @@ def list_candidate_skills(
             "name": comp.canonical_name if comp else "General Engineering",
             "category": comp.category if comp else "Engineering",
             "confidence_score": m.relevance_score,
+            "relevance_score": m.relevance_score,
             "proficiency_level": m.proficiency_level,
             "supporting_excerpt": m.supporting_excerpt,
             "status": m.status,

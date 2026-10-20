@@ -626,13 +626,16 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
               excerpt: typeof f === "object" ? f.excerpt || f.fact || "" : f,
               evidence_id: w.evidence_id,
             })),
-            inferred_attributes: (w.inferred_attributes || []).map((inf: any, idx: number) => ({
-              id: `inf-${idx}`,
-              attribute: typeof inf === "string" ? inf : inf.attribute || "",
-              interpretation: typeof inf === "object" ? inf.supported_by || "" : "",
-              confidence: Math.round((w.confidence_score || 0.85) * 100),
-              is_tentative: true,
-            })),
+            inferred_attributes: (w.inferred_attributes || []).map((inf: any, idx: number) => {
+              const wConf = w.confidence_score !== undefined && w.confidence_score !== null ? (w.confidence_score <= 1.0 ? w.confidence_score * 100 : w.confidence_score) : 80;
+              return {
+                id: `inf-${idx}`,
+                attribute: typeof inf === "string" ? inf : inf.attribute || "",
+                interpretation: typeof inf === "object" ? inf.supported_by || "" : "",
+                confidence: Math.round(wConf),
+                is_tentative: true,
+              };
+            }),
             detected_activities: (w.technical_tasks || []).map((t: string) => ({
               task: t,
               contribution_level: w.role?.toLowerCase().includes("author") ? "author" : "collaborator",
@@ -657,42 +660,50 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
-        const mappedCandidates: ExtractionCandidateItem[] = candRes.value.candidates.map((c: any) => ({
-          id: c.candidate_id,
-          original_label: c.name,
-          canonical_skill_id: c.competency_id,
-          canonical_name: c.name,
-          category: c.category,
-          skill_type: "technical",
-          confidence: Math.round((c.confidence_score || 0.85) * 100),
-          evidence_ids: [c.evidence_id],
-          supporting_excerpt: c.supporting_excerpt,
-          extraction_rationale: c.rationale,
-          taxonomy_status: "resolved",
-          review_state: c.status === "verified" ? "reviewed" : c.status === "insufficient" ? "insufficient" : "pending_review",
-          ambiguity_flags: [],
-          created_at: c.created_at || "Recently",
-        }));
+        const mappedCandidates: ExtractionCandidateItem[] = candRes.value.candidates.map((c: any) => {
+          const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
+          const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 82;
+          return {
+            id: c.candidate_id,
+            original_label: c.name,
+            canonical_skill_id: c.competency_id,
+            canonical_name: c.name,
+            category: c.category,
+            skill_type: "technical",
+            confidence: dynamicScore,
+            evidence_ids: [c.evidence_id],
+            supporting_excerpt: c.supporting_excerpt,
+            extraction_rationale: c.rationale,
+            taxonomy_status: "resolved",
+            review_state: c.status === "verified" ? "reviewed" : c.status === "insufficient" ? "insufficient" : "pending_review",
+            ambiguity_flags: [],
+            created_at: c.created_at || "Recently",
+          };
+        });
         setExtractionCandidates(mappedCandidates);
 
-        const mappedMappings: EvidenceMappingItem[] = candRes.value.candidates.map((c: any) => ({
-          id: c.mapping_id,
-          candidate_skill_id: c.candidate_id,
-          candidate_label: c.name,
-          canonical_skill_id: c.competency_id,
-          evidence_id: c.evidence_id,
-          evidence_title: c.evidence_title,
-          source_type: c.source_type,
-          occurred_date: "Recently",
-          relationship_type: "direct_implementation",
-          supporting_excerpt: c.supporting_excerpt,
-          relevance_score: Math.round((c.confidence_score || 0.85) * 100),
-          attribution_state: "confirmed",
-          mapping_status: c.status === "insufficient" ? "needs_evidence" : "active",
-          review_history: [
-            { action: "AI Extraction", actor: "SkillPassport Engine", timestamp: c.created_at || "Recently" }
-          ],
-        }));
+        const mappedMappings: EvidenceMappingItem[] = candRes.value.candidates.map((c: any) => {
+          const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
+          const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 82;
+          return {
+            id: c.mapping_id,
+            candidate_skill_id: c.candidate_id,
+            candidate_label: c.name,
+            canonical_skill_id: c.competency_id,
+            evidence_id: c.evidence_id,
+            evidence_title: c.evidence_title,
+            source_type: c.source_type,
+            occurred_date: "Recently",
+            relationship_type: "direct_implementation",
+            supporting_excerpt: c.supporting_excerpt,
+            relevance_score: dynamicScore,
+            attribution_state: "confirmed",
+            mapping_status: c.status === "insufficient" ? "needs_evidence" : "active",
+            review_history: [
+              { action: "AI Extraction", actor: "SkillPassport Engine", timestamp: c.created_at || "Recently" }
+            ],
+          };
+        });
         setEvidenceMappings(mappedMappings);
       }
 
