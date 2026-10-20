@@ -14,6 +14,7 @@ import {
   refreshRepositoryLanguages,
   getRepositoryReadme,
   refreshRepositoryReadme,
+  selectSingleGitHubRepository,
   removeSelectedGitHubRepository,
   syncSingleGitHubRepository,
   analyzeGitHubRepository,
@@ -51,6 +52,7 @@ import {
 } from "lucide-react";
 import LoadingAnimation from "@/components/ui/LoadingAnimation";
 import RepositoryLanguageBar, { formatBytes } from "@/components/evidence/RepositoryLanguageBar";
+import MarkdownViewer from "@/components/evidence/MarkdownViewer";
 import Link from "next/link";
 
 interface GitHubRepoItem {
@@ -117,15 +119,60 @@ export default function GitHubSourceFlow() {
   const [removingRepo, setRemovingRepo] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  // Single Repo Sync & AI Analysis State
+  // Single Repo Sync & Selection State
+  const [selectingRepo, setSelectingRepo] = useState<string | null>(null);
   const [syncingSingleRepo, setSyncingSingleRepo] = useState<string | null>(null);
   const [analyzingRepo, setAnalyzingRepo] = useState<string | null>(null);
   const [analysisResultMsg, setAnalysisResultMsg] = useState<{ repo: string; message: string; model?: string } | null>(null);
+  const [syncSuccessOutcome, setSyncSuccessOutcome] = useState<{
+    repoName: string;
+    readmeRetrieved: boolean;
+    readmePath?: string;
+    readmeChars?: number;
+    commitsConsidered: number;
+    prsConsidered?: number;
+    languagesCount: number;
+    topLanguage?: string | null;
+    candidateSkills: Array<{
+      name: string;
+      category?: string;
+      proficiency?: string;
+      justification?: string;
+      confidence?: number;
+    }>;
+  } | null>(null);
 
   // Diagnostic State
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [runningDiagnostic, setRunningDiagnostic] = useState(false);
   const [diagnosticData, setDiagnosticData] = useState<GitHubDiagnosticResponse | null>(null);
+
+  const handleSelectSingleRepo = async (repoName: string) => {
+    setSelectingRepo(repoName);
+    setConnectError(null);
+    try {
+      await selectSingleGitHubRepository(repoName);
+      // Immediately reflect selected status in local state
+      setRepositories((prev) =>
+        prev.map((r) =>
+          r.full_name === repoName
+            ? {
+                ...r,
+                selected: true,
+                languages_status: r.languages_status || "not_synced",
+                readme_status: r.readme_status || "not_synced",
+              }
+            : r
+        )
+      );
+      setStatusMessage(`Repository "${repoName}" added to Evidence! You can preview its README or sync it.`);
+      refreshEvidenceData().catch((e) => console.warn("Background refresh:", e));
+    } catch (err: any) {
+      setConnectError(`Failed to add ${repoName}: ${err.message}`);
+    } finally {
+      setSelectingRepo(null);
+    }
+  };
 
   const handleSyncSingleRepo = async (repoName: string) => {
     setSyncingSingleRepo(repoName);
@@ -133,9 +180,27 @@ export default function GitHubSourceFlow() {
     setConnectError(null);
     try {
       const outcome = await syncSingleGitHubRepository(repoName);
+      const isReadmeOk = Boolean(outcome.readme_retrieved ?? outcome.has_readme);
+      const commitsCount = outcome.commits_imported ?? outcome.commits_considered ?? 0;
+      const skillsCount = outcome.candidate_skills_count ?? outcome.candidate_skills?.length ?? 0;
+
       setStatusMessage(
-        `Synchronized ${repoName}: ${outcome.commits_imported || 0} commits, ${outcome.prs_imported || 0} PRs, ${outcome.detected_languages || 0} languages.`
+        `Synchronized ${repoName}: README ${isReadmeOk ? "indexed" : "not found"}, ${commitsCount} commits consolidated, ${skillsCount} candidate skills extracted.`
       );
+
+      // Open genuine Sync Success Modal with accurate counts
+      setSyncSuccessOutcome({
+        repoName,
+        readmeRetrieved: isReadmeOk,
+        readmePath: outcome.readme_path || "README.md",
+        readmeChars: outcome.readme_chars || 0,
+        commitsConsidered: commitsCount,
+        prsConsidered: outcome.prs_imported ?? outcome.prs_considered ?? 0,
+        languagesCount: outcome.detected_languages ?? 0,
+        topLanguage: outcome.top_language || null,
+        candidateSkills: outcome.candidate_skills || [],
+      });
+
       // Immediately reflect active sync status and details in local state
       setRepositories((prev) =>
         prev.map((r) => {
@@ -148,12 +213,12 @@ export default function GitHubSourceFlow() {
               total_language_bytes: outcome.total_bytes ?? r.total_language_bytes,
               readme_status: outcome.readme_status || (outcome.has_readme ? "success" : "not_found"),
               has_readme: Boolean(outcome.has_readme),
+              readme_sections_count: outcome.readme_sections_count ?? r.readme_sections_count,
             };
           }
           return r;
         })
       );
-      await loadRepositories();
       await loadLanguagesSummary();
       await refreshEvidenceData();
     } catch (err: any) {
@@ -342,12 +407,25 @@ export default function GitHubSourceFlow() {
       setReadmeData(res);
     } catch (err: any) {
       console.warn("Could not load README preview:", err);
+      setReadmeData({
+        repository_id: repoFullName,
+        repository_name: repoFullName,
+        sync_status: "not_found",
+        readme_path: "README.md",
+        blob_sha: null,
+        html_url: null,
+        content_hash: null,
+        raw_content: null,
+        sections: [],
+        retrieval_timestamp: null,
+        error_summary: err.message || "README could not be retrieved from GitHub API.",
+      });
     } finally {
       setLoadingReadme(false);
     }
   };
 
-  // Refresh README from GitHub API
+  // Refresh README from GitHub API (fast live fetch, no heavy extraction)
   const handleRefreshReadme = async () => {
     if (!readmeModalRepo) return;
     setRefreshingReadme(true);
@@ -371,10 +449,9 @@ export default function GitHubSourceFlow() {
           return r;
         })
       );
-      setStatusMessage(`README refreshed and re-extracted for ${readmeModalRepo}`);
-      await refreshEvidenceData();
+      setStatusMessage(`README retrieved and refreshed from GitHub for ${readmeModalRepo}`);
     } catch (err: any) {
-      alert(`Failed to refresh README: ${err.message}`);
+      setConnectError(`Failed to refresh README: ${err.message}`);
     } finally {
       setRefreshingReadme(false);
     }
@@ -938,6 +1015,23 @@ export default function GitHubSourceFlow() {
                           </div>
                         )}
 
+                        {isSelected && !hasLangs && (
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FBF1CF]/60 border border-[#1C1C1C]/15 text-[11px]">
+                            <div className="flex items-center gap-1.5 text-[#1C1C1C]/75">
+                              <Code2 className="w-3.5 h-3.5 text-[#1C1C1C]" />
+                              <span>Code languages not yet loaded for this repository</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRefreshRepoLanguages(repo.full_name)}
+                              disabled={refreshingRepoLang === repo.full_name}
+                              className="pill-btn bg-white border border-[#1C1C1C] text-[10px] font-bold py-1 px-2.5 hover:bg-[#DFE968]"
+                            >
+                              {refreshingRepoLang === repo.full_name ? "FETCHING ···" : "FETCH LANGUAGES"}
+                            </button>
+                          </div>
+                        )}
+
                         {/* Action Toolbar per Repository */}
                         <div className="pt-2 border-t border-[#1C1C1C]/10 flex flex-wrap items-center justify-between gap-2 text-xs">
                           <div className="text-[11px] text-[#1C1C1C]/60">
@@ -983,20 +1077,31 @@ export default function GitHubSourceFlow() {
 
                                 <button
                                   type="button"
+                                  onClick={() => handleRefreshRepoLanguages(repo.full_name)}
+                                  disabled={refreshingRepoLang === repo.full_name}
+                                  className="pill-btn bg-white border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#FBF1CF]"
+                                  title="Fetch latest code language statistics from GitHub"
+                                >
+                                  <Code2 className={`w-3 h-3 text-[#1C1C1C] ${refreshingRepoLang === repo.full_name ? "animate-spin" : ""}`} />
+                                  <span>{refreshingRepoLang === repo.full_name ? "REFRESHING ···" : "LANGUAGES"}</span>
+                                </button>
+
+                                <button
+                                  type="button"
                                   onClick={() => handleSyncSingleRepo(repo.full_name)}
                                   disabled={syncingSingleRepo === repo.full_name}
-                                  className="pill-btn bg-white border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#FBF1CF]"
-                                  title="Synchronize languages, README, commits, and pull requests for this repository"
+                                  className="pill-btn bg-[#DFE968]/50 border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#DFE968]"
+                                  title="Synchronize languages, README, and consolidated commit history for this repository only"
                                 >
                                   <RefreshCw className={`w-3 h-3 ${syncingSingleRepo === repo.full_name ? "animate-spin" : ""}`} />
-                                  <span>{syncingSingleRepo === repo.full_name ? "SYNCING ···" : "REFRESH DATA"}</span>
+                                  <span>{syncingSingleRepo === repo.full_name ? "SYNCING ···" : "SYNC REPOSITORY"}</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleAnalyzeRepo(repo.full_name)}
                                   disabled={analyzingRepo === repo.full_name}
-                                  className="pill-btn bg-[#DFE968]/70 border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#DFE968]"
+                                  className="pill-btn bg-white border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#FBF1CF]"
                                   title="Run Ollama AI Work Analysis on this repository's evidence"
                                 >
                                   <Sparkles className={`w-3 h-3 text-[#1C1C1C] ${analyzingRepo === repo.full_name ? "animate-pulse" : ""}`} />
@@ -1024,16 +1129,13 @@ export default function GitHubSourceFlow() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  toggleStageRepo(repo.full_name);
-                                  if (!isStaged) {
-                                    setConfirmAddModalOpen(true);
-                                  }
-                                }}
-                                className="pill-btn pill-btn-primary text-[10px] font-black uppercase tracking-wider py-1 px-3 flex items-center gap-1"
+                                onClick={() => handleSelectSingleRepo(repo.full_name)}
+                                disabled={selectingRepo === repo.full_name}
+                                className="pill-btn pill-btn-primary text-[10px] font-black uppercase tracking-wider py-1.5 px-3.5 flex items-center gap-1 shadow-[1px_1px_0_0_#1C1C1C]"
+                                title="Add this repository directly to evidence"
                               >
                                 <Plus className="w-3 h-3" />
-                                <span>ADD REPOSITORY</span>
+                                <span>{selectingRepo === repo.full_name ? "ADDING ···" : "ADD REPOSITORY"}</span>
                               </button>
                             )}
                           </div>
@@ -1055,6 +1157,23 @@ export default function GitHubSourceFlow() {
                               <span>VIEW IN AI WORK ANALYSIS</span>
                               <ChevronRight className="w-3 h-3" />
                             </Link>
+                          </div>
+                        )}
+
+                        {isSelected && !hasLangs && (
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FBF1CF]/60 border border-[#1C1C1C]/15 text-[11px]">
+                            <div className="flex items-center gap-1.5 text-[#1C1C1C]/75">
+                              <Code2 className="w-3.5 h-3.5 text-[#1C1C1C]" />
+                              <span>Code languages not yet loaded for this repository</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRefreshRepoLanguages(repo.full_name)}
+                              disabled={refreshingRepoLang === repo.full_name}
+                              className="pill-btn bg-white border border-[#1C1C1C] text-[10px] font-bold py-1 px-2.5 hover:bg-[#DFE968]"
+                            >
+                              {refreshingRepoLang === repo.full_name ? "FETCHING ···" : "FETCH LANGUAGES"}
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1117,7 +1236,7 @@ export default function GitHubSourceFlow() {
         {/* ── README PREVIEW MODAL ────────────────────────────────────── */}
         {readmeModalRepo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#FBF6DF] rounded-3xl border-[2px] border-[#1C1C1C] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-[4px_4px_0_0_#1C1C1C] overflow-hidden">
+            <div className="bg-[#FBF6DF] rounded-3xl border-[2px] border-[#1C1C1C] w-full max-w-4xl max-h-[88vh] flex flex-col shadow-[4px_4px_0_0_#1C1C1C] overflow-hidden">
               {/* Modal Header */}
               <div className="p-5 border-b border-[#1C1C1C]/15 flex items-start justify-between bg-[#FBF1CF]">
                 <div className="space-y-1">
@@ -1162,19 +1281,35 @@ export default function GitHubSourceFlow() {
               {/* Modal Body */}
               <div className="p-5 overflow-y-auto space-y-4 flex-1">
                 {loadingReadme ? (
-                  <div className="p-12 text-center">
+                  <div className="p-16 text-center">
                     <LoadingAnimation size="sm" className="mx-auto -my-3" />
-                    <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">Loading README content...</p>
+                    <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">Fetching README documentation from GitHub...</p>
                   </div>
+                ) : readmeData && readmeData.raw_content ? (
+                  <MarkdownViewer
+                    content={readmeData.raw_content}
+                    repoName={readmeModalRepo}
+                    fileName={readmeData.readme_path || "README.md"}
+                    sections={readmeData.sections || []}
+                  />
                 ) : !readmeData || readmeData.sync_status === "not_found" ? (
-                  <div className="p-6 rounded-2xl bg-stone-100 border border-[#1C1C1C]/20 text-center space-y-2">
-                    <BookOpen className="w-8 h-8 text-stone-400 mx-auto" />
-                    <h4 className="text-xs font-black uppercase tracking-wider text-stone-700">
+                  <div className="p-8 rounded-2xl bg-stone-100 border border-[#1C1C1C]/20 text-center space-y-3">
+                    <BookOpen className="w-10 h-10 text-stone-400 mx-auto" />
+                    <h4 className="text-sm font-black uppercase tracking-wider text-stone-700">
                       No README File Found
                     </h4>
-                    <p className="text-[11px] text-stone-500 max-w-sm mx-auto">
-                      GitHub reported that this repository does not have a README file on its default branch. Language statistics and commits will still be used.
+                    <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
+                      GitHub reported that this repository does not have a README file on its default branch. Code language statistics and commits are still analyzed.
                     </p>
+                    <button
+                      type="button"
+                      onClick={handleRefreshReadme}
+                      disabled={refreshingReadme}
+                      className="pill-btn bg-white border border-[#1C1C1C] text-xs py-1.5 px-4 font-bold inline-flex items-center gap-1.5 hover:bg-[#DFE968]"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${refreshingReadme ? "animate-spin" : ""}`} />
+                      <span>{refreshingReadme ? "CHECKING GITHUB ···" : "CHECK GITHUB AGAIN"}</span>
+                    </button>
                   </div>
                 ) : readmeData.sync_status === "forbidden" ? (
                   <div className="p-6 rounded-2xl bg-[#F6C8D6]/40 border border-[#C85A54] text-center space-y-2">
@@ -1187,40 +1322,23 @@ export default function GitHubSourceFlow() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {/* Headings & Structure */}
-                    {readmeData.sections && readmeData.sections.length > 0 && (
-                      <div className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
-                          DETECTED SECTIONS & HEADINGS ({readmeData.sections.length})
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {readmeData.sections.map((sec, i) => (
-                            <span
-                              key={i}
-                              className="text-[10px] font-bold bg-[#FBF1CF] px-2 py-0.5 rounded border border-[#1C1C1C]/20 text-[#1C1C1C]"
-                            >
-                              {"#".repeat(sec.level)} {sec.title}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Raw Markdown / Content Preview */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60">
-                          EXTRACTED SOURCE CONTENT
-                        </span>
-                        <span className="text-[10px] font-mono text-[#1C1C1C]/50">
-                          {readmeData.raw_content ? `${readmeData.raw_content.length} characters` : ""}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-white border border-[#1C1C1C]/20 font-mono text-xs text-[#1C1C1C] whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed select-text">
-                        {readmeData.raw_content}
-                      </div>
-                    </div>
+                  <div className="p-8 rounded-2xl bg-[#FBF1CF]/60 border border-[#1C1C1C]/20 text-center space-y-3">
+                    <FileText className="w-10 h-10 text-[#1C1C1C]/40 mx-auto" />
+                    <h4 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                      README Snapshot Pending
+                    </h4>
+                    <p className="text-xs text-[#1C1C1C]/70 max-w-sm mx-auto leading-relaxed">
+                      Click below to fetch the README directly from GitHub API and preview it now.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRefreshReadme}
+                      disabled={refreshingReadme}
+                      className="pill-btn pill-btn-primary text-xs py-2 px-5 font-black inline-flex items-center gap-1.5"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${refreshingReadme ? "animate-spin" : ""}`} />
+                      <span>{refreshingReadme ? "FETCHING FROM GITHUB ···" : "FETCH README NOW"}</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1244,6 +1362,162 @@ export default function GitHubSourceFlow() {
                     setReadmeData(null);
                   }}
                   className="pill-btn pill-btn-primary text-xs py-1.5 px-4 font-bold"
+                >
+                  DONE
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── SYNC SUCCESS & CANDIDATE SKILLS SUMMARY MODAL ───────────── */}
+        {syncSuccessOutcome && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-[#FBF6DF] rounded-3xl border-[2px] border-[#1C1C1C] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[4px_4px_0_0_#1C1C1C] overflow-hidden">
+              {/* Header */}
+              <div className="p-5 border-b border-[#1C1C1C]/15 bg-[#DFE968] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-white border border-[#1C1C1C] flex items-center justify-center">
+                    <Check className="w-4 h-4 text-[#4A7A4E] stroke-[3]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[#1C1C1C]">
+                      Repository Synchronized & Analyzed
+                    </h3>
+                    <p className="text-xs font-mono text-[#1C1C1C]/80">
+                      {syncSuccessOutcome.repoName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSyncSuccessOutcome(null)}
+                  className="w-7 h-7 rounded-full bg-white border border-[#1C1C1C] flex items-center justify-center text-[#1C1C1C] hover:bg-[#F6C8D6]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-5 flex-1">
+                {/* 4 Summary Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                      README STATUS
+                    </span>
+                    <span className="text-xs font-black text-[#1C1C1C] block">
+                      {syncSuccessOutcome.readmeRetrieved ? "INDEXED" : "NO README"}
+                    </span>
+                    <span className="text-[10px] font-mono text-[#1C1C1C]/60 block">
+                      {syncSuccessOutcome.readmeRetrieved
+                        ? `${syncSuccessOutcome.readmeChars?.toLocaleString()} chars`
+                        : "None"}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                      COMMITS CONSOLIDATED
+                    </span>
+                    <span className="text-sm font-black text-[#1C1C1C] block">
+                      {syncSuccessOutcome.commitsConsidered}
+                    </span>
+                    <span className="text-[10px] text-[#1C1C1C]/60 block">
+                      Consolidated to 1 evidence
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                      CODE LANGUAGES
+                    </span>
+                    <span className="text-sm font-black text-[#1C1C1C] block">
+                      {syncSuccessOutcome.languagesCount}
+                    </span>
+                    <span className="text-[10px] text-[#1C1C1C]/60 truncate block" title={syncSuccessOutcome.topLanguage || "None"}>
+                      Top: {syncSuccessOutcome.topLanguage || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                      CANDIDATE SKILLS
+                    </span>
+                    <span className="text-sm font-black text-[#4A7A4E] block">
+                      {syncSuccessOutcome.candidateSkills.length}
+                    </span>
+                    <span className="text-[10px] text-[#1C1C1C]/60 block">
+                      Extracted by Qwen3 8B
+                    </span>
+                  </div>
+                </div>
+
+                {/* Candidate Competencies Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-emerald-700" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+                        CANDIDATE COMPETENCIES EXTRACTED ({syncSuccessOutcome.candidateSkills.length})
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-mono text-[#1C1C1C]/60">
+                      Grounded in README & Git History
+                    </span>
+                  </div>
+
+                  {syncSuccessOutcome.candidateSkills.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {syncSuccessOutcome.candidateSkills.map((skill, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-xl bg-white border border-[#1C1C1C]/20 space-y-1.5 shadow-[1px_1px_0_0_#1C1C1C]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-[#1C1C1C]">{skill.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              {skill.category && (
+                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#FBF1CF] border border-[#1C1C1C]/20 text-[#1C1C1C]">
+                                  {skill.category}
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#DFE968] border border-[#1C1C1C] text-[#4A7A4E]">
+                                {skill.proficiency || "Intermediate"}
+                              </span>
+                            </div>
+                          </div>
+                          {skill.justification && (
+                            <p className="text-[11px] text-[#1C1C1C]/75 leading-relaxed italic bg-stone-50 p-2 rounded border border-[#1C1C1C]/10">
+                              "{skill.justification}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-white border border-[#1C1C1C]/20 text-center">
+                      <p className="text-xs font-medium text-[#1C1C1C]/70">
+                        Evidence record persisted. Candidate skills will populate as Ollama finishes background extraction.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-[#1C1C1C]/15 bg-[#FBF1CF] flex items-center justify-between">
+                <Link
+                  href={`/app/evidence?source=github`}
+                  className="pill-btn pill-btn-primary text-xs py-2 px-4 font-black uppercase flex items-center gap-1.5"
+                >
+                  <span>VIEW IN EVIDENCE INVENTORY</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setSyncSuccessOutcome(null)}
+                  className="pill-btn bg-white border border-[#1C1C1C] text-xs py-2 px-5 font-bold hover:bg-[#DFE968]"
                 >
                   DONE
                 </button>

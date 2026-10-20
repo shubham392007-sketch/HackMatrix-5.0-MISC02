@@ -638,7 +638,7 @@ async def _sync_single_github_repo_internal(
     imported = 0
     now = datetime.now(timezone.utc)
 
-    # 2. Fetch & persist real repository language statistics
+    # 2. Fetch & persist repository language statistics
     lang_snap, lang_ok = await sync_repository_languages(
         db=db,
         user_id=user.id,
@@ -655,16 +655,16 @@ async def _sync_single_github_repo_internal(
         for b in (lang_snap.breakdowns if lang_snap else [])
     ]
     top_language = repo_lang_breakdowns[0]["name"] if repo_lang_breakdowns else None
+    total_bytes = lang_snap.total_bytes if lang_snap else 0
 
-    # 2.A Ingest or update EvidenceItem for Repository Language Composition
+    # 2.A Ingest or update dedicated EvidenceItem for Repository Language Composition
     if repo_lang_breakdowns:
-        discovered += 1
         lang_content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:languages:{repo_full}").hex
         existing_lang_evidence = db.query(EvidenceItem).filter(
             EvidenceItem.owner_user_id == user.id,
             EvidenceItem.source_provider == "github",
             EvidenceItem.source_type == "code_repository",
-            EvidenceItem.source_name == repo_full,
+            EvidenceItem.external_record_id == f"gh:languages:{repo_full}",
         ).first()
 
         lang_summary_text = f"Repository {repo_full} code composition:\n" + "\n".join(
@@ -731,11 +731,10 @@ async def _sync_single_github_repo_internal(
                 user_id=user.id,
                 fast_mode=True,
             )
-            imported += 1
         except Exception as e:
             logger.error(f"Error extracting candidate skills from languages for {repo_full}: {e}")
 
-    # 2.B Fetch & persist real repository README and extract candidate competencies
+    # 3. Fetch & persist repository README without triggering redundant extraction
     readme_snap, readme_ok = await sync_repository_readme(
         db=db,
         user_id=user.id,
@@ -743,162 +742,37 @@ async def _sync_single_github_repo_internal(
         selected_resource=res_record,
         client=client,
         sync_run_id=sync_run.id,
+        trigger_extraction=False,
     )
-    if readme_ok and readme_snap and readme_snap.sync_status == "success":
-        discovered += 1
-        imported += 1
+    readme_content = (readme_snap.raw_content or "").strip() if (readme_snap and readme_snap.raw_content) else ""
 
-    # 3. Fetch PRs
-    prs = await client.fetch_pull_requests(owner, repo_name, limit=10)
-    repo_imported = 0
-    for pr in prs:
-        discovered += 1
-        content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:pr:{repo_full}:{pr['number']}").hex
+    # 4. Fetch recent commits (up to 15) and PRs (up to 10)
+    commits = []
+    prs = []
+    try:
+        commits = await client.fetch_repository_commits(owner, repo_name, limit=15)
+    except Exception as e:
+        logger.warning(f"Could not fetch commits for {repo_full}: {e}")
 
-        # Check duplicate
-        existing_raw = db.query(RawSourceRecord).filter(
-            RawSourceRecord.owner_user_id == user.id,
-            RawSourceRecord.provider == "github",
-            RawSourceRecord.record_type == "pull_request",
-            RawSourceRecord.external_record_id == str(pr["number"]),
-        ).first()
+    try:
+        prs = await client.fetch_pull_requests(owner, repo_name, limit=10)
+    except Exception as e:
+        logger.warning(f"Could not fetch pull requests for {repo_full}: {e}")
 
-        if not existing_raw:
-            raw_rec = RawSourceRecord(
-                id=uuid.uuid4(),
-                owner_user_id=user.id,
-                sync_run_id=sync_run.id,
-                provider="github",
-                record_type="pull_request",
-                external_record_id=str(pr["number"]),
-                source_url=pr.get("html_url"),
-                observed_at=now,
-                content_hash=content_hash,
-                raw_payload=pr,
-            )
-            db.add(raw_rec)
-
-            reviews = []
-            try:
-                reviews = await client.fetch_pull_request_reviews(owner, repo_name, pr["number"])
-            except Exception as e:
-                logger.warning(f"Could not fetch reviews for PR #{pr['number']}: {e}")
-
-            # Create normalized EvidenceItem with repository language context
-            evidence = EvidenceItem(
-                id=uuid.uuid4(),
-                owner_user_id=user.id,
-                source_provider="github",
-                source_type="pull_request",
-                external_record_id=str(pr["number"]),
-                source_url=pr.get("html_url"),
-                source_name=repo_full,
-                evidence_category="engineering",
-                title=pr.get("title", "GitHub Pull Request"),
-                description=pr.get("body") or f"PR #{pr['number']} in {repo_full}",
-                extracted_excerpt=pr.get("title") + "\n" + (pr.get("body") or "")[:200],
-                observed_timestamp=now,
-                contributor_identity=pr.get("author_login") or connection.account_identity,
-                attribution_status="author" if pr.get("author_login") == connection.account_identity else "contributor",
-                project_name=repo_name,
-                evidence_strength="high" if pr.get("merged_at") else "medium",
-                extraction_confidence=0.88,
-                verification_status="unreviewed",
-                processing_status="ready_for_review",
-                provenance={
-                    "repo": repo_full,
-                    "pr_number": pr["number"],
-                    "state": pr.get("state"),
-                    "repository_languages": repo_lang_breakdowns,
-                    "primary_language": top_language,
-                    "review_count": len(reviews),
-                    "reviews": [{"user": r.get("user", {}).get("login"), "state": r.get("state")} for r in reviews[:5]],
-                },
-                normalized_metadata={
-                    "author": pr.get("author_login"),
-                    "merged": bool(pr.get("merged_at")),
-                    "repository_languages": repo_lang_breakdowns,
-                    "primary_language": top_language,
-                    "review_count": len(reviews),
-                },
-                content_hash=content_hash,
-            )
-            db.add(evidence)
-            db.flush()
-
-            # Execute extraction engine to propose candidate competencies and index in vector store
-            full_text = f"PR #{pr['number']}: {pr.get('title', '')}\nRepository: {repo_full}\n"
-            if pr.get("body"):
-                full_text += f"\nDescription:\n{pr['body']}\n"
-            if repo_lang_breakdowns:
-                lang_names = [f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
-                full_text += f"\nTechnologies and Languages: {', '.join(lang_names)}\n"
-
-            try:
-                await extraction_engine.process_and_persist_evidence(
-                    db=db,
-                    evidence_item=evidence,
-                    content_text=full_text,
-                    source_provider="github",
-                    category="engineering",
-                    user_id=user.id,
-                )
-            except Exception as e:
-                logger.error(f"Error extracting candidate skills for PR #{pr.get('number')}: {e}")
-
-            imported += 1
-            repo_imported += 1
-        else:
-            # Backfill candidate skills if not already extracted
-            existing_evidence = db.query(EvidenceItem).filter(
-                EvidenceItem.owner_user_id == user.id,
-                EvidenceItem.source_provider == "github",
-                EvidenceItem.source_type == "pull_request",
-                EvidenceItem.external_record_id == str(pr["number"]),
-            ).first()
-            if existing_evidence:
-                mapping_count = db.query(EvidenceCompetencyMapping).filter(
-                    EvidenceCompetencyMapping.evidence_id == existing_evidence.id
-                ).count()
-                if mapping_count == 0:
-                    full_text = f"PR #{pr['number']}: {existing_evidence.title}\nRepository: {repo_full}\n"
-                    if existing_evidence.description:
-                        full_text += f"\nDescription:\n{existing_evidence.description}\n"
-                    if repo_lang_breakdowns:
-                        lang_names = [f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
-                        full_text += f"\nTechnologies and Languages: {', '.join(lang_names)}\n"
-
-                    try:
-                        await extraction_engine.process_and_persist_evidence(
-                            db=db,
-                            evidence_item=existing_evidence,
-                            content_text=full_text,
-                            source_provider="github",
-                            category="engineering",
-                            user_id=user.id,
-                        )
-                    except Exception as e:
-                        logger.error(f"Error backfilling candidate skills for PR #{pr.get('number')}: {e}")
-
-    # 4. Fetch Commits
-    commits = await client.fetch_repository_commits(owner, repo_name, limit=15)
-    repo_commits_imported = 0
+    # 5. Persist raw records for provenance and full auditability (no individual EvidenceItem bloat)
     for commit in commits:
         commit_sha = commit.get("sha")
         if not commit_sha:
             continue
-        discovered += 1
-        content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:commit:{repo_full}:{commit_sha}").hex
-
-        existing_raw_commit = db.query(RawSourceRecord).filter(
+        c_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:commit:{repo_full}:{commit_sha}").hex
+        existing_raw = db.query(RawSourceRecord).filter(
             RawSourceRecord.owner_user_id == user.id,
             RawSourceRecord.provider == "github",
             RawSourceRecord.record_type == "commit",
             RawSourceRecord.external_record_id == commit_sha,
         ).first()
-
-        if not existing_raw_commit:
-            raw_rec = RawSourceRecord(
+        if not existing_raw:
+            db.add(RawSourceRecord(
                 id=uuid.uuid4(),
                 owner_user_id=user.id,
                 sync_run_id=sync_run.id,
@@ -907,126 +781,208 @@ async def _sync_single_github_repo_internal(
                 external_record_id=commit_sha,
                 source_url=commit.get("html_url"),
                 observed_at=now,
-                content_hash=content_hash,
+                content_hash=c_hash,
                 raw_payload=commit,
-            )
-            db.add(raw_rec)
+            ))
 
-            author_login = commit.get("author_login")
-            author_name = commit.get("author_name") or author_login or "Contributor"
-            is_author = (
-                (author_login and author_login.lower() == connection.account_identity.lower())
-                or (author_name and author_name.lower() in connection.account_identity.lower())
-            )
-
-            commit_msg = commit.get("message") or ""
-            first_line = commit_msg.splitlines()[0][:80] if commit_msg else f"Commit {commit_sha[:7]}"
-
-            evidence_commit = EvidenceItem(
+    for pr in prs:
+        pr_num = str(pr.get("number"))
+        pr_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"gh:pr:{repo_full}:{pr_num}").hex
+        existing_pr_raw = db.query(RawSourceRecord).filter(
+            RawSourceRecord.owner_user_id == user.id,
+            RawSourceRecord.provider == "github",
+            RawSourceRecord.record_type == "pull_request",
+            RawSourceRecord.external_record_id == pr_num,
+        ).first()
+        if not existing_pr_raw:
+            db.add(RawSourceRecord(
                 id=uuid.uuid4(),
                 owner_user_id=user.id,
-                source_provider="github",
-                source_type="commit",
-                external_record_id=commit_sha,
-                source_url=commit.get("html_url"),
-                source_name=repo_full,
-                evidence_category="engineering",
-                title=f"Commit: {first_line}",
-                description=commit_msg or f"Git commit {commit_sha[:7]} in {repo_full}",
-                extracted_excerpt=commit_msg[:300],
-                observed_timestamp=now,
-                contributor_identity=author_login or author_name,
-                attribution_status="author" if is_author else "contributor",
-                project_name=repo_name,
-                evidence_strength="high" if is_author else "medium",
-                extraction_confidence=0.85,
-                verification_status="unreviewed",
-                processing_status="ready_for_review",
-                provenance={
-                    "repo": repo_full,
-                    "commit_sha": commit_sha,
-                    "author_name": author_name,
-                    "author_login": author_login,
-                    "committer_name": commit.get("committer_name"),
-                    "repository_languages": repo_lang_breakdowns,
-                    "primary_language": top_language,
-                },
-                normalized_metadata={
-                    "author": author_login or author_name,
-                    "committer": commit.get("committer_name"),
-                    "sha": commit_sha,
-                    "repository_languages": repo_lang_breakdowns,
-                    "primary_language": top_language,
-                },
-                content_hash=content_hash,
-            )
-            db.add(evidence_commit)
-            db.flush()
+                sync_run_id=sync_run.id,
+                provider="github",
+                record_type="pull_request",
+                external_record_id=pr_num,
+                source_url=pr.get("html_url"),
+                observed_at=now,
+                content_hash=pr_hash,
+                raw_payload=pr,
+            ))
 
-            # Process through extraction engine
-            commit_text = (
-                f"Git Commit in {repo_full}\n"
-                f"Commit SHA: {commit_sha}\n"
-                f"Author: {author_name} ({'Author' if is_author else 'Contributor'})\n"
-                f"Message: {commit_msg}\n"
-            )
-            if repo_lang_breakdowns:
-                lang_names = [f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
-                commit_text += f"\nTechnologies and Languages in Repository: {', '.join(lang_names)}\n"
+    # 6. Build consolidated prompt context for Ollama Qwen3 8B
+    compact_commits = []
+    has_authored_commits = False
+    for c in commits:
+        sha = (c.get("sha") or "")[:7]
+        author_login = c.get("author_login") or ""
+        author_name = c.get("author_name") or author_login or "Contributor"
+        msg = (c.get("message") or "").splitlines()[0][:100]
+        date = (c.get("authored_date") or c.get("committed_date") or "")[:10]
+        if (author_login and author_login.lower() == connection.account_identity.lower()) or \
+           (author_name and author_name.lower() in connection.account_identity.lower()):
+            has_authored_commits = True
+        compact_commits.append(f"- [{sha}] {author_name} ({date}): {msg}")
 
-            try:
-                await extraction_engine.process_and_persist_evidence(
-                    db=db,
-                    evidence_item=evidence_commit,
-                    content_text=commit_text,
-                    source_provider="github",
-                    category="engineering",
-                    user_id=user.id,
-                    fast_mode=True,
-                )
-            except Exception as e:
-                logger.error(f"Error extracting candidate skills for commit {commit_sha[:7]}: {e}")
+    compact_prs = []
+    for p in prs:
+        num = p.get("number")
+        title = (p.get("title") or "")[:100]
+        state = p.get("state") or ""
+        author = p.get("author_login") or ""
+        compact_prs.append(f"- PR #{num} [{state}] by {author}: {title}")
 
-            imported += 1
-            repo_commits_imported += 1
-        else:
-            # Backfill candidate competencies for existing commits if mappings don't exist yet
-            existing_evidence = db.query(EvidenceItem).filter(
-                EvidenceItem.owner_user_id == user.id,
-                EvidenceItem.source_provider == "github",
-                EvidenceItem.source_type == "commit",
-                EvidenceItem.external_record_id == commit_sha,
-            ).first()
-            if existing_evidence:
-                mapping_count = db.query(EvidenceCompetencyMapping).filter(
-                    EvidenceCompetencyMapping.evidence_id == existing_evidence.id
-                ).count()
-                if mapping_count == 0:
-                    commit_msg = commit.get("message") or ""
-                    commit_text = (
-                        f"Git Commit in {repo_full}\n"
-                        f"Commit SHA: {commit_sha}\n"
-                        f"Author: {commit.get('author_name') or 'Contributor'}\n"
-                        f"Message: {commit_msg}\n"
-                    )
-                    if repo_lang_breakdowns:
-                        lang_names = [f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]
-                        commit_text += f"\nTechnologies and Languages in Repository: {', '.join(lang_names)}\n"
-                    try:
-                        await extraction_engine.process_and_persist_evidence(
-                            db=db,
-                            evidence_item=existing_evidence,
-                            content_text=commit_text,
-                            source_provider="github",
-                            category="engineering",
-                            user_id=user.id,
-                            fast_mode=True,
-                        )
-                    except Exception as e:
-                        logger.error(f"Error backfilling candidate skills for commit {commit_sha[:7]}: {e}")
+    lang_desc = ", ".join([f"{l['name']} ({l.get('percentage', 0)}%)" for l in repo_lang_breakdowns]) if repo_lang_breakdowns else "None detected"
 
-    # Commit all newly created evidence, snapshots, and candidate mappings
+    consolidated_sections = [
+        f"=== REPOSITORY IDENTIFIER ===",
+        f"Repository: {repo_full}",
+        f"Primary Language: {top_language or 'Unknown'}",
+        f"Code Languages: {lang_desc}",
+        f"Total Code Size: {total_bytes} bytes",
+    ]
+
+    if readme_content:
+        consolidated_sections.extend([
+            f"\n=== PROJECT DOCUMENTATION (README.md) ===",
+            readme_content[:35000],
+        ])
+
+    if compact_commits:
+        consolidated_sections.extend([
+            f"\n=== RECENT COMMITS & ACTIVITY ({len(compact_commits)} commits) ===",
+            "\n".join(compact_commits),
+        ])
+
+    if compact_prs:
+        consolidated_sections.extend([
+            f"\n=== PULL REQUESTS ({len(compact_prs)} PRs) ===",
+            "\n".join(compact_prs),
+        ])
+
+    consolidated_text = "\n".join(consolidated_sections)
+
+    # 7. Create or update ONE primary repository EvidenceItem
+    repo_record_id = f"gh:repo:{repo_full}"
+    existing_repo_evidence = db.query(EvidenceItem).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.source_provider == "github",
+        EvidenceItem.source_type == "code_repository",
+        EvidenceItem.external_record_id == repo_record_id,
+    ).first()
+
+    latest_sha = commits[0].get("sha") if commits else (readme_snap.blob_sha if readme_snap else "0")
+    content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"{repo_record_id}:{latest_sha}:{len(readme_content)}").hex
+
+    excerpt = f"Repository {repo_full} with {len(repo_lang_breakdowns)} languages ({top_language or 'N/A'}), "
+    excerpt += f"{len(commits)} commits, and {'full README' if readme_content else 'no README'}."
+    if readme_content:
+        excerpt += f"\n\nDocumentation preview: {readme_content[:350]}..."
+
+    if not existing_repo_evidence:
+        repo_evidence = EvidenceItem(
+            id=uuid.uuid4(),
+            owner_user_id=user.id,
+            source_provider="github",
+            source_type="code_repository",
+            external_record_id=repo_record_id,
+            source_url=f"https://github.com/{repo_full}",
+            source_name=repo_full,
+            evidence_category="engineering",
+            title=f"Repository: {repo_full}",
+            description=f"Consolidated codebase evidence for {repo_full} including architectural documentation, language composition, and commit history.",
+            extracted_excerpt=excerpt,
+            observed_timestamp=now,
+            contributor_identity=connection.account_identity,
+            attribution_status="author" if has_authored_commits else "contributor",
+            project_name=repo_name,
+            evidence_strength="high" if (readme_content and repo_lang_breakdowns) else "medium",
+            extraction_confidence=0.92,
+            verification_status="unreviewed",
+            processing_status="ready_for_review",
+            provenance={
+                "repo": repo_full,
+                "languages": repo_lang_breakdowns,
+                "top_language": top_language,
+                "total_bytes": total_bytes,
+                "has_readme": bool(readme_content),
+                "readme_sha": readme_snap.blob_sha if readme_snap else None,
+                "commits_considered": len(commits),
+                "prs_considered": len(prs),
+                "recent_commits": [{"sha": (c.get("sha") or "")[:7], "msg": (c.get("message") or "")[:80]} for c in commits[:8]],
+            },
+            normalized_metadata={
+                "repo": repo_full,
+                "languages": repo_lang_breakdowns,
+                "top_language": top_language,
+                "total_bytes": total_bytes,
+                "has_readme": bool(readme_content),
+                "commits_count": len(commits),
+                "prs_count": len(prs),
+            },
+            content_hash=content_hash,
+        )
+        db.add(repo_evidence)
+        db.flush()
+    else:
+        repo_evidence = existing_repo_evidence
+        repo_evidence.observed_timestamp = now
+        repo_evidence.extracted_excerpt = excerpt
+        repo_evidence.content_hash = content_hash
+        repo_evidence.provenance = {
+            "repo": repo_full,
+            "languages": repo_lang_breakdowns,
+            "top_language": top_language,
+            "total_bytes": total_bytes,
+            "has_readme": bool(readme_content),
+            "readme_sha": readme_snap.blob_sha if readme_snap else None,
+            "commits_considered": len(commits),
+            "prs_considered": len(prs),
+            "recent_commits": [{"sha": (c.get("sha") or "")[:7], "msg": (c.get("message") or "")[:80]} for c in commits[:8]],
+        }
+        repo_evidence.normalized_metadata = {
+            "repo": repo_full,
+            "languages": repo_lang_breakdowns,
+            "top_language": top_language,
+            "total_bytes": total_bytes,
+            "has_readme": bool(readme_content),
+            "commits_count": len(commits),
+            "prs_count": len(prs),
+        }
+        db.flush()
+
+    # 8. Single holistic LLM extraction call on consolidated context
+    try:
+        await extraction_engine.process_and_persist_evidence(
+            db=db,
+            evidence_item=repo_evidence,
+            content_text=consolidated_text,
+            source_provider="github",
+            category="engineering",
+            user_id=user.id,
+            fast_mode=False,
+        )
+    except Exception as e:
+        logger.error(f"Error in consolidated repository extraction for {repo_full}: {e}")
+
     db.commit()
+
+    # 9. Query candidate skills for truthful reporting to UI
+    from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
+    mappings = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(
+        CompetencyTaxonomy, EvidenceCompetencyMapping.competency_id == CompetencyTaxonomy.id
+    ).filter(
+        EvidenceCompetencyMapping.evidence_id == repo_evidence.id
+    ).all()
+
+    candidate_skills = [
+        {
+            "name": tax.canonical_name,
+            "category": tax.category,
+            "proficiency": m.proficiency_level,
+            "justification": m.supporting_excerpt or m.rationale or "",
+            "confidence": m.confidence_score,
+        }
+        for m, tax in mappings
+    ]
 
     return {
         "repository_id": str(res_record.id),
@@ -1034,13 +990,18 @@ async def _sync_single_github_repo_internal(
         "languages_status": lang_snap.sync_status if lang_snap else "failed",
         "detected_languages": len(repo_lang_breakdowns),
         "top_language": top_language,
-        "total_bytes": lang_snap.total_bytes if lang_snap else 0,
+        "total_bytes": total_bytes,
         "readme_status": readme_snap.sync_status if readme_snap else "not_found",
-        "has_readme": bool(readme_snap and readme_snap.sync_status == "success" and readme_snap.raw_content),
-        "prs_imported": repo_imported,
-        "commits_imported": repo_commits_imported,
-        "records_discovered": discovered,
-        "records_imported": imported,
+        "has_readme": bool(readme_content),
+        "readme_path": readme_snap.readme_path if readme_snap else "README.md",
+        "readme_chars": len(readme_content),
+        "prs_imported": len(prs),
+        "commits_imported": len(commits),
+        "records_discovered": 1 + len(commits) + len(prs),
+        "records_imported": 1,
+        "new_evidence_items": 1,
+        "candidate_skills": candidate_skills,
+        "candidate_skills_count": len(candidate_skills),
         "lang_errors": lang_errors,
     }
 
@@ -1265,34 +1226,16 @@ async def refresh_repository_languages(
 
 
 @router.get("/github/repositories/{repository_id:path}/readme", response_model=RepositoryReadmeResponse)
-def get_repository_readme(
+async def get_repository_readme(
     repository_id: str,
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Retrieves the persisted README snapshot and parsed section hierarchy
-    for a specific selected repository. Enforces owner-level authorization.
-    """
-    data = get_repository_readme_response(db, user.id, repository_id)
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Repository {repository_id} not found among user's connected repositories",
-        )
-    return data
-
-
-@router.post("/github/repositories/{repository_id:path}/readme/refresh", response_model=RepositoryReadmeResponse)
-async def refresh_repository_readme(
-    repository_id: str,
-    user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Fetches fresh README content directly from GitHub REST API for an explicitly selected repository,
-    re-parses markdown headings and sections, updates the database, re-runs extraction if changed,
-    and returns the fresh snapshot. Enforces owner-level authorization.
+    for a specific repository. If not yet fetched, automatically fetches it
+    live from GitHub via REST API and persists the snapshot.
+    Enforces owner-level authorization.
     """
     connection = db.query(ConnectedSource).filter(
         ConnectedSource.owner_user_id == user.id,
@@ -1306,25 +1249,150 @@ async def refresh_repository_readme(
             detail="No active GitHub connection found",
         )
 
-    # Resolve resource
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
+    # 1. First check existing persisted snapshot
+    data = get_repository_readme_response(db, user.id, decoded_id)
+    if data and data.get("sync_status") == "success" and data.get("raw_content"):
+        return data
+
+    # 2. Resolve resource or create it for on-demand fetch
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
-    if not resource:
+    repo_full = resource.external_resource_id if resource else decoded_id
+    if "/" not in repo_full:
+        if data:
+            return data
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Selected repository {repository_id} not found",
+            detail=f"Repository {repository_id} not found among user's connected repositories",
         )
+
+    if not resource:
+        resource = SelectedResource(
+            id=uuid.uuid4(),
+            connection_id=connection.id,
+            external_resource_id=repo_full,
+            name=repo_full,
+            url=f"https://github.com/{repo_full}",
+            is_selected=True,
+            content_categories=["commits", "pull_requests"],
+        )
+        db.add(resource)
+        db.flush()
+
+    # 3. Live fetch from GitHub REST API (fast, <500ms, no heavy sync)
+    try:
+        pat = decrypt_credential(connection.encrypted_credentials)
+        client = GitHubClient(pat)
+        snap, ok = await sync_repository_readme(
+            db=db,
+            user_id=user.id,
+            connection=connection,
+            selected_resource=resource,
+            client=client,
+            trigger_extraction=False,
+        )
+        refreshed = get_repository_readme_response(db, user.id, str(resource.id))
+        if refreshed:
+            return refreshed
+    except Exception as e:
+        logger.warning(f"On-demand README fetch failed for {repo_full}: {e}")
+
+    if data:
+        return data
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Repository {repository_id} not found among user's connected repositories",
+    )
+
+
+@router.post("/github/repositories/{repository_id:path}/readme/refresh", response_model=RepositoryReadmeResponse)
+async def refresh_repository_readme(
+    repository_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Fetches fresh README content directly from GitHub REST API for an explicitly selected repository,
+    re-parses markdown headings and sections, updates the database, and returns the fresh snapshot.
+    Enforces owner-level authorization without running heavy synchronous extraction.
+    """
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "github",
+        ConnectedSource.connection_status == "connected",
+    ).first()
+
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active GitHub connection found",
+        )
+
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
+    # Resolve resource
+    resource = None
+    try:
+        res_uuid = uuid.UUID(decoded_id)
+        resource = db.query(SelectedResource).filter(
+            SelectedResource.id == res_uuid,
+            SelectedResource.connection_id == connection.id,
+        ).first()
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
+        resource = db.query(SelectedResource).filter(
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
+            SelectedResource.connection_id == connection.id,
+        ).first()
+
+    repo_full = resource.external_resource_id if resource else decoded_id
+    if "/" not in repo_full:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid repository full name: {repo_full}",
+        )
+
+    if not resource:
+        resource = SelectedResource(
+            id=uuid.uuid4(),
+            connection_id=connection.id,
+            external_resource_id=repo_full,
+            name=repo_full,
+            url=f"https://github.com/{repo_full}",
+            is_selected=True,
+            content_categories=["commits", "pull_requests"],
+        )
+        db.add(resource)
+        db.flush()
 
     pat = decrypt_credential(connection.encrypted_credentials)
     client = GitHubClient(pat)
@@ -1335,6 +1403,7 @@ async def refresh_repository_readme(
         connection=connection,
         selected_resource=resource,
         client=client,
+        trigger_extraction=False,
     )
 
     data = get_repository_readme_response(db, user.id, str(resource.id))
@@ -1344,6 +1413,97 @@ async def refresh_repository_readme(
             detail="Failed to retrieve README snapshot after refresh",
         )
     return data
+
+
+@router.post("/github/repositories/{repository_id:path}/select")
+def select_single_repository(
+    repository_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Explicitly adds/selects a single repository for Evidence.
+    Marks is_selected=True without triggering a full or bulk sync.
+    Immediately reflects selection status and returns repository metadata.
+    """
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "github",
+        ConnectedSource.connection_status == "connected",
+    ).first()
+
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active GitHub connection found",
+        )
+
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
+    # Resolve resource or create it
+    resource = None
+    try:
+        res_uuid = uuid.UUID(decoded_id)
+        resource = db.query(SelectedResource).filter(
+            SelectedResource.id == res_uuid,
+            SelectedResource.connection_id == connection.id,
+        ).first()
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
+        resource = db.query(SelectedResource).filter(
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
+            SelectedResource.connection_id == connection.id,
+        ).first()
+
+    repo_full = resource.external_resource_id if resource else decoded_id
+    if "/" not in repo_full:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid repository full name: {repo_full}",
+        )
+
+    if not resource:
+        resource = SelectedResource(
+            id=uuid.uuid4(),
+            connection_id=connection.id,
+            external_resource_id=repo_full,
+            name=repo_full,
+            url=f"https://github.com/{repo_full}",
+            is_selected=True,
+            content_categories=["commits", "pull_requests"],
+        )
+        db.add(resource)
+    else:
+        resource.is_selected = True
+
+    # Audit log
+    audit = ReviewAuditEvent(
+        id=uuid.uuid4(),
+        actor_user_id=user.id,
+        target_record_id=resource.id,
+        target_record_type="selected_resource",
+        event_type="repository_selected",
+        new_state="selected",
+        reason_note=f"Repository {repo_full} selected for Evidence ingestion.",
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "status": "selected",
+        "repository_id": str(resource.id),
+        "repository_name": resource.name,
+        "external_resource_id": resource.external_resource_id,
+        "is_selected": True,
+        "message": f"Repository {resource.external_resource_id} added to Evidence",
+    }
 
 
 @router.post("/github/repositories/remove")

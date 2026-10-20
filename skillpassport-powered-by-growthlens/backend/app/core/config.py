@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     ollama_ocr_model: str = "glm-ocr"
     ollama_embed_model: str = "nomic-embed-text"
     ollama_timeout_seconds: float = 120.0
+    ollama_num_ctx: int = Field(
+        default=16384,
+        description="Effective context window (num_ctx) for Ollama inference requests (target: 16384 tokens)",
+    )
 
     # ChromaDB
     chroma_persist_directory: str = "./chroma_data"

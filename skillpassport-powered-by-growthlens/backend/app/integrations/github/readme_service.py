@@ -20,6 +20,7 @@ async def sync_repository_readme(
     selected_resource: SelectedResource,
     client: GitHubClient,
     sync_run_id: Optional[uuid.UUID] = None,
+    trigger_extraction: bool = False,
 ) -> Tuple[Optional[RepositoryReadmeSnapshot], bool]:
     """
     Synchronizes the README for an explicitly selected repository:
@@ -28,7 +29,7 @@ async def sync_repository_readme(
     3. Handles idempotency: if unchanged by Git blob SHA / content_hash, reuses existing snapshot.
     4. Persists versioned RepositoryReadmeSnapshot.
     5. Ingests into EvidenceItem with source_provider="github", source_type="readme".
-    6. Triggers extraction_engine to propose candidate competencies and index into ChromaDB.
+    6. Optionally triggers extraction_engine when trigger_extraction=True (defaults to False for fast preview).
     7. Accurately records empty or permission-denied states (no fake successful extraction).
     """
     repo_full = selected_resource.external_resource_id
@@ -162,19 +163,20 @@ async def sync_repository_readme(
             db.add(evidence)
             db.flush()
 
-        # Execute extraction engine to propose candidate competencies and index in vector store
-        try:
-            full_text = f"Repository {repo_full} Project README:\n\n{raw_content}"
-            await extraction_engine.process_and_persist_evidence(
-                db=db,
-                evidence_item=evidence,
-                content_text=full_text,
-                source_provider="github",
-                category="engineering",
-                user_id=user_id,
-            )
-        except Exception as e:
-            logger.error(f"Error extracting candidate skills from README for {repo_full}: {e}")
+        # Execute extraction engine to propose candidate competencies and index in vector store if requested
+        if trigger_extraction:
+            try:
+                full_text = f"Repository {repo_full} Project README:\n\n{raw_content}"
+                await extraction_engine.process_and_persist_evidence(
+                    db=db,
+                    evidence_item=evidence,
+                    content_text=full_text,
+                    source_provider="github",
+                    category="engineering",
+                    user_id=user_id,
+                )
+            except Exception as e:
+                logger.error(f"Error extracting candidate skills from README for {repo_full}: {e}")
 
         db.commit()
         return snapshot, True
@@ -252,6 +254,20 @@ def get_repository_readme_response(
         ).first()
 
     if not resource:
+        if "/" in repository_id:
+            return {
+                "repository_id": repository_id,
+                "repository_name": repository_id,
+                "sync_status": "not_synced",
+                "readme_path": "README.md",
+                "blob_sha": None,
+                "html_url": None,
+                "content_hash": None,
+                "raw_content": None,
+                "sections": [],
+                "retrieval_timestamp": None,
+                "error_summary": "README has not been synchronized yet.",
+            }
         return None
 
     snapshot = db.query(RepositoryReadmeSnapshot).filter(

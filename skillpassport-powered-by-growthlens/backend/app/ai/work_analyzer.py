@@ -211,13 +211,19 @@ class WorkAnalyzerService:
         ]
         candidate_skill_names = [s["name"] for s in extracted_skills_list]
 
-        # 5. Invoke Ollama Qwen3 8B
+        # 5. Invoke Ollama Qwen3 8B with configured context window
+        ctx_tokens = int(getattr(self.settings, "ollama_num_ctx", 16384))
+        max_chars = int(ctx_tokens * 2.8)
+        content_payload = safe_text
+        if len(content_payload) > max_chars:
+            content_payload = content_payload[:max_chars] + f"\n\n[Content truncated to {max_chars} characters for context budget]"
+
         user_prompt = (
             f"Source Provider: {evidence.source_provider}\n"
             f"Artifact Title: {evidence.title}\n"
             f"Claimed Contribution: {evidence.attribution_status}\n"
             f"Candidate Skills Extracted in Evidence Ingestion: {', '.join(candidate_skill_names) if candidate_skill_names else 'None'}\n\n"
-            f"Content:\n{safe_text[:3500]}"
+            f"Content:\n{content_payload}"
         )
 
         endpoint_netloc = self._sanitize_netloc(self.ollama_url)
@@ -247,6 +253,7 @@ class WorkAnalyzerService:
                         "options": {
                             "temperature": 0.0,
                             "num_predict": 2048,
+                            "num_ctx": ctx_tokens,
                         },
                     },
                 )

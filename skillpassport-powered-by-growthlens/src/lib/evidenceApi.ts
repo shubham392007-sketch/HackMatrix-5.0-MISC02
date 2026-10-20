@@ -220,6 +220,20 @@ export async function updateSelectedRepositories(repositories: any[]) {
   return res.json();
 }
 
+export async function selectSingleGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/select`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to select repository" }));
+    throw new Error(err.detail || "Repository selection failed");
+  }
+  return res.json();
+}
+
 export async function removeSelectedGitHubRepository(repositoryIdOrFullName: string) {
   const headers = await getAuthHeaders();
   const controller = new AbortController();

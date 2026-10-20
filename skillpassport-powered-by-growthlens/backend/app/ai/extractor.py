@@ -393,7 +393,16 @@ class EvidenceExtractorAI:
                 "Only propose candidate competencies that are genuinely demonstrated by the content below.)"
             )
 
-        prompt_parts.append(f"\nContent:\n{text_content[:3000]}")
+        ctx_tokens = getattr(self.settings, "ollama_num_ctx", 16384)
+        max_content_chars = int(ctx_tokens * 2.8)
+        content_to_send = text_content
+        if len(content_to_send) > max_content_chars:
+            content_to_send = (
+                text_content[:max_content_chars]
+                + f"\n\n[Notice: Source text exceeded context budget ({len(text_content)} chars) and was deterministically truncated to {max_content_chars} characters for {self.model} with {ctx_tokens} token context]"
+            )
+
+        prompt_parts.append(f"\nContent:\n{content_to_send}")
         prompt_text = "\n".join(prompt_parts)
 
         extracted_data = None
@@ -410,7 +419,11 @@ class EvidenceExtractorAI:
                         "format": "json",
                         "stream": False,
                         "think": False,
-                        "options": {"temperature": 0.0, "num_predict": 2048, "num_ctx": 4096},
+                        "options": {
+                            "temperature": 0.0,
+                            "num_predict": 2048,
+                            "num_ctx": ctx_tokens,
+                        },
                     },
                 )
                 if resp.status_code == 200:
