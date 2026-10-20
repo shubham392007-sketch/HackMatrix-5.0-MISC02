@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import {
   EvidenceItem,
+  CandidateSkill,
   ConnectedSource,
   IngestionRun,
   ReviewStatus,
@@ -705,6 +706,53 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           };
         });
         setEvidenceMappings(mappedMappings);
+      }
+
+      // Synchronize candidate skills into evidenceItems state so library and detail screens immediately reflect extracted skills
+      if (Object.keys(candMapByEvidence).length > 0) {
+        setEvidenceItems((prev) => {
+          const updated = prev.map((item) => {
+            const mappedCands = candMapByEvidence[item.id];
+            if (!mappedCands || mappedCands.length === 0) return item;
+
+            const existingSkills = item.candidateSkills || [];
+            const newSkills: CandidateSkill[] = mappedCands.map((c: any) => {
+              const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
+              const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 85;
+              return {
+                id: c.candidate_id || c.mapping_id,
+                name: c.name || c.canonical_name || "Competency",
+                category: c.category || "General",
+                excerpt: c.supporting_excerpt || "",
+                associationReason: c.rationale || "Extracted from evidence artifact",
+                status: (c.status === "verified" ? "reviewed" : c.status === "insufficient" ? "insufficient" : "candidate") as any,
+                proficiencyLevel: (c.proficiency_level || "Practitioner") as any,
+                confidence: dynamicScore,
+              };
+            });
+
+            if (existingSkills.length === 0) {
+              return {
+                ...item,
+                candidateSkills: newSkills,
+              };
+            }
+
+            const existingNames = new Set(existingSkills.map((s) => s.name.toLowerCase()));
+            const toAdd = newSkills.filter((s) => !existingNames.has(s.name.toLowerCase()));
+            return {
+              ...item,
+              candidateSkills: [...existingSkills, ...toAdd],
+            };
+          });
+
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(updated));
+            } catch {}
+          }
+          return updated;
+        });
       }
 
       if (guardRes.status === "fulfilled" && Array.isArray(guardRes.value?.results)) {

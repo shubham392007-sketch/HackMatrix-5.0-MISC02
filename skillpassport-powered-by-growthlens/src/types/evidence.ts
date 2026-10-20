@@ -47,6 +47,7 @@ export interface CandidateSkill {
   associationReason: string;
   status: "candidate" | "reviewed" | "flagged" | "insufficient";
   proficiencyLevel: "Foundation" | "Working" | "Practitioner" | "Advanced";
+  confidence?: number;
 }
 
 export interface ProcessingStageRecord {

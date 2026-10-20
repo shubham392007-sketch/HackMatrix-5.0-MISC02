@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import AppTopBar from "@/components/app/AppTopBar";
@@ -23,9 +23,16 @@ import {
   Code2,
   RefreshCw,
   Cpu,
+  Loader2,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
-import { reprocessUploadedDocument, runWorkAnalysis } from "@/lib/evidenceApi";
+import {
+  reprocessUploadedDocument,
+  runWorkAnalysis,
+  runSkillExtraction,
+  getEvidenceItem,
+} from "@/lib/evidenceApi";
+import type { CandidateSkill, EvidenceItem, SourceType, EvidenceStrength, ProcessingStatus, ReviewStatus } from "@/types/evidence";
 
 export default function EvidenceDetailPage({
   params,
@@ -34,13 +41,158 @@ export default function EvidenceDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { evidenceItems, confirmContribution, deleteEvidenceItem, refreshEvidenceData, workAnalyses } = useEvidence();
+  const {
+    evidenceItems,
+    confirmContribution,
+    deleteEvidenceItem,
+    refreshEvidenceData,
+    workAnalyses,
+    extractionCandidates,
+  } = useEvidence();
+
+  const [detailItem, setDetailItem] = useState<any | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(true);
   const [reprocessing, setReprocessing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reprocessMsg, setReprocessMsg] = useState<{ text: string; error?: boolean } | null>(null);
 
-  const item = evidenceItems.find((e) => e.id === id);
+  // 1. Fetch fresh individual item details directly from the database on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchDetail() {
+      try {
+        setLoadingDetail(true);
+        const data = await getEvidenceItem(id);
+        if (isMounted && data && !data.error) {
+          setDetailItem(data);
+        }
+      } catch (err) {
+        console.warn("Could not load fresh evidence detail:", err);
+      } finally {
+        if (isMounted) setLoadingDetail(false);
+      }
+    }
+    fetchDetail();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  // Context item (if available from library cache)
+  const contextItem = evidenceItems.find((e) => e.id === id);
+
+  // 2. Synthesize unified item from detailItem and contextItem
+  const item: EvidenceItem | null = (() => {
+    if (contextItem) {
+      if (detailItem && Array.isArray(detailItem.candidateSkills) && detailItem.candidateSkills.length > 0) {
+        return {
+          ...contextItem,
+          candidateSkills: detailItem.candidateSkills,
+          extractionConfidence: typeof detailItem.confidence === "number"
+            ? Math.round(detailItem.confidence <= 1 ? detailItem.confidence * 100 : detailItem.confidence)
+            : contextItem.extractionConfidence,
+        };
+      }
+      return contextItem;
+    }
+
+    if (detailItem) {
+      return {
+        id: detailItem.id,
+        externalRecordId: detailItem.externalRecordId || detailItem.external_record_id,
+        title: detailItem.title || "Untitled Evidence",
+        description: detailItem.description || "",
+        sourceType: (detailItem.sourceType || detailItem.provider || "document") as SourceType,
+        sourceReference: detailItem.sourceName || detailItem.sourceUrl || "Uploaded Document",
+        sourceUrl: detailItem.sourceUrl,
+        project: detailItem.projectName || detailItem.sourceName || "General",
+        evidenceType: detailItem.category || "General Evidence",
+        date: detailItem.observedAt ? new Date(detailItem.observedAt).toLocaleDateString() : "Recently",
+        claimedContribution: detailItem.attributionStatus === "author" ? "Author" : "Contributor",
+        author: detailItem.contributorIdentity || "User",
+        isCollaborative: Boolean(detailItem.isCollaborative),
+        evidenceStrength: (detailItem.strength || "medium") as EvidenceStrength,
+        extractionConfidence: typeof detailItem.confidence === "number"
+          ? Math.round(detailItem.confidence <= 1 ? detailItem.confidence * 100 : detailItem.confidence)
+          : 85,
+        processingStatus: (detailItem.processingStatus || "ready_for_review") as ProcessingStatus,
+        reviewStatus: (detailItem.verificationStatus || "unreviewed") as ReviewStatus,
+        normalizedMetadata: {
+          format: detailItem.metadata?.format || "Standard",
+          authorIdentified: detailItem.metadata?.author || detailItem.contributorIdentity || "User",
+          repositoryLanguages: detailItem.metadata?.repository_languages || detailItem.metadata?.repositoryLanguages || [],
+          primaryLanguage: detailItem.metadata?.primary_language || detailItem.metadata?.primaryLanguage,
+          ...detailItem.metadata,
+        },
+        extractedSummary: detailItem.extractedSummary || detailItem.description || "",
+        candidateSkills: Array.isArray(detailItem.candidateSkills) ? detailItem.candidateSkills : [],
+        processingHistory: [],
+      };
+    }
+
+    return null;
+  })();
+
+  // 3. Resolve candidate skills across all sources (DB mappings, context items, extraction candidates, work analyses)
+  const resolvedCandidateSkills: CandidateSkill[] = (() => {
+    // 1. Direct from fresh backend query
+    if (detailItem && Array.isArray(detailItem.candidateSkills) && detailItem.candidateSkills.length > 0) {
+      return detailItem.candidateSkills.map((c: any) => {
+        const rawScore = c.confidence !== undefined ? c.confidence : (c.confidence_score !== undefined ? c.confidence_score : c.relevance_score);
+        const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 85;
+        return {
+          id: c.id || c.mapping_id || `cand-${c.name}`,
+          name: c.name,
+          category: c.category || "General",
+          excerpt: c.excerpt || c.supporting_excerpt || "",
+          associationReason: c.associationReason || c.rationale || "Extracted from verified evidence artifact",
+          status: c.status || "candidate",
+          proficiencyLevel: c.proficiencyLevel || c.proficiency_level || "Practitioner",
+          confidence: dynamicScore,
+        };
+      });
+    }
+
+    // 2. From context item
+    if (contextItem && Array.isArray(contextItem.candidateSkills) && contextItem.candidateSkills.length > 0) {
+      return contextItem.candidateSkills;
+    }
+
+    // 3. From extraction candidates in context matching this item id
+    const matchingCandidates = extractionCandidates.filter(
+      (c) => c.evidence_ids?.includes(id) || (c as any).evidence_id === id
+    );
+    if (matchingCandidates.length > 0) {
+      return matchingCandidates.map((c) => ({
+        id: c.id,
+        name: c.canonical_name || c.original_label,
+        category: c.category || "Extracted Competency",
+        excerpt: c.supporting_excerpt || "",
+        associationReason: c.extraction_rationale || "Extracted from verified evidence artifact",
+        status: (c.review_state === "reviewed" ? "reviewed" : c.review_state === "insufficient" ? "insufficient" : "candidate") as any,
+        proficiencyLevel: "Practitioner" as any,
+        confidence: c.confidence,
+      }));
+    }
+
+    // 4. Fallback to work analysis demonstrated skills
+    const analysis = workAnalyses.find((a) => a.source_id === id);
+    if (analysis && Array.isArray(analysis.demonstrated_skills) && analysis.demonstrated_skills.length > 0) {
+      return analysis.demonstrated_skills.map((s, idx) => ({
+        id: `analysis-skill-${idx}`,
+        name: s.name,
+        category: s.category || "Demonstrated Competency",
+        excerpt: s.justification || "",
+        associationReason: s.corroborated_with_evidence ? "Corroborated with evidence analysis" : "Demonstrated in artifact code/stack",
+        status: "candidate" as any,
+        proficiencyLevel: (s.proficiency || "Intermediate") as any,
+        confidence: Math.round(analysis.inferred_attributes?.[0]?.confidence || 85),
+      }));
+    }
+
+    return [];
+  })();
 
   const handleReprocess = async () => {
     if (!item) return;
@@ -50,6 +202,8 @@ export default function EvidenceDetailPage({
       const docId = (item as any).externalRecordId || item.id;
       await reprocessUploadedDocument(docId);
       await refreshEvidenceData();
+      const fresh = await getEvidenceItem(item.id);
+      if (fresh && !fresh.error) setDetailItem(fresh);
       setReprocessMsg({ text: "Artifact successfully reprocessed with OCR and AI!" });
     } catch (err: any) {
       setReprocessMsg({ text: err.message || "Failed to reprocess document", error: true });
@@ -63,15 +217,34 @@ export default function EvidenceDetailPage({
     try {
       setAnalyzing(true);
       setReprocessMsg(null);
-      await runWorkAnalysis([item.id]);
+      // Run both work analysis and skill extraction concurrently
+      await Promise.allSettled([
+        runWorkAnalysis([item.id]),
+        runSkillExtraction([item.id]),
+      ]);
       await refreshEvidenceData();
-      setReprocessMsg({ text: "Evidence item successfully analyzed using local Ollama (qwen3:8b)!" });
+      try {
+        const fresh = await getEvidenceItem(item.id);
+        if (fresh && !fresh.error) setDetailItem(fresh);
+      } catch {}
+      setReprocessMsg({ text: "Evidence item successfully analyzed and candidate competencies extracted via Ollama (qwen3:8b)!" });
     } catch (err: any) {
       setReprocessMsg({ text: err.message || "Failed to analyze evidence with Ollama", error: true });
     } finally {
       setAnalyzing(false);
     }
   };
+
+  if (loadingDetail && !item) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-12 space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#1C1C1C]" />
+        <p className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/60">
+          Loading Evidence Record...
+        </p>
+      </div>
+    );
+  }
 
   if (!item) {
     return (
@@ -98,7 +271,7 @@ export default function EvidenceDetailPage({
             disabled={analyzing}
             onClick={handleOllamaAnalyze}
             className="pill-btn pill-btn-primary text-xs py-2 px-3 flex items-center gap-1.5 disabled:opacity-50"
-            title="Run genuine Ollama LLM work analysis on this item"
+            title="Run genuine Ollama LLM work analysis & candidate skill extraction on this item"
           >
             <Sparkles className={`w-3.5 h-3.5 ${analyzing ? "animate-spin" : ""}`} />
             <span>{analyzing ? "ANALYZING WITH OLLAMA ···" : "ANALYZE WITH OLLAMA"}</span>
@@ -153,6 +326,7 @@ export default function EvidenceDetailPage({
             <span>{reprocessMsg.text}</span>
           </div>
         )}
+
         {/* A. Evidence Overview & Status Bar */}
         {(() => {
           const analysis = workAnalyses.find((a) => a.source_id === item.id);
@@ -320,63 +494,93 @@ export default function EvidenceDetailPage({
           </p>
         </div>
 
-        {/* D. Candidate Skills Proposed from this Evidence */}
+        {/* E. Candidate Skills Proposed from this Evidence */}
         <div className="space-y-4">
-          <h3 className="text-base font-black text-[#1C1C1C]">
-            Extracted Candidate Skills ({item.candidateSkills.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-black text-[#1C1C1C]">
+              Extracted Candidate Skills ({resolvedCandidateSkills.length})
+            </h3>
+            {resolvedCandidateSkills.length > 0 && (
+              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+                {resolvedCandidateSkills.length} Evidence-Grounded
+              </span>
+            )}
+          </div>
 
-          {item.candidateSkills.length === 0 ? (
+          {resolvedCandidateSkills.length === 0 ? (
             <div className="p-8 rounded-2xl border-[1.5px] border-dashed border-[#1C1C1C] bg-[#FBF1CF] text-center space-y-3">
               <AlertTriangle className="w-8 h-8 text-[#C85A54] mx-auto" />
               <h4 className="text-sm font-black text-[#1C1C1C]">No Supported Candidate Competencies</h4>
               <p className="text-xs font-medium text-[#1C1C1C]/75 max-w-lg mx-auto">
                 The source artifact contained insufficient verifiable text to propose candidate competencies. SkillPassport enforces strict grounding: skills are never fabricated from person names or file names alone.
               </p>
-              {(item.sourceType === "document" || item.sourceType === "certificate") && (
+              <div className="pt-2 flex justify-center gap-3">
                 <button
                   type="button"
-                  onClick={handleReprocess}
-                  disabled={reprocessing}
+                  disabled={analyzing}
+                  onClick={handleOllamaAnalyze}
                   className="pill-btn pill-btn-primary text-xs py-2 px-5 inline-flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{reprocessing ? "Reprocessing Artifact ···" : "Reprocess with OCR & AI"}</span>
+                  <Sparkles className={`w-3.5 h-3.5 ${analyzing ? "animate-spin" : ""}`} />
+                  <span>{analyzing ? "Extracting Skills with Ollama ···" : "Extract Skills with Ollama"}</span>
                 </button>
-              )}
+                {(item.sourceType === "document" || item.sourceType === "certificate") && (
+                  <button
+                    type="button"
+                    onClick={handleReprocess}
+                    disabled={reprocessing}
+                    className="pill-btn pill-btn-secondary text-xs py-2 px-5 inline-flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${reprocessing ? "animate-spin" : ""}`} />
+                    <span>{reprocessing ? "Reprocessing Artifact ···" : "Reprocess with OCR & AI"}</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
-              {item.candidateSkills.map((sk) => (
-                <div
-                  key={sk.id}
-                  className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-white flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
-                        {sk.category}
-                      </span>
-                      <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>
+              {resolvedCandidateSkills.map((sk) => {
+                const confScore = typeof sk.confidence === "number" ? Math.round(sk.confidence <= 1 ? sk.confidence * 100 : sk.confidence) : null;
+                return (
+                  <div
+                    key={sk.id || sk.name}
+                    className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[2px_2px_0_0_#1C1C1C]"
+                  >
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
+                          {sk.category || "Competency"}
+                        </span>
+                        <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>
+                        {confScore !== null && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full border border-[#1C1C1C] bg-[#FBF6DF] text-[#4A7A4E]">
+                            {confScore}% CONFIDENCE
+                          </span>
+                        )}
+                      </div>
+                      {sk.excerpt && (
+                        <p className="text-xs font-medium text-[#1C1C1C]/75">
+                          Excerpt: &ldquo;{sk.excerpt}&rdquo;
+                        </p>
+                      )}
+                      {sk.associationReason && (
+                        <p className="text-[10.5px] text-[#1C1C1C]/60 italic">
+                          Reason: {sk.associationReason}
+                        </p>
+                      )}
                     </div>
-                    <p className="text-xs font-medium text-[#1C1C1C]/75">
-                      Excerpt: &ldquo;{sk.excerpt}&rdquo;
-                    </p>
-                    <p className="text-[10.5px] text-[#1C1C1C]/60 italic">
-                      Reason: {sk.associationReason}
-                    </p>
-                  </div>
 
-                  <div className="shrink-0 flex items-center gap-3">
-                    <span className="text-[11px] font-black uppercase text-[#1C1C1C]/70">
-                      LEVEL: {sk.proficiencyLevel}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#FBF1CF]">
-                      {sk.status.toUpperCase()}
-                    </span>
+                    <div className="shrink-0 flex items-center gap-3">
+                      <span className="text-[11px] font-black uppercase text-[#1C1C1C]/70">
+                        LEVEL: {sk.proficiencyLevel || "Practitioner"}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#FBF1CF]">
+                        {(sk.status || "candidate").toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -678,6 +678,10 @@ export async function listEvidenceItems(params: {
 export async function getEvidenceItem(evidenceId: string) {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/evidence/${evidenceId}`, { headers });
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error(`Failed to fetch evidence item: ${res.statusText}`);
+  }
   return res.json();
 }
 

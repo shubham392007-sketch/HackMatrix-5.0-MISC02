@@ -170,6 +170,17 @@ async def run_work_analysis(
                 evidence_id=ev_uuid,
                 owner_user_id=owner_uuid,
             )
+
+            # Automatically extract and persist candidate competencies into evidence_competency_mappings
+            try:
+                await skill_extractor.extract_candidate_skills(
+                    db=db,
+                    evidence_id=ev_uuid,
+                    owner_user_id=owner_uuid,
+                )
+            except Exception as se_err:
+                logger.warning(f"Skill extraction during work analysis for {ev_id_str}: {se_err}")
+
             # Auto-detect conflicts on newly analyzed evidence
             conflict_service.detect_conflicts_for_evidence(db=db, owner_user_id=owner_uuid, evidence_id=ev_uuid)
             results.append(res)

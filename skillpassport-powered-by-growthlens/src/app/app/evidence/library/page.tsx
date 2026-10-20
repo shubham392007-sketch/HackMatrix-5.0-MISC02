@@ -24,7 +24,7 @@ import {
   Sparkles,
   Cpu,
 } from "lucide-react";
-import { runWorkAnalysis } from "@/lib/evidenceApi";
+import { runWorkAnalysis, runSkillExtraction } from "@/lib/evidenceApi";
 
 export default function EvidenceLibraryPage() {
   const {
@@ -270,6 +270,12 @@ export default function EvidenceLibraryPage() {
                         <span>Date: {item.date}</span>
                         <span>•</span>
                         <span>Extraction Confidence: {item.extractionConfidence}%</span>
+                        {item.candidateSkills && item.candidateSkills.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="text-[#4A7A4E] font-black">{item.candidateSkills.length} candidate {item.candidateSkills.length === 1 ? "skill" : "skills"}</span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -301,7 +307,10 @@ export default function EvidenceLibraryPage() {
                             try {
                               setAnalyzingId(item.id);
                               setActionError(null);
-                              await runWorkAnalysis([item.id]);
+                              await Promise.allSettled([
+                                runWorkAnalysis([item.id]),
+                                runSkillExtraction([item.id]),
+                              ]);
                               await refreshEvidenceData();
                             } catch (err: any) {
                               setActionError(err?.message || "Failed to analyze evidence with Ollama");

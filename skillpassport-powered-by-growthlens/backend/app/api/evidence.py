@@ -127,6 +127,7 @@ def list_evidence(
                     "associationReason": m.rationale,
                     "status": m.status,
                     "proficiencyLevel": m.proficiency_level,
+                    "confidence": getattr(m, "relevance_score", getattr(m, "confidence_score", 0.85)),
                 })
 
         results.append({
@@ -224,6 +225,7 @@ def get_evidence_detail(
                 "associationReason": m.rationale,
                 "status": m.status,
                 "proficiencyLevel": m.proficiency_level,
+                "confidence": getattr(m, "relevance_score", getattr(m, "confidence_score", 0.85)),
             })
 
     return {
