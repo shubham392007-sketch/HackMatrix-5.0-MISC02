@@ -69,6 +69,7 @@ class SequentialQueueManager:
                     except Exception as e:
                         logger.error(f"Error executing sequential job {job_id}: {e}")
                         try:
+                            db.rollback()
                             job = db.query(IngestionJob).filter(IngestionJob.id == job_id).first()
                             if job and job.status not in ("COMPLETED", "FAILED", "CANCELLED"):
                                 transition_job_stage(

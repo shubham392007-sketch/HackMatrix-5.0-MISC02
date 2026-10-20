@@ -66,8 +66,14 @@ class PipelineProcessingError(SkillPassportError):
 
 
 class DatabaseUnavailableError(SkillPassportError):
-    def __init__(self, message: str = "Database service unreachable"):
-        super().__init__(message=message, code="DATABASE_UNAVAILABLE")
+    def __init__(
+        self,
+        message: str = "Database service unreachable",
+        retry_after: int = 15,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message=message, code="DATABASE_UNAVAILABLE", details=details)
+        self.retry_after = retry_after
 
 
 class StorageUnavailableError(SkillPassportError):

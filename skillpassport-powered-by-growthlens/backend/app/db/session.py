@@ -3,22 +3,23 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
+from backend.app.db.reliability import circuit_breaker
 
 logger = get_logger("db.session")
 
 settings = get_settings()
 
 # Engine creation with strictly bounded pooling for Supabase session-mode pooler (limit 15 total)
-# pool_size=10 with max_overflow=0 guarantees this service will NEVER exceed 10 connections total,
-# perfectly supporting concurrent frontend requests while leaving a guaranteed 5-connection headroom
+# db_pool_size (default 8) with db_max_overflow=0 guarantees this service will NEVER exceed 8 connections total,
+# perfectly supporting concurrent frontend requests while leaving a guaranteed 7-connection headroom
 # on Supabase to prevent EMAXCONNSESSION errors.
 engine = create_engine(
     settings.database_url,
-    pool_pre_ping=True,
-    pool_recycle=300,   # Recycle idle connections every 5 minutes
-    pool_size=10,       # Bounded pool size supporting dashboard concurrency
-    max_overflow=0,     # max_overflow=0 guarantees strict connection bounds below Supabase's 15 limit
-    pool_timeout=30.0,  # Wait up to 30s in queue during high concurrency bursts
+    pool_pre_ping=settings.db_pool_pre_ping,
+    pool_recycle=settings.db_pool_recycle,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    pool_timeout=settings.db_pool_timeout,
     pool_reset_on_return="rollback",
     connect_args={
         "connect_timeout": 10,
@@ -35,23 +36,50 @@ Base = declarative_base()
 
 
 def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency for thread-safe database sessions."""
+    """FastAPI dependency for thread-safe database sessions with circuit breaker and cleanup."""
+    circuit_breaker.check_availability()
     db = SessionLocal()
     try:
         yield db
+    except Exception as exc:
+        try:
+            db.rollback()
+        except Exception as rb_err:
+            logger.warning(f"Error during rollback on exception: {rb_err}")
+        circuit_breaker.record_failure(exc)
+        raise
     finally:
         db.close()
 
 
 def check_database_connection() -> dict:
-    """Verifies live PostgreSQL connection via SELECT 1."""
+    """Verifies live PostgreSQL connection via SELECT 1 with circuit breaker awareness."""
+    circuit_metrics = circuit_breaker.get_metrics()
+    if circuit_metrics["state"] == "OPEN":
+        return {
+            "status": "unhealthy",
+            "connected": False,
+            "error": "Circuit breaker is OPEN (recovering from connection exhaustion)",
+            "circuit_breaker": circuit_metrics,
+        }
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1;"))
             row = result.fetchone()
             if row and row[0] == 1:
-                return {"status": "healthy", "connected": True}
+                circuit_breaker.record_success()
+                return {
+                    "status": "healthy",
+                    "connected": True,
+                    "circuit_breaker": circuit_metrics,
+                }
         return {"status": "unhealthy", "connected": False, "error": "Query returned no rows"}
     except Exception as e:
+        circuit_breaker.record_failure(e)
         logger.error(f"PostgreSQL health check failed: {e}")
-        return {"status": "unhealthy", "connected": False, "error": str(e)}
+        return {
+            "status": "unhealthy",
+            "connected": False,
+            "error": str(e),
+            "circuit_breaker": circuit_breaker.get_metrics(),
+        }

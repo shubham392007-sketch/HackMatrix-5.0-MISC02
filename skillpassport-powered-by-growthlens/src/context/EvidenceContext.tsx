@@ -43,6 +43,7 @@ import {
   listPassportTaxonomy,
   listPassportHistory,
   reviewPassportCandidate,
+  DatabaseUnavailableError,
 } from "@/lib/evidenceApi";
 import {
   SkillItem,
@@ -296,8 +297,10 @@ interface EvidenceContextType {
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobileSidebar: () => void;
 
-  // Live Evidence Synchronization
+  // Live Evidence Synchronization & Database Resilience
   refreshEvidenceData: (force?: boolean) => Promise<void>;
+  isDatabaseUnavailable: boolean;
+  dbRetryAfterSeconds: number;
 
   // Authentication State
   isAuthenticated: boolean;
@@ -399,6 +402,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
 
+  // Database Resilience State
+  const [isDatabaseUnavailable, setIsDatabaseUnavailable] = useState<boolean>(false);
+  const [dbRetryAfterSeconds, setDbRetryAfterSeconds] = useState<number>(0);
+
   const refreshEvidenceData = useCallback(async (force: boolean = false) => {
     if (isFetchingRef.current) return;
     const now = Date.now();
@@ -422,6 +429,24 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         listIngestionRuns(),
         getMyProfile(),
       ]);
+
+      const dbDownError = [evRes, srcRes, runsRes, profileRes].find(
+        (r) =>
+          r.status === "rejected" &&
+          (r.reason instanceof DatabaseUnavailableError ||
+            r.reason?.status === 503 ||
+            r.reason?.name === "DatabaseUnavailableError")
+      );
+
+      if (dbDownError && dbDownError.status === "rejected") {
+        setIsDatabaseUnavailable(true);
+        const retrySec = dbDownError.reason?.retryAfter || 15;
+        setDbRetryAfterSeconds(retrySec);
+        console.warn(`[EvidenceContext] Database temporarily unavailable (503). Retrying in ${retrySec}s. Using cached state.`);
+      } else if (evRes.status === "fulfilled") {
+        setIsDatabaseUnavailable(false);
+        setDbRetryAfterSeconds(0);
+      }
 
       if (evRes.status === "fulfilled" && evRes.value?.items && Array.isArray(evRes.value.items)) {
         const mappedItems: EvidenceItem[] = evRes.value.items.map((raw: any) => ({
@@ -2191,6 +2216,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         refreshEvidenceData,
         initialLoading,
         isLoadingEvidence,
+        isDatabaseUnavailable,
+        dbRetryAfterSeconds,
 
         // Authentication State
         isAuthenticated,

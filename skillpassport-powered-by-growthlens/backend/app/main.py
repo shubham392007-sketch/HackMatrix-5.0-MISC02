@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import get_settings
 from backend.app.core.logging import setup_logging, get_logger
-from backend.app.core.exceptions import SkillPassportError
+from backend.app.core.exceptions import SkillPassportError, DatabaseUnavailableError
+from sqlalchemy.exc import SQLAlchemyError
 from backend.app.api.router import api_router
 
 logger = get_logger("main")
@@ -68,13 +69,49 @@ def create_app() -> FastAPI:
         elif exc.code in ("DATABASE_UNAVAILABLE", "STORAGE_UNAVAILABLE"):
             status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
+        headers = {}
+        if isinstance(exc, DatabaseUnavailableError) and hasattr(exc, "retry_after"):
+            headers["Retry-After"] = str(exc.retry_after)
+
         return JSONResponse(
             status_code=status_code,
+            headers=headers,
             content={
                 "error": {
                     "code": exc.code,
                     "message": exc.message,
                     "details": exc.details,
+                }
+            },
+        )
+
+    # Centralized Exception Handler for Raw SQLAlchemy / Connection Errors
+    @app.exception_handler(SQLAlchemyError)
+    async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+        from backend.app.db.reliability import (
+            circuit_breaker,
+            is_transient_connection_error,
+            is_connection_exhaustion_error,
+        )
+        circuit_breaker.record_failure(exc)
+        logger.error(
+            f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}"
+        )
+
+        is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
+        msg = (
+            "The database is currently experiencing high load or connection limits. Please try again shortly."
+            if is_transient
+            else "A database operation could not be completed. Please try again later."
+        )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            headers={"Retry-After": "15"},
+            content={
+                "error": {
+                    "code": "DATABASE_TEMPORARILY_UNAVAILABLE",
+                    "message": msg,
+                    "details": {"retry_after_seconds": 15},
                 }
             },
         )

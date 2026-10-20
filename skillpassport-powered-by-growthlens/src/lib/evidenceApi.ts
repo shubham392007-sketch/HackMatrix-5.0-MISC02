@@ -50,22 +50,58 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 const inFlightRequests = new Map<string, Promise<Response>>();
 const _nativeFetch = globalThis.fetch.bind(globalThis);
 
+export class DatabaseUnavailableError extends Error {
+  public status = 503;
+  public retryAfter: number;
+  public details?: any;
+
+  constructor(
+    message: string = "Database service is temporarily recovering. Please try again shortly.",
+    retryAfter: number = 15,
+    details?: any
+  ) {
+    super(message);
+    this.name = "DatabaseUnavailableError";
+    this.retryAfter = retryAfter;
+    this.details = details;
+  }
+}
+
 async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const method = (init?.method || "GET").toUpperCase();
+  let response: Response;
   if (method !== "GET") {
-    return _nativeFetch(input, init);
-  }
-  const key = typeof input === "string" ? input : input.toString();
-  if (inFlightRequests.has(key)) {
-    const pending = inFlightRequests.get(key)!;
-    return pending.then((res) => res.clone());
+    response = await _nativeFetch(input, init);
+  } else {
+    const key = typeof input === "string" ? input : input.toString();
+    if (inFlightRequests.has(key)) {
+      const pending = inFlightRequests.get(key)!;
+      return pending.then((res) => res.clone());
+    }
+
+    const promise = _nativeFetch(input, init).finally(() => {
+      inFlightRequests.delete(key);
+    });
+    inFlightRequests.set(key, promise);
+    response = await promise;
   }
 
-  const promise = _nativeFetch(input, init).finally(() => {
-    inFlightRequests.delete(key);
-  });
-  inFlightRequests.set(key, promise);
-  const response = await promise;
+  if (response.status === 503) {
+    const retryAfterHeader = response.headers.get("Retry-After");
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 15;
+    const cloned = response.clone();
+    let message = "Database service is temporarily recovering. Please try again shortly.";
+    let details: any = undefined;
+    try {
+      const body = await cloned.json();
+      if (body?.error?.message) {
+        message = body.error.message;
+      }
+      details = body?.error?.details;
+    } catch {}
+    throw new DatabaseUnavailableError(message, retryAfter, details);
+  }
+
   return response.clone();
 }
 

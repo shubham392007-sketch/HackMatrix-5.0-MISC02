@@ -27,6 +27,38 @@ class Settings(BaseSettings):
         default="",
         description="Direct database connection string for migrations",
     )
+    db_pool_size: int = Field(
+        default=8,
+        description="SQLAlchemy QueuePool size (bounded <= 8 to preserve Supabase 15 limit)",
+    )
+    db_max_overflow: int = Field(
+        default=0,
+        description="SQLAlchemy QueuePool max overflow (0 enforces strict upper bound)",
+    )
+    db_pool_timeout: float = Field(
+        default=20.0,
+        description="Seconds to wait in queue for a connection from pool before timeout",
+    )
+    db_pool_recycle: int = Field(
+        default=300,
+        description="Seconds before recycling pooled connections to avoid stale socket drops",
+    )
+    db_pool_pre_ping: bool = Field(
+        default=True,
+        description="Test connection health on checkout with lightweight ping",
+    )
+    db_max_retries: int = Field(
+        default=2,
+        description="Maximum retry attempts for transient database queries",
+    )
+    db_circuit_breaker_threshold: int = Field(
+        default=5,
+        description="Number of consecutive failures before opening circuit breaker",
+    )
+    db_circuit_breaker_recovery_seconds: float = Field(
+        default=15.0,
+        description="Seconds before half-open probe in circuit breaker",
+    )
 
     # Supabase
     supabase_url: str = Field(default="", description="Supabase project URL")
