@@ -212,8 +212,15 @@ class WorkAnalyzerService:
         ]
         candidate_skill_names = [s["name"] for s in extracted_skills_list]
 
-        # 5. Invoke Ollama Qwen3 8B with configured context window
-        ctx_tokens = int(getattr(self.settings, "ollama_num_ctx", 16384))
+        # 5. Invoke Ollama Qwen3 8B with calibrated context window
+        # Calibrate context window to ensure 100% layer offloading to RTX 4050 6GB GPU
+        # 4096 tokens fits in ~5.2 GB total VRAM; 8192 tokens fits in ~5.8 GB total VRAM.
+        configured_ctx = int(getattr(self.settings, "ollama_num_ctx", 8192))
+        if len(safe_text) < 8000:
+            ctx_tokens = 4096
+        else:
+            ctx_tokens = min(configured_ctx, 8192)
+
         max_chars = int(ctx_tokens * 2.8)
         content_payload = safe_text
         if len(content_payload) > max_chars:
@@ -228,7 +235,7 @@ class WorkAnalyzerService:
         )
 
         endpoint_netloc = self._sanitize_netloc(self.ollama_url)
-        timeout_seconds = float(getattr(self.settings, "ollama_timeout_seconds", 120.0))
+        timeout_seconds = float(getattr(self.settings, "ollama_timeout_seconds", 180.0))
 
         parsed_data = None
         fallback_used = False
@@ -255,6 +262,8 @@ class WorkAnalyzerService:
                             "temperature": 0.0,
                             "num_predict": 2048,
                             "num_ctx": ctx_tokens,
+                            "num_gpu": 99,
+                            "num_thread": 8,
                         },
                     },
                 )

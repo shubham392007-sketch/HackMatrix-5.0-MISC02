@@ -470,7 +470,14 @@ class EvidenceExtractorAI:
                 "Only propose candidate competencies that are genuinely demonstrated by the content below.)"
             )
 
-        ctx_tokens = getattr(self.settings, "ollama_num_ctx", 16384)
+        # Calibrate context window to ensure 100% layer offloading to RTX 4050 6GB GPU
+        # 4096 tokens fits in ~5.2 GB total VRAM; 8192 tokens fits in ~5.8 GB total VRAM.
+        configured_ctx = int(getattr(self.settings, "ollama_num_ctx", 8192))
+        if len(text_content) < 8000:
+            ctx_tokens = 4096
+        else:
+            ctx_tokens = min(configured_ctx, 8192)
+
         max_content_chars = int(ctx_tokens * 2.8)
         content_to_send = text_content
         if len(content_to_send) > max_content_chars:
@@ -483,8 +490,9 @@ class EvidenceExtractorAI:
         prompt_text = "\n".join(prompt_parts)
 
         extracted_data = None
+        timeout_seconds = float(getattr(self.settings, "ollama_timeout_seconds", 180.0))
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 resp = await client.post(
                     f"{self.ollama_url}/api/chat",
                     json={
@@ -500,6 +508,8 @@ class EvidenceExtractorAI:
                             "temperature": 0.0,
                             "num_predict": 2048,
                             "num_ctx": ctx_tokens,
+                            "num_gpu": 99,
+                            "num_thread": 8,
                         },
                     },
                 )
@@ -521,7 +531,8 @@ class EvidenceExtractorAI:
                 else:
                     logger.warning(f"Ollama extraction request returned HTTP {resp.status_code}: {resp.text}")
         except Exception as e:
-            logger.warning(f"Ollama LLM extraction error ({e}). Using deterministic fallback.")
+            exc_desc = f"{type(e).__name__}: {e or 'Request timeout or connection failure'}"
+            logger.warning(f"Ollama LLM extraction error ({exc_desc}). Using deterministic fallback.", exc_info=True)
 
         if not extracted_data:
             extracted_data = self._rule_based_extraction(text_content, source_provider, source_metadata)

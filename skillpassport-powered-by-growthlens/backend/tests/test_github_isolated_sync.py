@@ -13,7 +13,7 @@ from backend.app.models.connection import ConnectedSource, SelectedResource
 def test_ollama_num_ctx_setting():
     settings = get_settings()
     assert hasattr(settings, "ollama_num_ctx")
-    assert settings.ollama_num_ctx >= 16384
+    assert settings.ollama_num_ctx >= 8192
 
 
 def test_select_single_repository_endpoint():

@@ -81,10 +81,10 @@ class Settings(BaseSettings):
     ollama_qwen_model: str = "qwen3:8b"
     ollama_ocr_model: str = "glm-ocr"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_timeout_seconds: float = 120.0
+    ollama_timeout_seconds: float = 180.0
     ollama_num_ctx: int = Field(
-        default=16384,
-        description="Effective context window (num_ctx) for Ollama inference requests (target: 16384 tokens)",
+        default=8192,
+        description="Effective context window (num_ctx) for Ollama inference requests (target: 8192 tokens for 100% GPU offload on 6GB VRAM)",
     )
 
     # ChromaDB
