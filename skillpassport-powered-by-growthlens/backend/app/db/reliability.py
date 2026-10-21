@@ -95,7 +95,10 @@ def is_transient_transaction_error(exc: Exception) -> bool:
 
 
 def is_non_retryable_error(exc: Exception) -> bool:
-    """Returns True if the error is permanent (e.g. constraint violation, syntax error)."""
+    """Returns True if the error is permanent (e.g. constraint violation, syntax error) or an HTTP exception."""
+    from fastapi import HTTPException
+    if isinstance(exc, HTTPException):
+        return True
     if isinstance(exc, (IntegrityError, DataError, ProgrammingError)):
         return True
     orig = getattr(exc, "orig", None)

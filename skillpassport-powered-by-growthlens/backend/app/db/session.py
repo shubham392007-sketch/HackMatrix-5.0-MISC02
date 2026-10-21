@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
@@ -41,6 +42,10 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+        circuit_breaker.record_success()
+    except HTTPException:
+        # Do NOT count application-level HTTP exceptions (401, 404, etc.) as database failures
+        raise
     except Exception as exc:
         try:
             db.rollback()

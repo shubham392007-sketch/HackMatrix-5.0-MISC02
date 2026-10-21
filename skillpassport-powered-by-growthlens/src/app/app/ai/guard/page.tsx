@@ -45,6 +45,12 @@ export default function HallucinationGuardPage() {
   );
 
   useEffect(() => {
+    if (guardResults.length === 0) {
+      refreshEvidenceData();
+    }
+  }, [guardResults.length, refreshEvidenceData]);
+
+  useEffect(() => {
     if (!selectedClaimId && guardResults.length > 0) {
       setSelectedClaimId(guardResults[0].id);
     }

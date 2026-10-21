@@ -25,6 +25,8 @@ import {
   listIngestionRuns,
   reviewEvidenceItem,
   getMyProfile,
+  getAIOverview,
+  getAIBootstrap,
   listWorkAnalyses,
   listCandidateSkills,
   listEvidenceMappings,
@@ -150,12 +152,25 @@ interface EvidenceContextType {
   historyEvents: SkillHistoryEvent[];
   taxonomyCategories: TaxonomyCategory[];
   passportMetrics?: {
-    total_skills: number;
-    verified_count: number;
-    candidate_count: number;
-    coverage_rate: number;
-    top_proficiency: string;
-    avg_confidence: number;
+    total_skills?: number;
+    total_tracked?: number;
+    verified_count?: number;
+    candidate_count?: number;
+    coverage_rate?: number;
+    top_proficiency?: string | { level: string; skills_preview?: string };
+    avg_confidence?: number;
+    avg_extraction_confidence?: number;
+    linked_artifacts_count?: number;
+  } | null;
+  aiOverviewMetrics?: {
+    total_analyses: number;
+    candidate_skills: number;
+    verified_skills: number;
+    claims_blocked: number;
+    open_conflicts: number;
+    valid_outputs_count: number;
+    total_validations: number;
+    pending_reviews: number;
   } | null;
   
   // Domain 3 AI State
@@ -341,18 +356,46 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
     return [];
   });
-  const [skills, setSkills] = useState<SkillItem[]>([]);
+  const [skills, setSkills] = useState<SkillItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_skills_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [historyEvents, setHistoryEvents] = useState<SkillHistoryEvent[]>([]);
   const [taxonomyCategories, setTaxonomyCategories] = useState<TaxonomyCategory[]>([]);
   const [passportMetrics, setPassportMetrics] = useState<{
-    total_skills: number;
-    verified_count: number;
-    candidate_count: number;
-    coverage_rate: number;
-    top_proficiency: string;
-    avg_confidence: number;
-  } | null>(null);
+    total_skills?: number;
+    total_tracked?: number;
+    verified_count?: number;
+    candidate_count?: number;
+    coverage_rate?: number;
+    top_proficiency?: string | { level: string; skills_preview?: string };
+    avg_confidence?: number;
+    avg_extraction_confidence?: number;
+    linked_artifacts_count?: number;
+  } | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_passport_metrics_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
 
+  const [aiOverviewMetrics, setAiOverviewMetrics] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_ai_overview_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
 
   const [initialLoading, setInitialLoading] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -383,12 +426,28 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
     return [];
   });
-  const [extractionCandidates, setExtractionCandidates] = useState<ExtractionCandidateItem[]>([]);
+  const [extractionCandidates, setExtractionCandidates] = useState<ExtractionCandidateItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_candidates_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [evidenceMappings, setEvidenceMappings] = useState<EvidenceMappingItem[]>([]);
   const [verifications, setVerifications] = useState<SkillVerificationRecord[]>([]);
   const [confidenceClaims, setConfidenceClaims] = useState<ConfidenceClaim[]>([]);
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([]);
-  const [guardResults, setGuardResults] = useState<GuardClaimResult[]>([]);
+  const [guardResults, setGuardResults] = useState<GuardClaimResult[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("sp_live_guard_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
   const [validationRecords, setValidationRecords] = useState<OutputValidationRecord[]>([]);
   const [promptInjectionFlags, setPromptInjectionFlags] = useState<PromptInjectionFlag[]>([]);
   const [reviewTasks, setReviewTasks] = useState<HumanReviewTask[]>([]);
@@ -419,7 +478,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const refreshEvidenceData = useCallback(async (force: boolean = false) => {
     if (isFetchingRef.current) return;
     const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 4000) {
+    const isStateEmpty = workAnalyses.length === 0 || extractionCandidates.length === 0 || skills.length === 0;
+    if (!force && !isStateEmpty && now - lastFetchTimeRef.current < 4000) {
       return;
     }
     isFetchingRef.current = true;
@@ -572,28 +632,71 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       setIsLoadingEvidence(false);
 
       // Stage 2: Background AI, Governance & Domain 2 Skill Passport Hydration
-      const [
-        workRes, candRes, guardRes, valRes, confRes, conflictRes, taskRes, injRes, auditRes,
-        passportSkillsRes, passportTaxonomyRes, passportHistoryRes
-      ] = await Promise.allSettled([
-        listWorkAnalyses(),
-        listCandidateSkills(),
-        listGuardResults(),
-        listOutputValidations(),
-        getConfidenceBreakdown(),
-        listConflicts(),
-        listReviewTasks(),
-        listPromptInjectionFindings(),
-        listAIAuditEvents(),
+      let bootstrapData: any = null;
+      try {
+        bootstrapData = await getAIBootstrap();
+      } catch (err) {
+        console.warn("[EvidenceContext] getAIBootstrap failed, falling back to individual calls:", err);
+      }
+
+      // Step B: Passport calls batched in pairs to respect connection pool
+      const [passportSkillsRes, passportTaxonomyRes] = await Promise.allSettled([
         listPassportSkills(),
         listPassportTaxonomy(),
+      ]);
+
+      const [passportHistoryRes] = await Promise.allSettled([
         listPassportHistory(),
       ]);
 
+      let workItems = bootstrapData?.work_analyses;
+      let candItems = bootstrapData?.candidates;
+      let guardItems = bootstrapData?.guard_results;
+      let valItems = bootstrapData?.validations;
+      let conflictItems = bootstrapData?.conflicts;
+      let taskItems = bootstrapData?.review_tasks;
+      let injItems = bootstrapData?.prompt_injections;
+      let auditItems = bootstrapData?.audit_events;
+      let confClaims = bootstrapData?.confidence_claims;
+      let overviewMetrics = bootstrapData?.overview;
+
+      if (!bootstrapData) {
+        const [wRes, cRes, gRes, vRes] = await Promise.allSettled([
+          listWorkAnalyses(),
+          listCandidateSkills(),
+          listGuardResults(),
+          listOutputValidations(),
+        ]);
+        const [cfRes, tRes, iRes, aRes, confRes] = await Promise.allSettled([
+          listConflicts(),
+          listReviewTasks(),
+          listPromptInjectionFindings(),
+          listAIAuditEvents(),
+          getConfidenceBreakdown(),
+        ]);
+        if (wRes.status === "fulfilled") workItems = wRes.value?.items;
+        if (cRes.status === "fulfilled") candItems = cRes.value?.candidates;
+        if (gRes.status === "fulfilled") guardItems = gRes.value?.results;
+        if (vRes.status === "fulfilled") valItems = vRes.value?.validations;
+        if (cfRes.status === "fulfilled") conflictItems = cfRes.value?.conflicts;
+        if (tRes.status === "fulfilled") taskItems = tRes.value?.tasks;
+        if (iRes.status === "fulfilled") injItems = iRes.value?.findings;
+        if (aRes.status === "fulfilled") auditItems = aRes.value?.events;
+        if (confRes.status === "fulfilled") confClaims = confRes.value?.claims;
+      }
+
+      if (overviewMetrics) {
+        setAiOverviewMetrics(overviewMetrics);
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("sp_live_ai_overview_cache", JSON.stringify(overviewMetrics));
+          } catch {}
+        }
+      }
 
       const candMapByEvidence: Record<string, any[]> = {};
-      if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
-        for (const c of candRes.value.candidates) {
+      if (Array.isArray(candItems)) {
+        for (const c of candItems) {
           if (c.evidence_id) {
             if (!candMapByEvidence[c.evidence_id]) candMapByEvidence[c.evidence_id] = [];
             candMapByEvidence[c.evidence_id].push(c);
@@ -601,8 +704,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (workRes.status === "fulfilled" && Array.isArray(workRes.value?.items)) {
-        const mappedWork: WorkAnalysisResult[] = workRes.value.items.map((w: any) => {
+      if (Array.isArray(workItems)) {
+        const mappedWork: WorkAnalysisResult[] = workItems.map((w: any) => {
           const rawSkills = Array.isArray(w.demonstrated_skills) && w.demonstrated_skills.length > 0
             ? w.demonstrated_skills
             : (candMapByEvidence[w.evidence_id] || []).map((c: any) => ({
@@ -668,12 +771,14 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         });
         setWorkAnalyses(mappedWork);
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("sp_live_work_analyses_cache", JSON.stringify(mappedWork));
+          try {
+            sessionStorage.setItem("sp_live_work_analyses_cache", JSON.stringify(mappedWork));
+          } catch {}
         }
       }
 
-      if (candRes.status === "fulfilled" && Array.isArray(candRes.value?.candidates)) {
-        const mappedCandidates: ExtractionCandidateItem[] = candRes.value.candidates.map((c: any) => {
+      if (Array.isArray(candItems)) {
+        const mappedCandidates: ExtractionCandidateItem[] = candItems.map((c: any) => {
           const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
           const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 82;
           return {
@@ -694,8 +799,13 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           };
         });
         setExtractionCandidates(mappedCandidates);
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("sp_live_candidates_cache", JSON.stringify(mappedCandidates));
+          } catch {}
+        }
 
-        const mappedMappings: EvidenceMappingItem[] = candRes.value.candidates.map((c: any) => {
+        const mappedMappings: EvidenceMappingItem[] = candItems.map((c: any) => {
           const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
           const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 82;
           return {
@@ -767,8 +877,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      if (guardRes.status === "fulfilled" && Array.isArray(guardRes.value?.results)) {
-        const mappedGuard: GuardClaimResult[] = guardRes.value.results.map((g: any) => {
+      if (Array.isArray(guardItems)) {
+        const mappedGuard: GuardClaimResult[] = guardItems.map((g: any) => {
           let skillName = g.claimed_skill_name || "Extracted Skill Claim";
           let skillLevel = g.claimed_level || "Practitioner";
           const reasons: string[] = g.reason_codes || [];
@@ -813,12 +923,18 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
               map.set(item.id, item);
             }
           });
-          return Array.from(map.values());
+          const combined = Array.from(map.values());
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("sp_live_guard_cache", JSON.stringify(combined));
+            } catch {}
+          }
+          return combined;
         });
       }
 
-      if (valRes.status === "fulfilled" && Array.isArray(valRes.value?.validations)) {
-        const mappedVals: OutputValidationRecord[] = valRes.value.validations.map((v: any) => ({
+      if (Array.isArray(valItems)) {
+        const mappedVals: OutputValidationRecord[] = valItems.map((v: any) => ({
           run_id: v.run_id,
           output_type: v.target_type === "skill_extraction" ? "skill_extraction" : "work_analysis",
           status: v.final_status === "valid" ? "valid" : "validation_failed",
@@ -840,8 +956,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setValidationRecords(mappedVals);
       }
 
-      if (confRes.status === "fulfilled" && Array.isArray(confRes.value?.claims)) {
-        const mappedConf: ConfidenceClaim[] = confRes.value.claims.map((c: any, idx: number) => ({
+      if (Array.isArray(confClaims)) {
+        const mappedConf: ConfidenceClaim[] = confClaims.map((c: any, idx: number) => ({
           id: c.candidate_id || `conf-${idx}`,
           skill_id: c.candidate_id,
           skill_name: c.competency_name,
@@ -858,8 +974,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setConfidenceClaims(mappedConf);
       }
 
-      if (conflictRes.status === "fulfilled" && Array.isArray(conflictRes.value?.conflicts)) {
-        const mappedConflicts: ConflictRecord[] = conflictRes.value.conflicts.map((c: any) => ({
+      if (Array.isArray(conflictItems)) {
+        const mappedConflicts: ConflictRecord[] = conflictItems.map((c: any) => ({
           id: c.id,
           title: `Conflict on ${c.conflict_field.replace('_', ' ')}`,
           conflict_type: "attribution_dispute",
@@ -894,8 +1010,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setConflicts(mappedConflicts);
       }
 
-      if (taskRes.status === "fulfilled" && Array.isArray(taskRes.value?.tasks)) {
-        const mappedTasks: HumanReviewTask[] = taskRes.value.tasks.map((t: any) => ({
+      if (Array.isArray(taskItems)) {
+        const mappedTasks: HumanReviewTask[] = taskItems.map((t: any) => ({
           id: t.id,
           claim_id: t.candidate_mapping_id || t.evidence_id || t.id,
           title: t.title,
@@ -909,8 +1025,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setReviewTasks(mappedTasks);
       }
 
-      if (injRes.status === "fulfilled" && Array.isArray(injRes.value?.findings)) {
-        const mappedInj: PromptInjectionFlag[] = injRes.value.findings.map((f: any) => ({
+      if (Array.isArray(injItems)) {
+        const mappedInj: PromptInjectionFlag[] = injItems.map((f: any) => ({
           id: f.id,
           source_id: f.evidence_id,
           source_title: "Quarantined Artifact",
@@ -925,8 +1041,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setPromptInjectionFlags(mappedInj);
       }
 
-      if (auditRes.status === "fulfilled" && Array.isArray(auditRes.value?.events)) {
-        const mappedAudits: AIAuditEvent[] = auditRes.value.events.map((a: any) => {
+      if (Array.isArray(auditItems)) {
+        const mappedAudits: AIAuditEvent[] = auditItems.map((a: any) => {
           let entityType: AIAuditEvent["affected_entity_type"] = "candidate_skill";
           const rawTargetType = (a.target_type || a.affected_entity_type || "").toLowerCase();
           if (rawTargetType.includes("evidence") || rawTargetType.includes("source")) {
@@ -984,9 +1100,19 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       if (passportSkillsRes.status === "fulfilled" && passportSkillsRes.value) {
         if (Array.isArray(passportSkillsRes.value.skills)) {
           setSkills(passportSkillsRes.value.skills);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("sp_live_skills_cache", JSON.stringify(passportSkillsRes.value.skills));
+            } catch {}
+          }
         }
         if (passportSkillsRes.value.metrics) {
           setPassportMetrics(passportSkillsRes.value.metrics);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("sp_live_passport_metrics_cache", JSON.stringify(passportSkillsRes.value.metrics));
+            } catch {}
+          }
         }
       }
 
@@ -999,6 +1125,11 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       if (passportHistoryRes.status === "fulfilled" && passportHistoryRes.value) {
         if (Array.isArray(passportHistoryRes.value.events)) {
           setHistoryEvents(passportHistoryRes.value.events);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("sp_live_history_cache", JSON.stringify(passportHistoryRes.value.events));
+            } catch {}
+          }
         }
       }
     } catch (e) {
@@ -2195,6 +2326,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         historyEvents,
         taxonomyCategories,
         passportMetrics,
+        aiOverviewMetrics,
         reviewCandidateSkill,
         currentRole,
 

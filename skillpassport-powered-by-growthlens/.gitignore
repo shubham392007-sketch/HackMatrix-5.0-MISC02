@@ -1,7 +1,15 @@
 node_modules
 .next
 out
+.env
 .env*.local
+backend/.env
+chroma_data/
+backend/data/
+__pycache__/
+*.py[cod]
+venv/
+.venv/
 .DS_Store
 *.pem
 npm-debug.log*

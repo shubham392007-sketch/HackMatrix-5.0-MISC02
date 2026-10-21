@@ -151,6 +151,41 @@ def get_ai_overview(
     }
 
 
+@router.get("/bootstrap")
+def get_ai_bootstrap(
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Consolidated atomic bootstrap endpoint for AI Intelligence & Trust Governance domains.
+    Executes all queries in a single database connection to prevent pool exhaustion and latency spikes.
+    """
+    overview_data = get_ai_overview(db=db, user=user)
+    work_data = list_work_analyses(limit=200, db=db, user=user)
+    candidates_data = list_candidate_skills(db=db, user=user)
+    guard_data = list_guard_results(db=db, user=user)
+    validation_data = list_output_validations(db=db, user=user)
+    conflicts_data = list_conflicts(db=db, user=user)
+    tasks_data = list_review_tasks(db=db, user=user)
+    injections_data = list_prompt_injection_findings(db=db, user=user)
+    audits_data = list_ai_audit_events(limit=50, db=db, user=user)
+    confidence_data = get_confidence_breakdown(db=db, user=user)
+
+    return {
+        "overview": overview_data.get("metrics", {}),
+        "recent_audit_events": overview_data.get("recent_audit_events", []),
+        "work_analyses": work_data.get("items", []),
+        "candidates": candidates_data.get("candidates", []),
+        "guard_results": guard_data.get("results", []),
+        "validations": validation_data.get("validations", []),
+        "conflicts": conflicts_data.get("conflicts", []),
+        "review_tasks": tasks_data.get("tasks", []),
+        "prompt_injections": injections_data.get("findings", []),
+        "audit_events": audits_data.get("events", []),
+        "confidence_claims": confidence_data.get("claims", []),
+    }
+
+
 # --- 2. Work Analysis ---
 
 @router.post("/analysis/runs")
@@ -216,6 +251,8 @@ def list_work_analyses(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
+    if not isinstance(limit, int):
+        limit = 200
     owner_uuid = uuid.UUID(str(user.id))
     analyses = db.query(WorkAnalysisResult).filter(
         WorkAnalysisResult.owner_user_id == owner_uuid,
@@ -603,10 +640,15 @@ def get_confidence_breakdown(
         EvidenceCompetencyMapping.owner_user_id == owner_uuid,
     ).all()
 
+    comp_ids = list({m.competency_id for m in mappings if m.competency_id})
+    ev_ids = list({m.evidence_id for m in mappings if m.evidence_id})
+    comps = {c.id: c for c in db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all()} if comp_ids else {}
+    evs = {e.id: e for e in db.query(EvidenceItem).filter(EvidenceItem.id.in_(ev_ids)).all()} if ev_ids else {}
+
     claims = []
     for m in mappings:
-        comp = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id == m.competency_id).first()
-        ev = db.query(EvidenceItem).filter(EvidenceItem.id == m.evidence_id).first()
+        comp = comps.get(m.competency_id)
+        ev = evs.get(m.evidence_id)
 
         uncertainties = []
         if ev and ev.is_collaborative:

@@ -1,0 +1,40 @@
+# Skill Passport — Backend Core Dependencies
+# Python 3.11+ / 3.12+ compatible
+
+# Web Framework & ASGI Server
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.30.0,<1.0.0
+pydantic>=2.8.0,<3.0.0
+pydantic-settings>=2.4.0,<3.0.0
+
+# Database & ORM
+sqlalchemy>=2.0.30,<2.1.0
+alembic>=1.13.0,<2.0.0
+psycopg2-binary>=2.9.9,<3.0.0
+
+# HTTP & Async Clients
+httpx>=0.27.0,<1.0.0
+
+# Security, Cryptography & Auth
+cryptography>=43.0.0,<45.0.0
+pyjwt[crypto]>=2.9.0,<3.0.0
+supabase>=2.7.0,<3.0.0
+
+# Document Ingestion, Parsing & OCR
+pymupdf>=1.24.0,<2.0.0       # PDF text and metadata extraction (fitz)
+python-docx>=1.1.0,<2.0.0    # DOCX resume and review parsing
+python-pptx>=0.6.23,<1.0.0   # PPTX presentation extraction
+trafilatura>=1.12.0,<2.0.0   # Web crawling and content distillation
+beautifulsoup4>=4.12.0,<5.0.0 # HTML structure parsing
+pillow>=10.4.0,<12.0.0       # Image handling for OCR pre-processing
+
+# AI, Vector Storage & Embeddings
+chromadb>=0.5.0,<1.6.0       # Local semantic vector index
+
+# Distributed Tasks & Queues (Optional / Configurable)
+celery>=5.4.0,<6.0.0
+redis>=5.0.0,<6.0.0
+
+# Testing & Quality Assurance
+pytest>=8.3.0,<10.0.0
+pytest-asyncio>=0.24.0,<1.5.0

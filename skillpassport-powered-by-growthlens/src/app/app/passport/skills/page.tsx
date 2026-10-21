@@ -23,10 +23,16 @@ import {
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function VerifiedSkillsPage() {
-  const { skills, evidenceItems, passportMetrics } = useEvidence();
+  const { skills, evidenceItems, passportMetrics, refreshEvidenceData } = useEvidence();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProficiency, setSelectedProficiency] = useState("all");
+
+  React.useEffect(() => {
+    if (skills.length === 0) {
+      refreshEvidenceData();
+    }
+  }, [skills.length, refreshEvidenceData]);
 
   const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
 
@@ -95,9 +101,9 @@ export default function VerifiedSkillsPage() {
             <Award className="w-4 h-4 text-[#2E6941]" />
           </div>
           <div className="text-3xl font-extrabold text-[#1F1E1D]">
-            {verifiedSkills.length}
+            {passportMetrics?.verified_count ?? verifiedSkills.length}
           </div>
-          <p className="text-xs text-[#8C827A] mt-1">Out of {skills.length} tracked items</p>
+          <p className="text-xs text-[#8C827A] mt-1">Out of {passportMetrics?.total_tracked ?? skills.length} tracked items</p>
         </div>
 
         <div className="gl-card p-5">
@@ -106,7 +112,7 @@ export default function VerifiedSkillsPage() {
             <CheckCircle2 className="w-4 h-4 text-[#4361EE]" />
           </div>
           <div className="text-3xl font-extrabold text-[#1F1E1D]">
-            {totalEvidenceLinked}
+            {passportMetrics?.linked_artifacts_count ?? totalEvidenceLinked}
           </div>
           <p className="text-xs text-[#8C827A] mt-1">Directly supporting evidence</p>
         </div>
@@ -122,7 +128,7 @@ export default function VerifiedSkillsPage() {
               : passportMetrics?.top_proficiency || (verifiedSkills.length > 0 ? "Established" : "None Established")}
           </div>
           <p className="text-xs text-[#8C827A] mt-1">
-            {verifiedSkills.length > 0 ? "Highest verified tier" : "No verified competencies"}
+            {verifiedSkills.length > 0 || passportMetrics?.top_proficiency ? "Highest verified tier" : "No verified competencies"}
           </p>
         </div>
 
@@ -132,12 +138,14 @@ export default function VerifiedSkillsPage() {
             <ShieldCheck className="w-4 h-4 text-[#2E6941]" />
           </div>
           <div className="text-3xl font-extrabold text-[#1F1E1D]">
-            {verifiedSkills.length > 0
-              ? `${Math.round(
-                  verifiedSkills.reduce((acc, s) => acc + s.confidence, 0) /
-                    verifiedSkills.length
-                )}%`
-              : "0%"}
+            {passportMetrics?.avg_extraction_confidence !== undefined && passportMetrics?.avg_extraction_confidence !== null
+              ? `${passportMetrics.avg_extraction_confidence}%`
+              : (verifiedSkills.length > 0
+                ? `${Math.round(
+                    verifiedSkills.reduce((acc, s) => acc + s.confidence, 0) /
+                      verifiedSkills.length
+                  )}%`
+                : "0%")}
           </div>
           <p className="text-xs text-[#8C827A] mt-1">Model calibration score</p>
         </div>

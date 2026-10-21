@@ -757,6 +757,13 @@ export async function getAIOverview() {
   return res.json();
 }
 
+export async function getAIBootstrap() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/ai/bootstrap`, { headers });
+  if (!res.ok) throw new Error("Failed to load AI bootstrap data");
+  return res.json();
+}
+
 export async function runWorkAnalysis(evidenceIds: string[]) {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/ai/analysis/runs`, {

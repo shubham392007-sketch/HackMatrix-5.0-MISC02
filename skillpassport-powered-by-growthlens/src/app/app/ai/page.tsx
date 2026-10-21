@@ -36,18 +36,26 @@ export default function AIOverviewPage() {
     validationRecords,
     reviewTasks,
     aiAuditEvents,
+    aiOverviewMetrics,
     initialLoading,
     isLoadingEvidence,
+    refreshEvidenceData,
   } = useEvidence();
 
-  const isDataLoading = initialLoading || (isLoadingEvidence && workAnalyses.length === 0 && extractionCandidates.length === 0);
+  React.useEffect(() => {
+    if (workAnalyses.length === 0 && !aiOverviewMetrics) {
+      refreshEvidenceData();
+    }
+  }, [workAnalyses.length, aiOverviewMetrics, refreshEvidenceData]);
 
-  const totalAnalyses = workAnalyses.length;
-  const totalCandidates = extractionCandidates.length;
-  const blockedCount = guardResults.filter((g) => g.guard_outcome === "BLOCK").length;
-  const openConflicts = conflicts.filter((c) => c.status === "open").length;
-  const validOutputsCount = validationRecords.filter((v) => v.status === "valid").length;
-  const pendingReviews = reviewTasks.filter((r) => r.status === "pending").length;
+  const totalAnalyses = aiOverviewMetrics?.total_analyses ?? workAnalyses.length;
+  const totalCandidates = aiOverviewMetrics?.candidate_skills ?? extractionCandidates.length;
+  const blockedCount = aiOverviewMetrics?.claims_blocked ?? guardResults.filter((g) => g.guard_outcome === "BLOCK").length;
+  const openConflicts = aiOverviewMetrics?.open_conflicts ?? conflicts.filter((c) => c.status === "open").length;
+  const validOutputsCount = aiOverviewMetrics?.valid_outputs_count ?? validationRecords.filter((v) => v.status === "valid").length;
+  const pendingReviews = aiOverviewMetrics?.pending_reviews ?? reviewTasks.filter((r) => r.status === "pending").length;
+
+  const isDataLoading = (initialLoading && !aiOverviewMetrics) || (isLoadingEvidence && totalAnalyses === 0 && totalCandidates === 0);
 
   const DOMAIN3_FEATURES = [
     {

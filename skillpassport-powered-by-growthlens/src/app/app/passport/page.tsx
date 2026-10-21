@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -22,12 +23,21 @@ import {
 } from "lucide-react";
 
 export default function PassportOverviewPage() {
-  const { skills, historyEvents, evidenceItems, userProfile } = useEvidence();
+  const { skills, historyEvents, evidenceItems, userProfile, passportMetrics, refreshEvidenceData } = useEvidence();
+
+  React.useEffect(() => {
+    if (skills.length === 0) {
+      refreshEvidenceData();
+    }
+  }, [skills.length, refreshEvidenceData]);
 
   const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
   const candidateSkills = skills.filter((s) => s.verificationState === "candidate");
   const insufficientSkills = skills.filter((s) => s.verificationState === "insufficient_evidence");
   const conflictingSkills = skills.filter((s) => s.verificationState === "conflicting");
+
+  const verifiedCount = passportMetrics?.verified_count ?? verifiedSkills.length;
+  const candidateCount = passportMetrics?.candidate_count ?? candidateSkills.length;
 
   // Group skills by category
   const categories = Array.from(new Set(skills.map((s) => s.category)));
@@ -99,7 +109,7 @@ export default function PassportOverviewPage() {
             <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 block mb-1">
               VERIFIED SKILLS
             </span>
-            <p className="text-3xl font-black text-[#1C1C1C]">{verifiedSkills.length}</p>
+            <p className="text-3xl font-black text-[#1C1C1C]">{verifiedCount}</p>
             <span className="text-[10px] font-bold text-[#4A7A4E] mt-1 block">
               Backed by sufficient evidence →
             </span>
@@ -112,7 +122,7 @@ export default function PassportOverviewPage() {
             <span className="text-[10px] font-black uppercase text-[#1C1C1C]/50 block mb-1">
               CANDIDATES AWAITING REVIEW
             </span>
-            <p className="text-3xl font-black text-[#1C1C1C]">{candidateSkills.length}</p>
+            <p className="text-3xl font-black text-[#1C1C1C]">{candidateCount}</p>
             <span className="text-[10px] font-bold text-[#1C1C1C]/70 mt-1 block">
               Proposed by pipeline →
             </span>

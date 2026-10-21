@@ -40,6 +40,18 @@ export default function AISkillExtractionPage() {
   );
   const [isExtracting, setIsExtracting] = useState(false);
 
+  React.useEffect(() => {
+    if (extractionCandidates.length === 0) {
+      refreshEvidenceData();
+    }
+  }, [extractionCandidates.length, refreshEvidenceData]);
+
+  React.useEffect(() => {
+    if (!inspectItem && extractionCandidates.length > 0) {
+      setInspectItem(extractionCandidates[0].id);
+    }
+  }, [extractionCandidates, inspectItem]);
+
   const totalCount = extractionCandidates.length;
   const duplicateCount = extractionCandidates.filter((c) => c.taxonomy_status === "duplicate").length;
   const pendingCount = extractionCandidates.filter((c) => c.review_state === "pending_review").length;
