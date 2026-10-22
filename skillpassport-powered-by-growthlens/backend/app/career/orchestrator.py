@@ -83,6 +83,12 @@ class JobSearchOrchestrator:
                 cascade.append(fallback)
                 seen.add(fallback_name)
 
+        # Include any remaining configured providers (e.g. fantastic_jobs)
+        for name, adapter in self.adapters.items():
+            if name not in seen and adapter.is_configured():
+                cascade.append(adapter)
+                seen.add(name)
+
         return cascade
 
     def _select_provider(self) -> Tuple[Optional[BaseJobSearchAdapter], Optional[BaseJobSearchAdapter]]:
@@ -328,6 +334,68 @@ class JobSearchOrchestrator:
                 logger.warning(f"Provider '{curr_name}' failed: {p_err}. Trying next fallback...")
 
         if not executed_successfully and last_error:
+            # Check if database has any existing postings to serve gracefully
+            first_term = search_query.split()[0] if search_query else ""
+            persisted_fallback = (
+                db.query(JobPostingRecord)
+                .filter(JobPostingRecord.title.ilike(f"%{first_term}%"))
+                .order_by(JobPostingRecord.retrieved_at.desc())
+                .limit(bounded_limit)
+                .all()
+            )
+            if not persisted_fallback:
+                persisted_fallback = (
+                    db.query(JobPostingRecord)
+                    .order_by(JobPostingRecord.retrieved_at.desc())
+                    .limit(bounded_limit)
+                    .all()
+                )
+            if persisted_fallback:
+                logger.info(f"External providers hit limit ({last_error}). Serving {len(persisted_fallback)} vacancies from database.")
+                job_results = [
+                    JobSearchResult(
+                        id=f"job-{p.id}",
+                        provider=p.provider,
+                        provider_job_id=p.provider_job_id,
+                        canonical_dedupe_key=p.canonical_dedupe_key,
+                        title=p.title,
+                        company_name=p.company_name,
+                        company_domain=p.company_domain,
+                        location_text=p.location_text,
+                        remote_status=p.remote_status,
+                        employment_type=p.employment_type,
+                        seniority=p.seniority,
+                        salary_min=p.salary_min,
+                        salary_max=p.salary_max,
+                        salary_currency=p.salary_currency,
+                        salary_period=p.salary_period,
+                        description=p.description,
+                        job_url=p.job_url,
+                        apply_url=p.apply_url,
+                        posted_at=p.posted_at.isoformat() if p.posted_at else None,
+                        retrieved_at=p.retrieved_at.isoformat(),
+                        raw_metadata=p.raw_source_metadata or {},
+                        extracted_requirements=p.extracted_requirements or [],
+                    )
+                    for p in persisted_fallback
+                ]
+                return {
+                    "status": "success",
+                    "mode": mode,
+                    "query": search_query,
+                    "location": location,
+                    "remote_only": remote_only,
+                    "influencing_skills": influencing_skills,
+                    "provider_used": f"database_fallback (external: {str(last_error)[:60]})",
+                    "from_cache": True,
+                    "is_stale": True,
+                    "total_results": len(job_results),
+                    "total_returned": len(job_results),
+                    "retrieved_at": now.isoformat(),
+                    "notice": "External provider quota reached. Showing previously synchronized vacancies from database.",
+                    "jobs": [j.model_dump() for j in job_results],
+                }
+
             logger.error(f"All configured job providers in cascade failed. Last error: {last_error}")
             if isinstance(last_error, ProviderException):
                 raise last_error

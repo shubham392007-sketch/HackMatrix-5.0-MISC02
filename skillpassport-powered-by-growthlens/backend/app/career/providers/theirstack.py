@@ -105,6 +105,16 @@ class TheirStackAdapter(BaseJobSearchAdapter):
                     status_code=502,
                 )
 
+        if response.status_code == 402:
+            logger.warning("TheirStack quota / API credits exhausted (402)")
+            raise ProviderException(
+                provider="theirstack",
+                error_type=ProviderErrorType.RATE_LIMITED,
+                message="TheirStack account has exhausted its API search credits (HTTP 402).",
+                status_code=402,
+                upstream_status=402,
+            )
+
         if response.status_code == 429:
             logger.warning("TheirStack quota / rate limit reached (429)")
             raise ProviderException(
