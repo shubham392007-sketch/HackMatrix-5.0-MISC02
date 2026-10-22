@@ -7,6 +7,7 @@ import {
   evaluateRoleMatch,
   extractGapRecords,
   evaluateCareerReadiness,
+  findMatchingUserSkill,
 } from "@/lib/careerCalculations";
 import {
   MatchStatusBadge,
@@ -33,10 +34,20 @@ export default function CompareRolesPage() {
     useEvidence();
 
   // Role selections for side-by-side comparison
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([
-    "role-ai-engineer-entry",
-    "role-ml-engineer-entry",
-  ]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+
+  // Initialize selection with first 2 available database roles once loaded
+  React.useEffect(() => {
+    if (targetRoles && targetRoles.length >= 2) {
+      setSelectedRoleIds((prev) => {
+        const valid = prev.filter((id) => targetRoles.some((r) => r.role_id === id));
+        if (valid.length >= 2) return valid;
+        return [targetRoles[0].role_id, targetRoles[1].role_id];
+      });
+    } else if (targetRoles && targetRoles.length === 1) {
+      setSelectedRoleIds([targetRoles[0].role_id]);
+    }
+  }, [targetRoles]);
 
   const [filterMode, setFilterMode] = useState<
     "all" | "gaps_only" | "differences"
@@ -45,21 +56,23 @@ export default function CompareRolesPage() {
 
   // Compute evaluations for each selected role
   const evaluatedRoles = useMemo(() => {
-    return selectedRoleIds.map((id) => {
-      const role =
-        targetRoles.find((r) => r.role_id === id) || targetRoles[0];
-      const match = evaluateRoleMatch(role, skills);
-      const gaps = extractGapRecords(match, role);
-      const readiness = evaluateCareerReadiness(match, gaps);
-      return { role, match, gaps, readiness };
-    });
+    return selectedRoleIds
+      .map((id) => {
+        const role = targetRoles.find((r) => r.role_id === id);
+        if (!role || !role.competencies) return null;
+        const match = evaluateRoleMatch(role, skills);
+        const gaps = extractGapRecords(match, role);
+        const readiness = evaluateCareerReadiness(match, gaps);
+        return { role, match, gaps, readiness };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
   }, [selectedRoleIds, targetRoles, skills]);
 
   // Aggregate union of all competency skill_ids across selected roles
   const allSkillIds = useMemo(() => {
     const set = new Set<string>();
     evaluatedRoles.forEach((item) => {
-      item.role.competencies.forEach((c) => set.add(c.skill_id));
+      (item.role.competencies || []).forEach((c) => set.add(c.skill_id));
     });
     return Array.from(set);
   }, [evaluatedRoles]);
@@ -171,7 +184,13 @@ export default function CompareRolesPage() {
 
       {/* Side-by-Side Summary Cards */}
       <div
-        className={`grid grid-cols-1 md:grid-cols-${evaluatedRoles.length} gap-4`}
+        className={`grid grid-cols-1 ${
+          evaluatedRoles.length === 2
+            ? "md:grid-cols-2"
+            : evaluatedRoles.length === 3
+            ? "md:grid-cols-3"
+            : "md:grid-cols-1"
+        } gap-4`}
       >
         {evaluatedRoles.map(({ role, match, gaps, readiness }) => {
           const isActive = selectedRoleId === role.role_id;
@@ -323,12 +342,15 @@ export default function CompareRolesPage() {
             </thead>
             <tbody className="divide-y divide-ink/10 bg-white">
               {filteredSkillIds.map((skillId) => {
-                const userSkill = skills.find((s) => s.id === skillId);
+                const comp = evaluatedRoles
+                  .flatMap((er) => er.role.competencies)
+                  .find((c) => c.skill_id === skillId);
+                const userSkill = comp
+                  ? findMatchingUserSkill(comp, skills)
+                  : skills.find((s) => s.id === skillId);
                 const skillName =
+                  comp?.canonical_name ||
                   userSkill?.canonicalName ||
-                  evaluatedRoles
-                    .flatMap((er) => er.role.competencies)
-                    .find((c) => c.skill_id === skillId)?.canonical_name ||
                   skillId;
 
                 return (

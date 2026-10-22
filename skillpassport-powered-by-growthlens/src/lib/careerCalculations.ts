@@ -14,15 +14,18 @@ import {
   GapPriorityInputs,
 } from "@/types/career";
 
-export function proficiencyToNumeric(level: ProficiencyLevel): number {
-  switch (level) {
+export function proficiencyToNumeric(level: ProficiencyLevel | string | undefined): number {
+  if (!level) return 0;
+  switch (level.trim()) {
     case "Not Established":
       return 0;
     case "Foundation":
+    case "Foundational":
       return 1;
     case "Working":
       return 2;
     case "Practitioner":
+    case "Intermediate":
       return 3;
     case "Advanced":
       return 4;
@@ -34,7 +37,7 @@ export function proficiencyToNumeric(level: ProficiencyLevel): number {
 }
 
 export function numericToProficiency(val: number): ProficiencyLevel {
-  const rounded = Math.round(val);
+  const rounded = Math.max(0, Math.min(5, Math.round(val)));
   switch (rounded) {
     case 0:
       return "Not Established";
@@ -49,7 +52,7 @@ export function numericToProficiency(val: number): ProficiencyLevel {
     case 5:
       return "Expert";
     default:
-      return rounded > 5 ? "Expert" : "Not Established";
+      return "Not Established";
   }
 }
 
@@ -68,13 +71,76 @@ export function getRequirementWeight(type: RoleCompetency["requirement_type"]): 
   }
 }
 
+const IMPORTANCE_WEIGHTS: Record<string, number> = {
+  critical: 1.0,
+  high: 0.85,
+  medium: 0.70,
+  low: 0.50,
+};
+
+const URGENCY_WEIGHTS: Record<string, number> = {
+  core_required: 1.0,
+  supporting: 0.80,
+  preferred: 0.60,
+  differentiating: 0.50,
+};
+
+/**
+ * Robust skill matcher linking role requirement to user skills.
+ * Checks ID, canonical name, aliases, and normalized tokens.
+ */
+export function findMatchingUserSkill(
+  comp: RoleCompetency,
+  userSkills: SkillItem[]
+): SkillItem | undefined {
+  const targetId = (((comp as any).canonical_skill_id || comp.skill_id) || "").toLowerCase().trim();
+  const targetName = (comp.canonical_name || "").toLowerCase().trim();
+
+  // 1. Direct ID match
+  const byId = userSkills.find(
+    (s) => s.id.toLowerCase() === targetId || (s as any).competency_id === targetId
+  );
+  if (byId) return byId;
+
+  // 2. Exact Canonical Name match
+  const byName = userSkills.find(
+    (s) => s.canonicalName.toLowerCase().trim() === targetName
+  );
+  if (byName) return byName;
+
+  // 3. Alias match
+  const byAlias = userSkills.find((s) =>
+    (s as any).aliases?.some((a: string) => a.toLowerCase().trim() === targetName)
+  );
+  if (byAlias) return byAlias;
+
+  // 4. Token overlap match (e.g. "Python Programming" vs "Python Engineering")
+  if (targetName) {
+    const targetTokens = new Set(targetName.replace(/-/g, " ").split(/\s+/));
+    targetTokens.delete("engineering");
+    targetTokens.delete("programming");
+    targetTokens.delete("and");
+    targetTokens.delete("&");
+
+    for (const s of userSkills) {
+      const sTokens = new Set(s.canonicalName.toLowerCase().replace(/-/g, " ").split(/\s+/));
+      for (const tok of targetTokens) {
+        if (tok.length >= 3 && sTokens.has(tok)) {
+          return s;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function classifyCompetencyGap(
   competency: RoleCompetency,
   userSkill: SkillItem | undefined,
   currentNumeric: number,
   expectedNumeric: number
 ): { gapType: GapClassification | null; explanation: string } {
-  // If no record exists at all
   if (!userSkill || currentNumeric === 0) {
     if (competency.requirement_type === "differentiating") {
       return {
@@ -86,62 +152,53 @@ export function classifyCompetencyGap(
     return {
       gapType: "skill_gap",
       explanation:
-        "No verifiable capability or evidence found in connected ingestion sources.",
+        "Not yet demonstrated in current Skill Passport evidence.",
     };
   }
 
-  // If prerequisites are unfulfilled
-  if (competency.prerequisites && competency.prerequisites.length > 0) {
-    // For prototype demo, if skill is deep-learning and machine-learning is candidate, flag dependency gap
-    if (competency.skill_id === "skill-deep-learning") {
-      return {
-        gapType: "dependency_gap",
-        explanation:
-          "Prerequisite 'Supervised Machine Learning' is still in Candidate state and needs verification first.",
-      };
-    }
-  }
+  const vState = userSkill.verificationState;
+  const hasEvidence = (userSkill.evidenceIds || []).length > 0;
 
-  // If evidence status is insufficient or zero attributable proof
-  if (
-    userSkill.verificationState === "insufficient_evidence" ||
-    userSkill.evidenceIds.length === 0
-  ) {
-    if (userSkill.id === "skill-deep-learning") {
-      return {
-        gapType: "application_gap",
-        explanation:
-          "Theoretical knowledge demonstrated by course certificate, but lacks applied codebase implementation commits.",
-      };
-    }
+  if (vState === "conflicting") {
     return {
       gapType: "evidence_gap",
-      explanation:
-        "Claimed or suggested competency lacks attributable codebase, PR, or architecture artifacts to substantiate it.",
+      explanation: "Open attribution conflict between source artifacts flagged in Trust Center.",
     };
   }
 
-  // If established but below target depth
+  if (vState === "rejected") {
+    return {
+      gapType: "evidence_gap",
+      explanation: "Capability claim was rejected during verification.",
+    };
+  }
+
   if (currentNumeric < expectedNumeric) {
+    const shortfall = expectedNumeric - currentNumeric;
     return {
       gapType: "depth_gap",
-      explanation: `Current demonstrated proficiency is ${userSkill.verifiedProficiency || userSkill.estimatedProficiency}, while target role requires ${competency.expected_level}.`,
+      explanation: `Demonstrated at ${userSkill.verifiedProficiency || userSkill.estimatedProficiency} (${vState}); target requires ${competency.expected_level} (-${shortfall} level shortfall).`,
     };
   }
 
-  // If baseline met, and preferred
-  if (
-    competency.requirement_type === "preferred" ||
-    competency.requirement_type === "differentiating"
-  ) {
+  if (!hasEvidence || vState === "candidate" || vState === "insufficient_evidence") {
+    return {
+      gapType: "evidence_gap",
+      explanation: `Demonstrated at ${userSkill.verifiedProficiency || userSkill.estimatedProficiency}, but marked as ${vState}; corroborating evidence or verification review needed.`,
+    };
+  }
+
+  if (competency.requirement_type === "preferred" || competency.requirement_type === "differentiating") {
     return {
       gapType: "differentiation_opportunity",
-      explanation:
-        "Proficiency meets or exceeds expectations; strategically strengthens candidature.",
+      explanation: "Proficiency meets or exceeds expectations; strategically strengthens candidature.",
     };
   }
 
-  return { gapType: null, explanation: "Target requirement fully satisfied with verified evidence." };
+  return {
+    gapType: null,
+    explanation: `Target requirement fully satisfied at ${competency.expected_level} with verified evidence.`,
+  };
 }
 
 export function evaluateRoleMatch(
@@ -149,36 +206,38 @@ export function evaluateRoleMatch(
   userSkills: SkillItem[]
 ): RoleMatchResult {
   const matches: CompetencyMatchResult[] = role.competencies.map((comp) => {
-    const userSkill = userSkills.find((s) => s.id === comp.skill_id);
+    const userSkill = findMatchingUserSkill(comp, userSkills);
 
-    const currentProf = userSkill?.verifiedProficiency !== "Not Established" && userSkill?.verifiedProficiency
-      ? userSkill.verifiedProficiency
-      : userSkill?.estimatedProficiency || "Not Established";
+    const currentProf =
+      userSkill?.verifiedProficiency && userSkill.verifiedProficiency !== "Not Established"
+        ? userSkill.verifiedProficiency
+        : userSkill?.estimatedProficiency || "Not Established";
 
     const currentNumeric = proficiencyToNumeric(currentProf);
-    const expectedNumeric = comp.expected_level_numeric || proficiencyToNumeric(comp.expected_level);
+    const expectedNumeric =
+      comp.expected_level_numeric || proficiencyToNumeric(comp.expected_level) || 3;
 
+    // Mathematical requirement coverage: P = min(1.0, L_u / L_r)
     const rawCoverage = expectedNumeric > 0
       ? Math.min(1.0, currentNumeric / expectedNumeric)
       : 1.0;
 
-    // Apply verification adjustment
-    let verificationFactor = 1.0;
-    const vState = userSkill?.verificationState || "rejected";
-
+    // Verification adjustment
+    const vState = userSkill?.verificationState || "not_established";
+    let verificationFactor = 0.0;
     if (vState === "verified") {
       verificationFactor = 1.0;
     } else if (vState === "candidate") {
-      verificationFactor = 0.55 * ((userSkill?.confidence || 80) / 100);
+      verificationFactor = Math.max(0.5, (userSkill?.confidence || 80) / 100);
     } else if (vState === "insufficient_evidence") {
-      verificationFactor = 0.2;
+      verificationFactor = 0.50;
     } else if (vState === "conflicting") {
       verificationFactor = 0.35;
     } else {
       verificationFactor = 0.0;
     }
 
-    const effectiveCoverage = rawCoverage * verificationFactor;
+    const effectiveCoverage = currentNumeric > 0 ? rawCoverage * verificationFactor : 0.0;
 
     const { gapType, explanation } = classifyCompetencyGap(
       comp,
@@ -188,11 +247,11 @@ export function evaluateRoleMatch(
     );
 
     let matchStatus: CompetencyMatchResult["match_status"] = "missing_weak";
-    if (vState === "verified" && effectiveCoverage >= 0.85) {
+    if (vState === "verified" && currentNumeric >= expectedNumeric && (userSkill?.evidenceIds?.length || 0) > 0) {
       matchStatus = "strong_match";
-    } else if (effectiveCoverage > 0.4 && effectiveCoverage < 0.85) {
+    } else if (currentNumeric > 0 && currentNumeric < expectedNumeric) {
       matchStatus = "partial_match";
-    } else if (vState === "insufficient_evidence" || vState === "candidate") {
+    } else if (vState === "candidate" || vState === "insufficient_evidence") {
       matchStatus = "evidence_gap";
     } else if (vState === "conflicting") {
       matchStatus = "conflicting";
@@ -210,19 +269,19 @@ export function evaluateRoleMatch(
       current_proficiency: currentProf,
       current_proficiency_numeric: currentNumeric,
       verification_status: vState,
-      confidence: userSkill?.confidence || 0,
-      evidence_strength: userSkill?.evidenceStrength || "low",
+      confidence: userSkill?.confidence || (currentNumeric > 0 ? 80 : 0),
+      evidence_strength: userSkill?.evidenceStrength || (userSkill?.evidenceIds?.length ? "medium" : "none"),
       evidence_ids: userSkill?.evidenceIds || [],
-      raw_coverage: rawCoverage,
-      effective_coverage: effectiveCoverage,
+      raw_coverage: Math.round(rawCoverage * 1000) / 1000,
+      effective_coverage: Math.round(effectiveCoverage * 1000) / 1000,
       gap_type: gapType,
       gap_explanation: explanation,
       match_status: matchStatus,
-      reason_codes: comp.reason_codes,
+      reason_codes: comp.reason_codes || [],
     };
   });
 
-  // Calculate overall weighted match
+  // Calculate weighted Role Match score
   let totalWeight = 0;
   let weightedEffectiveSum = 0;
 
@@ -263,13 +322,13 @@ export function evaluateRoleMatch(
   const evidenceGaps = matches.filter((m) => m.match_status === "evidence_gap").length;
   const missingWeak = matches.filter((m) => m.match_status === "missing_weak").length;
   const criticalBlockers = matches.filter(
-    (m) => m.requirement_type === "core_required" && m.effective_coverage < 0.6
+    (m) => m.requirement_type === "core_required" && (m.current_proficiency_numeric === 0 || m.effective_coverage < 0.5)
   ).length;
 
   return {
     role_id: role.role_id,
     role_title: role.title,
-    role_version: role.version,
+    role_version: role.version || "v2026.2",
     overall_match_score: overallScore,
     required_coverage_score: reqScore,
     supporting_coverage_score: suppScore,
@@ -280,43 +339,60 @@ export function evaluateRoleMatch(
     missing_capability_count: missingWeak,
     critical_blockers_count: criticalBlockers,
     competency_matches: matches,
-    calculated_at: "Today, Just now",
+    calculated_at: new Date().toISOString(),
   };
 }
 
+/**
+ * Normalized 0–100 Gap Prioritization Engine.
+ * Replaces unbounded multiplicative formulas (such as 1013.0) with clean, explainable rankings.
+ */
 export function extractGapRecords(
   matchResult: RoleMatchResult,
-  role: RoleDemandModel
+  role: RoleDemandModel,
+  options?: { effortSensitivity?: number; leverageWeight?: number }
 ): GapRecord[] {
+  const effortSens = options?.effortSensitivity ?? 1.0;
+  const levWeight = options?.leverageWeight ?? 1.0;
   const gaps: GapRecord[] = [];
 
   matchResult.competency_matches.forEach((comp) => {
     if (!comp.gap_type || comp.gap_type === "differentiation_opportunity") return;
 
     const levelGap = Math.max(0, comp.expected_level_numeric - comp.current_proficiency_numeric);
-    const criticality = comp.importance === "critical" ? 5 : comp.importance === "high" ? 4 : comp.importance === "medium" ? 3 : 2;
-    const depImpact = comp.skill_id === "skill-python" ? 3 : comp.skill_id === "skill-machine-learning" ? 3 : 1;
-    const evLeverage = comp.evidence_ids.length > 0 ? 3 : 1;
-    const userFit = 3;
-    const marginalGain = comp.requirement_type === "core_required" ? 3 : 2;
-    const estimatedEffort = levelGap >= 2 ? 4 : 2;
+    const impFactor = IMPORTANCE_WEIGHTS[comp.importance?.toLowerCase() || "medium"] || 0.70;
+    const urgFactor = URGENCY_WEIGHTS[comp.requirement_type || "core_required"] || 0.80;
+    const gapFactor = Math.max(0.1, 1.0 - comp.effective_coverage);
+    const hasEvidence = comp.evidence_ids.length > 0;
 
-    const priorityScore = Math.round(
-      ((criticality * Math.max(1, levelGap) * depImpact * evLeverage * userFit * marginalGain) /
-        estimatedEffort) *
-        10
-    );
+    // Estimated effort (1.0 to 5.0 scale)
+    const estimatedEffort = comp.gap_type === "evidence_gap" ? 1.5 : levelGap >= 2 ? 3.5 : 2.0;
 
-    let nextStep = "Build an applied codebase demonstration to substantiate this capability.";
+    // Base score: 100 * G_i * I_i * U_i
+    const baseScore = 100.0 * gapFactor * impFactor * urgFactor;
+
+    // Effort discount
+    const effortDiscount = Math.max(0.60, 1.0 - 0.08 * (estimatedEffort - 1.0) * effortSens);
+
+    // Leverage boost
+    const leverageBoost = Math.min(1.25, 1.0 + (hasEvidence ? 0.12 * levWeight : 0.0));
+
+    // Bounded normalized final priority score strictly within [1.0, 100.0]
+    const finalScore = Math.min(100.0, Math.max(1.0, Math.round(baseScore * effortDiscount * leverageBoost * 10) / 10));
+
+    let nextStep = `Produce attributable evidence demonstrating ${comp.canonical_name} at ${comp.expected_level} level.`;
     if (comp.gap_type === "application_gap") {
-      nextStep = "Extend existing repo with applied production modules rather than taking more theory courses.";
+      nextStep = "Extend existing repositories with applied production implementations rather than theoretical work.";
     } else if (comp.gap_type === "evidence_gap") {
-      nextStep = "Connect deployment manifests, Dockerfiles, or CI/CD pipelines to provide attributable proof.";
+      nextStep = "Connect Git commits, deployment manifests, or tickets to substantiate this existing capability.";
     } else if (comp.gap_type === "depth_gap") {
-      nextStep = "Undertake multi-node distributed benchmarks to elevate proficiency from Working to Practitioner.";
-    } else if (comp.gap_type === "dependency_gap") {
-      nextStep = "Peer-verify foundational machine learning code before attempting deep learning qualification.";
+      nextStep = `Undertake production challenges to elevate proficiency from ${comp.current_proficiency} to ${comp.expected_level}.`;
     }
+
+    const whyPrioritized =
+      `Priority score ${finalScore}/100: ${comp.importance} importance (${Math.round(impFactor * 100)}%), ` +
+      `${comp.requirement_type.replace(/_/g, " ")} urgency, and remaining gap of ${Math.round(gapFactor * 100)}%.` +
+      (hasEvidence ? ` Supported by ${comp.evidence_ids.length} existing project artifact(s).` : "");
 
     gaps.push({
       gap_id: `gap-${comp.skill_id}`,
@@ -330,34 +406,26 @@ export function extractGapRecords(
       expected_level: comp.expected_level,
       current_supported_level: comp.current_proficiency,
       verification_status: comp.verification_status,
-      evidence_status: comp.evidence_ids.length > 0 ? "sufficient" : "none",
+      evidence_status: comp.evidence_ids.length >= 2 ? "sufficient" : comp.evidence_ids.length === 1 ? "insufficient" : "none",
       proficiency_distance: levelGap,
-      priority_rank: 1, // Will be set after sorting
-      priority_score: priorityScore,
+      priority_rank: 1,
+      priority_score: finalScore,
       priority_inputs: {
-        criticality,
+        criticality: impFactor * 5.0,
         level_gap: levelGap,
-        dependency_impact: depImpact,
-        evidence_leverage: evLeverage,
-        user_fit: userFit,
-        marginal_gain: marginalGain,
+        dependency_impact: comp.gap_type === "dependency_gap" ? 1.5 : 1.0,
+        evidence_leverage: hasEvidence ? 1.5 : 1.0,
+        user_fit: comp.evidence_ids.length === 1 ? 1.2 : 1.0,
+        marginal_gain: comp.requirement_type === "core_required" ? 3.0 : 2.0,
         estimated_effort: estimatedEffort,
       },
-      why_prioritized: `Ranked based on ${comp.importance} role criticality, proficiency gap of ${levelGap} tier(s), and high leverage over existing artifacts.`,
+      why_prioritized: whyPrioritized,
       project_leverage_example:
-        comp.skill_id === "skill-cloud-deployment"
+        hasEvidence
           ? {
-              project_name: "smart-irrigation-ai Repository",
-              current_contribution: "Contains working Python ingestion daemons and docker-compose.",
-              extension_idea:
-                "Add Kubernetes Helm chart manifests and GitHub Actions automated deployment workflow to instantly resolve this gap.",
-            }
-          : comp.skill_id === "skill-machine-learning"
-          ? {
-              project_name: "smart-irrigation-ai Repository",
-              current_contribution: "Contains XGBRegressor cross-validation training script.",
-              extension_idea:
-                "Wrap inference model in a FastAPI container with drift telemetry logging to elevate from Candidate to Verified Practitioner.",
+              project_name: "Active Work Repository",
+              current_contribution: `Contains ${comp.evidence_ids.length} work artifact(s) demonstrating foundational capabilities.`,
+              extension_idea: `Add high-assurance tests or deployment pipelines to elevate ${comp.canonical_name} to ${comp.expected_level}.`,
             }
           : undefined,
       diagnosis: comp.gap_explanation,
@@ -366,7 +434,7 @@ export function extractGapRecords(
     });
   });
 
-  // Sort by priority score descending and assign ranks
+  // Sort descending by priority_score
   gaps.sort((a, b) => b.priority_score - a.priority_score);
   gaps.forEach((g, idx) => {
     g.priority_rank = idx + 1;
@@ -379,18 +447,31 @@ export function evaluateCareerReadiness(
   match: RoleMatchResult,
   gaps: GapRecord[]
 ): CareerReadinessAssessment {
+  const evidenceQualityPct = Math.round(
+    (match.competency_matches.filter((m) => m.evidence_ids.length > 0).length /
+      Math.max(1, match.total_competencies)) *
+      100
+  );
+
+  // Unified readiness index: 50% core coverage + 35% overall match + 15% evidence completeness
   const readinessIndex = Math.round(
-    match.required_coverage_score * 0.65 + match.supporting_coverage_score * 0.35
+    match.required_coverage_score * 0.50 +
+      match.overall_match_score * 0.35 +
+      evidenceQualityPct * 0.15
   );
 
   let tier: CareerReadinessAssessment["readiness_tier"] = "Early Stage";
   if (readinessIndex >= 80) tier = "High Readiness";
-  else if (readinessIndex >= 65) tier = "Moderate Alignment";
-  else if (readinessIndex >= 45) tier = "Developing Foundations";
+  else if (readinessIndex >= 60) tier = "Moderate Alignment";
+  else if (readinessIndex >= 40) tier = "Developing Foundations";
   else tier = "Early Stage";
 
   const criticalBlockers = gaps
-    .filter((g) => g.requirement_type === "core_required" && g.priority_inputs.criticality >= 4)
+    .filter(
+      (g) =>
+        g.requirement_type === "core_required" &&
+        (g.proficiency_distance >= 2 || g.gap_type === "skill_gap" || g.priority_score >= 60)
+    )
     .map((g) => ({
       skill_id: g.skill_id,
       skill_name: g.canonical_name,
@@ -402,13 +483,13 @@ export function evaluateCareerReadiness(
 
   const uncertainties: string[] = [];
   match.competency_matches.forEach((m) => {
-    if (m.verification_status === "insufficient_evidence") {
+    if (m.verification_status === "insufficient_evidence" || m.verification_status === "candidate") {
       uncertainties.push(
-        `${m.canonical_name}: Stated in profile, but lack of code artifacts leaves true capability unverified.`
+        `${m.canonical_name}: Identified at ${m.current_proficiency}, but awaiting authoritative verification review.`
       );
     } else if (m.verification_status === "conflicting") {
       uncertainties.push(
-        `${m.canonical_name}: Open attribution dispute between Git commits and Jira issue.`
+        `${m.canonical_name}: Attribution conflict identified across source artifacts.`
       );
     }
   });
@@ -419,17 +500,11 @@ export function evaluateCareerReadiness(
     readiness_index: readinessIndex,
     readiness_tier: tier,
     required_supported_pct: match.required_coverage_score,
-    proficiency_alignment_pct: Math.round(
-      (match.strong_matches_count / match.total_competencies) * 100
-    ),
-    evidence_quality_pct: Math.round(
-      ((match.strong_matches_count + match.partial_matches_count) /
-        match.total_competencies) *
-        100
-    ),
+    proficiency_alignment_pct: match.overall_match_score,
+    evidence_quality_pct: evidenceQualityPct,
     critical_blockers: criticalBlockers,
     major_uncertainties: uncertainties,
     disclaimer:
-      "Role readiness is an evidence-based comparison with the selected role model. It is not a hiring probability, employment guarantee or objective judgment of overall professional worth.",
+      "This readiness assessment is an internal capability diagnostic and not an employment decision or hiring guarantee. It reflects verified evidence alignment for capability development.",
   };
 }

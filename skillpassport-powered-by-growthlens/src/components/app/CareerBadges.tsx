@@ -25,6 +25,7 @@ import {
   Briefcase,
   Layers,
   Scale,
+  Globe,
   X,
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -174,8 +175,11 @@ export function MatchStatusBadge({
 }
 
 export function TargetRoleSelectorBar() {
-  const { targetRoles, selectedRoleId, setSelectedRoleId, activeRole } =
+  const { targetRoles, savedTargetRoles, catalogueRoles, selectedRoleId, setSelectedRoleId, activeRole } =
     useEvidence();
+
+  const userTargets = savedTargetRoles && savedTargetRoles.length > 0 ? savedTargetRoles : [];
+  const benchmarkRoles = catalogueRoles && catalogueRoles.length > 0 ? catalogueRoles : [];
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white/90 rounded-2xl border border-ink/10 shadow-sm text-xs">
@@ -196,7 +200,7 @@ export function TargetRoleSelectorBar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <label htmlFor="role-select" className="text-ink-muted font-medium shrink-0">
           Change Role:
         </label>
@@ -206,17 +210,45 @@ export function TargetRoleSelectorBar() {
           onChange={(e) => setSelectedRoleId(e.target.value)}
           className="pill-input text-xs py-1.5 px-3 bg-sand/20"
         >
-          {targetRoles.map((r) => (
-            <option key={r.role_id} value={r.role_id}>
-              {r.title} — {r.seniority} ({r.source_type === "custom_parsed_job" ? "Custom" : "Curated"})
-            </option>
-          ))}
+          {userTargets.length > 0 ? (
+            <>
+              <optgroup label="My Target Roles">
+                {userTargets.map((r) => (
+                  <option key={r.role_id} value={r.role_id}>
+                    {r.title} — {r.seniority}
+                  </option>
+                ))}
+              </optgroup>
+              {benchmarkRoles.length > 0 && (
+                <optgroup label="Explore Catalogue Benchmarks">
+                  {benchmarkRoles.map((r) => (
+                    <option key={r.role_id} value={r.role_id}>
+                      {r.title} — {r.seniority} (Benchmark)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </>
+          ) : (
+            targetRoles.map((r) => (
+              <option key={r.role_id} value={r.role_id}>
+                {r.title} — {r.seniority} ({r.source_type === "custom_parsed_job" ? "Custom" : "Benchmark"})
+              </option>
+            ))
+          )}
         </select>
+        <Link
+          href="/app/career/discover"
+          className="pill-btn bg-lime/30 hover:bg-lime/60 border border-ink/20 text-ink text-xs py-1.5 px-3 shrink-0 flex items-center gap-1 font-medium"
+        >
+          <Globe className="w-3 h-3" />
+          Discover Jobs
+        </Link>
         <Link
           href="/app/career/roles"
           className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-1.5 px-3 shrink-0"
         >
-          Explore Catalogue
+          Manage Targets
         </Link>
       </div>
     </div>
@@ -296,6 +328,16 @@ export function CalculationExplanationModal({
             <p className="text-[11px] text-ink-muted">
               Core Required requirements carry a 1.0 weight, Supporting competencies carry 0.6, Preferred carry 0.35, and Differentiating carry 0.20.
               Missing critical core skills heavily depresses readiness and triggers explicit Critical Blockers.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-sand/20 border border-ink/10 space-y-1">
+            <span className="font-bold text-ink block">4. Normalized Gap Prioritization (0–100 Scale)</span>
+            <code className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-ink/10 block my-1">
+              Priority = clamp((100 &times; Gap &times; Criticality &times; Urgency) &times; EffortDiscount &times; LeverageBoost, 1.0, 100.0)
+            </code>
+            <p className="text-[11px] text-ink-muted">
+              Replaces unnormalized multiplicative scores (such as 1013.0) with an explainable, bounded percentage ranking based on strategic impact, required effort discount, and existing evidence leverage.
             </p>
           </div>
         </div>

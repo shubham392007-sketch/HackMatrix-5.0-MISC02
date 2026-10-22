@@ -46,14 +46,19 @@ export default function WhyThisGapDetailPage() {
   // Find corresponding skill from passport
   const skillData = useMemo(() => {
     if (!gap) return null;
-    return skills.find((s) => s.id === gap.skill_id);
+    return (
+      skills.find((s) => s.id === gap.skill_id) ||
+      skills.find((s) => (s.canonicalName || (s as any).name || "").toLowerCase() === gap.canonical_name.toLowerCase()) ||
+      skills.find((s) => s.id.toLowerCase().replace(/-/g, "") === gap.skill_id.toLowerCase().replace(/^(skill-)?/, "").replace(/-/g, "")) ||
+      null
+    );
   }, [skills, gap]);
 
   // Find linked evidence documents from Domain 1
   const linkedEvidence = useMemo(() => {
     if (!gap) return [];
     return evidenceItems.filter((item) =>
-      gap.relevant_evidence_ids.includes(item.id) ||
+      (gap.relevant_evidence_ids || []).includes(item.id) ||
       item.candidateSkills?.some(
         (s) => s.id === gap.skill_id || s.name.toLowerCase() === gap.canonical_name.toLowerCase()
       )
@@ -119,7 +124,7 @@ export default function WhyThisGapDetailPage() {
               #{gap.priority_rank}
             </div>
             <span className="text-[11px] font-mono text-ink-muted block mt-1">
-              Score: {gap.priority_score.toFixed(1)} / 50.0
+              Score: {gap.priority_score.toFixed(1)} / 100.0
             </span>
           </div>
         </div>
@@ -297,36 +302,36 @@ export default function WhyThisGapDetailPage() {
             </p>
 
             <div className="p-3 rounded-xl bg-sand/20 border border-ink/10 text-[10px] font-mono space-y-1">
-              <div>Priority = (C &times; &Delta;L &times; D &times; E &times; F &times; G) / Effort</div>
+              <div>Priority (0–100) = (100 &times; Gap &times; Criticality &times; Urgency) &times; EffortDiscount &times; LeverageBoost</div>
               <div className="text-ink-muted text-[9px]">
-                Score = ({gap.priority_inputs.criticality} &times; {gap.priority_inputs.level_gap} &times; {gap.priority_inputs.dependency_impact} &times; {gap.priority_inputs.evidence_leverage} &times; {gap.priority_inputs.user_fit} &times; {gap.priority_inputs.marginal_gain}) / {gap.priority_inputs.estimated_effort} = <strong>{gap.priority_score.toFixed(1)}</strong>
+                Score = {gap.priority_score.toFixed(1)} / 100.0 &bull; Bounded normalized career impact
               </div>
             </div>
 
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
-                <span className="text-ink-muted">Criticality (C):</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.criticality} / 5</span>
+                <span className="text-ink-muted">Criticality:</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.criticality.toFixed(1)} / 5</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
-                <span className="text-ink-muted">Level Gap (&Delta;L):</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.level_gap} Steps</span>
+                <span className="text-ink-muted">Level Gap:</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.level_gap} Step{gap.priority_inputs.level_gap !== 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
-                <span className="text-ink-muted">Dependency Impact (D):</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.dependency_impact} / 3</span>
+                <span className="text-ink-muted">Dependency Impact:</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.dependency_impact.toFixed(1)} &times;</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
-                <span className="text-ink-muted">Evidence Leverage (E):</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.evidence_leverage} / 3</span>
+                <span className="text-ink-muted">Evidence Leverage:</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.evidence_leverage.toFixed(1)} &times;</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
-                <span className="text-ink-muted">User Growth Fit (F):</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.user_fit} / 3</span>
+                <span className="text-ink-muted">User Growth Fit:</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.user_fit.toFixed(1)} &times;</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded bg-white border border-ink/5">
                 <span className="text-ink-muted">Estimated Effort:</span>
-                <span className="font-mono font-bold text-ink">{gap.priority_inputs.estimated_effort} / 5</span>
+                <span className="font-mono font-bold text-ink">{gap.priority_inputs.estimated_effort.toFixed(1)} / 5</span>
               </div>
             </div>
           </div>

@@ -11,7 +11,6 @@ from backend.app.models.user_profile import UserProfile
 from backend.app.models.language import RepositoryLanguageSnapshot, RepositoryLanguageBreakdown
 from backend.app.models.readme import RepositoryReadmeSnapshot
 from backend.app.models.ai_governance import (
-
     AIAnalysisRun,
     WorkAnalysisResult,
     EvidenceQualityAssessment,
@@ -22,6 +21,13 @@ from backend.app.models.ai_governance import (
     PromptInjectionFinding,
     HumanReviewTask,
     AIEvaluationSuiteRun,
+)
+from backend.app.models.career import (
+    JobPostingRecord,
+    RoleDemandModelRecord,
+    UserTargetRoleRecord,
+    RoleMatchSnapshotRecord,
+    JobSearchCacheRecord,
 )
 
 __all__ = [
@@ -46,7 +52,6 @@ __all__ = [
     "RepositoryLanguageBreakdown",
     "RepositoryReadmeSnapshot",
     "AIAnalysisRun",
-
     "WorkAnalysisResult",
     "EvidenceQualityAssessment",
     "VerificationDecision",
@@ -56,5 +61,9 @@ __all__ = [
     "PromptInjectionFinding",
     "HumanReviewTask",
     "AIEvaluationSuiteRun",
+    "JobPostingRecord",
+    "RoleDemandModelRecord",
+    "UserTargetRoleRecord",
+    "RoleMatchSnapshotRecord",
+    "JobSearchCacheRecord",
 ]
-

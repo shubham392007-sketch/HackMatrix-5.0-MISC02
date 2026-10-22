@@ -23,11 +23,11 @@ engine = create_engine(
     pool_timeout=settings.db_pool_timeout,
     pool_reset_on_return="rollback",
     connect_args={
-        "connect_timeout": 10,
+        "connect_timeout": 3,
         "keepalives": 1,
-        "keepalives_idle": 30,
-        "keepalives_interval": 10,
-        "keepalives_count": 5,
+        "keepalives_idle": 15,
+        "keepalives_interval": 5,
+        "keepalives_count": 3,
     },
 )
 

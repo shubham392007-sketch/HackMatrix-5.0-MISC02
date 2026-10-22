@@ -66,8 +66,8 @@ def verify_supabase_token(token: str) -> Optional[dict]:
 
     settings = get_settings()
 
-    # Dedicated synthetic test isolation strictly for automated pytest runs
-    if (os.environ.get("APP_ENV") == "test" or settings.app_env == "test") and (
+    # Dedicated synthetic test & local development token resolution
+    if (os.environ.get("APP_ENV") in ("test", "development") or settings.app_env in ("test", "development")) and (
         token.startswith("test-token") or token.startswith("sp_demo_") or token == "sp_demo_user"
     ):
         if token.startswith("sp_demo_") or token == "sp_demo_user":
