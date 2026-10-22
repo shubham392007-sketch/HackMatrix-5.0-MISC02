@@ -4,6 +4,7 @@ import "./globals.css";
 import PageTransition from "@/components/layout/PageTransition";
 import SkillPassportBootScreen from "@/components/layout/SkillPassportBootScreen";
 import GlobalPageTransitionLoader from "@/components/layout/GlobalPageTransitionLoader";
+import AgentationProvider from "@/components/layout/AgentationProvider";
 import { EvidenceProvider } from "@/context/EvidenceContext";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
             <PageTransition>{children}</PageTransition>
           </EvidenceProvider>
         </AuthProvider>
+        <AgentationProvider />
       </body>
     </html>
   );

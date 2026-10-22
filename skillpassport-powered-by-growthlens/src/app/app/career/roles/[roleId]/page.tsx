@@ -20,7 +20,6 @@ import {
   RequirementTypeBadge,
   ImportanceBadge,
 } from "@/components/app/CareerBadges";
-import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleDemandDetailPage() {
@@ -30,10 +29,10 @@ export default function RoleDemandDetailPage() {
   const { targetRoles, selectedRoleId, setSelectedRoleId } = useEvidence();
 
   const role = targetRoles.find((r) => r.role_id === roleId) || targetRoles[0];
-
-  const coreRequirements = role.competencies.filter((c) => c.requirement_type === "core_required");
-  const supportingRequirements = role.competencies.filter((c) => c.requirement_type === "supporting");
-  const preferredRequirements = role.competencies.filter(
+  const competencies = role?.competencies || [];
+  const coreRequirements = competencies.filter((c) => c.requirement_type === "core_required");
+  const supportingRequirements = competencies.filter((c) => c.requirement_type === "supporting");
+  const preferredRequirements = competencies.filter(
     (c) => c.requirement_type === "preferred" || c.requirement_type === "differentiating"
   );
 

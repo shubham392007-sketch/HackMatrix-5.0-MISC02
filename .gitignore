@@ -62,3 +62,5 @@ frontend/out/
 temp_prompt.txt
 temp_full_prompt.txt
 skillpassport-powered-by-growthlens/backend/data/
+
+graphify-out/

@@ -43,15 +43,25 @@ export default function GapPrioritizationPage() {
   const dynamicRankedGaps = useMemo(() => {
     const list = [...activeGaps].map((gap) => {
       const inputs = gap.priority_inputs;
-      // Recalculate score with user-adjusted parameters
-      const adjustedScore =
-        (inputs.criticality *
-          inputs.level_gap *
-          inputs.dependency_impact *
-          (inputs.evidence_leverage * leverageBoost) *
-          inputs.user_fit *
-          inputs.marginal_gain) /
-        (inputs.estimated_effort * effortWeight);
+      
+      // Calculate normalized 0–100 dynamic priority score
+      const levelGap = Math.max(0, inputs.level_gap || 1);
+      const criticalityRatio = (inputs.criticality || 4) / 5;
+      const urgencyRatio = gap.requirement_type === "core_required" ? 1.0 : 0.8;
+      const gapRatio = Math.min(1.0, Math.max(0.2, levelGap / 4.0));
+      const baseScore = 100.0 * gapRatio * criticalityRatio * urgencyRatio;
+
+      const effortDiscount = Math.max(
+        0.50,
+        1.0 - 0.08 * Math.max(0, (inputs.estimated_effort || 2.0) - 1.0) * effortWeight
+      );
+      const hasEvidence = inputs.evidence_leverage > 1.0 || (gap.project_leverage_example !== undefined);
+      const levBoost = Math.min(1.35, 1.0 + (hasEvidence ? 0.12 * leverageBoost : 0.0));
+
+      const adjustedScore = Math.min(
+        100.0,
+        Math.max(1.0, Math.round(baseScore * effortDiscount * levBoost * 10) / 10)
+      );
 
       return {
         ...gap,
@@ -69,8 +79,8 @@ export default function GapPrioritizationPage() {
     if (strategyFilter === "quick_wins") {
       return list.filter(
         (g) =>
-          g.priority_inputs.evidence_leverage >= 2 ||
-          g.priority_inputs.estimated_effort <= 2
+          g.priority_inputs.evidence_leverage >= 1.2 ||
+          g.priority_inputs.estimated_effort <= 2.0
       );
     }
     if (strategyFilter === "critical_blockers") {
@@ -117,11 +127,11 @@ export default function GapPrioritizationPage() {
           <div className="space-y-1">
             <span className="text-xs font-mono font-bold text-ink flex items-center gap-2">
               <Scale className="w-4 h-4 text-ink" />
-              Prioritization Formula Architecture
+              Normalized Prioritization Formula Architecture (0–100 Scale)
             </span>
             <p className="text-xs text-ink-muted max-w-xl">
               <code className="bg-sand/40 px-2 py-0.5 rounded text-[11px] font-mono text-ink">
-                Priority = (Criticality &times; &Delta;Level &times; DepImpact &times; EvLeverage &times; UserFit &times; MarginalGain) / Effort
+                Priority = (100 &times; Gap &times; Criticality &times; Urgency) &times; EffortDiscount &times; LeverageBoost
               </code>
             </p>
           </div>
@@ -347,31 +357,31 @@ export default function GapPrioritizationPage() {
                   <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 p-3 rounded-xl bg-sand/20 border border-ink/10 text-center animate-fade-in text-xs">
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Criticality</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.criticality} / 5</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.criticality.toFixed(1)} / 5</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Level Gap</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.level_gap} Steps</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.level_gap} Step{gap.priority_inputs.level_gap !== 1 ? 's' : ''}</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Dep Impact</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.dependency_impact} / 3</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.dependency_impact.toFixed(1)} &times;</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Ev Leverage</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.evidence_leverage} / 3</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.evidence_leverage.toFixed(1)} &times;</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">User Fit</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.user_fit} / 3</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.user_fit.toFixed(1)} &times;</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Marginal Gain</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.marginal_gain} / 3</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.marginal_gain.toFixed(1)} / 3</strong>
                     </div>
                     <div className="p-2 rounded bg-white border border-ink/5">
                       <span className="text-[10px] text-ink-muted block">Effort</span>
-                      <strong className="font-mono text-ink">{gap.priority_inputs.estimated_effort} / 5</strong>
+                      <strong className="font-mono text-ink">{gap.priority_inputs.estimated_effort.toFixed(1)} / 5</strong>
                     </div>
                   </div>
                 )}

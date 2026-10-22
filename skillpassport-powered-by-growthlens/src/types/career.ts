@@ -69,9 +69,9 @@ export interface CompetencyMatchResult {
   expected_level_numeric: number;
   current_proficiency: ProficiencyLevel;
   current_proficiency_numeric: number;
-  verification_status: SkillVerificationState;
+  verification_status: SkillVerificationState | "not_established";
   confidence: number;
-  evidence_strength: "high" | "medium" | "low";
+  evidence_strength: "high" | "medium" | "low" | "none";
   evidence_ids: string[];
   raw_coverage: number; // min(1, current / expected)
   effective_coverage: number; // adjusted for verification state
@@ -124,7 +124,7 @@ export interface GapRecord {
   importance: ImportanceLevel;
   expected_level: ProficiencyLevel;
   current_supported_level: ProficiencyLevel;
-  verification_status: SkillVerificationState;
+  verification_status: SkillVerificationState | "not_established";
   evidence_status: "sufficient" | "insufficient" | "none" | "conflicting";
   proficiency_distance: number;
   priority_rank: number;

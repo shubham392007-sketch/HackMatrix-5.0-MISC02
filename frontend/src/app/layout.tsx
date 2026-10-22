@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import GrowthLensBootScreen from "@/components/layout/GrowthLensBootScreen";
 import PageTransition from "@/components/layout/PageTransition";
+import AgentationProvider from "@/components/layout/AgentationProvider";
 
 const poppins = Poppins({
   variable: "--font-primary",
@@ -38,6 +39,7 @@ export default function RootLayout({
         <AuthProvider>
           <PageTransition>{children}</PageTransition>
         </AuthProvider>
+        <AgentationProvider />
       </body>
     </html>
   );

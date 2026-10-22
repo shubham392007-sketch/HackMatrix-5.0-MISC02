@@ -20,6 +20,7 @@ import {
   Layers,
   ShieldCheck,
   TrendingUp,
+  Globe,
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -28,7 +29,6 @@ import {
   RequirementTypeBadge,
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
-import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleIntelligenceOverviewPage() {
@@ -252,6 +252,25 @@ export default function RoleIntelligenceOverviewPage() {
             </p>
 
             <div className="space-y-2.5">
+              <Link
+                href="/app/career/discover"
+                className="p-3 rounded-xl border border-ink/20 bg-lime/15 hover:border-ink hover:bg-lime/25 transition-all flex items-center justify-between group text-xs shadow-sm"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-lime text-ink flex items-center justify-center shrink-0 font-bold border border-ink/20">
+                    <Globe className="w-4 h-4 text-ink" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-ink group-hover:text-ink flex items-center gap-1.5">
+                      Discover Real Jobs
+                      <span className="text-[9px] font-mono font-bold uppercase bg-ink text-white px-1.5 py-0.5 rounded">Live API</span>
+                    </h5>
+                    <p className="text-[11px] text-ink-muted">Search real openings tailored to your verified skills or target role</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-ink-muted group-hover:text-ink group-hover:translate-x-0.5 transition-all" />
+              </Link>
+
               <Link
                 href="/app/career/roles"
                 className="p-3 rounded-xl border border-ink/10 hover:border-ink hover:bg-sand/15 transition-all flex items-center justify-between group text-xs"
