@@ -418,17 +418,51 @@ export interface GitHubDiagnosticResponse {
   checks: DiagnosticCheckItem[];
 }
 
-export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+export async function getGitHubRepositorySyncStatus(repositoryIdOrFullName: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/sync`, {
-    method: "POST",
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync-status`, {
     headers,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
-    throw new Error(err.detail || "Repository sync failed");
+    const err = await res.json().catch(() => ({ detail: "Failed to get repository sync status" }));
+    throw new Error(err.detail || "Failed to get repository sync status");
   }
   return res.json();
+}
+
+export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync`, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
+      throw new Error(err.detail || "Repository sync failed");
+    }
+    return await res.json();
+  } catch (err: any) {
+    // If the network or browser interrupted the fetch (e.g. Failed to fetch or connection dropped),
+    // check if the backend has finished or is processing the sync!
+    try {
+      await new Promise((r) => setTimeout(r, 1200));
+      const statusOutcome = await getGitHubRepositorySyncStatus(repositoryIdOrFullName);
+      if (statusOutcome && (statusOutcome.status === "completed" || (statusOutcome.candidate_skills_count && statusOutcome.candidate_skills_count > 0))) {
+        return statusOutcome;
+      }
+    } catch (statusErr) {
+      // Ignore status query error and rethrow original error
+    }
+    throw err;
+  }
 }
 
 export async function analyzeGitHubRepository(repositoryIdOrFullName: string, limit: number = 5) {
@@ -1026,16 +1060,25 @@ export async function listPassportCandidates(): Promise<{
   return res.json();
 }
 
+export interface CandidateReviewResponse {
+  decision_id: string;
+  mapping_id: string;
+  previous_state: string;
+  verification_state: string;
+  rationale: string;
+  created_at?: string | null;
+  skill_name?: string | null;
+  category?: string | null;
+  proficiency_level?: string | null;
+  confidence_score?: number | null;
+  evidence_id?: string | null;
+}
+
 export async function reviewPassportCandidate(
   mappingId: string,
   action: "verify" | "reject" | "flag_insufficient",
   rationale: string
-): Promise<{
-  success: boolean;
-  decision_id: string;
-  status: string;
-  message: string;
-}> {
+): Promise<CandidateReviewResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/passport/candidates/${mappingId}/review`, {
     method: "POST",

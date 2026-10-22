@@ -38,7 +38,7 @@ interface JiraProjectItem {
 }
 
 export default function JiraSourceFlow() {
-  const { sources, refreshEvidenceData } = useEvidence();
+  const { sources, refreshEvidenceData, addNotification } = useEvidence();
   const currentSource = sources.find((s) => s.type === "jira" && s.status === "connected");
 
   const [siteUrl, setSiteUrl] = useState("");
@@ -69,6 +69,19 @@ export default function JiraSourceFlow() {
       }
     } catch (err: any) {
       console.warn("Could not load Jira projects:", err);
+      const isAuthError = err?.status === 401 || err?.message?.toLowerCase().includes("unauthorized") || err?.message?.toLowerCase().includes("forbidden");
+      if (isAuthError) {
+        addNotification({
+          title: "Source connection needs attention",
+          description: "Jira authorization has expired or is invalid. Please reconnect your account.",
+          category: "evidence",
+          severity: "error",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/jira",
+          actionLabel: "Reconnect Jira",
+          dedupKey: "jira_auth_needs_attention",
+        });
+      }
     } finally {
       setLoadingProjects(false);
     }
@@ -93,10 +106,31 @@ export default function JiraSourceFlow() {
 
       setApiToken("");
       setStatusMessage("Jira connected successfully! Loading accessible projects...");
+      addNotification({
+        title: "Evidence added successfully",
+        description: "Jira Cloud connected successfully. Projects loaded and ready for sync.",
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/jira",
+        actionLabel: "View Projects",
+        dedupKey: `jira_connect_${Date.now()}`,
+      });
       await refreshEvidenceData();
       await loadProjects();
     } catch (err: any) {
-      setConnectError(err.message || "Failed to validate or connect Jira Cloud credentials.");
+      const errMsg = err.message || "Failed to validate or connect Jira Cloud credentials.";
+      setConnectError(errMsg);
+      addNotification({
+        title: "Source connection needs attention",
+        description: `Jira connection failed: ${errMsg}.`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/jira",
+        actionLabel: "Retry Jira Connection",
+        dedupKey: `jira_auth_fail_${Date.now()}`,
+      });
     } finally {
       setConnecting(false);
     }
@@ -126,9 +160,30 @@ export default function JiraSourceFlow() {
 
       const selectedCount = projects.filter((p) => p.selected).length;
       setStatusMessage(`Sync triggered for ${selectedCount} Jira projects! Ingestion jobs queued.`);
+      addNotification({
+        title: "Repository sync completed",
+        description: `Synchronization triggered for ${selectedCount} Jira project${selectedCount === 1 ? "" : "s"}. Pipeline ingestion enqueued.`,
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/runs",
+        actionLabel: "View Ingestion Runs",
+        dedupKey: `jira_sync_${Date.now()}`,
+      });
       await refreshEvidenceData();
     } catch (err: any) {
-      setConnectError(err.message || "Failed to update Jira projects or start sync.");
+      const errMsg = err.message || "Failed to update Jira projects or start sync.";
+      setConnectError(errMsg);
+      addNotification({
+        title: "Synchronization failed",
+        description: `Jira synchronization failed: ${errMsg}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/jira",
+        actionLabel: "Retry Sync",
+        dedupKey: `jira_sync_fail_${Date.now()}`,
+      });
     } finally {
       setSyncing(false);
     }

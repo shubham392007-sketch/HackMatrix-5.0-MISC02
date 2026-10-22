@@ -843,7 +843,7 @@ async def _sync_single_github_repo_internal(
     if readme_content:
         consolidated_sections.extend([
             f"\n=== PROJECT DOCUMENTATION (README.md) ===",
-            readme_content[:35000],
+            readme_content[:12000],
         ])
 
     if compact_commits:
@@ -950,18 +950,34 @@ async def _sync_single_github_repo_internal(
         db.flush()
 
     # 8. Single holistic LLM extraction call on consolidated context
-    try:
-        await extraction_engine.process_and_persist_evidence(
-            db=db,
-            evidence_item=repo_evidence,
-            content_text=consolidated_text,
-            source_provider="github",
-            category="engineering",
-            user_id=user.id,
-            fast_mode=False,
-        )
-    except Exception as e:
-        logger.error(f"Error in consolidated repository extraction for {repo_full}: {e}")
+    from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
+    from backend.app.ai.extractor import compute_dynamic_confidence_score
+
+    existing_skills_count = db.query(EvidenceCompetencyMapping).filter(
+        EvidenceCompetencyMapping.evidence_id == repo_evidence.id
+    ).count()
+
+    is_content_unchanged = (
+        existing_repo_evidence is not None
+        and existing_repo_evidence.content_hash == content_hash
+        and existing_skills_count > 0
+    )
+
+    if not is_content_unchanged:
+        try:
+            await extraction_engine.process_and_persist_evidence(
+                db=db,
+                evidence_item=repo_evidence,
+                content_text=consolidated_text,
+                source_provider="github",
+                category="engineering",
+                user_id=user.id,
+                fast_mode=False,
+            )
+        except Exception as e:
+            logger.error(f"Error in consolidated repository extraction for {repo_full}: {e}")
+    else:
+        logger.info(f"Repository content unchanged for {repo_full} with {existing_skills_count} candidate skills already mapped. Reusing existing extraction.")
 
     db.commit()
 
@@ -1704,6 +1720,162 @@ async def sync_single_repository(
         "status": "completed",
         "sync_run_id": str(sync_run.id),
         **outcome,
+    }
+
+
+@router.get("/github/repositories/{repository_id:path}/sync-status")
+async def get_repository_sync_status(
+    repository_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the latest synchronization outcome, metrics, and extracted candidate skills
+    for a specific GitHub repository. Allows frontend recovery if background HTTP was interrupted.
+    """
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "github",
+        ConnectedSource.connection_status == "connected",
+    ).first()
+
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active GitHub connection found",
+        )
+
+    decoded_id = urllib.parse.unquote(repository_id).strip()
+
+    # Resolve resource
+    resource = None
+    try:
+        res_uuid = uuid.UUID(decoded_id)
+        resource = db.query(SelectedResource).filter(
+            SelectedResource.id == res_uuid,
+            SelectedResource.connection_id == connection.id,
+        ).first()
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
+        resource = db.query(SelectedResource).filter(
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
+            SelectedResource.connection_id == connection.id,
+        ).first()
+
+    repo_full = resource.external_resource_id if resource else decoded_id
+    repo_name = repo_full.split("/")[-1] if "/" in repo_full else repo_full
+
+    # Check latest SourceSyncRun for this repo
+    latest_run = db.query(SourceSyncRun).filter(
+        SourceSyncRun.owner_user_id == user.id,
+        SourceSyncRun.provider == "github",
+    ).order_by(SourceSyncRun.started_at.desc()).first()
+
+    # Find the repository evidence item
+    repo_record_id = f"gh:repo:{repo_full}"
+    repo_evidence = db.query(EvidenceItem).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.source_provider == "github",
+        EvidenceItem.external_record_id == repo_record_id,
+        EvidenceItem.is_deleted == False,
+    ).first()
+
+    if not repo_evidence:
+        repo_evidence = db.query(EvidenceItem).filter(
+            EvidenceItem.owner_user_id == user.id,
+            EvidenceItem.source_provider == "github",
+            or_(
+                EvidenceItem.source_name == repo_full,
+                EvidenceItem.project_name == repo_name,
+            ),
+            EvidenceItem.is_deleted == False,
+        ).order_by(EvidenceItem.created_at.desc()).first()
+
+    candidate_skills = []
+    if repo_evidence:
+        mappings = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(
+            CompetencyTaxonomy, EvidenceCompetencyMapping.competency_id == CompetencyTaxonomy.id
+        ).filter(
+            EvidenceCompetencyMapping.evidence_id == repo_evidence.id
+        ).all()
+
+        candidate_skills = [
+            {
+                "name": tax.canonical_name,
+                "category": tax.category,
+                "proficiency": getattr(m, "proficiency_level", "Practitioner"),
+                "justification": getattr(m, "supporting_excerpt", "") or getattr(m, "rationale", "") or "",
+                "confidence": getattr(m, "relevance_score", None) or getattr(m, "confidence_score", None) or compute_dynamic_confidence_score(
+                    None,
+                    justification=getattr(m, "supporting_excerpt", "") or getattr(m, "rationale", ""),
+                    demonstration_level=getattr(m, "proficiency_level", "Practitioner"),
+                    skill_name=tax.canonical_name,
+                ),
+            }
+            for m, tax in mappings
+        ]
+
+    # Check if run has saved outcome
+    run_outcome = (latest_run.resource_outcomes or {}).get(repo_full) if latest_run else None
+
+    readme_snap = None
+    if resource:
+        readme_snap = db.query(RepositoryReadmeSnapshot).filter(
+            RepositoryReadmeSnapshot.selected_resource_id == resource.id,
+        ).order_by(RepositoryReadmeSnapshot.created_at.desc()).first()
+
+    lang_snap = None
+    if resource:
+        lang_snap = db.query(RepositoryLanguageSnapshot).filter(
+            RepositoryLanguageSnapshot.selected_resource_id == resource.id,
+        ).order_by(RepositoryLanguageSnapshot.created_at.desc()).first()
+
+    languages_count = (
+        len(lang_snap.breakdowns) if (lang_snap and lang_snap.breakdowns) else (
+            len(repo_evidence.provenance.get("languages", [])) if (repo_evidence and repo_evidence.provenance) else 0
+        )
+    )
+    top_lang = (
+        lang_snap.breakdowns[0].language_name if (lang_snap and lang_snap.breakdowns) else (
+            repo_evidence.provenance.get("top_language") if (repo_evidence and repo_evidence.provenance) else None
+        )
+    )
+
+    commits_count = (
+        run_outcome.get("commits_imported")
+        if (run_outcome and "commits_imported" in run_outcome)
+        else (repo_evidence.provenance.get("commits_considered", 0) if (repo_evidence and repo_evidence.provenance) else 0)
+    )
+
+    return {
+        "status": "completed" if (repo_evidence or (latest_run and latest_run.status == "completed")) else "not_synced",
+        "sync_run_id": str(latest_run.id) if latest_run else None,
+        "repository_id": str(resource.id) if resource else None,
+        "repository_name": repo_full,
+        "languages_status": lang_snap.sync_status if lang_snap else ("success" if languages_count > 0 else "not_synced"),
+        "detected_languages": languages_count,
+        "top_language": top_lang,
+        "total_bytes": lang_snap.total_bytes if lang_snap else 0,
+        "readme_status": readme_snap.sync_status if readme_snap else ("success" if (repo_evidence and repo_evidence.provenance and repo_evidence.provenance.get("has_readme")) else "not_found"),
+        "has_readme": bool(readme_snap and readme_snap.raw_content) or bool(repo_evidence and repo_evidence.provenance and repo_evidence.provenance.get("has_readme")),
+        "readme_path": readme_snap.readme_path if readme_snap else "README.md",
+        "readme_chars": len(readme_snap.raw_content) if (readme_snap and readme_snap.raw_content) else 0,
+        "prs_imported": run_outcome.get("prs_imported", 0) if run_outcome else 0,
+        "commits_imported": commits_count,
+        "records_discovered": (run_outcome.get("records_discovered", 1) if run_outcome else 1),
+        "records_imported": 1,
+        "new_evidence_items": 1 if repo_evidence else 0,
+        "evidence_id": str(repo_evidence.id) if repo_evidence else None,
+        "candidate_skills": candidate_skills,
+        "candidate_skills_count": len(candidate_skills),
+        "last_sync_at": repo_evidence.observed_timestamp.isoformat() if (repo_evidence and repo_evidence.observed_timestamp) else None,
     }
 
 

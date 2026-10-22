@@ -73,6 +73,10 @@ export interface AppNotification {
   relatedDomain: string;
   actionRoute?: string;
   actionLabel?: string;
+  dedupKey?: string;
+  userId?: string;
+  entityType?: string;
+  entityId?: string;
 }
 
 export interface AppSettings {

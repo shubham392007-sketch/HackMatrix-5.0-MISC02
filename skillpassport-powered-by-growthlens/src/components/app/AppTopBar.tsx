@@ -55,6 +55,10 @@ export default function AppTopBar({
     setDemoRole,
     userProfile,
     unreadNotificationsCount,
+    evidenceUnreadCount,
+    evidenceNotifications,
+    verificationUnreadCount,
+    verificationNotifications,
     notifications,
     markNotificationRead,
     toasts,
@@ -92,6 +96,20 @@ export default function AppTopBar({
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  const isEvidenceWorkspace = pathname?.startsWith("/app/evidence") ?? false;
+  const isSkillPassport = pathname?.startsWith("/app/passport") ?? false;
+  const [feedMode, setFeedMode] = useState<"evidence" | "verification" | "all">("all");
+
+  useEffect(() => {
+    if (isEvidenceWorkspace) {
+      setFeedMode("evidence");
+    } else if (isSkillPassport) {
+      setFeedMode("verification");
+    } else {
+      setFeedMode("all");
+    }
+  }, [isEvidenceWorkspace, isSkillPassport]);
+
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -106,7 +124,23 @@ export default function AppTopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const latestUnread = notifications.filter((n) => !n.read).slice(0, 3);
+  const activeUnreadCount = isEvidenceWorkspace
+    ? evidenceUnreadCount
+    : isSkillPassport
+    ? verificationUnreadCount
+    : unreadNotificationsCount;
+
+  const displayList = useMemo(() => {
+    const pool =
+      feedMode === "evidence"
+        ? evidenceNotifications
+        : feedMode === "verification"
+        ? verificationNotifications
+        : notifications;
+    const unread = pool.filter((n) => !n.read);
+    const read = pool.filter((n) => n.read);
+    return [...unread, ...read].slice(0, 4);
+  }, [feedMode, evidenceNotifications, verificationNotifications, notifications]);
 
   // Auto-resolve breadcrumbs if not explicitly passed
   const resolvedBreadcrumbs = useMemo(() => {
@@ -272,9 +306,9 @@ export default function AppTopBar({
             className="relative w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
           >
             <Bell className="w-4 h-4" />
-            {unreadNotificationsCount > 0 && (
+            {activeUnreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white font-mono font-bold text-[9px] flex items-center justify-center border border-white">
-                {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                {activeUnreadCount > 9 ? "9+" : activeUnreadCount}
               </span>
             )}
           </button>
@@ -284,14 +318,20 @@ export default function AppTopBar({
               <div className="flex items-center justify-between pb-3 border-b border-ink/10">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-ink">Notifications</span>
-                  {unreadNotificationsCount > 0 && (
+                  {activeUnreadCount > 0 && (
                     <span className="px-2 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
-                      {unreadNotificationsCount} unread
+                      {activeUnreadCount} unread
                     </span>
                   )}
                 </div>
                 <Link
-                  href="/app/notifications"
+                  href={
+                    feedMode === "evidence"
+                      ? "/app/notifications?category=evidence"
+                      : feedMode === "verification"
+                      ? "/app/notifications?category=verification"
+                      : "/app/notifications"
+                  }
                   onClick={() => setIsNotifOpen(false)}
                   className="text-[11px] font-semibold text-ink/70 hover:text-ink underline"
                 >
@@ -299,33 +339,138 @@ export default function AppTopBar({
                 </Link>
               </div>
 
-              <div className="py-2 space-y-2 max-h-64 overflow-y-auto">
-                {latestUnread.length === 0 ? (
+              {/* Feed Switcher Tabs */}
+              <div className="mt-2.5 flex items-center gap-1 p-1 bg-ink/5 rounded-xl text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("verification")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "verification"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Skill Passport</span>
+                  {verificationUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {verificationUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("evidence")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "evidence"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Evidence</span>
+                  {evidenceUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {evidenceUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("all")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "all"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>All</span>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-ink/10 text-ink text-[9px] font-mono font-bold">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Notification Items List */}
+              <div className="py-2.5 space-y-2 max-h-72 overflow-y-auto">
+                {displayList.length === 0 ? (
                   <div className="py-6 text-center text-xs text-ink/60">
-                    No unread notifications.
+                    {feedMode === "evidence"
+                      ? "No Evidence Workspace notifications."
+                      : feedMode === "verification"
+                      ? "No Skill Intelligence notifications."
+                      : "No notifications recorded."}
                   </div>
                 ) : (
-                  latestUnread.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => markNotificationRead(notif.id)}
-                      className="p-2.5 rounded-xl bg-ink/5 hover:bg-[#DFE968]/20 border border-ink/10 text-xs space-y-1 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-ink">{notif.title}</span>
-                        <span className="text-[10px] text-ink/50">{notif.timestamp}</span>
+                  displayList.map((notif) => {
+                    const isError = notif.severity === "error";
+                    const isWarning = notif.severity === "warning";
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`p-2.5 rounded-xl border text-xs space-y-1.5 transition-colors ${
+                          notif.read
+                            ? "bg-ink/5 hover:bg-[#DFE968]/20 border-ink/10"
+                            : isError
+                            ? "bg-rose-50/60 border-rose-300"
+                            : isWarning
+                            ? "bg-amber-50/60 border-amber-300"
+                            : "bg-white border-ink/30 border-l-4 border-l-ink"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-ink truncate flex-1">{notif.title}</span>
+                          <span className="text-[10px] text-ink/50 shrink-0">{notif.timestamp}</span>
+                        </div>
+                        <p className="text-[11px] text-ink/75 leading-relaxed line-clamp-2">
+                          {notif.description}
+                        </p>
+                        <div className="flex items-center justify-between pt-1 border-t border-ink/5">
+                          {notif.actionRoute ? (
+                            <Link
+                              href={notif.actionRoute}
+                              onClick={() => {
+                                markNotificationRead(notif.id);
+                                setIsNotifOpen(false);
+                              }}
+                              className={`inline-flex items-center gap-1 font-semibold text-[10px] underline ${
+                                isError ? "text-rose-700 hover:text-rose-900" : "text-ink hover:text-ink/80"
+                              }`}
+                            >
+                              <span>{notif.actionLabel || (isError ? "Retry / Inspect" : "View Details")}</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          ) : (
+                            <span className="text-[10px] text-ink/40 font-mono">{notif.relatedDomain}</span>
+                          )}
+                          {!notif.read && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markNotificationRead(notif.id);
+                              }}
+                              className="text-[10px] text-ink/50 hover:text-ink font-semibold"
+                            >
+                              Mark read
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[11px] text-ink/70 leading-relaxed line-clamp-2">
-                        {notif.description}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
               <div className="pt-2 border-t border-ink/10 text-center">
                 <Link
-                  href="/app/notifications"
+                  href={
+                    feedMode === "evidence"
+                      ? "/app/notifications?category=evidence"
+                      : feedMode === "verification"
+                      ? "/app/notifications?category=verification"
+                      : "/app/notifications"
+                  }
                   onClick={() => setIsNotifOpen(false)}
                   className="inline-flex items-center justify-center w-full py-1.5 rounded-xl bg-ink text-[#FBF1CF] text-xs font-semibold hover:bg-ink/90 transition-all"
                 >

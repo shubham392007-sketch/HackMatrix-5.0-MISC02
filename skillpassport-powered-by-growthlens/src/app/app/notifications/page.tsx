@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
 import { NotificationCategory, AppNotification } from "@/types/account";
@@ -24,7 +25,10 @@ import {
   Filter,
 } from "lucide-react";
 
-export default function NotificationsPage() {
+function NotificationsContent() {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
+
   const {
     notifications,
     unreadNotificationsCount,
@@ -35,7 +39,19 @@ export default function NotificationsPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<
     "all" | NotificationCategory
-  >("all");
+  >(() => {
+    if (categoryParam && ["evidence", "verification", "learning", "sharing", "system"].includes(categoryParam)) {
+      return categoryParam as NotificationCategory;
+    }
+    return "all";
+  });
+
+  useEffect(() => {
+    if (categoryParam && ["evidence", "verification", "learning", "sharing", "system"].includes(categoryParam)) {
+      setSelectedCategory(categoryParam as NotificationCategory);
+    }
+  }, [categoryParam]);
+
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   // Filter notifications
@@ -261,6 +277,7 @@ export default function NotificationsPage() {
                       {notif.actionRoute && (
                         <Link
                           href={notif.actionRoute}
+                          onClick={() => markNotificationRead(notif.id)}
                           className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-ink text-[#FBF1CF] hover:bg-ink/90 text-[11px] font-semibold transition-all shadow-sm"
                         >
                           <span>{notif.actionLabel || "Inspect Record"}</span>
@@ -285,5 +302,31 @@ export default function NotificationsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex flex-col min-w-0">
+          <AppTopBar
+            title="Notification Center"
+            description="Loading notifications..."
+            breadcrumbs={[
+              { label: "Settings & Access", href: "/app/settings" },
+              { label: "Notifications" },
+            ]}
+          />
+          <div className="p-6 lg:p-10 max-w-5xl">
+            <div className="p-8 text-center text-xs text-ink/60 bg-white rounded-2xl border border-ink/10">
+              Loading notifications...
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <NotificationsContent />
+    </Suspense>
   );
 }
