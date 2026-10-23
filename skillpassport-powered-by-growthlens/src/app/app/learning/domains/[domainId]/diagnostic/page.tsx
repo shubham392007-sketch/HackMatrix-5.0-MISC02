@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import { INITIAL_DIAGNOSTIC_QUESTIONS } from "@/data/learningMock";
 import { evaluateDiagnostic } from "@/lib/learningCalculations";
-import { DiagnosticResult } from "@/types/learning";
+import { DiagnosticResult, DiagnosticQuestion } from "@/types/learning";
+import { getDiagnosticQuestions, submitDiagnostic } from "@/lib/evidenceApi";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
   CheckCircle2,
@@ -32,7 +33,20 @@ export default function DiagnosticAssessmentPage() {
   const { activeBlueprint, recordDiagnosticResult, activeDiagnosticResult } =
     useEvidence();
 
-  const questions = INITIAL_DIAGNOSTIC_QUESTIONS;
+  const [questions, setQuestions] = useState<DiagnosticQuestion[]>(INITIAL_DIAGNOSTIC_QUESTIONS);
+
+  useEffect(() => {
+    getDiagnosticQuestions(domainId)
+      .then((res) => {
+        if (res && Array.isArray(res.questions) && res.questions.length > 0) {
+          setQuestions(res.questions);
+        }
+      })
+      .catch((e) => {
+        // Fall back gracefully to local question bank
+        console.info("Using cached diagnostic question bank:", e);
+      });
+  }, [domainId]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -41,19 +55,25 @@ export default function DiagnosticAssessmentPage() {
     activeDiagnosticResult || null
   );
 
-  const currentQ = questions[currentIdx];
-  const progressPct = Math.round(((currentIdx + 1) / questions.length) * 100);
+  const currentQ = questions[currentIdx] || questions[0];
+  const progressPct = Math.round(((currentIdx + 1) / Math.max(1, questions.length)) * 100);
   const totalAnswered = Object.keys(answers).length;
 
   const handleSelectOption = (qId: string, optionIdx: number) => {
     setAnswers((prev) => ({ ...prev, [qId]: optionIdx }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const res = evaluateDiagnostic(answers, questions, domainId);
     setResult(res);
     setIsSubmitted(true);
     recordDiagnosticResult(res);
+
+    try {
+      await submitDiagnostic(domainId, answers);
+    } catch (e) {
+      console.warn("Backend diagnostic submit sync failed:", e);
+    }
   };
 
   const handleReset = () => {

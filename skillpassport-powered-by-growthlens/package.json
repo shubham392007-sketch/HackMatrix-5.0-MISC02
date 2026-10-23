@@ -6,7 +6,11 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "graphify": "./venv/bin/graphify .",
+    "graphify:extract": "./venv/bin/graphify extract . --code-only",
+    "graphify:tree": "./venv/bin/graphify tree",
+    "graphify:html": "./venv/bin/graphify export html"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -22,6 +26,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agentation": "^3.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",

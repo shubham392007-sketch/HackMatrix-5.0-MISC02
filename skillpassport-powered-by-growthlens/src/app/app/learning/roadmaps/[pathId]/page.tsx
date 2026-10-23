@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -28,6 +28,8 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
+import { getRoadmapByPathId } from "@/lib/evidenceApi";
+import { LearningRoadmap } from "@/types/learning";
 
 export default function PersonalizedRoadmapPage() {
   const params = useParams();
@@ -40,13 +42,31 @@ export default function PersonalizedRoadmapPage() {
     activeBlueprint,
   } = useEvidence();
 
+  const [remoteRoadmap, setRemoteRoadmap] = useState<LearningRoadmap | null>(null);
+
+  useEffect(() => {
+    if (pathId && !pathId.startsWith("roadmap-domain-")) {
+      getRoadmapByPathId(pathId)
+        .then((res) => {
+          if (res && res.path_id) {
+            setRemoteRoadmap(res);
+          }
+        })
+        .catch(() => {
+          // If not in DB yet, fallback to active context roadmap
+        });
+    }
+  }, [pathId]);
+
+  const displayRoadmap = remoteRoadmap || activeRoadmap;
+
   const [hoursPerWeek, setHoursPerWeek] = useState(
-    activeRoadmap.study_hours_per_week || 6
+    displayRoadmap.study_hours_per_week || 6
   );
   const [preference, setPreference] = useState(
-    activeRoadmap.preference || "practice-first"
+    displayRoadmap.preference || "practice-first"
   );
-  const [pace, setPace] = useState(activeRoadmap.pace || "standard");
+  const [pace, setPace] = useState(displayRoadmap.pace || "standard");
   const [showPreferences, setShowPreferences] = useState(false);
 
   const handleUpdatePreferences = (
@@ -60,19 +80,19 @@ export default function PersonalizedRoadmapPage() {
     updateRoadmapPreferences(activeDomainId, newHours, newPref, newPace);
   };
 
-  const completedSteps = activeRoadmap.steps.filter(
+  const completedSteps = displayRoadmap.steps.filter(
     (s) => s.status === "completed"
   ).length;
 
   const improvement =
-    activeRoadmap.current_mastery - activeRoadmap.baseline_mastery;
+    displayRoadmap.current_mastery - displayRoadmap.baseline_mastery;
 
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title={`Personalized Roadmap: ${activeRoadmap.domain_title}`}
+        title={`Personalized Roadmap: ${displayRoadmap.domain_title}`}
         description="A sequenced, prerequisite-aware learning journey designed to close your diagnosed skill gaps. Each step specifies its objective, rationale, and target mastery."
-        badge={activeRoadmap.blueprint_version}
+        badge={displayRoadmap.blueprint_version || "v1.0"}
         badgeColor="border-ink/20 text-ink bg-sand/30"
       >
         <button
@@ -196,14 +216,14 @@ export default function PersonalizedRoadmapPage() {
                 Current Domain Progress
               </span>
               <span className="text-xs font-mono text-ink-muted">
-                Completed {completedSteps} of {activeRoadmap.steps.length} steps
+                Completed {completedSteps} of {displayRoadmap.steps.length} steps
               </span>
             </div>
             <h2 className="text-2xl font-bold text-ink">
-              Mastery: {activeRoadmap.current_mastery}% (Target: {activeRoadmap.target_mastery}%)
+              Mastery: {displayRoadmap.current_mastery}% (Target: {displayRoadmap.target_mastery}%)
             </h2>
             <p className="text-xs text-ink-muted max-w-xl">
-              Baseline was {activeRoadmap.baseline_mastery}%. You have gained +{improvement} percentage points through completed missing value packets and practice exercises.
+              Baseline was {displayRoadmap.baseline_mastery}%. You have gained +{improvement} percentage points through completed missing value packets and practice exercises.
             </p>
           </div>
 
@@ -229,9 +249,9 @@ export default function PersonalizedRoadmapPage() {
 
         <div className="pt-4 border-t border-ink/10">
           <MasteryProgressBar
-            current={activeRoadmap.current_mastery}
-            target={activeRoadmap.target_mastery}
-            baseline={activeRoadmap.baseline_mastery}
+            current={displayRoadmap.current_mastery}
+            target={displayRoadmap.target_mastery}
+            baseline={displayRoadmap.baseline_mastery}
           />
         </div>
       </div>
@@ -249,7 +269,7 @@ export default function PersonalizedRoadmapPage() {
         </div>
 
         <div className="space-y-4">
-          {activeRoadmap.steps.map((step, idx) => (
+          {displayRoadmap.steps.map((step, idx) => (
             <div
               key={step.step_id}
               className={`gl-card p-5 md:p-6 transition-all border-ink/15 space-y-4 ${

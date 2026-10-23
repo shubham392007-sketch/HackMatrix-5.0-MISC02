@@ -1,16 +1,21 @@
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field, field_validator
 import os
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+        env_file=(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", ".env"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+        ),
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
 
     app_name: str = "SkillPassport Evidence Intelligence API"
     app_version: str = "1.0.0"
@@ -81,11 +86,40 @@ class Settings(BaseSettings):
     ollama_qwen_model: str = "qwen3:8b"
     ollama_ocr_model: str = "glm-ocr"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_timeout_seconds: float = 180.0
+    ollama_timeout_seconds: float = 45.0
+    ollama_roadmap_timeout_seconds: Optional[float] = Field(
+        default=None,
+        description="Dedicated timeout in seconds for roadmap generation requests (defaults to 45.0s, falls back to ollama_timeout_seconds)",
+    )
+    ollama_assessment_timeout_seconds: Optional[float] = Field(
+        default=None,
+        description="Dedicated timeout in seconds for assessment generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds if > 45.0)",
+    )
     ollama_num_ctx: int = Field(
         default=8192,
         description="Effective context window (num_ctx) for Ollama inference requests (target: 8192 tokens for 100% GPU offload on 6GB VRAM)",
     )
+
+    @property
+    def effective_roadmap_timeout_seconds(self) -> float:
+        if "OLLAMA_ROADMAP_TIMEOUT_SECONDS" in os.environ:
+            return float(os.environ["OLLAMA_ROADMAP_TIMEOUT_SECONDS"])
+        if self.ollama_roadmap_timeout_seconds is not None:
+            return float(self.ollama_roadmap_timeout_seconds)
+        if "OLLAMA_TIMEOUT_SECONDS" in os.environ:
+            return float(os.environ["OLLAMA_TIMEOUT_SECONDS"])
+        return float(self.ollama_timeout_seconds or 45.0)
+
+    @property
+    def effective_assessment_timeout_seconds(self) -> float:
+        if "OLLAMA_ASSESSMENT_TIMEOUT_SECONDS" in os.environ:
+            return float(os.environ["OLLAMA_ASSESSMENT_TIMEOUT_SECONDS"])
+        if self.ollama_assessment_timeout_seconds is not None:
+            return float(self.ollama_assessment_timeout_seconds)
+        if "OLLAMA_TIMEOUT_SECONDS" in os.environ and float(os.environ["OLLAMA_TIMEOUT_SECONDS"]) > 45.0:
+            return float(os.environ["OLLAMA_TIMEOUT_SECONDS"])
+        return 120.0
+
 
     # ChromaDB
     chroma_persist_directory: str = "./chroma_data"
@@ -93,6 +127,7 @@ class Settings(BaseSettings):
     # CORS & Upload Limits
     frontend_origins: str = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
     max_upload_size_mb: int = 25
+
     evidence_processing_concurrency: int = 1
 
     @property
@@ -104,4 +139,15 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    # Propagate central configuration to environment if not explicitly overridden
+    if "OLLAMA_TIMEOUT_SECONDS" not in os.environ:
+        os.environ["OLLAMA_TIMEOUT_SECONDS"] = str(s.ollama_timeout_seconds)
+    if "OLLAMA_BASE_URL" not in os.environ:
+        os.environ["OLLAMA_BASE_URL"] = s.ollama_base_url
+    if "OLLAMA_MODEL" not in os.environ and "OLLAMA_QWEN_MODEL" not in os.environ:
+        os.environ["OLLAMA_MODEL"] = s.ollama_qwen_model
+    return s
+
+
+settings = get_settings()

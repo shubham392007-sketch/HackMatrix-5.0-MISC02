@@ -147,7 +147,7 @@ export const WORKSPACE_NAV: NavSection[] = [
       { label: "Diagnostic Check", href: "/app/learning/domains/domain-data-preprocessing/diagnostic", icon: CheckSquare },
       { label: "Curated Resources", href: "/app/learning/resources", icon: Layers },
       { label: "Practice Exercises", href: "/app/learning/practice", icon: Code2 },
-      { label: "Assessments", href: "/app/learning/assessments/assessment-domain-data-preprocessing", icon: CheckCircle2 },
+      { label: "Assessments", href: "/app/learning/assessments/domain-data-preprocessing", icon: CheckCircle2 },
       { label: "Mini-Projects", href: "/app/learning/projects", icon: FileCode },
       { label: "Progress & Mastery", href: "/app/learning/progress", icon: LineChart },
       { label: "Learning History", href: "/app/learning/history", icon: History },

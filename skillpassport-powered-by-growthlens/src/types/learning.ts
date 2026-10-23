@@ -156,6 +156,12 @@ export interface LearningResource {
   concepts_not_covered: string[];
   roadmap_position: string;
   url: string;
+  thumbnail_url?: string;
+  author_or_channel?: string;
+  validation_status?: string;
+  is_playable?: boolean | null;
+  provider_metadata?: Record<string, any>;
+  is_fallback?: boolean;
 }
 
 export interface PracticeExercise {

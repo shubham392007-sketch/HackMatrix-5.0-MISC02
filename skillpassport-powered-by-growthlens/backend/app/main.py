@@ -1,3 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+# Load backend/.env into environment
+env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", ".env")
+if not os.path.exists(env_file):
+    env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -94,6 +104,8 @@ def create_app() -> FastAPI:
             is_connection_exhaustion_error,
         )
         circuit_breaker.record_failure(exc)
+        # Safe error-type logging ensures database credentials, connection URIs,
+        # and sensitive SQL query parameters cannot be leaked into server logs.
         logger.error(
             f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}"
         )

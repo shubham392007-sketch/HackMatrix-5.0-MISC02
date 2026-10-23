@@ -8,6 +8,7 @@ from backend.app.api.ingestion_runs import router as ingestion_runs_router
 from backend.app.api.profile import router as profile_router
 from backend.app.api.ai import router as ai_router
 from backend.app.api.passport import router as passport_router
+from backend.app.learning.router import router as learning_router
 
 api_router = APIRouter()
 
@@ -37,4 +38,7 @@ api_router.include_router(ai_router)
 
 # Skill Intelligence & Passport (Domain 2)
 api_router.include_router(passport_router)
+
+# Learn & Grow Engine (Domain 5)
+api_router.include_router(learning_router)
 

@@ -612,7 +612,7 @@ export const INITIAL_RESOURCES: LearningResource[] = [
     concepts_covered: ["Leverage points", "Cost function sensitivity", "Pipeline integration"],
     concepts_not_covered: ["Deep autoencoder anomaly detection"],
     roadmap_position: "Step 2 in Outlier Handling Module",
-    url: "https://youtube.com/watch?v=sample-outlier-capping",
+    url: "https://www.youtube.com/watch?v=A3gClkblXK8",
   },
   {
     id: "res-topic-outlier-iqr-01",

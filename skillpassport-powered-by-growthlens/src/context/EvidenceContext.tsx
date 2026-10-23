@@ -46,6 +46,12 @@ import {
   listPassportTaxonomy,
   listPassportHistory,
   reviewPassportCandidate,
+  getLearningOverview,
+  getLearningPriorities,
+  listDomainBlueprints,
+  submitDiagnostic,
+  submitLearningAttempt,
+  generateBackendRoadmap,
   DatabaseUnavailableError,
 } from "@/lib/evidenceApi";
 import {
@@ -266,7 +272,7 @@ interface EvidenceContextType {
   recordDiagnosticResult: (result: DiagnosticResult) => void;
   completeStep: (stepId: string) => void;
   completePracticeExercise: (exerciseId: string, score: number) => void;
-  recordAssessmentAttempt: (attempt: AssessmentAttempt) => void;
+  recordAssessmentAttempt: (attempt: AssessmentAttempt, skipBackendSync?: boolean) => void;
   submitMiniProject: (
     projectId: string,
     repoUrl: string,
@@ -457,6 +463,26 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Domain 4 Career Intelligence State
   const [selectedRoleId, setSelectedRoleIdState] = useState<string>("role-ai-engineer-entry");
   const [customRoles, setCustomRoles] = useState<RoleDemandModel[]>([]);
+
+  // Domain 5 Learning Intelligence State
+  const [blueprints, setBlueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
+  const [activeDomainId, setActiveDomainId] = useState<string>("domain-data-preprocessing");
+  const [roadmaps, setRoadmaps] = useState<Record<string, LearningRoadmap>>(() => {
+    const initialMap: Record<string, LearningRoadmap> = {};
+    INITIAL_BLUEPRINTS.forEach((bp) => {
+      initialMap[bp.domain_id] = generatePersonalizedRoadmap(bp);
+    });
+    return initialMap;
+  });
+  const [diagnosticResults, setDiagnosticResults] = useState<Record<string, DiagnosticResult>>({});
+  const [miniProjects, setMiniProjects] = useState<MiniProject[]>([INITIAL_MINI_PROJECT]);
+  const [assessment] = useState<KnowledgeAssessment>(INITIAL_KNOWLEDGE_ASSESSMENT);
+  const [assessmentAttempts, setAssessmentAttempts] = useState<AssessmentAttempt[]>([]);
+  const [remediationSession, setRemediationSession] = useState<RemediationSession>(INITIAL_REMEDIATION_SESSION);
+  const [learningHistory, setLearningHistory] = useState<LearningHistoryEvent[]>(INITIAL_LEARNING_HISTORY);
+  const [candidateEvidences, setCandidateEvidences] = useState<CandidateLearningEvidence[]>(INITIAL_CANDIDATE_EVIDENCES);
+  const [resources] = useState<LearningResource[]>(INITIAL_RESOURCES);
+  const [practiceExercises, setPracticeExercises] = useState<PracticeExercise[]>(INITIAL_PRACTICE_EXERCISES);
 
   // Global Application Layer State
   const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_USER_PROFILE);
@@ -1132,6 +1158,30 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
+
+      // Domain 5: Learn & Grow Engine Live Hydration
+      try {
+        const [overviewRes, blueprintsRes] = await Promise.allSettled([
+          getLearningOverview(),
+          listDomainBlueprints(),
+        ]);
+
+        if (blueprintsRes.status === "fulfilled" && Array.isArray(blueprintsRes.value?.blueprints)) {
+          setBlueprints(blueprintsRes.value.blueprints);
+        }
+
+        if (overviewRes.status === "fulfilled" && overviewRes.value) {
+          const overview = overviewRes.value;
+          if (overview.active_roadmap) {
+            setRoadmaps((prev) => ({
+              ...prev,
+              [overview.active_roadmap.domain_id]: overview.active_roadmap,
+            }));
+          }
+        }
+      } catch (learningErr) {
+        console.warn("Could not load Learn & Grow data from backend:", learningErr);
+      }
     } catch (e) {
       console.warn("Could not load evidence data from backend:", e);
     } finally {
@@ -1632,27 +1682,6 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Domain 5 Learning Intelligence State
-  const [blueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
-  const [activeDomainId, setActiveDomainId] = useState<string>("domain-data-preprocessing");
-  
-  const [roadmaps, setRoadmaps] = useState<Record<string, LearningRoadmap>>(() => {
-    const initialMap: Record<string, LearningRoadmap> = {};
-    INITIAL_BLUEPRINTS.forEach((bp) => {
-      initialMap[bp.domain_id] = generatePersonalizedRoadmap(bp);
-    });
-    return initialMap;
-  });
-
-  const [diagnosticResults, setDiagnosticResults] = useState<Record<string, DiagnosticResult>>({});
-  const [miniProjects, setMiniProjects] = useState<MiniProject[]>([INITIAL_MINI_PROJECT]);
-  const [assessment] = useState<KnowledgeAssessment>(INITIAL_KNOWLEDGE_ASSESSMENT);
-  const [assessmentAttempts, setAssessmentAttempts] = useState<AssessmentAttempt[]>([]);
-  const [remediationSession, setRemediationSession] = useState<RemediationSession>(INITIAL_REMEDIATION_SESSION);
-  const [learningHistory, setLearningHistory] = useState<LearningHistoryEvent[]>(INITIAL_LEARNING_HISTORY);
-  const [candidateEvidences, setCandidateEvidences] = useState<CandidateLearningEvidence[]>(INITIAL_CANDIDATE_EVIDENCES);
-  const [resources] = useState<LearningResource[]>(INITIAL_RESOURCES);
-  const [practiceExercises, setPracticeExercises] = useState<PracticeExercise[]>(INITIAL_PRACTICE_EXERCISES);
 
   // Domain 6 Sharing & Recruiter Experience State
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>(INITIAL_SHARE_RECORDS);
@@ -1711,6 +1740,15 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       link_route: `/app/learning/domains/${result.domain_id}/diagnostic`,
       score: result.overall_score,
     });
+
+    // Sync generated roadmap with backend database persistence
+    generateBackendRoadmap(result.domain_id)
+      .then((persisted) => {
+        if (persisted && persisted.path_id) {
+          setRoadmaps((prev) => ({ ...prev, [result.domain_id]: persisted }));
+        }
+      })
+      .catch((e) => console.warn("Backend roadmap generation sync:", e));
   };
 
   const completeStep = (stepId: string) => {
@@ -1747,6 +1785,14 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         link_route: `/app/learning/steps/${stepId}`,
       });
     }
+
+    // Backend database persistence dispatch
+    submitLearningAttempt({
+      step_id: stepId,
+      attempt_type: "assessment",
+      activity_id: stepId,
+      score: 100,
+    }).catch((e) => console.warn("Backend step attempt sync failed:", e));
   };
 
   const completePracticeExercise = (exerciseId: string, score: number) => {
@@ -1765,20 +1811,39 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         link_route: "/app/learning/practice",
         score,
       });
+
+      // Backend database persistence dispatch
+      submitLearningAttempt({
+        step_id: exerciseId,
+        attempt_type: "practice",
+        activity_id: exerciseId,
+        score,
+        signals: { practice_signal: score, knowledge_signal: score },
+      }).catch((e) => console.warn("Backend practice attempt sync failed:", e));
     }
   };
 
-  const recordAssessmentAttempt = (attempt: AssessmentAttempt) => {
+  const recordAssessmentAttempt = (attempt: AssessmentAttempt, skipBackendSync?: boolean) => {
     setAssessmentAttempts((prev) => [attempt, ...prev]);
     addLearningHistoryEvent({
       timestamp: "Just now",
       type: "assessment_attempt",
-      title: `${assessment.title} Attempt (${attempt.passed ? "PASSED" : "REMEDIATION REQUIRED"})`,
+      title: `${attempt.assessment_id ? "Assessment" : assessment.title} Attempt (${attempt.passed ? "PASSED" : "REMEDIATION REQUIRED"})`,
       domain_id: assessment.domain_id,
       detail: `Score: ${attempt.total_score}%. ${attempt.feedback}`,
-      link_route: `/app/learning/assessments/${assessment.id}`,
+      link_route: `/app/learning/assessments/${attempt.assessment_id || assessment.id}`,
       score: attempt.total_score,
     });
+
+    // Backend database persistence dispatch (skipped if already persisted by submitBackendAssessment)
+    if (!skipBackendSync) {
+      submitLearningAttempt({
+        step_id: attempt.assessment_id,
+        attempt_type: "assessment",
+        activity_id: attempt.assessment_id,
+        score: attempt.total_score,
+      }).catch((e) => console.warn("Backend assessment attempt sync failed:", e));
+    }
   };
 
   const submitMiniProject = (

@@ -1073,3 +1073,244 @@ export async function listPassportHistory(): Promise<{
   if (!res.ok) throw new Error("Failed to load passport history");
   return res.json();
 }
+
+// ==============================================================================
+// DOMAIN 5: LEARN & GROW ENGINE API CLIENT
+// ==============================================================================
+
+export async function getLearningPriorities(): Promise<{
+  user_id: string;
+  count: number;
+  confidence_review_threshold: number;
+  priorities: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/priorities`, { headers });
+  if (!res.ok) throw new Error("Failed to load learning priorities");
+  return res.json();
+}
+
+export async function refreshCareerGaps(): Promise<{
+  status: string;
+  refreshed_at: string;
+  count: number;
+  priorities: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/refresh-gaps`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to refresh career gaps");
+  return res.json();
+}
+
+export async function listDomainBlueprints(): Promise<{ blueprints: any[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints`, { headers });
+  if (!res.ok) throw new Error("Failed to load domain blueprints");
+  return res.json();
+}
+
+export async function getDomainBlueprint(domainId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}`, { headers });
+  if (!res.ok) throw new Error(`Failed to load blueprint for domain ${domainId}`);
+  return res.json();
+}
+
+export async function getDiagnosticQuestions(domainId: string): Promise<{
+  domain_id: string;
+  total_questions: number;
+  questions: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}/diagnostic`, { headers });
+  if (!res.ok) throw new Error(`Failed to load diagnostic questions for ${domainId}`);
+  return res.json();
+}
+
+export async function submitDiagnostic(
+  domainId: string,
+  answers: Record<string, number>
+): Promise<{
+  attempt_id: string;
+  domain_id: string;
+  overall_score: number;
+  passed: boolean;
+  recommended_focus: string[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/blueprints/${domainId}/diagnostic/submit`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  });
+  if (!res.ok) throw new Error("Diagnostic submission failed");
+  return res.json();
+}
+
+export async function searchCuratedResources(
+  query: string,
+  skillId?: string,
+  level: string = "intermediate",
+  limit: number = 5
+): Promise<{
+  query: string;
+  count: number;
+  provider_statuses: Record<string, string>;
+  resources: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams({ query, level, limit: String(limit) });
+  if (skillId) params.append("skill_id", skillId);
+
+  const res = await fetchWithDedupe(`${API_BASE}/learning/resources/search?${params.toString()}`, { headers });
+  if (!res.ok) throw new Error("Resource search failed");
+  return res.json();
+}
+
+export async function getLearningResourceById(resourceId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/resources/${resourceId}`, { headers });
+  if (!res.ok) throw new Error(`Resource ${resourceId} not found`);
+  return res.json();
+}
+
+export async function generateBackendRoadmap(
+  domainId: string = "dist-sys",
+  targetRoleId?: string,
+  stepCount: number = 4
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/roadmaps/generate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ domain_id: domainId, target_role_id: targetRoleId, step_count: stepCount }),
+  });
+  if (!res.ok) throw new Error("Failed to generate personalized roadmap");
+  return res.json();
+}
+
+export const generatePersonalizedRoadmap = generateBackendRoadmap;
+
+export async function listUserRoadmaps(): Promise<{ user_id: string; roadmaps: any[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/roadmaps`, { headers });
+  if (!res.ok) throw new Error("Failed to load user roadmaps");
+  return res.json();
+}
+
+export async function getRoadmapByPathId(pathId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/roadmaps/${pathId}`, { headers });
+  if (!res.ok) throw new Error(`Failed to load roadmap ${pathId}`);
+  return res.json();
+}
+
+export async function submitLearningAttempt(payload: {
+  step_id: string;
+  roadmap_id?: string;
+  attempt_type: string;
+  activity_id: string;
+  score: number;
+  signals?: Record<string, number>;
+}): Promise<{
+  attempt_id: string;
+  step_id: string;
+  score: number;
+  passed: boolean;
+  computed_mastery: number;
+  step_updated: boolean;
+  governance_note: string;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/attempts`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Attempt recording failed");
+  return res.json();
+}
+
+export async function getLearningMasteryTelemetry(): Promise<{
+  user_id: string;
+  average_mastery: number;
+  snapshot_count: number;
+  recent_snapshots: any[];
+  recent_attempts: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/mastery`, { headers });
+  if (!res.ok) throw new Error("Failed to load mastery telemetry");
+  return res.json();
+}
+
+export async function getLearningOverview(): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/overview`, { headers });
+  if (!res.ok) throw new Error("Failed to load learning overview");
+  return res.json();
+}
+
+export async function generateBackendAssessment(payload: {
+  skill_id: string;
+  skill_name?: string;
+  roadmap_id?: string;
+  step_id?: string;
+  learning_objective?: string;
+  difficulty?: string;
+  force_regenerate?: boolean;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/assessments/generate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to generate assessment (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getBackendAssessment(assessmentId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(
+    `${API_BASE}/learning/assessments/${encodeURIComponent(assessmentId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Assessment ${assessmentId} not found (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function submitBackendAssessment(
+  assessmentId: string,
+  answers: Record<string, number>
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_BASE}/learning/assessments/${encodeURIComponent(assessmentId)}/submit`,
+    {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Assessment submission failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}

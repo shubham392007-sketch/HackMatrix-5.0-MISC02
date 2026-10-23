@@ -55,21 +55,65 @@ def get_auth_http_client() -> httpx.Client:
         )
     return _auth_http_client
 
+def is_development_or_test_environment() -> bool:
+    """
+    Strict fail-closed evaluation of whether the runtime environment is explicitly
+    authorized for mock, test, or development demo tokens.
+
+    Guarantees:
+    - Returns True ONLY when environment explicitly resolves to 'development' or 'test'.
+    - If either os.environ['APP_ENV'] or settings.app_env explicitly designates production
+      ('production', 'prod', 'staging', 'live'), demo tokens are unconditionally rejected.
+    - If the environment configuration is missing, empty, ambiguous, or conflicting,
+      it fails closed and returns False.
+    """
+    settings = get_settings()
+    env_os = os.environ.get("APP_ENV")
+    env_conf = getattr(settings, "app_env", None)
+
+    # Fail closed unconditionally if production/staging is specified in either environment source
+    production_designators = {"production", "prod", "staging", "live"}
+    if (env_os and env_os.strip().lower() in production_designators) or (
+        env_conf and env_conf.strip().lower() in production_designators
+    ):
+        return False
+
+    # OS environment variable takes precedence if set; falls back to settings.app_env
+    if env_os is not None:
+        effective_env = env_os.strip().lower()
+    elif env_conf is not None:
+        effective_env = env_conf.strip().lower()
+    else:
+        return False
+
+    permitted_envs = {"development", "test"}
+    return effective_env in permitted_envs
+
+
 def verify_supabase_token(token: str) -> Optional[dict]:
     """
     Validates Supabase JWT access token cryptographically and via Supabase Auth API.
     Derives genuine user identity without trusting arbitrary request bodies.
-    Guarantees no demo tokens or synthetic identities in production.
+    Guarantees no demo tokens or synthetic identities in production or ambiguous environments.
     """
     if not token:
         return None
 
     settings = get_settings()
 
-    # Dedicated synthetic test isolation strictly for automated pytest runs
-    if (os.environ.get("APP_ENV") == "test" or settings.app_env == "test") and (
-        token.startswith("test-token") or token.startswith("sp_demo_") or token == "sp_demo_user"
-    ):
+    is_demo = (
+        token == "sp_demo_user"
+        or token.startswith("sp_demo_")
+        or token.startswith("test-token")
+    )
+
+    if is_demo:
+        if not is_development_or_test_environment():
+            logger.warning(
+                "Security rejection: Attempted use of development demo token outside of authorized development/test environment."
+            )
+            return None
+
         if token.startswith("sp_demo_") or token == "sp_demo_user":
             return {
                 "sub": "00000000-0000-0000-0000-000000000001",

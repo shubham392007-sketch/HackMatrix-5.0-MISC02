@@ -11,7 +11,6 @@ from backend.app.models.user_profile import UserProfile
 from backend.app.models.language import RepositoryLanguageSnapshot, RepositoryLanguageBreakdown
 from backend.app.models.readme import RepositoryReadmeSnapshot
 from backend.app.models.ai_governance import (
-
     AIAnalysisRun,
     WorkAnalysisResult,
     EvidenceQualityAssessment,
@@ -23,6 +22,17 @@ from backend.app.models.ai_governance import (
     HumanReviewTask,
     AIEvaluationSuiteRun,
 )
+from backend.app.models.learning import (
+    LearningRoadmap,
+    LearningStep,
+    LearningResourceItem,
+    LearningAttempt,
+    LearningMasterySnapshot,
+    LearningAssessment,
+    LearningAssessmentModel,
+    LearningRoadmapModel,
+)
+
 
 __all__ = [
     "Base",
@@ -56,5 +66,14 @@ __all__ = [
     "PromptInjectionFinding",
     "HumanReviewTask",
     "AIEvaluationSuiteRun",
+    "LearningRoadmap",
+    "LearningStep",
+    "LearningResourceItem",
+    "LearningAttempt",
+    "LearningMasterySnapshot",
+    "LearningAssessment",
+    "LearningAssessmentModel",
+    "LearningRoadmapModel",
 ]
+
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -27,7 +27,9 @@ import {
   Layers,
   FileCode,
   ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
+import { getLearningPriorities, refreshCareerGaps } from "@/lib/evidenceApi";
 
 export default function LearningOverviewPage() {
   const {
@@ -37,9 +39,52 @@ export default function LearningOverviewPage() {
     learningHistory,
     miniProjects,
     activeDomainId,
+    addToast,
   } = useEvidence();
 
   const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [upstreamPriorities, setUpstreamPriorities] = useState<any[]>([]);
+  const [targetRoleTitle, setTargetRoleTitle] = useState<string>("Junior AI Application Engineer");
+
+  const loadPriorities = async () => {
+    try {
+      const data: any = await getLearningPriorities();
+      if (data && Array.isArray(data.priorities)) {
+        setUpstreamPriorities(data.priorities);
+        if (data.target_role_title) {
+          setTargetRoleTitle(data.target_role_title);
+        }
+      }
+    } catch (e) {
+      // Fallback to local taxonomy context if unauthenticated
+    }
+  };
+
+  useEffect(() => {
+    loadPriorities();
+  }, []);
+
+  const handleSyncCareerGaps = async () => {
+    setIsSyncing(true);
+    try {
+      const res: any = await refreshCareerGaps();
+      await loadPriorities();
+      addToast(
+        "Career Gaps Synced",
+        res?.message || "Successfully fetched latest role match snapshot from shared database.",
+        "success"
+      );
+    } catch (err: any) {
+      addToast(
+        "Sync Notice",
+        "Retaining cached skill gaps. Fallback taxonomy remains active.",
+        "info"
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Active step is first in-progress or available step
   const activeStep =
@@ -61,6 +106,15 @@ export default function LearningOverviewPage() {
         badge="Personalized Growth"
         badgeColor="border-ink/20 text-ink bg-lime/40"
       >
+        <button
+          onClick={handleSyncCareerGaps}
+          disabled={isSyncing}
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5 transition-all disabled:opacity-60"
+          title="Fetch latest career gaps from Career Intelligence shared database snapshot"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-amber-600" : ""}`} />
+          {isSyncing ? "Syncing Gaps..." : "Sync Career Gaps"}
+        </button>
         <button
           onClick={() => setIsFormulaModalOpen(true)}
           className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
@@ -218,47 +272,83 @@ export default function LearningOverviewPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-ink">Data Preprocessing & Outliers</span>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-100 text-red-900 font-bold">
-                  Depth Gap
-                </span>
-              </div>
-              <p className="text-ink-muted text-[11px]">
-                Target role <em>Junior AI Application Engineer</em> expects Practitioner-level preprocessing pipelines with leak-free transformers.
-              </p>
-              <div className="pt-2 flex items-center justify-between text-[11px]">
-                <span className="text-ink-muted">Roadmap in Progress (62% Mastery)</span>
-                <Link
-                  href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
-                  className="font-bold text-ink hover:underline"
-                >
-                  View Learning Steps &rarr;
-                </Link>
-              </div>
-            </div>
+            {upstreamPriorities.length > 0 ? (
+              upstreamPriorities.slice(0, 3).map((gap, idx) => {
+                const skillName = gap.canonical_name || gap.skill_name || "Identified Skill Gap";
+                const gapType = (gap.reason_code || gap.gap_type || "GAP").toString().replace(/_/g, " ");
+                const currentLevel = gap.original_proficiency || gap.current_capability || "Not Assessed";
+                const targetLevel = gap.target_proficiency || gap.target_capability || "Practitioner";
+                const confidenceVal = gap.original_confidence ?? gap.confidence ?? 0.7;
+                const actionText = (gap.suggested_next_action || gap.recommended_action || "Review").toString().replace(/_/g, " ");
 
-            <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-ink">Cloud & Container Deployment</span>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
-                  Evidence Gap
-                </span>
-              </div>
-              <p className="text-ink-muted text-[11px]">
-                Basic Dockerfiles present, but multi-stage container optimization and Kubernetes deployment manifests lack verified proof.
-              </p>
-              <div className="pt-2 flex items-center justify-between text-[11px]">
-                <span className="text-ink-muted">Cloud Blueprint Available</span>
-                <Link
-                  href="/app/learning/domains/domain-cloud-computing"
-                  className="font-bold text-ink hover:underline"
-                >
-                  Inspect Blueprint &rarr;
-                </Link>
-              </div>
-            </div>
+                return (
+                  <div key={gap.skill_id || idx} className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-ink">{skillName}</span>
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-100 text-red-900 font-bold">
+                        {gapType}
+                      </span>
+                    </div>
+                    <p className="text-ink-muted text-[11px]">
+                      Role <em>{targetRoleTitle}</em> requires {targetLevel} (Current: {currentLevel}). Confidence: {Math.round(confidenceVal * 100)}%.
+                    </p>
+                    <div className="pt-2 flex items-center justify-between text-[11px]">
+                      <span className="text-ink-muted">Action: {actionText}</span>
+                      <Link
+                        href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
+                        className="font-bold text-ink hover:underline"
+                      >
+                        View Learning Steps &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-ink">Data Preprocessing & Outliers</span>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-100 text-red-900 font-bold">
+                      Depth Gap
+                    </span>
+                  </div>
+                  <p className="text-ink-muted text-[11px]">
+                    Target role <em>Junior AI Application Engineer</em> expects Practitioner-level preprocessing pipelines with leak-free transformers.
+                  </p>
+                  <div className="pt-2 flex items-center justify-between text-[11px]">
+                    <span className="text-ink-muted">Roadmap in Progress (62% Mastery)</span>
+                    <Link
+                      href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
+                      className="font-bold text-ink hover:underline"
+                    >
+                      View Learning Steps &rarr;
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-ink">Cloud & Container Deployment</span>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
+                      Evidence Gap
+                    </span>
+                  </div>
+                  <p className="text-ink-muted text-[11px]">
+                    Basic Dockerfiles present, but multi-stage container optimization and Kubernetes deployment manifests lack verified proof.
+                  </p>
+                  <div className="pt-2 flex items-center justify-between text-[11px]">
+                    <span className="text-ink-muted">Cloud Blueprint Available</span>
+                    <Link
+                      href="/app/learning/domains/domain-cloud-computing"
+                      className="font-bold text-ink hover:underline"
+                    >
+                      Inspect Blueprint &rarr;
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -327,7 +417,7 @@ export default function LearningOverviewPage() {
               <div className="pt-2 flex items-center justify-between text-[11px]">
                 <span className="text-ink-muted">Passing Threshold: 75%</span>
                 <Link
-                  href="/app/learning/assessments/assessment-domain-data-preprocessing"
+                  href="/app/learning/assessments/domain-data-preprocessing"
                   className="font-bold text-ink hover:underline"
                 >
                   Start Assessment &rarr;

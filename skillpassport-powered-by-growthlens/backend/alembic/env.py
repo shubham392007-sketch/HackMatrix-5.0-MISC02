@@ -20,6 +20,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
+    url = config.get_main_option("sqlalchemy.url")
+    if url:
+        return url
     settings = get_settings()
     return settings.database_url
 
