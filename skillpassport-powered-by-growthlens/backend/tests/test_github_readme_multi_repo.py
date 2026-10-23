@@ -223,6 +223,7 @@ async def test_sync_repository_readme_idempotency_and_versioning():
             connection=connection,
             selected_resource=selected_res,
             client=client_mock,
+            trigger_extraction=True,
         )
 
         assert ok1 is True
@@ -247,6 +248,7 @@ async def test_sync_repository_readme_idempotency_and_versioning():
             connection=connection,
             selected_resource=selected_res,
             client=client_mock,
+            trigger_extraction=True,
         )
 
         assert ok2 is True
