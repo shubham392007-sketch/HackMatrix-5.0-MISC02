@@ -83,9 +83,10 @@ advisor = LearningAIAdvisor()
 # ──────────────────────────────────────────────────────────────────────────────
 
 class RoadmapGenerateRequest(BaseModel):
-    domain_id: Optional[str] = Field("dist-sys", description="Domain blueprint identifier")
+    domain_id: Optional[str] = Field(None, description="Domain blueprint identifier")
     target_role_id: Optional[str] = Field(None, description="Optional target career role ID")
     skill_gap_id: Optional[str] = Field(None, description="Optional specific skill gap ID to remediate")
+    skill_id: Optional[str] = Field(None, description="Optional canonical skill ID to remediate")
     step_count: int = Field(4, ge=2, le=8, description="Target number of roadmap steps")
     force_regenerate: bool = Field(False, description="Whether to supersede existing active roadmap and generate afresh")
 
@@ -355,49 +356,34 @@ def get_db_optional():
     """Optional DB dependency for endpoints that do not strictly require DB persistence
     (e.g., live provider search discovery). Allows the endpoint to return live provider
     results even if DB is experiencing a transient connection hiccup."""
+    db = None
     try:
         from backend.app.db.reliability import circuit_breaker
         circuit_breaker.check_availability()
         from backend.app.db.session import SessionLocal
         db = SessionLocal()
-        try:
-            yield db
-            circuit_breaker.record_success()
-        except Exception as exc:
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            circuit_breaker.record_failure(exc)
-            yield None
-        finally:
-            db.close()
     except Exception:
+        db = None
+
+    if db is None:
         yield None
-    """
-    Optional DB dependency for endpoints that do not strictly require DB persistence
-    (e.g., live provider search discovery). Allows the endpoint to return live provider
-    results even if DB is experiencing a transient connection hiccup.
-    """
+        return
+
     try:
-        from backend.app.db.reliability import circuit_breaker
-        circuit_breaker.check_availability()
-        from backend.app.db.session import SessionLocal
-        db = SessionLocal()
+        yield db
+        circuit_breaker.record_success()
+    except Exception as exc:
         try:
-            yield db
-            circuit_breaker.record_success()
-        except Exception as exc:
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            circuit_breaker.record_failure(exc)
-            yield None
-        finally:
+            db.rollback()
+        except Exception:
+            pass
+        circuit_breaker.record_failure(exc)
+        raise
+    finally:
+        try:
             db.close()
-    except Exception:
-        yield None
+        except Exception:
+            pass
 
 
 @router.get("/resources/search")
@@ -644,33 +630,41 @@ async def generate_personalized_roadmap(
 
     top_gap = selected_gap or (prioritized_gaps[0] if prioritized_gaps else None)
 
-    # Map gap/payload to appropriate domain blueprint
-    domain_id = payload.domain_id or "dist-sys"
-    if top_gap and (not payload.domain_id or payload.domain_id == "dist-sys"):
-        name_lower = top_gap.canonical_name.lower()
-        if any(w in name_lower for w in ["machine learning", "data", "python", "preprocessing", "ai"]):
-            domain_id = "domain-data-preprocessing"
-        elif any(w in name_lower for w in ["postgres", "sql", "relational", "database", "schema"]):
-            domain_id = "data-eng"
-        elif any(w in name_lower for w in ["docker", "kubernetes", "cloud", "infra", "container"]):
-            domain_id = "cloud-infra"
+    # Map gap/payload to appropriate domain blueprint or gap-specific domain
+    if payload.domain_id:
+        domain_id = payload.domain_id
+    elif payload.skill_gap_id or (selected_gap and selected_gap.skill_id):
+        raw_gap_key = payload.skill_gap_id or selected_gap.skill_id
+        domain_id = f"gap-{str(raw_gap_key).lower().replace(' ', '-')}"
+    else:
+        domain_id = "dist-sys"
+        if top_gap:
+            name_lower = top_gap.canonical_name.lower()
+            if any(w in name_lower for w in ["machine learning", "data", "python", "preprocessing", "ai"]):
+                domain_id = "domain-data-preprocessing"
+            elif any(w in name_lower for w in ["postgres", "sql", "relational", "database", "schema"]):
+                domain_id = "data-eng"
+            elif any(w in name_lower for w in ["docker", "kubernetes", "cloud", "infra", "container"]):
+                domain_id = "cloud-infra"
 
-    domain_title = "Distributed Systems & Event Streaming"
+    domain_title = f"{top_gap.canonical_name} Targeted Remediation" if top_gap else "Distributed Systems & Event Streaming"
     for bp in CANONICAL_BLUEPRINTS:
         if bp["domain_id"] == domain_id:
             domain_title = bp["title"]
             break
 
-    # Early check for existing active roadmap in this domain for instant idempotency
-    existing_roadmap = (
+    # Early check for existing active roadmap in this domain/role for instant idempotency
+    roadmap_query = (
         db.query(LearningRoadmap)
         .filter(
             LearningRoadmap.owner_user_id == owner_uuid,
             LearningRoadmap.domain_id == domain_id,
             LearningRoadmap.status == "in_progress",
         )
-        .first()
     )
+    if payload.target_role_id:
+        roadmap_query = roadmap_query.filter(LearningRoadmap.target_role_id == payload.target_role_id)
+    existing_roadmap = roadmap_query.order_by(LearningRoadmap.created_at.desc()).first()
 
     if existing_roadmap and not payload.force_regenerate:
         return {
@@ -779,8 +773,8 @@ async def generate_personalized_roadmap(
         step = LearningStep(
             roadmap_id=roadmap.id,
             step_id=f"step-{idx+1}",
-            topic_id=f"topic-{payload.domain_id}-{idx+1}",
-            module_id=f"mod-{payload.domain_id}-1",
+            topic_id=f"topic-{domain_id}-{idx+1}",
+            module_id=f"mod-{domain_id}-1",
             title=stage.stage_title,
             learning_objective=stage.focus_objective,
             difficulty="Intermediate",

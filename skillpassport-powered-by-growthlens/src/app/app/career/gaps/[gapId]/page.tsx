@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
+import { generatePersonalizedRoadmap } from "@/lib/evidenceApi";
 import {
   GapTypeBadge,
   RequirementTypeBadge,
@@ -36,7 +37,34 @@ export default function WhyThisGapDetailPage() {
   const router = useRouter();
   const gapId = params?.gapId as string;
 
-  const { activeRole, activeGaps, evidenceItems, skills } = useEvidence();
+  const { activeRole, activeGaps, evidenceItems, skills, addToast } = useEvidence();
+  const [isRemediating, setIsRemediating] = useState(false);
+
+  const handleRemediate = async () => {
+    if (!gap) return;
+    setIsRemediating(true);
+    try {
+      const res = await generatePersonalizedRoadmap({
+        target_role_id: activeRole?.role_id || gap.role_id,
+        skill_gap_id: gap.gap_id,
+        skill_id: gap.skill_id,
+      });
+      addToast(
+        "Roadmap Ready",
+        `Created personalized learning roadmap for ${gap.canonical_name}.`,
+        "success"
+      );
+      router.push(`/app/learning/roadmaps/${res.path_id}`);
+    } catch (err: any) {
+      addToast(
+        "Remediation Notice",
+        err.message || "Failed to generate roadmap. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsRemediating(false);
+    }
+  };
 
   // Find the gap record
   const gap = useMemo(() => {
@@ -341,9 +369,26 @@ export default function WhyThisGapDetailPage() {
             <h3 className="text-sm font-bold text-ink">Recommended Actions</h3>
 
             <div className="space-y-2 text-xs">
+              <button
+                onClick={handleRemediate}
+                disabled={isRemediating}
+                className="w-full pill-btn pill-btn-primary py-2.5 px-3 text-center flex items-center justify-center gap-2 font-bold disabled:opacity-60"
+              >
+                {isRemediating ? (
+                  <>
+                    <Sparkles className="w-4 h-4 animate-spin text-amber-500" />
+                    Generating Roadmap...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    Remediate in Learn & Grow &rarr;
+                  </>
+                )}
+              </button>
               <Link
                 href="/app/career/priorities"
-                className="w-full pill-btn pill-btn-primary py-2 px-3 text-center block"
+                className="w-full pill-btn bg-white hover:bg-sand/30 border border-ink/20 py-2 px-3 text-center block text-ink"
               >
                 View in Ranked Priority List
               </Link>

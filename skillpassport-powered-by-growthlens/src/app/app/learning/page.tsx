@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   ActiveDomainSelectorBar,
@@ -29,7 +30,7 @@ import {
   ShieldCheck,
   RefreshCw,
 } from "lucide-react";
-import { getLearningPriorities, refreshCareerGaps } from "@/lib/evidenceApi";
+import { getLearningPriorities, refreshCareerGaps, generatePersonalizedRoadmap } from "@/lib/evidenceApi";
 
 export default function LearningOverviewPage() {
   const {
@@ -46,6 +47,34 @@ export default function LearningOverviewPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [upstreamPriorities, setUpstreamPriorities] = useState<any[]>([]);
   const [targetRoleTitle, setTargetRoleTitle] = useState<string>("Junior AI Application Engineer");
+  const [remediatingGapId, setRemediatingGapId] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleRemediatePriorityGap = async (gap: any) => {
+    const gapId = gap.skill_id || gap.gap_id;
+    setRemediatingGapId(gapId);
+    try {
+      const res = await generatePersonalizedRoadmap({
+        target_role_id: gap.role_id,
+        skill_gap_id: gap.gap_id || gap.skill_id,
+        skill_id: gap.skill_id,
+      });
+      addToast(
+        "Roadmap Generated",
+        `Created personalized roadmap for ${gap.canonical_name || gap.skill_name || "selected gap"}.`,
+        "success"
+      );
+      router.push(`/app/learning/roadmaps/${res.path_id}`);
+    } catch (err: any) {
+      addToast(
+        "Remediation Notice",
+        err.message || "Failed to generate roadmap. Please try again.",
+        "error"
+      );
+    } finally {
+      setRemediatingGapId(null);
+    }
+  };
 
   const loadPriorities = async () => {
     try {
@@ -292,14 +321,25 @@ export default function LearningOverviewPage() {
                     <p className="text-ink-muted text-[11px]">
                       Role <em>{targetRoleTitle}</em> requires {targetLevel} (Current: {currentLevel}). Confidence: {Math.round(confidenceVal * 100)}%.
                     </p>
-                    <div className="pt-2 flex items-center justify-between text-[11px]">
+                    <div className="pt-2 flex items-center justify-between text-[11px] gap-2">
                       <span className="text-ink-muted">Action: {actionText}</span>
-                      <Link
-                        href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
-                        className="font-bold text-ink hover:underline"
+                      <button
+                        onClick={() => handleRemediatePriorityGap(gap)}
+                        disabled={remediatingGapId === (gap.skill_id || gap.gap_id)}
+                        className="pill-btn pill-btn-primary text-[11px] py-1 px-3 flex items-center gap-1 font-bold disabled:opacity-60"
                       >
-                        View Learning Steps &rarr;
-                      </Link>
+                        {remediatingGapId === (gap.skill_id || gap.gap_id) ? (
+                          <>
+                            <Sparkles className="w-3 h-3 animate-spin text-amber-500" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3 text-amber-500" />
+                            Generate Roadmap &rarr;
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 );

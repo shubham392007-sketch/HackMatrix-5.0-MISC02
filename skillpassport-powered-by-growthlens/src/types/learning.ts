@@ -237,16 +237,16 @@ export interface MiniProjectAttempt {
   submitted_at: string;
   github_repo_url: string;
   summary_notes: string;
-  status: "evaluated";
+  status: "submitted" | "evaluated";
   rubric_scores: Array<{
     criterion: string;
     score: number;
     feedback: string;
   }>;
-  total_score: number;
-  feedback: string;
-  generated_artifact_id: string;
-  candidate_evidence_id: string;
+  total_score?: number | null;
+  feedback?: string;
+  generated_artifact_id?: string;
+  candidate_evidence_id?: string;
 }
 
 export interface MiniProject {

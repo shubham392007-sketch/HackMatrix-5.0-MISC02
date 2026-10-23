@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
+import { generatePersonalizedRoadmap } from "@/lib/evidenceApi";
 import {
   TargetRoleSelectorBar,
   GapTypeBadge,
@@ -29,7 +31,8 @@ import {
 import { GapRecord } from "@/types/career";
 
 export default function GapPrioritizationPage() {
-  const { activeRole, activeGaps } = useEvidence();
+  const router = useRouter();
+  const { activeRole, activeGaps, addToast } = useEvidence();
 
   const [strategyFilter, setStrategyFilter] = useState<
     "all" | "top3" | "quick_wins" | "critical_blockers"
@@ -38,6 +41,32 @@ export default function GapPrioritizationPage() {
   const [leverageBoost, setLeverageBoost] = useState<number>(1.0); // 1.0 to 2.0
   const [isExplainModalOpen, setIsExplainModalOpen] = useState<boolean>(false);
   const [expandedGapId, setExpandedGapId] = useState<string | null>(null);
+  const [remediatingGapId, setRemediatingGapId] = useState<string | null>(null);
+
+  const handleRemediateGap = async (gap: any) => {
+    setRemediatingGapId(gap.gap_id);
+    try {
+      const res = await generatePersonalizedRoadmap({
+        target_role_id: activeRole?.role_id || gap.role_id,
+        skill_gap_id: gap.gap_id,
+        skill_id: gap.skill_id,
+      });
+      addToast(
+        "Roadmap Ready",
+        `Created personalized learning roadmap for ${gap.canonical_name}.`,
+        "success"
+      );
+      router.push(`/app/learning/roadmaps/${res.path_id}`);
+    } catch (err: any) {
+      addToast(
+        "Remediation Notice",
+        err.message || "Failed to generate roadmap. Please try again.",
+        "error"
+      );
+    } finally {
+      setRemediatingGapId(null);
+    }
+  };
 
   // Dynamic re-ranking based on interactive sliders
   const dynamicRankedGaps = useMemo(() => {
@@ -301,13 +330,33 @@ export default function GapPrioritizationPage() {
                     </span>
                   </div>
 
-                  <Link
-                    href={`/app/career/gaps/${gap.gap_id}`}
-                    className="pill-btn pill-btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
-                  >
-                    Why This Gap?
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <button
+                      onClick={() => handleRemediateGap(gap)}
+                      disabled={remediatingGapId === gap.gap_id}
+                      className="pill-btn pill-btn-primary text-xs py-1.5 px-3 flex items-center gap-1 font-bold disabled:opacity-60"
+                      title="Generate or open targeted learning roadmap for this gap"
+                    >
+                      {remediatingGapId === gap.gap_id ? (
+                        <>
+                          <Sparkles className="w-3 h-3 animate-spin text-amber-500" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          Remediate
+                        </>
+                      )}
+                    </button>
+                    <Link
+                      href={`/app/career/gaps/${gap.gap_id}`}
+                      className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-1.5 px-3 flex items-center gap-1 text-ink"
+                    >
+                      Why This Gap?
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
 

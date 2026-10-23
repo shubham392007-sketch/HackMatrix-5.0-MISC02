@@ -31,7 +31,11 @@ def sync_cloud_supabase_to_local_sqlite(target_engine):
     Pulls cloud Supabase tables over HTTPS port 443 into the local SQLite database.
     Bypasses blocked PostgreSQL direct TCP ports (5432/6543) so users have real data.
     """
-    supabase_key = settings.supabase_service_role_key or settings.supabase_anon_key
+    supabase_key = (
+        getattr(settings, "supabase_service_role_key", None)
+        or getattr(settings, "supabase_anon_key", None)
+        or getattr(settings, "supabase_publishable_key", None)
+    )
     supabase_url = settings.supabase_url
     if not supabase_key or not supabase_url:
         return

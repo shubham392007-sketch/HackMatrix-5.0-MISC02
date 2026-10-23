@@ -52,6 +52,7 @@ import {
   submitDiagnostic,
   submitLearningAttempt,
   generateBackendRoadmap,
+  submitProjectToBackend,
   DatabaseUnavailableError,
 } from "@/lib/evidenceApi";
 import {
@@ -1951,22 +1952,24 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     notes: string
   ) => {
     const proj = miniProjects.find((p) => p.id === projectId) || INITIAL_MINI_PROJECT;
+
+    // Send real submission to backend without fabricated score
+    submitProjectToBackend({
+      project_id: projectId,
+      github_repo_url: repoUrl,
+      summary_notes: notes,
+    }).catch((e) => console.warn("Backend project submission notice:", e));
+
     const attempt: MiniProjectAttempt = {
       attempt_id: `proj-att-${Date.now()}`,
       project_id: projectId,
       submitted_at: "Today, Just now",
       github_repo_url: repoUrl,
       summary_notes: notes,
-      status: "evaluated",
-      total_score: 88,
-      rubric_scores: [
-        { criterion: "Dataset Handling & EDA", score: 90, feedback: "Clean pandas ingestion and null verification." },
-        { criterion: "Correct Technique Application", score: 85, feedback: "Vectorized Series.clip() quantile bounding properly applied." },
-        { criterion: "Reasoning & Explanation", score: 90, feedback: "Detailed justification for Winsorization over row deletion." },
-        { criterion: "Implementation Quality & Architecture", score: 85, feedback: "Custom Scikit-Learn transformer with fit/transform separation." },
-        { criterion: "Result Interpretation & Test Coverage", score: 90, feedback: "Pytest unit tests verifying shape preservation." },
-      ],
-      feedback: "High quality applied deliverable. Pipeline encapsulates quantile bounds with zero training leakage. Candidate evidence record created.",
+      status: "submitted",
+      total_score: null,
+      rubric_scores: [],
+      feedback: "Project repository submitted. Rubric evaluation is pending.",
       generated_artifact_id: `art-proj-${Date.now()}`,
       candidate_evidence_id: `ev-proj-${Date.now()}`,
     };
@@ -1974,7 +1977,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     setMiniProjects((prev) =>
       prev.map((p) =>
         p.id === projectId
-          ? { ...p, status: "evaluated" as const, submitted_attempt: attempt }
+          ? { ...p, status: "submitted" as const, submitted_attempt: attempt }
           : p
       )
     );
@@ -1985,7 +1988,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
     const newReviewTask: HumanReviewTask = {
       id: `task-rev-${Date.now()}`,
-      claim_id: attempt.candidate_evidence_id,
+      claim_id: attempt.candidate_evidence_id || `ev-proj-${Date.now()}`,
       title: `Verify Learning Mini-Project Evidence: ${proj.title}`,
       category: "insufficient_evidence",
       priority: "high",
@@ -2001,9 +2004,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       type: "project_submitted",
       title: `Submitted Mini-Project: ${proj.title}`,
       domain_id: proj.domain_id,
-      detail: `Evaluated score: 88%. Generated Candidate Evidence ID: ${candidateEvidence.evidence_id}. Added to Human Review Queue.`,
+      detail: `Repository submitted for rubric evaluation. Score pending. Generated Candidate Evidence ID: ${candidateEvidence.evidence_id}. Added to Human Review Queue.`,
       link_route: `/app/learning/projects/${projectId}`,
-      score: 88,
+      score: undefined,
     });
   };
 

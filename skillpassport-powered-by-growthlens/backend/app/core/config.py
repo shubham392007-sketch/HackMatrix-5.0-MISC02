@@ -67,6 +67,7 @@ class Settings(BaseSettings):
 
     # Supabase
     supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_anon_key: str = Field(default="", description="Supabase anonymous/publishable key")
     supabase_publishable_key: str = Field(default="", description="Supabase publishable key")
     supabase_service_role_key: str = Field(default="", description="Supabase service role key (backend only)")
     supabase_storage_bucket: str = "evidence-originals"

@@ -56,7 +56,8 @@ export default function MiniProjectDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const attempt = project.submitted_attempt;
-  const isEvaluated = project.status === "evaluated" && attempt;
+  const isPending = project.status === "submitted" || (attempt && attempt.status === "submitted");
+  const isEvaluated = project.status === "evaluated" && attempt && attempt.status === "evaluated" && attempt.total_score != null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +66,7 @@ export default function MiniProjectDetailPage() {
     setTimeout(() => {
       submitMiniProject(project.id, repoUrl, notes);
       setIsSubmitting(false);
-    }, 700);
+    }, 400);
   };
 
   return (
@@ -87,6 +88,11 @@ export default function MiniProjectDetailPage() {
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
               <CheckCircle className="w-4 h-4 text-emerald-600" />
               Evaluated · {attempt.total_score}/100
+            </span>
+          ) : isPending ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs">
+              <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+              Submitted · Pending Evaluation
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-paper border border-ink/10 text-ink/70 font-bold text-xs">
@@ -282,6 +288,26 @@ export default function MiniProjectDetailPage() {
               </button>
             </form>
           </div>
+
+          {/* Submitted Pending Evaluation Panel */}
+          {isPending && !isEvaluated && (
+            <div className="gl-card p-6 border-2 border-amber-300 bg-amber-50/40 space-y-4 animate-fadeIn">
+              <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+                <Clock className="w-5 h-5 text-amber-600 animate-spin" />
+                Submitted · Pending Rubric Evaluation
+              </div>
+
+              <p className="text-xs text-amber-950/80 leading-relaxed">
+                Your repository has been recorded. The evaluation engine is processing your deliverable against the rubric criteria.
+              </p>
+
+              <div className="p-3 bg-white rounded-xl border border-amber-200 space-y-1 text-xs">
+                <div className="text-ink-muted text-[11px]">Submitted Repository:</div>
+                <div className="font-mono text-ink text-[11px] truncate">{attempt?.github_repo_url || repoUrl}</div>
+                <div className="text-ink-muted text-[10px] pt-1">Status: Pending Evaluation &bull; Mastery signal not applied yet</div>
+              </div>
+            </div>
+          )}
 
           {/* Evaluated Outcome Panel */}
           {isEvaluated && (

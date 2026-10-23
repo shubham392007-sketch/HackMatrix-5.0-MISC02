@@ -1178,17 +1178,45 @@ export async function getLearningResourceById(resourceId: string): Promise<any> 
 }
 
 export async function generateBackendRoadmap(
-  domainId: string = "dist-sys",
+  domainIdOrOptions: string | {
+    domain_id?: string;
+    target_role_id?: string;
+    skill_gap_id?: string;
+    skill_id?: string;
+    step_count?: number;
+    force_regenerate?: boolean;
+  } = "dist-sys",
   targetRoleId?: string,
   stepCount: number = 4
 ): Promise<any> {
   const headers = await getAuthHeaders();
+  let payload: Record<string, any>;
+  if (typeof domainIdOrOptions === "object" && domainIdOrOptions !== null) {
+    payload = {
+      domain_id: domainIdOrOptions.domain_id,
+      target_role_id: domainIdOrOptions.target_role_id,
+      skill_gap_id: domainIdOrOptions.skill_gap_id,
+      skill_id: domainIdOrOptions.skill_id,
+      step_count: domainIdOrOptions.step_count || 4,
+      force_regenerate: Boolean(domainIdOrOptions.force_regenerate),
+    };
+  } else {
+    payload = {
+      domain_id: domainIdOrOptions,
+      target_role_id: targetRoleId,
+      step_count: stepCount,
+    };
+  }
+
   const res = await fetch(`${API_BASE}/learning/roadmaps/generate`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ domain_id: domainId, target_role_id: targetRoleId, step_count: stepCount }),
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to generate personalized roadmap");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate personalized roadmap");
+  }
   return res.json();
 }
 
@@ -1309,6 +1337,56 @@ export async function submitBackendAssessment(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const error: any = new Error(err.detail || `Assessment submission failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getLearningStep(stepId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Step ${stepId} not found (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function submitProjectToBackend(payload: {
+  project_id: string;
+  github_repo_url: string;
+  summary_notes?: string;
+  step_id?: string;
+  roadmap_id?: string;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/projects/submit`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Project submission failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getProjectSubmission(projectId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(
+    `${API_BASE}/learning/projects/submissions/${encodeURIComponent(projectId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to fetch project submission (${res.status})`);
     error.status = res.status;
     throw error;
   }
