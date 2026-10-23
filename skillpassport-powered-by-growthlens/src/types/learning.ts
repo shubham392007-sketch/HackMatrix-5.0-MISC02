@@ -150,6 +150,7 @@ export interface LearningResource {
   domain_id: string;
   topic_id: string;
   learning_objective: string;
+  description?: string;
   relevance_score: number; // Illustrative 0-100
   selection_explanation: string;
   concepts_covered: string[];

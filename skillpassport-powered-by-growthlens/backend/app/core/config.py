@@ -32,6 +32,14 @@ class Settings(BaseSettings):
         default="",
         description="Direct database connection string for migrations",
     )
+    direct_database_url: str = Field(
+        default="",
+        description="Direct database connection string for migrations",
+    )
+    allow_sqlite_fallback: Optional[bool] = Field(
+        default=None,
+        description="Whether to permit SQLite fallback when PostgreSQL is unreachable. Defaults to True in dev/test, strictly False in production/staging.",
+    )
     db_pool_size: int = Field(
         default=8,
         description="SQLAlchemy QueuePool size (bounded <= 8 to preserve Supabase 15 limit)",
@@ -163,6 +171,19 @@ class Settings(BaseSettings):
         if not self.frontend_origins or self.app_env == "development":
             return ["*"]
         return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+
+    @property
+    def is_production_or_staging(self) -> bool:
+        return self.app_env.lower() in ("production", "prod", "staging")
+
+    def is_sqlite_fallback_allowed(self) -> bool:
+        if self.is_production_or_staging:
+            # Strictly prohibited in production or staging environments to prevent non-durable writes
+            return False
+        if self.allow_sqlite_fallback is not None:
+            return self.allow_sqlite_fallback
+        # Permitted by default in dev/test/local
+        return self.app_env.lower() in ("development", "dev", "test", "local")
 
 
 @lru_cache()

@@ -1,5 +1,7 @@
 import os
 import json
+import re
+import uuid
 import urllib.request
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
@@ -14,6 +16,13 @@ from backend.app.db.reliability import circuit_breaker
 logger = get_logger("db.session")
 settings = get_settings()
 
+def sanitize_db_error_message(exc: Exception) -> str:
+    """Strips credentials and connection secrets from database error strings."""
+    msg = str(exc)
+    msg = re.sub(r"://([^:@]+):([^@]+)@", r"://\1:***@", msg)
+    msg = re.sub(r"password=([^\s]+)", "password=***", msg)
+    return msg
+
 # Register SQLite type compiler overrides so PostgreSQL types (JSONB, UUID) work natively
 @compiles(JSONB, "sqlite")
 def compile_jsonb_sqlite(type_, compiler, **kw):
@@ -22,6 +31,45 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
 @compiles(UUID, "sqlite")
 def compile_uuid_sqlite(type_, compiler, **kw):
     return "VARCHAR(36)"
+
+# Ensure SQLite seamlessly accepts both Python uuid.UUID and str representation without crashing
+_orig_uuid_bind_processor = UUID.bind_processor
+_orig_uuid_result_processor = UUID.result_processor
+
+def _sqlite_safe_uuid_bind_processor(self, dialect):
+    if dialect.name == "sqlite":
+        def process(value):
+            if value is None:
+                return None
+            if isinstance(value, uuid.UUID):
+                return str(value)
+            if isinstance(value, str):
+                try:
+                    return str(uuid.UUID(value))
+                except (ValueError, AttributeError):
+                    return value
+            return str(value)
+        return process
+    return _orig_uuid_bind_processor(self, dialect)
+
+def _sqlite_safe_uuid_result_processor(self, dialect, coltype):
+    if dialect.name == "sqlite":
+        if self.as_uuid:
+            def process(value):
+                if value is None:
+                    return None
+                if isinstance(value, uuid.UUID):
+                    return value
+                try:
+                    return uuid.UUID(value)
+                except (ValueError, AttributeError):
+                    return value
+            return process
+        return None
+    return _orig_uuid_result_processor(self, dialect, coltype)
+
+UUID.bind_processor = _sqlite_safe_uuid_bind_processor
+UUID.result_processor = _sqlite_safe_uuid_result_processor
 
 Base = declarative_base()
 
@@ -87,11 +135,20 @@ def sync_cloud_supabase_to_local_sqlite(target_engine):
         logger.warning(f"Initial cloud sync notice: {sync_err}")
 
 
+_remote_postgres_status: dict = {
+    "status": "unverified",
+    "connected": False,
+    "diagnostic": "Remote PostgreSQL status has not been checked.",
+}
+
+
 def _init_resilient_engine():
     """
-    Initializes PostgreSQL if reachable; seamlessly activates a cloud-synced local
-    database if direct port 5432/IPv6 is unreachable on the current network.
+    Initializes PostgreSQL if reachable; in development or test environments, seamlessly
+    activates a cloud-synced local database if direct port 5432/IPv6 is unreachable.
+    Fails closed in production and staging environments to prevent silent, non-durable writes.
     """
+    global _remote_postgres_status
     is_postgres = settings.database_url.startswith("postgresql") or settings.database_url.startswith("postgres")
 
     if is_postgres:
@@ -116,12 +173,53 @@ def _init_resilient_engine():
             with pg_engine.connect() as conn:
                 conn.execute(text("SELECT 1;"))
             logger.info("Direct PostgreSQL connection established successfully.")
+            _remote_postgres_status = {
+                "status": "healthy",
+                "connected": True,
+                "engine": "postgresql",
+                "note": "Direct Supabase PostgreSQL connection verified.",
+            }
             return pg_engine
         except Exception as pg_err:
+            sanitized_err = sanitize_db_error_message(pg_err)
+            _remote_postgres_status = {
+                "status": "unavailable",
+                "connected": False,
+                "engine": "postgresql",
+                "diagnostic": (
+                    f"Direct PostgreSQL port 5432 / IPv6 unreachable ({sanitized_err}). "
+                    "Configure Supabase Connection Pooler (port 6543) or verified IPv4 network path for remote persistence."
+                ),
+                "error": sanitized_err,
+            }
+            if not settings.is_sqlite_fallback_allowed():
+                logger.critical(
+                    f"FATAL: Authoritative PostgreSQL connection failed in '{settings.app_env}' environment: {sanitized_err}. "
+                    "SQLite fallback is strictly prohibited in production and staging to prevent non-durable local writes."
+                )
+                raise RuntimeError(
+                    f"Database connection failed in '{settings.app_env}' environment: {sanitized_err}. "
+                    "Local SQLite fallback is disabled in production/staging to prevent data loss. "
+                    "Please verify your Supabase PostgreSQL connection string, network egress on port 5432/6543, "
+                    "or configure the Supabase Connection Pooler."
+                )
             logger.warning(
-                f"Direct PostgreSQL port 5432 / IPv6 unreachable ({pg_err}). "
-                "Activating high-availability local database layer with cloud PostgREST synchronization."
+                f"Direct PostgreSQL port 5432 / IPv6 unreachable ({sanitized_err}). "
+                f"Activating local SQLite fallback layer for '{settings.app_env}' mode. "
+                "Notice: Writes to local SQLite do NOT synchronize back to Supabase."
             )
+    elif not settings.is_sqlite_fallback_allowed():
+        raise RuntimeError(
+            f"Database configuration error: '{settings.database_url}' is not a PostgreSQL URL. "
+            f"Non-PostgreSQL databases are strictly prohibited in '{settings.app_env}' mode."
+        )
+    else:
+        _remote_postgres_status = {
+            "status": "unverified",
+            "connected": False,
+            "engine": None,
+            "diagnostic": "Remote PostgreSQL is not configured (database_url is not postgresql).",
+        }
 
     # Resilient local SQLite database
     from backend.app.models.base import Base as ModelsBase
@@ -181,13 +279,15 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def check_database_connection() -> dict:
-    """Verifies live database connection via SELECT 1 with circuit breaker awareness."""
+def get_local_database_status() -> dict:
+    """Verifies live application database connection via SELECT 1 with circuit breaker awareness."""
     circuit_metrics = circuit_breaker.get_metrics()
     if engine.dialect.name != "sqlite" and circuit_metrics["state"] == "OPEN":
         return {
             "status": "unhealthy",
             "connected": False,
+            "engine": engine.dialect.name,
+            "is_sqlite_fallback": engine.dialect.name == "sqlite",
             "error": "Circuit breaker is OPEN (recovering from connection exhaustion)",
             "circuit_breaker": circuit_metrics,
         }
@@ -201,16 +301,44 @@ def check_database_connection() -> dict:
                     "status": "healthy",
                     "connected": True,
                     "engine": engine.dialect.name,
+                    "is_sqlite_fallback": engine.dialect.name == "sqlite",
                     "circuit_breaker": circuit_metrics,
                 }
-        return {"status": "unhealthy", "connected": False, "error": "Query returned no rows"}
-    except Exception as e:
-        if engine.dialect.name != "sqlite":
-            circuit_breaker.record_failure(e)
-        logger.error(f"Database health check failed: {e}")
         return {
             "status": "unhealthy",
             "connected": False,
+            "engine": engine.dialect.name,
+            "is_sqlite_fallback": engine.dialect.name == "sqlite",
+            "error": "Query returned no rows",
+            "circuit_breaker": circuit_metrics,
+        }
+    except Exception as e:
+        if engine.dialect.name != "sqlite":
+            circuit_breaker.record_failure(e)
+        logger.error(f"Local database health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "connected": False,
+            "engine": engine.dialect.name,
+            "is_sqlite_fallback": engine.dialect.name == "sqlite",
             "error": str(e),
             "circuit_breaker": circuit_breaker.get_metrics(),
         }
+
+
+def get_remote_postgres_status() -> dict:
+    """Returns the verified status of the remote Supabase PostgreSQL connection."""
+    global _remote_postgres_status
+    if engine.dialect.name == "postgresql":
+        return {
+            "status": "healthy",
+            "connected": True,
+            "engine": "postgresql",
+            "note": "Authoritative Supabase PostgreSQL connected directly.",
+        }
+    return dict(_remote_postgres_status)
+
+
+def check_database_connection() -> dict:
+    """Verifies live database connection via SELECT 1 with circuit breaker awareness (backward compatibility)."""
+    return get_local_database_status()

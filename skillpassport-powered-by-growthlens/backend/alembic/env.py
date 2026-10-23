@@ -12,19 +12,31 @@ from backend.app.models.base import Base
 # Import all models so metadata is complete
 import backend.app.models
 
-config = context.config
+config = getattr(context, "config", None)
 
-if config.config_file_name is not None:
+if config is not None and getattr(config, "config_file_name", None) is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
 def get_url():
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option("sqlalchemy.url") if config is not None else None
     if url:
         return url
     settings = get_settings()
-    return settings.database_url
+    # Prefer direct_url for transactional migrations (bypasses statement-level transaction poolers)
+    if settings.direct_url and settings.direct_url.strip():
+        url = settings.direct_url.strip()
+    else:
+        url = settings.database_url
+
+    # Prevent accidental SQLite migration when target is intended to be PostgreSQL/Supabase
+    if settings.is_production_or_staging and url.startswith("sqlite"):
+        raise RuntimeError(
+            f"Alembic migration safety violation: SQLite database URL '{url}' is rejected in '{settings.app_env}'. "
+            "Alembic migrations in production and staging must target authoritative PostgreSQL via DIRECT_URL or DATABASE_URL."
+        )
+    return url
 
 
 def run_migrations_offline() -> None:
@@ -60,7 +72,8 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+if config is not None:
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()

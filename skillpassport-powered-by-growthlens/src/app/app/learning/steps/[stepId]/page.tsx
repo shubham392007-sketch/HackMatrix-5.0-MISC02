@@ -38,7 +38,7 @@ interface RealStepData {
   learning_objective: string;
   difficulty: string;
   estimated_minutes: number;
-  sequence_order: number;
+  sequence_order?: number;
   current_mastery: number;
   target_mastery: number;
   status: string;
@@ -98,7 +98,7 @@ export default function LearningStepDetailPage() {
         // Fallback to active roadmap step if backend 404s
         const fallbackStep = activeRoadmap?.steps?.find((s) => s.step_id === stepId);
         if (fallbackStep && isMounted) {
-          setStep(fallbackStep as RealStepData);
+          setStep(fallbackStep as unknown as RealStepData);
           setIsCompleted(fallbackStep.status === "completed");
         } else if (isMounted) {
           setErrorMessage(err.message || `Learning step "${stepId}" was not found.`);
@@ -357,7 +357,7 @@ export default function LearningStepDetailPage() {
                           {res.title}
                         </h4>
                         <p className="text-[11px] text-ink-muted line-clamp-2 mt-1">
-                          {res.description}
+                          {res.description || res.learning_objective || res.selection_explanation}
                         </p>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-ink-muted pt-2 border-t border-ink/5">
