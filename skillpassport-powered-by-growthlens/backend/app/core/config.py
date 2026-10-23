@@ -130,6 +130,33 @@ class Settings(BaseSettings):
 
     evidence_processing_concurrency: int = 1
 
+    # Career Intelligence & Job Discovery Providers (Cost-Aware Orchestration)
+    theirstack_api_key: str = Field(default="", description="TheirStack API Key")
+    theirstack_api_keys: str = Field(default="", description="Comma or newline separated list of TheirStack API keys for failover")
+    jsearch_api_key: str = Field(default="", description="RapidAPI JSearch API Key")
+    jsearch_api_host: str = Field(default="jsearch.p.rapidapi.com", description="RapidAPI JSearch Host")
+    fantastic_jobs_api_key: str = Field(default="", description="Fantastic.jobs API Key")
+    fantastic_jobs_api_host: str = Field(default="active-jobs-db.p.rapidapi.com", description="RapidAPI Active Jobs Host")
+    job_search_primary_provider: str = Field(default="theirstack", description="Primary job search provider: theirstack | jsearch | fantastic_jobs")
+    job_search_fallback_provider: str = Field(default="jsearch", description="Fallback job search provider")
+    job_search_max_results: int = Field(default=10, description="Conservative default limit per search (1 page / 10 jobs) to minimize credit consumption")
+    job_search_cache_ttl_minutes: int = Field(default=120, description="Job search cache TTL in minutes")
+    job_search_enable_fallback: bool = Field(default=True, description="Whether to allow fallback to secondary provider on eligible failures")
+    job_search_monthly_budget: float = Field(default=0.0, description="Optional monthly budget cap (0.0 = unlimited/unknown)")
+
+    @property
+    def theirstack_keys(self) -> List[str]:
+        keys: List[str] = []
+        source_strings = [self.theirstack_api_keys, self.theirstack_api_key]
+        for src in source_strings:
+            if not src:
+                continue
+            for k in src.replace("\n", ",").split(","):
+                k_clean = k.strip()
+                if k_clean and k_clean not in keys:
+                    keys.append(k_clean)
+        return keys
+
     @property
     def cors_origins(self) -> List[str]:
         if not self.frontend_origins or self.app_env == "development":

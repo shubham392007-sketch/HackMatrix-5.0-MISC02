@@ -82,7 +82,11 @@ import {
   CareerReadinessAssessment,
   RoleCompetency,
 } from "@/types/career";
-import { INITIAL_CURATED_ROLES } from "@/data/careerMock";
+import {
+  listRoles as listBackendRolesApi,
+  deleteRole as deleteBackendRoleApi,
+  saveCatalogueRoleToTargets as saveCatalogueRoleToTargetsApi,
+} from "@/lib/careerApi";
 import {
   evaluateRoleMatch,
   extractGapRecords,
@@ -230,6 +234,8 @@ interface EvidenceContextType {
 
   // Domain 4 Career Intelligence State & Mutators
   targetRoles: RoleDemandModel[];
+  catalogueRoles: RoleDemandModel[];
+  savedTargetRoles: RoleDemandModel[];
   selectedRoleId: string;
   setSelectedRoleId: (roleId: string) => void;
   customRoles: RoleDemandModel[];
@@ -243,6 +249,9 @@ interface EvidenceContextType {
   activeMatch: RoleMatchResult;
   activeGaps: GapRecord[];
   activeReadiness: CareerReadinessAssessment;
+  removeTargetRole: (roleId: string) => Promise<void>;
+  saveCatalogueRoleToTargets: (roleId: string) => Promise<void>;
+  refreshRoles: () => Promise<void>;
 
   // Domain 5 Learning Intelligence State & Mutators
   blueprints: DomainBlueprint[];
@@ -463,6 +472,28 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Domain 4 Career Intelligence State
   const [selectedRoleId, setSelectedRoleIdState] = useState<string>("role-ai-engineer-entry");
   const [customRoles, setCustomRoles] = useState<RoleDemandModel[]>([]);
+  const [backendRoles, setBackendRoles] = useState<RoleDemandModel[]>([]);
+
+  useEffect(() => {
+    async function loadBackendRoles() {
+      try {
+        const res = await listBackendRolesApi();
+        const roles = Array.isArray(res) ? res : (res as any)?.roles || [];
+        if (roles.length > 0) {
+          setBackendRoles(roles);
+          setSelectedRoleIdState((prev) => {
+            if (!prev || !roles.some((r: any) => r.role_id === prev)) {
+              return roles[0].role_id;
+            }
+            return prev;
+          });
+        }
+      } catch {
+        // Fallback gracefully to curated benchmark roles
+      }
+    }
+    loadBackendRoles();
+  }, []);
 
   // Domain 5 Learning Intelligence State
   const [blueprints, setBlueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
@@ -1304,14 +1335,82 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const catalogueRoles = useMemo(() => {
+    return backendRoles.filter((r) => r.source_type === "curated_model" && !(r as any).is_user_target);
+  }, [backendRoles]);
+
+  const savedTargetRoles = useMemo(() => {
+    const roleMap = new Map<string, RoleDemandModel>();
+    for (const r of backendRoles) {
+      if (r && r.role_id && ((r as any).is_user_target || r.source_type !== "curated_model")) {
+        roleMap.set(r.role_id, r);
+      }
+    }
+    for (const r of customRoles) {
+      if (r && r.role_id) {
+        roleMap.set(r.role_id, r);
+      }
+    }
+    return Array.from(roleMap.values());
+  }, [backendRoles, customRoles]);
+
   const targetRoles = useMemo(() => {
-    return [...customRoles, ...INITIAL_CURATED_ROLES];
-  }, [customRoles]);
+    if (savedTargetRoles.length > 0) {
+      return savedTargetRoles;
+    }
+    return backendRoles.length > 0 ? backendRoles : customRoles;
+  }, [savedTargetRoles, backendRoles, customRoles]);
+
+  const handleRemoveTargetRole = async (roleId: string) => {
+    try {
+      await deleteBackendRoleApi(roleId);
+    } catch (e) {
+      console.warn("Could not delete role on backend:", e);
+    }
+    setBackendRoles((prev) => prev.filter((r) => r.role_id !== roleId));
+    setCustomRoles((prev) => {
+      const updated = prev.filter((r) => r.role_id !== roleId);
+      try {
+        localStorage.setItem("sp_custom_roles", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setSelectedRoleIdState((prev) => {
+      if (prev === roleId) {
+        const remaining = backendRoles.filter((r) => r.role_id !== roleId);
+        return remaining[0]?.role_id || "";
+      }
+      return prev;
+    });
+  };
+
+  const handleSaveCatalogueRoleToTargets = async (roleId: string) => {
+    try {
+      await saveCatalogueRoleToTargetsApi(roleId);
+      const res = await listBackendRolesApi();
+      const roles = Array.isArray(res) ? res : (res as any)?.roles || [];
+      if (roles.length > 0) {
+        setBackendRoles(roles);
+      }
+    } catch (e) {
+      console.warn("Could not save catalogue role on backend:", e);
+    }
+  };
 
   const activeRole = useMemo(() => {
     return (
       targetRoles.find((r) => r.role_id === selectedRoleId) ||
-      INITIAL_CURATED_ROLES[0]
+      targetRoles[0] || {
+        role_id: "role-ai-engineer-entry",
+        version: "v2026.1",
+        title: "AI Engineer",
+        seniority: "Entry Level",
+        context: "Product & GenAI Systems",
+        description: "Engineers responsible for building production AI applications, prompt pipelines, RAG stores, and wrapping models into web endpoints.",
+        provenance: "GrowthLens Curated Industry Benchmark v2026.1",
+        source_type: "curated_model" as const,
+        competencies: [],
+      }
     );
   }, [targetRoles, selectedRoleId]);
 
@@ -2429,11 +2528,20 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         updateGuardResult,
         updatePromptInjectionFlag,
         targetRoles,
+        catalogueRoles,
+        savedTargetRoles,
         selectedRoleId,
         setSelectedRoleId: handleSelectRole,
         customRoles,
         saveCustomRole: handleSaveCustomRole,
         updateRoleCompetency: handleUpdateRoleCompetency,
+        removeTargetRole: handleRemoveTargetRole,
+        saveCatalogueRoleToTargets: handleSaveCatalogueRoleToTargets,
+        refreshRoles: async () => {
+          const res = await listBackendRolesApi();
+          const roles = Array.isArray(res) ? res : (res as any)?.roles || [];
+          if (roles.length > 0) setBackendRoles(roles);
+        },
         activeRole,
         activeMatch,
         activeGaps,

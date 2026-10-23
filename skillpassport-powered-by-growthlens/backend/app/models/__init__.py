@@ -32,7 +32,13 @@ from backend.app.models.learning import (
     LearningAssessmentModel,
     LearningRoadmapModel,
 )
-
+from backend.app.models.career import (
+    JobPostingRecord,
+    RoleDemandModelRecord,
+    UserTargetRoleRecord,
+    RoleMatchSnapshotRecord,
+    JobSearchCacheRecord,
+)
 
 __all__ = [
     "Base",
@@ -56,7 +62,6 @@ __all__ = [
     "RepositoryLanguageBreakdown",
     "RepositoryReadmeSnapshot",
     "AIAnalysisRun",
-
     "WorkAnalysisResult",
     "EvidenceQualityAssessment",
     "VerificationDecision",
@@ -74,6 +79,9 @@ __all__ = [
     "LearningAssessment",
     "LearningAssessmentModel",
     "LearningRoadmapModel",
+    "JobPostingRecord",
+    "RoleDemandModelRecord",
+    "UserTargetRoleRecord",
+    "RoleMatchSnapshotRecord",
+    "JobSearchCacheRecord",
 ]
-
-

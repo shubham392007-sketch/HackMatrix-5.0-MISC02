@@ -26,7 +26,6 @@ import {
   ImportanceBadge,
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
-import { DemoDataNotice, DemoRoleSelector } from "@/components/app/AIBadges";
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleMatchOverviewPage() {

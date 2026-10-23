@@ -113,7 +113,6 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 "Security rejection: Attempted use of development demo token outside of authorized development/test environment."
             )
             return None
-
         if token.startswith("sp_demo_") or token == "sp_demo_user":
             return {
                 "sub": "00000000-0000-0000-0000-000000000001",

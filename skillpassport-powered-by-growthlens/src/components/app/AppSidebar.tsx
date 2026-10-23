@@ -43,6 +43,7 @@ import {
   Code2,
   CheckSquare,
   LineChart,
+  Globe,
   BookOpen,
   Share2,
   Eye,
@@ -129,6 +130,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Career Intelligence",
     items: [
       { label: "Role Overview", href: "/app/career", icon: Compass },
+      { label: "Discover Jobs", href: "/app/career/discover", icon: Globe },
       { label: "Target Roles", href: "/app/career/roles", icon: Briefcase },
       { label: "Role Match", href: "/app/career/match", icon: Scale },
       { label: "Skill Gaps", href: "/app/career/gaps", icon: AlertTriangle },
