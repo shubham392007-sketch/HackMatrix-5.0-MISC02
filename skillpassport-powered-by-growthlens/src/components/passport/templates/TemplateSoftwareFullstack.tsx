@@ -18,6 +18,7 @@ import {
   FolderGit2,
 } from "lucide-react";
 import { TemplateProps } from "./TemplateVerifiedCompetency";
+import PassportOptionalSections from "./PassportOptionalSections";
 
 export default function TemplateSoftwareFullstack({
   projection,
@@ -351,6 +352,16 @@ export default function TemplateSoftwareFullstack({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Additional Candidate-Authored Sections */}
+      <div className="pt-4 border-t border-[#1C1C1C]/15">
+        <PassportOptionalSections
+          projection={projection}
+          theme="engineering"
+          onInspectEvidence={onInspectEvidence}
+          excludeSections={["portfolio_projects", "projects", "work_experience"]}
+        />
       </div>
     </div>
   );

@@ -20,14 +20,16 @@ import { ShareProjection } from "@/types/sharing";
 
 interface PassportOptionalSectionsProps {
   projection: ShareProjection;
-  theme?: "classic" | "executive" | "technical" | "dark" | "engineering";
+  theme?: "classic" | "executive" | "technical" | "dark" | "engineering" | "academic";
   onInspectEvidence?: (evidenceId: string) => void;
+  excludeSections?: string[];
 }
 
 export default function PassportOptionalSections({
   projection,
   theme = "classic",
   onInspectEvidence,
+  excludeSections = [],
 }: PassportOptionalSectionsProps) {
   const experiences = projection.workExperience || [];
   const education = projection.education || [];
@@ -36,6 +38,33 @@ export default function PassportOptionalSections({
   const publications = projection.publications || [];
   const achievements = projection.achievements || [];
   const customSections = projection.customSections || [];
+
+  const isSectionEnabled = (secKey: string) => {
+    if (excludeSections.includes(secKey)) return false;
+    if (secKey === "portfolio_projects" && (excludeSections.includes("projects") || excludeSections.includes("portfolio_projects"))) return false;
+    if (secKey === "projects" && (excludeSections.includes("projects") || excludeSections.includes("portfolio_projects"))) return false;
+    if (secKey === "work_experience" && (excludeSections.includes("work_experience") || excludeSections.includes("experience"))) return false;
+
+    // Check permissions
+    const rawPerms: any = (projection as any).permissions || {};
+    const secPerms = rawPerms.sections || (projection as any).sections || {};
+    if (secKey in secPerms && secPerms[secKey] === false) return false;
+    if (secKey === "portfolio_projects" && secPerms["projects"] === false) return false;
+    if (secKey === "projects" && secPerms["portfolio_projects"] === false) return false;
+
+    // Check sectionsConfig if available
+    if (projection.sectionsConfig) {
+      const cfg = projection.sectionsConfig.find(
+        (s) =>
+          s.id === secKey ||
+          (secKey === "portfolio_projects" && s.id === "projects") ||
+          (secKey === "projects" && s.id === "portfolio_projects") ||
+          (secKey === "work_experience" && s.id === "experience")
+      );
+      if (cfg && cfg.enabled === false) return false;
+    }
+    return true;
+  };
 
   const isDark = theme === "dark" || theme === "technical";
 
@@ -55,7 +84,7 @@ export default function PassportOptionalSections({
   return (
     <div className="space-y-8">
       {/* 1. Work Experience Section */}
-      {experiences.length > 0 && (
+      {experiences.length > 0 && isSectionEnabled("work_experience") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -151,7 +180,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 2. Portfolio Projects Section */}
-      {projects.length > 0 && (
+      {projects.length > 0 && isSectionEnabled("portfolio_projects") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -244,7 +273,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 3. Certifications & Credentials */}
-      {certifications.length > 0 && (
+      {certifications.length > 0 && isSectionEnabled("certifications") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -285,7 +314,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 4. Education & Degrees */}
-      {education.length > 0 && (
+      {education.length > 0 && isSectionEnabled("education") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -338,7 +367,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 5. Publications & Research */}
-      {publications.length > 0 && (
+      {publications.length > 0 && isSectionEnabled("publications") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -381,7 +410,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 6. Honors & Achievements */}
-      {achievements.length > 0 && (
+      {achievements.length > 0 && isSectionEnabled("achievements") && (
         <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
           <div className="flex items-center justify-between">
             <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
@@ -418,7 +447,7 @@ export default function PassportOptionalSections({
       )}
 
       {/* 7. Custom Sections */}
-      {customSections.length > 0 && (
+      {customSections.length > 0 && isSectionEnabled("custom_sections") && (
         <div className="space-y-6 pt-4 border-t border-[#1C1C1C]/15">
           {customSections.map((sec) => (
             <div key={sec.id} className="space-y-3">

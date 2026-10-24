@@ -16,6 +16,7 @@ import {
   Award,
 } from "lucide-react";
 import { TemplateProps } from "./TemplateVerifiedCompetency";
+import PassportOptionalSections from "./PassportOptionalSections";
 
 export default function TemplateProjectsImpact({
   projection,
@@ -325,6 +326,16 @@ export default function TemplateProjectsImpact({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Additional Candidate-Authored Sections */}
+      <div className="pt-4 border-t border-[#1C1C1C]/15">
+        <PassportOptionalSections
+          projection={projection}
+          theme="classic"
+          onInspectEvidence={onInspectEvidence}
+          excludeSections={["portfolio_projects", "projects", "work_experience"]}
+        />
       </div>
     </div>
   );

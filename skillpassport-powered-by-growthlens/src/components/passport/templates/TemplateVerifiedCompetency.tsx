@@ -554,6 +554,16 @@ export default function TemplateVerifiedCompetency({
           </div>
         )}
       </div>
+
+      {/* 4. Candidate-Authored Optional & Custom Sections */}
+      <div className="pt-4 border-t border-[#1C1C1C]/15">
+        <PassportOptionalSections
+          projection={projection}
+          theme="classic"
+          onInspectEvidence={onInspectEvidence}
+          excludeSections={hasSecondaryContent && certifications.length > 0 ? ["certifications"] : []}
+        />
+      </div>
     </div>
   );
 }

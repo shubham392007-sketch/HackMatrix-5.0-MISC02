@@ -15,6 +15,7 @@ import {
   Layers,
 } from "lucide-react";
 import { TemplateProps } from "./TemplateVerifiedCompetency";
+import PassportOptionalSections from "./PassportOptionalSections";
 
 export default function TemplateResearchAcademic({
   projection,
@@ -316,6 +317,16 @@ export default function TemplateResearchAcademic({
           </div>
         )}
       </section>
+
+      {/* Additional Candidate-Authored Sections */}
+      <div className="pt-4 border-t border-stone-300 font-sans">
+        <PassportOptionalSections
+          projection={projection}
+          theme="executive"
+          onInspectEvidence={onInspectEvidence}
+          excludeSections={["education", "publications", "portfolio_projects", "projects", "achievements"]}
+        />
+      </div>
     </div>
   );
 }

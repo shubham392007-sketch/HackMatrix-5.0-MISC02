@@ -423,8 +423,38 @@ export default function TemplateProfessionalResume({
         </section>
       )}
 
+      {/* Honors & Achievements */}
+      {achievements.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-[#1C1C1C]/20 pb-1.5">
+            <Award className="w-4 h-4 text-emerald-700" />
+            <h2 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+              Honors & Achievements
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {achievements.map((ach) => (
+              <div key={ach.id} className="p-3 rounded border border-stone-200 space-y-1">
+                <div className="font-bold text-[#1C1C1C] flex items-center justify-between">
+                  <span>{ach.title}</span>
+                  {ach.category && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-mono">
+                      {ach.category}
+                    </span>
+                  )}
+                </div>
+                {ach.organization && <p className="text-stone-600 text-[11px] font-medium">{ach.organization}</p>}
+                {ach.date && <p className="text-stone-500 text-[10px] font-mono">{ach.date}</p>}
+                {ach.description && <p className="text-stone-700 text-[11px] leading-relaxed">{ach.description}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 9. Custom Sections (if enabled) */}
-      {customSections.filter((cs) => cs.enabled).map((cs) => (
+      {customSections.filter((cs) => cs.enabled !== false).map((cs) => (
         <section key={cs.id} className="space-y-3">
           <div className="border-b border-[#1C1C1C]/20 pb-1.5">
             <h2 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">

@@ -18,6 +18,7 @@ import {
   Globe,
 } from "lucide-react";
 import { TemplateProps } from "./TemplateVerifiedCompetency";
+import PassportOptionalSections from "./PassportOptionalSections";
 
 export default function TemplateTechnicalPortfolio({
   projection,
@@ -360,6 +361,16 @@ export default function TemplateTechnicalPortfolio({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Additional Candidate-Authored Sections */}
+      <div className="pt-4 border-t border-[#1C1C1C]/20">
+        <PassportOptionalSections
+          projection={projection}
+          theme="technical"
+          onInspectEvidence={onInspectEvidence}
+          excludeSections={["portfolio_projects", "projects", "work_experience"]}
+        />
       </div>
     </div>
   );

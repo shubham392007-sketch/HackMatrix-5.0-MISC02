@@ -13,6 +13,7 @@ import {
   Fingerprint,
 } from "lucide-react";
 import { TemplateProps } from "./TemplateVerifiedCompetency";
+import PassportOptionalSections from "./PassportOptionalSections";
 
 export default function TemplateMinimalPrivacy({
   projection,
@@ -197,6 +198,15 @@ export default function TemplateMinimalPrivacy({
           </div>
         </div>
       )}
+
+      {/* Authorized Candidate Optional Sections (if permitted) */}
+      <div className="pt-2">
+        <PassportOptionalSections
+          projection={projection}
+          theme="dark"
+          onInspectEvidence={onInspectEvidence}
+        />
+      </div>
     </div>
   );
 }

@@ -118,7 +118,7 @@ export const sharingApi = {
     expiryDays?: number | null;
   } | SharePermissionsConfig): Promise<ShareRecord> {
     const authHeaders = await getAuthHeader();
-    const formatted = "label" in payload
+    const formatted: any = "label" in payload
       ? {
           label: payload.label || "Selective Skill Passport Share",
           template_id: payload.template_id || payload.templateId || "classic",
@@ -131,6 +131,18 @@ export const sharingApi = {
           permissions: payload,
           expiry_days: (payload as any).expiryDays,
         };
+
+    if (typeof window !== "undefined") {
+      try {
+        const cachedMaster = localStorage.getItem("sp_master_passport_cache");
+        if (cachedMaster && formatted.permissions && !formatted.permissions.masterPassport && !formatted.permissions.master_passport) {
+          formatted.permissions = {
+            ...formatted.permissions,
+            masterPassport: JSON.parse(cachedMaster),
+          };
+        }
+      } catch {}
+    }
     let res: Response;
     try {
       res = await fetch(`${API_BASE}/links`, {
@@ -258,6 +270,18 @@ export const sharingApi = {
           permissions: payload,
         };
       }
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        const cachedMaster = localStorage.getItem("sp_master_passport_cache");
+        if (cachedMaster && bodyPayload.permissions && !bodyPayload.permissions.masterPassport && !bodyPayload.permissions.master_passport) {
+          bodyPayload.permissions = {
+            ...bodyPayload.permissions,
+            masterPassport: JSON.parse(cachedMaster),
+          };
+        }
+      } catch {}
     }
     const fetchDraft = async () => {
       try {
@@ -404,7 +428,40 @@ export const sharingApi = {
     if (!res.ok) {
       throw new Error(`Failed to load shared passport: ${res.statusText}`);
     }
-    return res.json();
+    const data: ShareProjection = await res.json();
+    if (typeof window !== "undefined") {
+      try {
+        const cachedMaster = localStorage.getItem("sp_master_passport_cache");
+        if (cachedMaster) {
+          const master = JSON.parse(cachedMaster);
+          if ((!data.workExperience || data.workExperience.length === 0) && master.workExperiences?.length) {
+            data.workExperience = master.workExperiences;
+          }
+          if ((!data.education || data.education.length === 0) && master.educationEntries?.length) {
+            data.education = master.educationEntries;
+          }
+          if ((!data.projects || data.projects.length === 0) && master.portfolioProjects?.length) {
+            data.projects = master.portfolioProjects;
+          }
+          if ((!data.certifications || data.certifications.length === 0) && master.certifications?.length) {
+            data.certifications = master.certifications;
+          }
+          if ((!data.publications || data.publications.length === 0) && master.publications?.length) {
+            data.publications = master.publications;
+          }
+          if ((!data.achievements || data.achievements.length === 0) && master.achievements?.length) {
+            data.achievements = master.achievements;
+          }
+          if ((!data.customSections || data.customSections.length === 0) && master.customSections?.length) {
+            data.customSections = master.customSections;
+          }
+          if (!data.sectionsConfig && master.sectionsConfig) {
+            data.sectionsConfig = master.sectionsConfig;
+          }
+        }
+      } catch {}
+    }
+    return data;
   },
 
   async getPublicEvidenceDetail(token: string, evidenceId: string): Promise<any> {

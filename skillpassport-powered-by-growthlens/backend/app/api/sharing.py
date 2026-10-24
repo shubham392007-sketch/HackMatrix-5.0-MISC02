@@ -1,6 +1,6 @@
 import secrets
 import uuid
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 import time
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ConfigDict, model_validator
@@ -65,7 +65,7 @@ class MasterPassportInput(BaseModel):
     model_config = ConfigDict(extra="allow")
     title: Optional[str] = Field(default="Master Skill Passport")
     template_id: Optional[str] = Field(default="classic")
-    sections_config: Optional[List[Dict[str, Any]]] = None
+    sections_config: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None
     work_experiences: Optional[List[Dict[str, Any]]] = None
     education_entries: Optional[List[Dict[str, Any]]] = None
     portfolio_projects: Optional[List[Dict[str, Any]]] = None
@@ -83,10 +83,20 @@ class MasterPassportInput(BaseModel):
                 data["sections_config"] = data["sectionsConfig"]
             if "workExperiences" in data and "work_experiences" not in data:
                 data["work_experiences"] = data["workExperiences"]
+            elif "workExperience" in data and "work_experiences" not in data:
+                data["work_experiences"] = data["workExperience"]
             if "educationEntries" in data and "education_entries" not in data:
                 data["education_entries"] = data["educationEntries"]
+            elif "education" in data and "education_entries" not in data:
+                data["education_entries"] = data["education"]
             if "portfolioProjects" in data and "portfolio_projects" not in data:
                 data["portfolio_projects"] = data["portfolioProjects"]
+            elif "projects" in data and "portfolio_projects" not in data:
+                data["portfolio_projects"] = data["projects"]
+            if "honorsAwards" in data and "achievements" not in data:
+                data["achievements"] = data["honorsAwards"]
+            elif "honors_awards" in data and "achievements" not in data:
+                data["achievements"] = data["honors_awards"]
             if "customSections" in data and "custom_sections" not in data:
                 data["custom_sections"] = data["customSections"]
         return data
@@ -97,6 +107,7 @@ class MasterPassportInput(BaseModel):
 # ==============================================================================
 
 class SharePermissionsInput(BaseModel):
+    model_config = ConfigDict(extra="allow")
     identity: Dict[str, Any] = Field(
         default_factory=lambda: {
             "show_display_name": True,
@@ -117,6 +128,8 @@ class SharePermissionsInput(BaseModel):
     expiry_days: Optional[int] = Field(default=14)
     custom_headline: Optional[str] = None
     custom_summary: Optional[str] = None
+    sections: Optional[Dict[str, bool]] = None
+    master_passport: Optional[Dict[str, Any]] = None
 
 class CreateShareLinkRequest(BaseModel):
     label: str = Field(..., min_length=2, max_length=255)
@@ -432,124 +445,268 @@ def build_canonical_projection(
     master_cfg = db.query(UserPassportConfigRecord).filter(
         UserPassportConfigRecord.owner_user_id == owner_user_id
     ).first()
+    if not master_cfg:
+        master_cfg = db.query(UserPassportConfigRecord).order_by(desc(UserPassportConfigRecord.updated_at)).first()
+
+    custom_master_payload = permissions.get("masterPassport") or permissions.get("master_passport") or {}
     sections_perms = permissions.get("sections") or {}
+
     def is_sec_enabled(sec_key: str) -> bool:
         if sec_key in sections_perms:
             return bool(sections_perms[sec_key])
-        if master_cfg and master_cfg.sections_config:
-            for s in master_cfg.sections_config:
-                if s.get("id") == sec_key:
-                    return bool(s.get("enabled", True))
+        if sec_key == "portfolio_projects" and "projects" in sections_perms:
+            return bool(sections_perms["projects"])
+        if sec_key == "projects" and "portfolio_projects" in sections_perms:
+            return bool(sections_perms["portfolio_projects"])
+
+        target_keys = {sec_key}
+        if sec_key in ("projects", "portfolio_projects"):
+            target_keys.update(["projects", "portfolio_projects"])
+
+        cfg_list = (custom_master_payload.get("sectionsConfig") or custom_master_payload.get("sections_config")) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+        if not cfg_list and master_cfg and master_cfg.sections_config:
+            cfg_list = master_cfg.sections_config
+
+        if cfg_list:
+            if isinstance(cfg_list, dict):
+                for k in target_keys:
+                    if k in cfg_list:
+                        val = cfg_list[k]
+                        if isinstance(val, dict):
+                            return bool(val.get("enabled", True))
+                        return bool(val)
+            elif isinstance(cfg_list, list):
+                for s in cfg_list:
+                    if isinstance(s, dict) and s.get("id") in target_keys:
+                        return bool(s.get("enabled", True))
+                    elif isinstance(s, str) and s in target_keys:
+                        return True
         return True
+
+    # Work Experience
+    raw_work = (
+        custom_master_payload.get("workExperiences")
+        or custom_master_payload.get("work_experiences")
+        or custom_master_payload.get("workExperience")
+    ) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_work is None and master_cfg:
+        raw_work = master_cfg.work_experiences
+
     work_exp = []
-    if is_sec_enabled("work_experience") and master_cfg and master_cfg.work_experiences:
-        for we in master_cfg.work_experiences:
+    if is_sec_enabled("work_experience") and raw_work:
+        for we in raw_work:
             if not we or not isinstance(we, dict):
                 continue
-            org_name = we.get("organization") or we.get("company") or "Organization"
-            if is_anonymous_template:
+            job_title = we.get("jobTitle") or we.get("job_title") or we.get("role") or ""
+            org_name = we.get("organization") or we.get("company") or ""
+            desc = we.get("description") or we.get("summary") or ""
+            if not job_title and not org_name and not desc:
+                continue
+            if is_anonymous_template and org_name:
                 org_name = "[Confidential Organization]"
+            bullets = we.get("bullets") or [a for a in (we.get("achievements") or []) if a and str(a).strip()]
+            tech = we.get("skills") or [t for t in (we.get("techStack") or we.get("tech_stack") or []) if t and str(t).strip()]
+            start_d = we.get("startDate") or we.get("start_date") or ""
+            end_d = we.get("endDate") or we.get("end_date") or ""
+            period = we.get("period") or (f"{start_d} - {end_d}" if start_d or end_d else "")
             work_exp.append({
                 "id": str(we.get("id") or uuid.uuid4()),
-                "jobTitle": we.get("jobTitle") or we.get("job_title") or "Role",
-                "organization": org_name,
+                "jobTitle": job_title or "Role",
+                "role": job_title or "Role",
+                "organization": org_name or "Organization",
+                "company": org_name or "Organization",
                 "employmentType": we.get("employmentType") or we.get("employment_type"),
                 "location": we.get("location"),
-                "startDate": we.get("startDate") or we.get("start_date") or "",
-                "endDate": we.get("endDate") or we.get("end_date"),
+                "startDate": start_d,
+                "endDate": end_d,
+                "period": period,
                 "isCurrent": bool(we.get("isCurrent", we.get("is_current", False))),
-                "description": we.get("description", ""),
-                "achievements": we.get("achievements") or [],
-                "techStack": we.get("techStack") or we.get("tech_stack") or [],
+                "description": desc,
+                "summary": desc,
+                "bullets": bullets,
+                "achievements": bullets,
+                "techStack": tech,
+                "skills": tech,
                 "attachedEvidenceIds": [str(x) for x in (we.get("attachedEvidenceIds") or we.get("attached_evidence_ids") or [])],
             })
+
+    # Education
+    raw_edu = (
+        custom_master_payload.get("educationEntries")
+        or custom_master_payload.get("education_entries")
+        or custom_master_payload.get("education")
+    ) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_edu is None and master_cfg:
+        raw_edu = master_cfg.education_entries
+
     edu_entries = []
-    if is_sec_enabled("education") and master_cfg and master_cfg.education_entries:
-        for ed in master_cfg.education_entries:
+    if is_sec_enabled("education") and raw_edu:
+        for ed in raw_edu:
             if not ed or not isinstance(ed, dict):
                 continue
-            inst_name = ed.get("institution") or "University / Institution"
-            if is_anonymous_template:
-                inst_name = "[Accredited Institution]"
+            inst = ed.get("institution") or ""
+            deg = ed.get("degree") or ""
+            field = ed.get("fieldOfStudy") or ed.get("field_of_study") or ""
+            details = ed.get("details") or ed.get("description") or ""
+            if not inst and not deg and not field and not details:
+                continue
+            if is_anonymous_template and inst:
+                inst = "[Accredited Institution]"
+            start_yr = ed.get("startYear") or ed.get("start_year")
+            end_yr = ed.get("endYear") or ed.get("end_year")
+            period = ed.get("period") or (f"{start_yr} - {end_yr}" if start_yr or end_yr else "")
+            gpa = ed.get("gpa") or ed.get("grade")
             edu_entries.append({
                 "id": str(ed.get("id") or uuid.uuid4()),
-                "institution": inst_name,
-                "degree": ed.get("degree", ""),
-                "fieldOfStudy": ed.get("fieldOfStudy") or ed.get("field_of_study", ""),
-                "startYear": ed.get("startYear") or ed.get("start_year"),
-                "endYear": ed.get("endYear") or ed.get("end_year"),
-                "grade": ed.get("grade"),
+                "institution": inst or "University / Institution",
+                "degree": deg,
+                "fieldOfStudy": field,
+                "details": details,
+                "description": details,
+                "startYear": start_yr,
+                "endYear": end_yr,
+                "period": period,
+                "grade": gpa,
+                "gpa": gpa,
                 "activities": ed.get("activities"),
-                "coursework": ed.get("coursework") or [],
+                "coursework": [c for c in (ed.get("coursework") or []) if c and str(c).strip()],
             })
+
+    # Portfolio Projects
+    raw_proj = (
+        custom_master_payload.get("portfolioProjects")
+        or custom_master_payload.get("portfolio_projects")
+        or custom_master_payload.get("projects")
+    ) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_proj is None and master_cfg:
+        raw_proj = master_cfg.portfolio_projects
+
     port_projects = []
-    if is_sec_enabled("portfolio_projects") and master_cfg and master_cfg.portfolio_projects:
-        for pr in master_cfg.portfolio_projects:
+    if (is_sec_enabled("portfolio_projects") or is_sec_enabled("projects")) and raw_proj:
+        for pr in raw_proj:
             if not pr or not isinstance(pr, dict):
                 continue
+            title = pr.get("title") or ""
+            desc = pr.get("description") or pr.get("summary") or ""
+            if not title and not desc:
+                continue
+            proj_url = pr.get("projectUrl") or pr.get("project_url") or pr.get("url")
+            highlights = pr.get("highlights") or [o for o in (pr.get("outcomes") or []) if o and str(o).strip()]
+            tech = [t for t in (pr.get("techStack") or pr.get("tech_stack") or []) if t and str(t).strip()]
             port_projects.append({
                 "id": str(pr.get("id") or uuid.uuid4()),
-                "title": pr.get("title", "Project"),
-                "description": pr.get("description", ""),
+                "title": title or "Project",
+                "description": desc,
+                "summary": desc,
                 "role": pr.get("role"),
-                "techStack": pr.get("techStack") or pr.get("tech_stack") or [],
-                "outcomes": pr.get("outcomes") or [],
-                "projectUrl": pr.get("projectUrl") or pr.get("project_url"),
+                "techStack": tech,
+                "highlights": highlights,
+                "outcomes": highlights,
+                "url": proj_url,
+                "projectUrl": proj_url,
                 "repoUrl": pr.get("repoUrl") or pr.get("repo_url"),
                 "liveDemoUrl": pr.get("liveDemoUrl") or pr.get("live_demo_url"),
                 "attachedEvidenceIds": [str(x) for x in (pr.get("attachedEvidenceIds") or pr.get("attached_evidence_ids") or [])],
             })
+
+    # Certifications
+    raw_certs = custom_master_payload.get("certifications") if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_certs is None and master_cfg:
+        raw_certs = master_cfg.certifications
+
     certs = []
-    if is_sec_enabled("certifications") and master_cfg and master_cfg.certifications:
-        for c in master_cfg.certifications:
+    if is_sec_enabled("certifications") and raw_certs:
+        for c in raw_certs:
             if not c or not isinstance(c, dict):
                 continue
+            name = c.get("name") or c.get("title") or ""
+            if not name:
+                continue
+            cred_url = c.get("credentialUrl") or c.get("credential_url")
             certs.append({
                 "id": str(c.get("id") or uuid.uuid4()),
-                "name": c.get("name", "Certification"),
-                "issuer": c.get("issuer", "Issuing Organization"),
+                "name": name,
+                "title": name,
+                "issuer": c.get("issuer") or "Issuing Organization",
                 "issueDate": c.get("issueDate") or c.get("issue_date"),
                 "expiryDate": c.get("expiryDate") or c.get("expiry_date"),
                 "credentialId": c.get("credentialId") or c.get("credential_id"),
-                "credentialUrl": c.get("credentialUrl") or c.get("credential_url"),
+                "credentialUrl": cred_url,
                 "documentVaultId": c.get("documentVaultId") or c.get("document_vault_id"),
             })
+
+    # Publications
+    raw_pubs = custom_master_payload.get("publications") if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_pubs is None and master_cfg:
+        raw_pubs = master_cfg.publications
+
     pubs = []
-    if is_sec_enabled("publications") and master_cfg and master_cfg.publications:
-        for pb in master_cfg.publications:
+    if is_sec_enabled("publications") and raw_pubs:
+        for pb in raw_pubs:
             if not pb or not isinstance(pb, dict):
                 continue
+            title = pb.get("title") or ""
+            if not title:
+                continue
+            venue = pb.get("venue") or pb.get("journal")
+            date_val = pb.get("date") or pb.get("year")
             pubs.append({
                 "id": str(pb.get("id") or uuid.uuid4()),
-                "title": pb.get("title", "Publication"),
-                "venue": pb.get("venue"),
-                "date": pb.get("date"),
+                "title": title,
+                "venue": venue,
+                "journal": venue,
+                "date": date_val,
+                "year": date_val,
                 "url": pb.get("url"),
                 "summary": pb.get("summary"),
                 "authors": pb.get("authors") if not is_anonymous_template else None,
             })
+
+    # Achievements
+    raw_achieve = (
+        custom_master_payload.get("achievements")
+        or custom_master_payload.get("honorsAwards")
+        or custom_master_payload.get("honors_awards")
+    ) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_achieve is None and master_cfg:
+        raw_achieve = getattr(master_cfg, "achievements", None) or getattr(master_cfg, "honors_awards", None)
+
     achieve = []
-    if is_sec_enabled("achievements") and master_cfg and master_cfg.achievements:
-        for ac in master_cfg.achievements:
+    if is_sec_enabled("achievements") and raw_achieve:
+        for ac in raw_achieve:
             if not ac or not isinstance(ac, dict):
                 continue
+            title = ac.get("title") or ""
+            if not title:
+                continue
+            issuer = ac.get("issuer") or ac.get("organization")
             achieve.append({
                 "id": str(ac.get("id") or uuid.uuid4()),
-                "title": ac.get("title", "Honor / Award"),
-                "organization": ac.get("organization"),
-                "date": ac.get("date"),
+                "title": title,
+                "organization": issuer,
+                "issuer": issuer,
+                "date": ac.get("date") or ac.get("year"),
                 "category": ac.get("category"),
                 "description": ac.get("description"),
                 "link": ac.get("link"),
             })
+
+    # Custom Sections
+    raw_custom_secs = (custom_master_payload.get("customSections") or custom_master_payload.get("custom_sections")) if isinstance(custom_master_payload, dict) and custom_master_payload else None
+    if raw_custom_secs is None and master_cfg:
+        raw_custom_secs = master_cfg.custom_sections
+
     custom_secs = []
-    if is_sec_enabled("custom_sections") and master_cfg and master_cfg.custom_sections:
-        for cs in master_cfg.custom_sections:
+    if is_sec_enabled("custom_sections") and raw_custom_secs:
+        for cs in raw_custom_secs:
             if not cs or not isinstance(cs, dict) or not cs.get("enabled", True):
+                continue
+            title = cs.get("title") or ""
+            if not title:
                 continue
             custom_secs.append({
                 "id": str(cs.get("id") or uuid.uuid4()),
-                "title": cs.get("title", "Custom Section"),
+                "title": title,
                 "content": cs.get("content"),
                 "items": cs.get("items") or [],
                 "links": cs.get("links") or [],
@@ -1172,11 +1329,15 @@ def get_master_passport(
             "templateId": config.template_id,
             "sectionsConfig": config.sections_config or DEFAULT_SECTIONS_CONFIG,
             "workExperiences": config.work_experiences or [],
+            "workExperience": config.work_experiences or [],
             "educationEntries": config.education_entries or [],
+            "education": config.education_entries or [],
             "portfolioProjects": config.portfolio_projects or [],
+            "projects": config.portfolio_projects or [],
             "certifications": config.certifications or [],
             "publications": config.publications or [],
             "achievements": config.achievements or [],
+            "honorsAwards": config.achievements or [],
             "customSections": config.custom_sections or [],
             "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
         }
@@ -1257,11 +1418,15 @@ def update_master_passport(
             "templateId": config.template_id,
             "sectionsConfig": config.sections_config,
             "workExperiences": config.work_experiences,
+            "workExperience": config.work_experiences,
             "educationEntries": config.education_entries,
+            "education": config.education_entries,
             "portfolioProjects": config.portfolio_projects,
+            "projects": config.portfolio_projects,
             "certifications": config.certifications,
             "publications": config.publications,
             "achievements": config.achievements,
+            "honorsAwards": config.achievements,
             "customSections": config.custom_sections,
             "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
         }
@@ -1273,11 +1438,15 @@ def update_master_passport(
             "templateId": config.template_id,
             "sectionsConfig": config.sections_config,
             "workExperiences": config.work_experiences,
+            "workExperience": config.work_experiences,
             "educationEntries": config.education_entries,
+            "education": config.education_entries,
             "portfolioProjects": config.portfolio_projects,
+            "projects": config.portfolio_projects,
             "certifications": config.certifications,
             "publications": config.publications,
             "achievements": config.achievements,
+            "honorsAwards": config.achievements,
             "customSections": config.custom_sections,
             "updatedAt": None,
         }
@@ -1369,17 +1538,27 @@ def get_public_share_projection(
     if not link:
         token_clean = token.strip()
         if token_clean.startswith("sh-") or token_clean.startswith("sp_") or token_clean in ("preview-token", "draft-preview", "preview"):
-            default_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+            latest_cfg = db.query(UserPassportConfigRecord).order_by(desc(UserPassportConfigRecord.updated_at)).first()
+            resolved_owner = latest_cfg.owner_user_id if latest_cfg else uuid.UUID("00000000-0000-0000-0000-000000000001")
             link = ShareLinkRecord(
-                owner_user_id=default_user_id,
+                owner_user_id=resolved_owner,
                 label="Public Recruiter Share",
                 token=token_clean,
                 status="active",
-                template_id="classic",
+                template_id=latest_cfg.template_id if (latest_cfg and latest_cfg.template_id) else "classic",
                 permissions_json={
                     "shareVerifiedSkillsOnly": True,
                     "evidenceAccessLevel": "detail_inspection",
                     "allow_recruiter_messaging": True,
+                    "sections": {
+                        "work_experience": True,
+                        "portfolio_projects": True,
+                        "education": True,
+                        "certifications": True,
+                        "publications": True,
+                        "achievements": True,
+                        "custom_sections": True,
+                    },
                 },
             )
             db.add(link)

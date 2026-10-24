@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 import TemplateSelector from "@/components/passport/TemplateSelector";
-import { SharePermissionsConfig, PassportTemplateId } from "@/types/sharing";
+import { SharePermissionsConfig, PassportTemplateId, UserMasterPassport } from "@/types/sharing";
 import { sharingApi } from "@/lib/sharingApi";
 
 export default function SharePassportWizardPage() {
@@ -48,6 +48,38 @@ export default function SharePassportWizardPage() {
   const [step, setStep] = useState<number>(1);
   const [copied, setCopied] = useState<boolean>(false);
   const [createdShareId, setCreatedShareId] = useState<string | null>(null);
+  const [masterPassport, setMasterPassport] = useState<UserMasterPassport | null>(null);
+
+  React.useEffect(() => {
+    async function loadMaster() {
+      try {
+        const m = await sharingApi.getMasterPassport();
+        if (m) {
+          setMasterPassport(m);
+          if (m.templateId) {
+            setTemplateId(m.templateId as PassportTemplateId);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load master passport in share wizard:", err);
+      }
+    }
+    loadMaster();
+  }, []);
+
+  const getSectionCount = (secId: string) => {
+    if (!masterPassport) return null;
+    switch (secId) {
+      case "work_experience": return masterPassport.workExperiences?.length ?? 0;
+      case "portfolio_projects": return masterPassport.portfolioProjects?.length ?? 0;
+      case "education": return masterPassport.educationEntries?.length ?? 0;
+      case "certifications": return masterPassport.certifications?.length ?? 0;
+      case "publications": return masterPassport.publications?.length ?? 0;
+      case "achievements": return masterPassport.achievements?.length ?? 0;
+      case "custom_sections": return masterPassport.customSections?.length ?? 0;
+      default: return null;
+    }
+  };
 
   // Form local state initialized from draftPermissions
   const [label, setLabel] = useState<string>(
@@ -163,6 +195,7 @@ export default function SharePassportWizardPage() {
       templateId,
       allowRecruiterMessaging,
       sections: includedSections,
+      ...(masterPassport ? { masterPassport } : {}),
     };
 
     try {
@@ -366,7 +399,14 @@ export default function SharePassportWizardPage() {
                   >
                     <div className="flex items-center gap-2">
                       <Icon className="w-3.5 h-3.5 text-ink/70 shrink-0" />
-                      <span className="font-bold text-ink">{sec.label}</span>
+                      <div>
+                        <span className="font-bold text-ink block">{sec.label}</span>
+                        {getSectionCount(sec.id) !== null && (
+                          <span className="text-[10px] text-ink/60">
+                            {getSectionCount(sec.id)} {getSectionCount(sec.id) === 1 ? "entry" : "entries"} available
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <input
                       type="checkbox"
