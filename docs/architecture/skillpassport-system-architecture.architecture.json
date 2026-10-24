@@ -1,0 +1,1057 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SkillPassport Complete System Architecture & Tech Stack",
+    "subtitle": "Interactive, Source-Grounded Architecture Explorer with Full Technology Stack & Dependency Provenance",
+    "output": "skillpassport-system-architecture.html",
+    "quality_profile": "standard",
+    "repository": {
+      "url": "https://github.com/shubham392007-sketch/HackMatrix-5.0-MISC02",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "f22982f9453049668d4f8452da81e236a112f2a8"
+    },
+    "views": [
+      {
+        "id": "journey-onboarding",
+        "label": "1. Candidate Onboarding & Auth",
+        "focus": [
+          "candidate",
+          "fe_auth_app",
+          "be_auth_profile",
+          "db_postgres"
+        ],
+        "note": "Signup, Supabase SSR cookie auth, email verification fallback, and profile initialization in PostgreSQL."
+      },
+      {
+        "id": "journey-ingestion-vector",
+        "label": "2. Ingestion, Chunking & ChromaDB",
+        "focus": [
+          "candidate",
+          "fe_evidence",
+          "be_evidence_ingest",
+          "ext_sources",
+          "ai_ocr",
+          "ai_embed",
+          "chroma_db",
+          "storage_blobs",
+          "db_postgres"
+        ],
+        "note": "PyMuPDF/docx/pptx extraction, GLM-OCR vision, deterministic chunking, and nomic-embed-text vectorization."
+      },
+      {
+        "id": "journey-rag-analysis",
+        "label": "3. Semantic Retrieval, RAG & AI Guard",
+        "focus": [
+          "fe_ai_gov",
+          "be_ai_guard",
+          "chroma_db",
+          "ai_ollama",
+          "be_skill_taxonomy",
+          "db_postgres"
+        ],
+        "note": "Euclidean vector distance querying, candidate grounding, Hallucination Guard, and taxonomy ontology."
+      },
+      {
+        "id": "journey-career-learning",
+        "label": "4. Role Intelligence & Learning Gaps",
+        "focus": [
+          "fe_career",
+          "be_career_engine",
+          "be_skill_taxonomy",
+          "db_postgres"
+        ],
+        "note": "Target role requirements, skill-gap analysis, dynamic confidence calibration, and personalized roadmaps."
+      },
+      {
+        "id": "journey-sharing-recruiter",
+        "label": "5. Sharing Permissions Sync & Recruiter Gate",
+        "focus": [
+          "fe_passport",
+          "be_sharing_api",
+          "be_public_proj",
+          "fe_public",
+          "recruiter",
+          "db_postgres"
+        ],
+        "note": "Sharing permissions sync, 8 templates, immutable token snapshots, recruiter inspection, and messaging."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "candidate",
+      "type": "external",
+      "label": "Candidate User",
+      "sublabel": "Browser \u00b7 JWT Session",
+      "pos": [
+        40,
+        160
+      ],
+      "size": [
+        140,
+        52
+      ],
+      "tag": "Next.js / SSR"
+    },
+    {
+      "id": "admin_reviewer",
+      "type": "external",
+      "label": "Reviewer / Admin",
+      "sublabel": "Internal Review UI",
+      "pos": [
+        40,
+        420
+      ],
+      "size": [
+        140,
+        52
+      ],
+      "tag": "Governance"
+    },
+    {
+      "id": "recruiter",
+      "type": "external",
+      "label": "Public Recruiter",
+      "sublabel": "Public Link /p/:token",
+      "pos": [
+        40,
+        900
+      ],
+      "size": [
+        140,
+        52
+      ],
+      "tag": "Zero-Leakage Token"
+    },
+    {
+      "id": "fe_auth_app",
+      "type": "frontend",
+      "label": "Auth & Onboarding UI",
+      "sublabel": "Next.js 16 \u00b7 Supabase SSR",
+      "pos": [
+        260,
+        110
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Cookie Session",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/login/page.tsx",
+          "label": "Login Page (Next.js 16.3)"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/auth/verify-email/page.tsx",
+          "label": "Verify Email Flow"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/onboarding/page.tsx",
+          "label": "Onboarding Wizard"
+        }
+      ]
+    },
+    {
+      "id": "fe_evidence",
+      "type": "frontend",
+      "label": "Evidence Workspace",
+      "sublabel": "React 19 \u00b7 Lucide \u00b7 Agentation",
+      "pos": [
+        260,
+        240
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Workspace",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/evidence/page.tsx",
+          "label": "Evidence Dashboard"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/evidence/sources/page.tsx",
+          "label": "Source Connections"
+        }
+      ]
+    },
+    {
+      "id": "fe_ai_gov",
+      "type": "frontend",
+      "label": "AI Governance UI",
+      "sublabel": "Next.js 16 \u00b7 Realtime Hooks",
+      "pos": [
+        260,
+        370
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Trust & Guard",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/ai/page.tsx",
+          "label": "AI Dashboard"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/ai/guard/page.tsx",
+          "label": "Hallucination Guard"
+        }
+      ]
+    },
+    {
+      "id": "fe_skills",
+      "type": "frontend",
+      "label": "Skill Intelligence",
+      "sublabel": "React 19 \u00b7 Taxonomy Browser",
+      "pos": [
+        260,
+        500
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Canonical Skills",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/passport/skills/page.tsx",
+          "label": "Verified Skills"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/passport/taxonomy/page.tsx",
+          "label": "Taxonomy & Ontology"
+        }
+      ]
+    },
+    {
+      "id": "fe_career",
+      "type": "frontend",
+      "label": "Career & Learning UI",
+      "sublabel": "Next.js 16 \u00b7 Tailwind 4",
+      "pos": [
+        260,
+        630
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Role Match",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/career/page.tsx",
+          "label": "Role Intelligence"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/learning/page.tsx",
+          "label": "Learn & Grow"
+        }
+      ]
+    },
+    {
+      "id": "fe_passport",
+      "type": "frontend",
+      "label": "Passport & Sharing UI",
+      "sublabel": "React 19 \u00b7 8 Template Engine",
+      "pos": [
+        260,
+        760
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Domain 6 Synced",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/passport/permissions/page.tsx",
+          "label": "Sharing Permissions"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/app/passport/share/page.tsx",
+          "label": "Create Share Link"
+        }
+      ]
+    },
+    {
+      "id": "fe_public",
+      "type": "frontend",
+      "label": "Public Recruiter View",
+      "sublabel": "Next.js 16 \u00b7 /p/:token Route",
+      "pos": [
+        260,
+        890
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "Public Projection",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/src/app/p/[shareId]/page.tsx",
+          "label": "Public Passport"
+        }
+      ]
+    },
+    {
+      "id": "be_auth_profile",
+      "type": "backend",
+      "label": "Auth & Profile Service",
+      "sublabel": "FastAPI \u00b7 PyJWT \u00b7 Supabase",
+      "pos": [
+        550,
+        110
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "User Profiles",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/auth.py",
+          "label": "Auth Endpoints"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/profile.py",
+          "label": "Profile Endpoints"
+        }
+      ]
+    },
+    {
+      "id": "be_evidence_ingest",
+      "type": "backend",
+      "label": "Evidence Ingestion Engine",
+      "sublabel": "PyMuPDF \u00b7 python-docx \u00b7 pptx",
+      "pos": [
+        550,
+        240
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Multi-Format",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/evidence.py",
+          "label": "Evidence API"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/extraction/engine.py",
+          "label": "Extraction & Chunking"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/documents.py",
+          "label": "Document Uploads"
+        }
+      ]
+    },
+    {
+      "id": "be_ai_guard",
+      "type": "backend",
+      "label": "AI Extraction & Guard",
+      "sublabel": "FastAPI \u00b7 Pydantic \u00b7 Guard",
+      "pos": [
+        550,
+        370
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Trust Engine",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/ai.py",
+          "label": "AI Operations"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/ai/guard.py",
+          "label": "Hallucination Guard Service"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/ai_governance.py",
+          "label": "AI Governance Models"
+        }
+      ]
+    },
+    {
+      "id": "be_skill_taxonomy",
+      "type": "backend",
+      "label": "Canonical Skill Service",
+      "sublabel": "SQLAlchemy 2.0 \u00b7 Taxonomy",
+      "pos": [
+        550,
+        500
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Ontology",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/passport.py",
+          "label": "Passport API"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/taxonomy.py",
+          "label": "Taxonomy Mapping"
+        }
+      ]
+    },
+    {
+      "id": "be_career_engine",
+      "type": "backend",
+      "label": "Career & Learning Engine",
+      "sublabel": "FastAPI \u00b7 Dynamic Scoring",
+      "pos": [
+        550,
+        630
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Role Scoring",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/career.py",
+          "label": "Career Intelligence API"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/career.py",
+          "label": "Career Demand Models"
+        }
+      ]
+    },
+    {
+      "id": "be_sharing_api",
+      "type": "backend",
+      "label": "Sharing Permissions API",
+      "sublabel": "FastAPI \u00b7 Pydantic \u00b7 JSONB",
+      "pos": [
+        550,
+        760
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Permissions Sync",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/sharing.py",
+          "label": "Sharing API"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/sharing.py",
+          "label": "Share Config Models"
+        }
+      ]
+    },
+    {
+      "id": "be_public_proj",
+      "type": "backend",
+      "label": "Public Passport Gatekeeper",
+      "sublabel": "FastAPI \u00b7 SHA-256 Token Auth",
+      "pos": [
+        550,
+        890
+      ],
+      "size": [
+        190,
+        54
+      ],
+      "tag": "Zero Leakage",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/sharing.py",
+          "label": "Public Projection"
+        }
+      ]
+    },
+    {
+      "id": "ext_sources",
+      "type": "external",
+      "label": "GitHub & Jira Cloud",
+      "sublabel": "REST API v3 \u00b7 JQL \u00b7 HTTPS",
+      "pos": [
+        860,
+        60
+      ],
+      "size": [
+        175,
+        54
+      ],
+      "tag": "External APIs"
+    },
+    {
+      "id": "ai_ocr",
+      "type": "cloud",
+      "label": "GLM-OCR Vision Engine",
+      "sublabel": "Ollama Vision \u00b7 glm-ocr:latest",
+      "pos": [
+        860,
+        180
+      ],
+      "size": [
+        175,
+        54
+      ],
+      "tag": "1.1B Local Vision",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/extraction/ocr_service.py",
+          "label": "OCR Vision Service"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/core/config.py",
+          "label": "Ollama OCR Config"
+        }
+      ]
+    },
+    {
+      "id": "ai_embed",
+      "type": "cloud",
+      "label": "Ollama Embeddings",
+      "sublabel": "nomic-embed-text \u00b7 768-dim",
+      "pos": [
+        860,
+        290
+      ],
+      "size": [
+        175,
+        54
+      ],
+      "tag": "Dense Vectors",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/core/config.py",
+          "label": "Ollama Embed Config"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/rag/chroma.py",
+          "label": "Vector Pipeline"
+        }
+      ]
+    },
+    {
+      "id": "ai_ollama",
+      "type": "cloud",
+      "label": "Ollama Qwen3 8B",
+      "sublabel": "qwen3:8b \u00b7 num_ctx 8192",
+      "pos": [
+        860,
+        400
+      ],
+      "size": [
+        175,
+        54
+      ],
+      "tag": "Deterministic JSON",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/ai/extractor.py",
+          "label": "Structured Extractor"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/core/config.py",
+          "label": "Ollama LLM Config"
+        }
+      ]
+    },
+    {
+      "id": "storage_blobs",
+      "type": "database",
+      "label": "Supabase Storage",
+      "sublabel": "evidence-originals S3 Bucket",
+      "pos": [
+        1140,
+        200
+      ],
+      "size": [
+        180,
+        54
+      ],
+      "tag": "S3 Storage Vault",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/storage/file_storage.py",
+          "label": "Storage Vault Manager"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/core/config.py",
+          "label": "Bucket Config"
+        }
+      ]
+    },
+    {
+      "id": "chroma_db",
+      "type": "database",
+      "label": "ChromaDB Store",
+      "sublabel": "chromadb 1.5 \u00b7 HNSW Local",
+      "pos": [
+        1140,
+        320
+      ],
+      "size": [
+        180,
+        64
+      ],
+      "tag": "Vector Embeddings",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/rag/chroma.py",
+          "label": "ChromaEvidenceStore"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/api/evidence.py",
+          "label": "Semantic Search API"
+        }
+      ]
+    },
+    {
+      "id": "db_postgres",
+      "type": "database",
+      "label": "PostgreSQL DB",
+      "sublabel": "Supabase Pooler :6543 \u00b7 RLS",
+      "pos": [
+        1140,
+        540
+      ],
+      "size": [
+        180,
+        80
+      ],
+      "tag": "SQLAlchemy QueuePool",
+      "sources": [
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/db/session.py",
+          "label": "Database Engine"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/evidence.py",
+          "label": "Evidence Models"
+        },
+        {
+          "path": "skillpassport-powered-by-growthlens/backend/app/models/document.py",
+          "label": "Document Models"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client Presentation Layer (Next.js 16 - localhost:3001)",
+      "wraps": [
+        "fe_auth_app",
+        "fe_evidence",
+        "fe_ai_gov",
+        "fe_skills",
+        "fe_career",
+        "fe_passport",
+        "fe_public"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "FastAPI Domain Services (localhost:8001)",
+      "wraps": [
+        "be_auth_profile",
+        "be_evidence_ingest",
+        "be_ai_guard",
+        "be_skill_taxonomy",
+        "be_career_engine",
+        "be_sharing_api",
+        "be_public_proj"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Local AI Inference Boundary (Ollama :11434)",
+      "wraps": [
+        "ai_ocr",
+        "ai_embed",
+        "ai_ollama"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Durable State & Vector Stores",
+      "wraps": [
+        "storage_blobs",
+        "chroma_db",
+        "db_postgres"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-cand-auth",
+      "from": "candidate",
+      "to": "fe_auth_app",
+      "label": "signup / login",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        215,
+        130
+      ]
+    },
+    {
+      "id": "c-cand-ev",
+      "from": "candidate",
+      "to": "fe_evidence",
+      "label": "submit evidence",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        215,
+        230
+      ]
+    },
+    {
+      "id": "c-admin-gov",
+      "from": "admin_reviewer",
+      "to": "fe_ai_gov",
+      "label": "review queue",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        215,
+        410
+      ]
+    },
+    {
+      "id": "c-rec-public",
+      "from": "recruiter",
+      "to": "fe_public",
+      "label": "access token",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        215,
+        910
+      ]
+    },
+    {
+      "id": "c-fe-auth-be",
+      "from": "fe_auth_app",
+      "to": "be_auth_profile",
+      "label": "provision & session",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": 18
+    },
+    {
+      "id": "c-fe-ev-be",
+      "from": "fe_evidence",
+      "to": "be_evidence_ingest",
+      "label": "upload & ingest",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-fe-ai-be",
+      "from": "fe_ai_gov",
+      "to": "be_ai_guard",
+      "label": "audit & evaluation",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-fe-skills-be",
+      "from": "fe_skills",
+      "to": "be_skill_taxonomy",
+      "label": "taxonomy query",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-fe-career-be",
+      "from": "fe_career",
+      "to": "be_career_engine",
+      "label": "role gaps & roadmap",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-fe-pass-be",
+      "from": "fe_passport",
+      "to": "be_sharing_api",
+      "label": "save permissions",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-fe-pub-be",
+      "from": "fe_public",
+      "to": "be_public_proj",
+      "label": "fetch public passport",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-ingest-sources",
+      "from": "be_evidence_ingest",
+      "to": "ext_sources",
+      "label": "sync commits & issues",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [
+          800,
+          267
+        ],
+        [
+          800,
+          87
+        ]
+      ],
+      "labelAt": [
+        830,
+        48
+      ]
+    },
+    {
+      "id": "c-ingest-ocr",
+      "from": "be_evidence_ingest",
+      "to": "ai_ocr",
+      "label": "image OCR",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        835,
+        215
+      ]
+    },
+    {
+      "id": "c-ingest-embed",
+      "from": "be_evidence_ingest",
+      "to": "ai_embed",
+      "label": "embed chunks",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        835,
+        280
+      ]
+    },
+    {
+      "id": "c-embed-chroma",
+      "from": "ai_embed",
+      "to": "chroma_db",
+      "label": "dense vectors (768-dim)",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1085,
+        280
+      ]
+    },
+    {
+      "id": "c-ingest-blobs",
+      "from": "be_evidence_ingest",
+      "to": "storage_blobs",
+      "label": "persist files",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1116,
+        268
+      ]
+    },
+    {
+      "id": "c-rag-chroma",
+      "from": "be_ai_guard",
+      "to": "chroma_db",
+      "label": "query context (RAG)",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1085,
+        375
+      ]
+    },
+    {
+      "id": "c-guard-ollama",
+      "from": "be_ai_guard",
+      "to": "ai_ollama",
+      "label": "qwen3 extraction",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-auth-db",
+      "from": "be_auth_profile",
+      "to": "db_postgres",
+      "label": "users & profiles",
+      "fromSide": "top",
+      "toSide": "right",
+      "via": [
+        [
+          645,
+          30
+        ],
+        [
+          1360,
+          30
+        ],
+        [
+          1360,
+          580
+        ]
+      ],
+      "labelAt": [
+        1000,
+        20
+      ]
+    },
+    {
+      "id": "c-guard-db",
+      "from": "be_ai_guard",
+      "to": "db_postgres",
+      "label": "verified competencies",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1080,
+        560
+      ]
+    },
+    {
+      "id": "c-tax-db",
+      "from": "be_skill_taxonomy",
+      "to": "db_postgres",
+      "label": "competency taxonomy",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        920,
+        515
+      ]
+    },
+    {
+      "id": "c-career-db",
+      "from": "be_career_engine",
+      "to": "db_postgres",
+      "label": "job models & gaps",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -16
+    },
+    {
+      "id": "c-sharing-db",
+      "from": "be_sharing_api",
+      "to": "db_postgres",
+      "label": "share links & permissions",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "labelAt": [
+        950,
+        775
+      ]
+    },
+    {
+      "id": "c-proj-db",
+      "from": "be_public_proj",
+      "to": "db_postgres",
+      "label": "validate token & read",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "labelAt": [
+        950,
+        900
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Frontend Presentation Stack",
+      "items": [
+        "Next.js 16.3.6 (App Router & Turbopack) \u00b7 React 19.2.8 \u00b7 TypeScript 5.9.3",
+        "Tailwind CSS 4.3.3 (@tailwindcss/postcss) \u00b7 Lucide React 1.55.0 Vector Icons",
+        "@supabase/ssr 0.12.7 Cookie Auth \u00b7 @supabase/supabase-js 2.117.3 Client",
+        "Lottie Web 5.13.0 Animations \u00b7 Agentation 3.1.2 Visual Feedback Annotations"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Backend API & Services",
+      "items": [
+        "FastAPI 0.133.1 ASGI Framework \u00b7 Uvicorn 0.41.0 Worker Server",
+        "Pydantic 2.13.0 & pydantic-settings 2.13.1 Schema Validation",
+        "SQLAlchemy 2.0.51 ORM & QueuePool \u00b7 psycopg2-binary 2.9.11 Driver",
+        "HTTPX 0.28.1 Async Client \u00b7 PyJWT 2.11.0 \u00b7 Cryptography 46.0.7 Security"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Local AI Inference & Vector Tier",
+      "items": [
+        "Ollama Local Inference (:11434) \u00b7 qwen3:8b (8.2B Q4_K_M, num_ctx 8192)",
+        "ChromaDB 1.5.9 PersistentClient (backend/data/chroma_db, HNSW index)",
+        "nomic-embed-text (768-dim dense vector embeddings)",
+        "GLM-OCR Vision Engine (glm-ocr:latest 1.1B Vision model via Ollama endpoint)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Document Parsing & Storage",
+      "items": [
+        "PyMuPDF 1.25.5 (fitz) PDF parser \u00b7 python-docx 1.2.0 \u00b7 python-pptx 1.0.2",
+        "Trafilatura 2.3.1 Web Distillation \u00b7 BeautifulSoup4 4.15.0 \u00b7 Pillow 11.3.0",
+        "Supabase Storage S3 API \u00b7 Private Bucket 'evidence-originals'",
+        "Deterministic SHA-256 Deduplication & DocumentChunk Normalization"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Database, Migrations & Connectors",
+      "items": [
+        "Supabase Managed PostgreSQL \u00b7 Transaction Pooler :6543 (pooler.supabase.com)",
+        "Row-Level Security (RLS) \u00b7 Alembic 1.18.5 Relational Migrations",
+        "GitHub Cloud REST API v3 (commits, PRs, README) \u00b7 Jira Cloud REST API v3 (JQL)",
+        "Celery 5.6.3 & Redis 5.4.1 (Configured Background Task Pipeline)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security, Governance & Sharing",
+      "items": [
+        "Hallucination Guard & Prompt-Injection Sanitizer (backend/app/ai/guard.py)",
+        "Immutable Token Snapshots (share_links.permissions_json)",
+        "Public Recruiter Zero-Leakage Projection (/api/v1/sharing/public/:token)",
+        "Human-in-the-Loop Review Queue (human_review_tasks & audit logging)"
+      ]
+    }
+  ]
+}

@@ -116,6 +116,12 @@ export interface NormalizedJob {
   retrieved_at?: string;
   is_stale?: boolean;
   extracted_competencies?: any[];
+  extracted_requirements?: any[];
+  organization_id?: string | null;
+  recruiter_user_id?: string | null;
+  public_recruiter_name?: string | null;
+  public_recruiter_email?: string | null;
+  status?: string | null;
   match_summary?: {
     score: number;
     aligned_skills: string[];
@@ -145,7 +151,7 @@ export interface JobDiscoveryResponse {
 }
 
 export interface JobDiscoveryParams {
-  mode: "mode_a_skills" | "mode_b_role";
+  mode: "mode_a_skills" | "mode_b_role" | "mode_c_recruiter";
   query?: string;
   location?: string;
   country_code?: string;

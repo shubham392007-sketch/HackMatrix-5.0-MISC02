@@ -37,6 +37,11 @@ from backend.app.models.career import (
     RoleMatchSnapshotRecord,
     JobSearchCacheRecord,
 )
+from backend.app.models.recruiter import (
+    EmployerOrganization,
+    OrganizationMembership,
+    CandidateShareInvitation,
+)
 
 __all__ = [
     "Base",
@@ -80,4 +85,7 @@ __all__ = [
     "UserCustomSkill",
     "UserNotification",
     "UserPassportConfigRecord",
+    "EmployerOrganization",
+    "OrganizationMembership",
+    "CandidateShareInvitation",
 ]

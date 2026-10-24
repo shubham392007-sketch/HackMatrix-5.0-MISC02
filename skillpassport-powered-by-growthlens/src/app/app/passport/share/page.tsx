@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   Link2,
@@ -39,6 +39,11 @@ import { sharingApi } from "@/lib/sharingApi";
 
 export default function SharePassportWizardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledJobId = searchParams?.get("jobId");
+  const prefilledRecruiterEmail = searchParams?.get("recruiterEmail");
+  const prefilledJobTitle = searchParams?.get("jobTitle");
+
   const {
     skills,
     evidenceItems,
@@ -50,6 +55,18 @@ export default function SharePassportWizardPage() {
   const [step, setStep] = useState<number>(1);
   const [copied, setCopied] = useState<boolean>(false);
   const [createdShareId, setCreatedShareId] = useState<string | null>(null);
+
+  const [isDirectRecruiterShare, setIsDirectRecruiterShare] = useState<boolean>(
+    Boolean(prefilledRecruiterEmail || prefilledJobId)
+  );
+  const [targetRecruiterEmail, setTargetRecruiterEmail] = useState<string>(
+    prefilledRecruiterEmail || ""
+  );
+  const [targetJobId, setTargetJobId] = useState<string>(
+    prefilledJobId || ""
+  );
+  const [candidatePersonalMessage, setCandidatePersonalMessage] = useState<string>("");
+  const [invitationResult, setInvitationResult] = useState<any | null>(null);
   const [masterPassport, setMasterPassport] = useState<UserMasterPassport | null>(null);
   const [hasLoadedAuthoritative, setHasLoadedAuthoritative] = useState<boolean>(false);
 
@@ -295,7 +312,15 @@ export default function SharePassportWizardPage() {
         template_id: templateId,
         permissions: config,
         expiry_days: expiryDays,
-      });
+        recruiter_email: isDirectRecruiterShare && targetRecruiterEmail.trim() ? targetRecruiterEmail.trim() : undefined,
+        job_id: isDirectRecruiterShare && targetJobId ? targetJobId : undefined,
+        candidate_message: isDirectRecruiterShare && candidatePersonalMessage.trim() ? candidatePersonalMessage.trim() : undefined,
+      } as any);
+
+      if ((serverRecord as any).invitation) {
+        setInvitationResult((serverRecord as any).invitation);
+      }
+
       const effectiveShareId = serverRecord.shareId || (serverRecord as any).id;
       createShareRecord(label, { ...config, customLinkLabel: label });
       setCreatedShareId(effectiveShareId);
@@ -813,6 +838,60 @@ export default function SharePassportWizardPage() {
                 </ul>
               </div>
             </div>
+
+            {/* Targeted Recruiter Share Section */}
+            <div className="p-5 bg-sand/30 rounded-2xl border border-ink/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-[#E0533C]" />
+                    Direct Employer / Recruiter Targeting
+                  </span>
+                  <p className="text-[11px] text-ink-muted">
+                    Deliver this passport directly to an employer recruiter&apos;s dashboard and track hiring status.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isDirectRecruiterShare}
+                    onChange={(e) => setIsDirectRecruiterShare(e.target.checked)}
+                    className="w-4 h-4 rounded text-ink focus:ring-ink"
+                  />
+                  <span className="text-xs font-bold text-ink">Enable Direct Share</span>
+                </label>
+              </div>
+
+              {isDirectRecruiterShare && (
+                <div className="pt-3 border-t border-ink/10 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-ink mb-1">
+                      Recruiter Work Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={targetRecruiterEmail}
+                      onChange={(e) => setTargetRecruiterEmail(e.target.value)}
+                      placeholder="recruiter@company.com"
+                      className="w-full bg-white border border-ink/25 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-ink mb-1">
+                      Personal Message to the Hiring Team (Optional)
+                    </label>
+                    <textarea
+                      value={candidatePersonalMessage}
+                      onChange={(e) => setCandidatePersonalMessage(e.target.value)}
+                      rows={3}
+                      placeholder="Briefly introduce your verified proof and interest in the opening..."
+                      className="w-full bg-white border border-ink/25 rounded-xl p-3 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink font-sans"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="pt-4 border-t border-ink/10 flex items-center justify-between">
@@ -849,9 +928,32 @@ export default function SharePassportWizardPage() {
               Recruiter Link Generated Successfully!
             </h2>
             <p className="text-xs text-ink/70 leading-relaxed">
-              Your selective passport projection is now accessible via this demo link. You can revoke access at any time in Shared Access Management.
+              Your selective passport projection is now accessible via this link. You can revoke access at any time in Shared Access Management.
             </p>
           </div>
+
+          {/* Delivery Status Notice if targeted share was sent */}
+          {invitationResult && (
+            <div className={`p-4 rounded-2xl border text-xs max-w-2xl mx-auto space-y-1 ${
+              invitationResult.deliveryStatus === "delivered"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                : "bg-amber-50 border-amber-300 text-amber-950"
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                <CheckCircle className="w-4 h-4 text-emerald-700" />
+                <span>
+                  {invitationResult.deliveryStatus === "delivered"
+                    ? "Delivered Directly to Recruiter Dashboard!"
+                    : "Targeted Recruiter Share Initialized"}
+                </span>
+              </div>
+              <p className="leading-relaxed">
+                {invitationResult.deliveryStatus === "delivered"
+                  ? `Delivered to ${invitationResult.recruiterEmail}. The recruiter has received a real-time notification on their employer dashboard and can review your verified credentials directly.`
+                  : `${invitationResult.recruiterEmail} is not yet registered as an active employer on Skill Passport. You can copy the secure link below to send to them directly. Once registered, this submission will appear in their candidate pipeline.`}
+              </p>
+            </div>
+          )}
 
           {/* URL Box */}
           <div className="p-4 bg-paper rounded-2xl border-2 border-ink shadow-sm space-y-2 max-w-2xl mx-auto">

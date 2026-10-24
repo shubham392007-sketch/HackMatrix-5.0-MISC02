@@ -180,19 +180,101 @@ class JobSearchOrchestrator:
         self,
         db: Session,
         user_id: uuid.UUID,
-        mode: str,  # "mode_a_skills" or "mode_b_role"
+        mode: str,  # "mode_a_skills", "mode_b_role", or "mode_c_recruiter"
         query: Optional[str] = None,
         location: Optional[str] = None,
         remote_only: bool = False,
         limit: int = 10,
     ) -> Dict[str, Any]:
         """
-        Main entry point for cost-aware job discovery.
+        Main entry point for cost-aware job discovery across Mode A, Mode B, and Mode C.
         """
         influencing_skills: List[str] = []
         bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 10)
+        now = datetime.now(timezone.utc)
 
-        # 1. Determine effective search query
+        # ----------------------------------------------------------------------
+        # MODE C: Recruiter-Published Openings (Internal Verified Platform Jobs)
+        # ----------------------------------------------------------------------
+        if mode == "mode_c_recruiter":
+            search_query = (query or "").strip()
+            q = db.query(JobPostingRecord).filter(
+                JobPostingRecord.status == "published",
+                JobPostingRecord.provider == "recruiter_portal",
+            )
+            if search_query:
+                q = q.filter(
+                    (JobPostingRecord.title.ilike(f"%{search_query}%"))
+                    | (JobPostingRecord.description.ilike(f"%{search_query}%"))
+                    | (JobPostingRecord.company_name.ilike(f"%{search_query}%"))
+                )
+            if location:
+                q = q.filter(JobPostingRecord.location_text.ilike(f"%{location.strip()}%"))
+            if remote_only:
+                q = q.filter(JobPostingRecord.remote_status.in_(["remote", "hybrid"]))
+
+            postings = (
+                q.order_by(desc(JobPostingRecord.posted_at), desc(JobPostingRecord.created_at))
+                .limit(bounded_limit)
+                .all()
+            )
+
+            job_results = [
+                JobSearchResult(
+                    id=f"job-{p.id}",
+                    provider=p.provider,
+                    provider_job_id=p.provider_job_id,
+                    canonical_dedupe_key=p.canonical_dedupe_key,
+                    title=p.title,
+                    company_name=p.company_name,
+                    company_domain=p.company_domain,
+                    location_text=p.location_text,
+                    remote_status=p.remote_status,
+                    employment_type=p.employment_type,
+                    seniority=p.seniority,
+                    salary_min=p.salary_min,
+                    salary_max=p.salary_max,
+                    salary_currency=p.salary_currency,
+                    salary_period=p.salary_period,
+                    description=p.description,
+                    job_url=p.job_url,
+                    apply_url=p.apply_url,
+                    posted_at=p.posted_at.isoformat() if p.posted_at else None,
+                    retrieved_at=p.retrieved_at.isoformat() if p.retrieved_at else now.isoformat(),
+                    organization_id=str(p.organization_id) if p.organization_id else None,
+                    recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                    public_recruiter_name=p.public_recruiter_name,
+                    public_recruiter_email=p.public_recruiter_email,
+                    raw_metadata=p.raw_source_metadata or {},
+                    extracted_requirements=p.extracted_requirements or [],
+                )
+                for p in postings
+            ]
+
+            return {
+                "status": "success",
+                "mode": mode,
+                "query": search_query,
+                "location": location,
+                "remote_only": remote_only,
+                "influencing_skills": [],
+                "provider_used": "recruiter_portal",
+                "from_cache": False,
+                "is_stale": False,
+                "total_results": len(job_results),
+                "total_returned": len(job_results),
+                "retrieved_at": now.isoformat(),
+                "notice": (
+                    "Displaying verified employer job postings published directly on Skill Passport."
+                    if job_results
+                    else "No recruiter-published openings match your search criteria yet. Verified employers can post openings directly."
+                ),
+                "jobs": [j.model_dump() for j in job_results],
+            }
+
+        # ----------------------------------------------------------------------
+        # MODE A & B: Query Determination
+        # ----------------------------------------------------------------------
         if mode == "mode_a_skills":
             influencing_skills = self.extract_influencing_skills_for_user(db, user_id)
             if query and query.strip():
@@ -210,7 +292,6 @@ class JobSearchOrchestrator:
         cache_key = self._generate_cache_key(mode, search_query, location, remote_only)
 
         # 2. Check Database Cache
-        now = datetime.now(timezone.utc)
         cached_entry = None
         try:
             cached_entry = db.query(JobSearchCacheRecord).filter(JobSearchCacheRecord.cache_key == cache_key).first()
@@ -243,6 +324,10 @@ class JobSearchOrchestrator:
                     apply_url=p.apply_url,
                     posted_at=p.posted_at.isoformat() if p.posted_at else None,
                     retrieved_at=p.retrieved_at.isoformat(),
+                    organization_id=str(p.organization_id) if p.organization_id else None,
+                    recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                    public_recruiter_name=p.public_recruiter_name,
+                    public_recruiter_email=p.public_recruiter_email,
                     raw_metadata=p.raw_source_metadata or {},
                     extracted_requirements=p.extracted_requirements or [],
                 )
@@ -323,8 +408,6 @@ class JobSearchOrchestrator:
                 raw_results = res
                 provider_used_name = curr_name
                 logger.info(f"Provider '{curr_name}' returned {len(res)} jobs.")
-                # Primary provider executed successfully (HTTP 200).
-                # Do not cascade to unsubscribed secondary providers.
                 break
             except ProviderException as p_err:
                 last_error = p_err
@@ -374,6 +457,10 @@ class JobSearchOrchestrator:
                         apply_url=p.apply_url,
                         posted_at=p.posted_at.isoformat() if p.posted_at else None,
                         retrieved_at=p.retrieved_at.isoformat(),
+                        organization_id=str(p.organization_id) if p.organization_id else None,
+                        recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                        public_recruiter_name=p.public_recruiter_name,
+                        public_recruiter_email=p.public_recruiter_email,
                         raw_metadata=p.raw_source_metadata or {},
                         extracted_requirements=p.extracted_requirements or [],
                     )
@@ -438,6 +525,10 @@ class JobSearchOrchestrator:
                     apply_url=res.apply_url,
                     posted_at=datetime.fromisoformat(res.posted_at) if res.posted_at else None,
                     retrieved_at=datetime.fromisoformat(res.retrieved_at),
+                    organization_id=uuid.UUID(res.organization_id) if res.organization_id else None,
+                    recruiter_user_id=uuid.UUID(res.recruiter_user_id) if res.recruiter_user_id else None,
+                    public_recruiter_name=res.public_recruiter_name,
+                    public_recruiter_email=res.public_recruiter_email,
                     raw_source_metadata=res.raw_metadata,
                     extracted_requirements=res.extracted_requirements,
                     content_hash=hashlib.sha256((res.description or res.title).encode()).hexdigest(),

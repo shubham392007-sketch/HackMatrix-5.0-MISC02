@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SkillPassport System Architecture",
+    "output": "skillpassport.html",
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "candidate-flow",
+        "label": "Candidate Evidence Flow",
+        "focus": ["candidate", "frontend", "backend", "ollama", "postgres"],
+        "note": "Candidate connects Jira/GitHub repositories, backend runs skill extraction via Ollama, and persists verified competencies into PostgreSQL."
+      },
+      {
+        "id": "recruiter-flow",
+        "label": "Recruiter Verification Flow",
+        "focus": ["recruiter", "frontend", "backend", "postgres"],
+        "note": "Recruiter accesses verified passport via public share token, inspecting verified competencies and selective workplace evidence."
+      }
+    ]
+  },
+  "components": [
+    { "id": "candidate", "type": "external", "label": "Candidate", "sublabel": "Web Browser", "pos": [30, 140], "size": [110, 50] },
+    { "id": "recruiter", "type": "external", "label": "Recruiter", "sublabel": "Public Link", "pos": [30, 300], "size": [110, 50] },
+    { "id": "frontend", "type": "frontend", "label": "Next.js UI", "sublabel": "localhost:3001", "pos": [230, 220], "size": [130, 54] },
+    { "id": "backend", "type": "backend", "label": "FastAPI Core", "sublabel": "localhost:8001", "pos": [440, 220], "size": [140, 54] },
+    { "id": "ollama", "type": "cloud", "label": "Ollama LLM", "sublabel": "qwen2.5:7b-instruct", "pos": [440, 70], "size": [140, 50], "tag": "Intelligence" },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "Supabase Storage", "pos": [680, 220], "size": [140, 54], "tag": "RLS Enabled" },
+    { "id": "vcs", "type": "external", "label": "Workplace Sources", "sublabel": "Jira & GitHub", "pos": [680, 70], "size": [140, 50] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "SkillPassport Platform", "wraps": ["frontend", "backend", "ollama", "postgres"] }
+  ],
+  "connections": [
+    { "id": "cand-to-fe", "from": "candidate", "to": "frontend", "label": "configure sharing", "variant": "emphasis", "labelAt": [170, 130] },
+    { "id": "rec-to-fe", "from": "recruiter", "to": "frontend", "label": "view passport", "labelAt": [170, 290] },
+    { "id": "fe-to-be", "from": "frontend", "to": "backend", "label": "REST API", "variant": "emphasis", "labelDy": -19 },
+    { "id": "be-to-ollama", "from": "backend", "to": "ollama", "label": "skill extraction", "fromSide": "top", "toSide": "bottom", "labelDy": -15 },
+    { "id": "be-to-db", "from": "backend", "to": "postgres", "label": "read / write", "variant": "emphasis", "labelDy": 19 },
+    { "id": "be-to-vcs", "from": "backend", "to": "vcs", "label": "ingest evidence", "fromSide": "right", "toSide": "bottom", "labelDy": -15 }
+  ]
+}

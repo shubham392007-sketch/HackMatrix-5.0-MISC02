@@ -134,6 +134,16 @@ export const sharingApi = {
           expiry_days: (payload as any).expiryDays,
         };
 
+    if ((payload as any).recruiter_email || (payload as any).recruiterEmail) {
+      formatted.recruiter_email = (payload as any).recruiter_email || (payload as any).recruiterEmail;
+    }
+    if ((payload as any).job_id || (payload as any).jobId) {
+      formatted.job_id = (payload as any).job_id || (payload as any).jobId;
+    }
+    if ((payload as any).candidate_message || (payload as any).candidateMessage) {
+      formatted.candidate_message = (payload as any).candidate_message || (payload as any).candidateMessage;
+    }
+
     if (typeof window !== "undefined") {
       try {
         const cachedMaster = localStorage.getItem("sp_master_passport_cache");

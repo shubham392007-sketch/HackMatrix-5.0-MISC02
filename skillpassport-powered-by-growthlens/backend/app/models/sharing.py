@@ -59,8 +59,9 @@ class UserCustomSkill(Base, TimestampMixin):
 
 class RecruiterMessage(Base, TimestampMixin):
     """
-    Persistent message sent by a recruiter viewing an active shared passport.
-    Delivered directly to candidate's dashboard notifications and message inbox.
+    Persistent message sent by a recruiter viewing an active shared passport,
+    or two-way communication between candidate and recruiter.
+    Delivered directly to dashboard notifications and message inbox.
     """
     __tablename__ = "recruiter_messages"
 
@@ -68,6 +69,10 @@ class RecruiterMessage(Base, TimestampMixin):
     recipient_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     share_link_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("share_links.id", ondelete="CASCADE"), nullable=False, index=True)
     
+    # Optional sender recruiter reference and job association
+    sender_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    job_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
     sender_email: Mapped[str] = mapped_column(String(255), nullable=False)
     company: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -80,6 +85,11 @@ class RecruiterMessage(Base, TimestampMixin):
     replied_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     share_link = relationship("ShareLinkRecord", back_populates="messages")
+
+    __table_args__ = (
+        Index("idx_recruiter_messages_sender", "sender_user_id"),
+        Index("idx_recruiter_messages_recipient", "recipient_user_id"),
+    )
 
 
 class ShareAccessEvent(Base, TimestampMixin):
@@ -116,7 +126,7 @@ class UserNotification(Base, TimestampMixin):
     related_domain: Mapped[str] = mapped_column(String(100), default="Domain 6: Sharing & Recruiter", nullable=False)
     action_route: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     action_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g. "recruiter_message"
+    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g. "recruiter_message", "shared_passport"
     entity_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
 
@@ -145,5 +155,3 @@ class UserPassportConfigRecord(Base, TimestampMixin):
     achievements: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     custom_sections: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     sharing_permissions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
-
-

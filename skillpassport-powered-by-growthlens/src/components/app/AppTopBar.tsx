@@ -25,6 +25,7 @@ import {
   XCircle,
   X,
   Compass,
+  Briefcase,
 } from "lucide-react";
 
 export interface BreadcrumbItem {
@@ -600,6 +601,14 @@ export default function AppTopBar({
                 >
                   <Settings className="w-3.5 h-3.5 text-[#1A1918]/60" />
                   <span>Preferences & Settings</span>
+                </Link>
+                <Link
+                  href="/recruiter/dashboard"
+                  onClick={() => setIsProfileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#E0533C] hover:bg-[#E0533C]/10 font-bold transition-colors"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Recruiter Workspace &rarr;</span>
                 </Link>
               </div>
 

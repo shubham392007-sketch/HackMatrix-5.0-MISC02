@@ -13,7 +13,8 @@ from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.models.user_profile import UserProfile
 from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMapping
 from backend.app.models.evidence import EvidenceItem
-from backend.app.models.career import UserTargetRoleRecord, RoleMatchSnapshotRecord
+from backend.app.models.career import UserTargetRoleRecord, RoleMatchSnapshotRecord, JobPostingRecord
+from backend.app.models.recruiter import CandidateShareInvitation, OrganizationMembership
 from backend.app.models.sharing import (
     ShareLinkRecord,
     UserCustomSkill,
@@ -193,6 +194,9 @@ class DraftPreviewRequest(BaseModel):
     label: Optional[str] = Field(default="Draft Preview")
     template_id: Optional[str] = Field(default="classic")
     permissions: Optional[Dict[str, Any]] = None
+    recruiter_email: Optional[str] = None
+    job_id: Optional[str] = None
+    candidate_message: Optional[str] = None
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> Any:
@@ -991,8 +995,9 @@ def create_share_link(
         except (ValueError, TypeError):
             pass
     label_str = payload.label.strip() if (payload and payload.label) else "Shared Passport"
+    user_uuid = uuid.UUID(str(user_id))
     link = ShareLinkRecord(
-        owner_user_id=user_id,
+        owner_user_id=user_uuid,
         token=token,
         label=label_str,
         template_id=template_id,
@@ -1004,6 +1009,102 @@ def create_share_link(
     db.add(link)
     db.commit()
     db.refresh(link)
+
+    # Check for targeted recruiter share
+    recruiter_email = getattr(payload, "recruiter_email", None)
+    if not recruiter_email and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        recruiter_email = payload.permissions.get("recruiter_email") or payload.permissions.get("recruiterEmail")
+    
+    target_job_id = getattr(payload, "job_id", None)
+    if not target_job_id and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        target_job_id = payload.permissions.get("job_id") or payload.permissions.get("jobId")
+
+    cand_message = getattr(payload, "candidate_message", None)
+    if not cand_message and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        cand_message = payload.permissions.get("candidate_message") or payload.permissions.get("candidateMessage")
+
+    invitation_result = None
+    if recruiter_email and recruiter_email.strip():
+        norm_email = recruiter_email.strip().lower()
+        # Resolve recipient recruiter membership
+        membership = db.query(OrganizationMembership).filter(
+            (func.lower(OrganizationMembership.public_contact_email) == norm_email)
+            | (OrganizationMembership.user_id.in_(
+                db.query(UserProfile.id).filter(func.lower(UserProfile.email) == norm_email)
+            ))
+        ).filter(OrganizationMembership.status == "active").first()
+
+        recruiter_uid = membership.user_id if membership else None
+        org_id = membership.organization_id if membership else None
+        deliv_status = "delivered" if membership else "pending_account"
+
+        # Resolve job_id
+        parsed_job_uuid = None
+        if target_job_id:
+            try:
+                parsed_job_uuid = uuid.UUID(str(target_job_id).replace("job-", ""))
+            except (ValueError, TypeError):
+                pass
+
+        inv = CandidateShareInvitation(
+            share_link_id=link.id,
+            candidate_user_id=uuid.UUID(str(user_id)),
+            recruiter_email=norm_email,
+            recruiter_user_id=recruiter_uid,
+            organization_id=org_id,
+            job_id=parsed_job_uuid,
+            candidate_message=cand_message.strip() if cand_message else None,
+            delivery_status=deliv_status,
+            pipeline_status="new",
+        )
+        db.add(inv)
+        db.flush()
+
+        cand_profile = db.query(UserProfile).filter(UserProfile.id == user_uuid).first()
+        cand_name = cand_profile.display_name if cand_profile and cand_profile.display_name else "A candidate"
+        cand_email = cand_profile.email if cand_profile and cand_profile.email else getattr(user, "email", "candidate@skillpassport.io")
+
+        # Create initial candidate message record if message provided
+        if cand_message and cand_message.strip():
+            recip_uid = recruiter_uid if recruiter_uid else uuid.UUID("00000000-0000-0000-0000-000000000000")
+            init_msg = RecruiterMessage(
+                recipient_user_id=recip_uid,
+                share_link_id=link.id,
+                sender_user_id=user_uuid,
+                job_id=parsed_job_uuid,
+                sender_name=cand_name,
+                sender_email=cand_email,
+                role_title="Candidate",
+                subject="Skill Passport Application",
+                message_body=cand_message.strip(),
+                is_read=False,
+            )
+            db.add(init_msg)
+
+        # If delivered, create notification for recruiter
+        if deliv_status == "delivered" and recruiter_uid:
+            notif = UserNotification(
+                user_id=recruiter_uid,
+                category="candidate_share",
+                severity="info",
+                title="New Skill Passport Shared",
+                description=f"{cand_name} shared their verified Skill Passport with you.",
+                action_route=f"/recruiter/candidates/{inv.id}",
+                action_label="Review Candidate",
+                entity_type="candidate_share_invitation",
+                entity_id=str(inv.id),
+                read=False,
+            )
+            db.add(notif)
+
+        invitation_result = {
+            "invitationId": str(inv.id),
+            "recruiterEmail": norm_email,
+            "deliveryStatus": deliv_status,
+            "recipientFound": bool(membership),
+            "jobId": str(parsed_job_uuid) if parsed_job_uuid else None,
+        }
+
     # Record creation event
     event = ShareAccessEvent(
         share_link_id=link.id,
@@ -1023,6 +1124,7 @@ def create_share_link(
         "expiresAt": link.expires_at.isoformat() if link.expires_at else None,
         "accessCount": 0,
         "permissions": link.permissions_json,
+        "invitation": invitation_result,
     }
 
 def _find_user_share_link(link_identifier: str, user_id: uuid.UUID, db: Session) -> Optional[ShareLinkRecord]:
@@ -1817,9 +1919,10 @@ def mark_recruiter_message_read(
     """Toggle read status of a recruiter message and sync linked notification."""
     if not _is_valid_uuid(message_id):
         raise HTTPException(status_code=400, detail="Invalid message UUID format")
+    u_uuid = uuid.UUID(str(user.id)) if not isinstance(user.id, uuid.UUID) else user.id
     msg = db.query(RecruiterMessage).filter(
         RecruiterMessage.id == uuid.UUID(message_id),
-        RecruiterMessage.recipient_user_id == user.id,
+        RecruiterMessage.recipient_user_id == u_uuid,
     ).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Recruiter message not found")
@@ -1837,6 +1940,69 @@ def mark_recruiter_message_read(
     db.commit()
     return {"id": str(msg.id), "isRead": msg.is_read}
 
+
+
+class CandidateReplyRequest(BaseModel):
+    reply_body: str = Field(..., min_length=2)
+
+
+@router.post("/messages/{message_id}/reply")
+def reply_to_recruiter_message(
+    message_id: str,
+    payload: CandidateReplyRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Allows candidate to reply to an in-app message received from a recruiter."""
+    if not _is_valid_uuid(message_id):
+        raise HTTPException(status_code=400, detail="Invalid message UUID format")
+
+    cand_id = uuid.UUID(str(user.id)) if isinstance(user.id, (str, uuid.UUID)) else user.id
+    msg = db.query(RecruiterMessage).filter(
+        RecruiterMessage.id == uuid.UUID(message_id),
+        RecruiterMessage.recipient_user_id == cand_id,
+    ).first()
+
+    if not msg:
+        raise HTTPException(status_code=404, detail="Recruiter message not found.")
+
+    now = datetime.now(timezone.utc)
+    msg.reply_body = payload.reply_body.strip()
+    msg.replied_at = now
+
+    # Deliver persistent notification to sender recruiter if known
+    if msg.sender_user_id:
+        recruiter_uid = uuid.UUID(str(msg.sender_user_id)) if isinstance(msg.sender_user_id, (str, uuid.UUID)) else msg.sender_user_id
+        cand_prof = db.query(UserProfile).filter(UserProfile.id == cand_id).first()
+        cand_name = cand_prof.display_name if cand_prof and cand_prof.display_name else "Candidate"
+        rec_notif = UserNotification(
+            user_id=recruiter_uid,
+            category="candidate_reply",
+            severity="info",
+            title=f"Reply from {cand_name}",
+            description=payload.reply_body.strip()[:140],
+            action_route="/recruiter/inbox",
+            action_label="Open Inbox",
+            entity_type="recruiter_message",
+            entity_id=str(msg.id),
+            read=False,
+        )
+        db.add(rec_notif)
+
+    event = ShareAccessEvent(
+        share_link_id=msg.share_link_id,
+        action="candidate_replied",
+        details=f"Candidate replied to recruiter message '{msg.subject}'.",
+    )
+    db.add(event)
+    db.commit()
+
+    return {
+        "success": True,
+        "messageId": str(msg.id),
+        "replyBody": msg.reply_body,
+        "repliedAt": msg.replied_at.isoformat(),
+    }
 
 # ==============================================================================
 # PERSISTENT IN-APP NOTIFICATIONS (SUPABASE POSTGRESQL + REALTIME)
