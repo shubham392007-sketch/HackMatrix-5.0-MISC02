@@ -62,6 +62,8 @@ class JobSearchResult(BaseModel):
     retrieved_at: str
     raw_metadata: Dict[str, Any] = Field(default_factory=dict)
     extracted_requirements: List[Dict[str, Any]] = Field(default_factory=list)
+    local_relevance_score: Optional[float] = None
+    relevance_reasons: Optional[List[str]] = None
 
 
 def generate_canonical_dedupe_key(title: str, company: str, location: Optional[str]) -> str:
@@ -106,5 +108,7 @@ class BaseJobSearchAdapter(ABC):
         location: Optional[str] = None,
         remote_only: bool = False,
         limit: int = 10,
+        role_families: Optional[List[str]] = None,
+        **kwargs,
     ) -> List[JobSearchResult]:
         pass

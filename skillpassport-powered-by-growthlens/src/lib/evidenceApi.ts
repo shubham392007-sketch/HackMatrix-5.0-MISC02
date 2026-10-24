@@ -6,7 +6,7 @@
 import { supabase } from "@/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
+const API_BASE = typeof window !== "undefined" ? "/api/v1" : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
@@ -31,7 +31,12 @@ async function getAuthHeaders(): Promise<HeadersInit> {
       };
     }
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    let token = data.session?.access_token;
+    if (!token && process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+      if (sessionStorage.getItem("sp_session_auth") === "true" || localStorage.getItem("sp_dev_auth") === "true") {
+        token = "sp_demo_vernit";
+      }
+    }
     if (token) {
       cachedToken = token;
       const expiresAt = data.session?.expires_at ? data.session.expires_at * 1000 : now + 60000;
@@ -1071,5 +1076,590 @@ export async function listPassportHistory(): Promise<{
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/passport/history`, { headers });
   if (!res.ok) throw new Error("Failed to load passport history");
+  return res.json();
+}
+
+// ==============================================================================
+// DOMAIN 5: LEARN & GROW ENGINE API CLIENT
+// ==============================================================================
+
+export async function getLearningPriorities(): Promise<{
+  user_id: string;
+  count: number;
+  confidence_review_threshold: number;
+  priorities: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/priorities`, { headers });
+  if (!res.ok) throw new Error("Failed to load learning priorities");
+  return res.json();
+}
+
+export async function refreshCareerGaps(): Promise<{
+  status: string;
+  refreshed_at: string;
+  count: number;
+  priorities: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/refresh-gaps`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to refresh career gaps");
+  return res.json();
+}
+
+export async function listDomainBlueprints(): Promise<{ blueprints: any[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints`, { headers });
+  if (!res.ok) throw new Error("Failed to load domain blueprints");
+  return res.json();
+}
+
+export async function getDomainBlueprint(domainId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}`, { headers });
+  if (!res.ok) throw new Error(`Failed to load blueprint for domain ${domainId}`);
+  return res.json();
+}
+
+export async function getDiagnosticQuestions(domainId: string): Promise<{
+  domain_id: string;
+  total_questions: number;
+  questions: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}/diagnostic`, { headers });
+  if (!res.ok) throw new Error(`Failed to load diagnostic questions for ${domainId}`);
+  return res.json();
+}
+
+export async function submitDiagnostic(
+  domainId: string,
+  answers: Record<string, number>
+): Promise<{
+  attempt_id: string;
+  domain_id: string;
+  overall_score: number;
+  passed: boolean;
+  recommended_focus: string[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/blueprints/${domainId}/diagnostic/submit`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  });
+  if (!res.ok) throw new Error("Diagnostic submission failed");
+  return res.json();
+}
+
+export async function searchCuratedResources(
+  query: string,
+  skillId?: string,
+  level: string = "intermediate",
+  limit: number = 5
+): Promise<{
+  query: string;
+  count: number;
+  provider_statuses: Record<string, string>;
+  resources: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams({ query, level, limit: String(limit) });
+  if (skillId) params.append("skill_id", skillId);
+
+  const res = await fetchWithDedupe(`${API_BASE}/learning/resources/search?${params.toString()}`, { headers });
+  if (!res.ok) throw new Error("Resource search failed");
+  return res.json();
+}
+
+export async function getLearningResourceById(resourceId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/resources/${resourceId}`, { headers });
+  if (!res.ok) throw new Error(`Resource ${resourceId} not found`);
+  return res.json();
+}
+
+export async function generateBackendRoadmap(
+  domainIdOrOptions: string | {
+    domain_id?: string;
+    target_role_id?: string;
+    skill_gap_id?: string;
+    skill_id?: string;
+    step_count?: number;
+    force_regenerate?: boolean;
+  } = "dist-sys",
+  targetRoleId?: string,
+  stepCount: number = 4
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  let payload: Record<string, any>;
+  if (typeof domainIdOrOptions === "object" && domainIdOrOptions !== null) {
+    payload = {
+      domain_id: domainIdOrOptions.domain_id,
+      target_role_id: domainIdOrOptions.target_role_id,
+      skill_gap_id: domainIdOrOptions.skill_gap_id,
+      skill_id: domainIdOrOptions.skill_id,
+      step_count: domainIdOrOptions.step_count || 4,
+      force_regenerate: Boolean(domainIdOrOptions.force_regenerate),
+    };
+  } else {
+    payload = {
+      domain_id: domainIdOrOptions,
+      target_role_id: targetRoleId,
+      step_count: stepCount,
+    };
+  }
+
+  const res = await fetch(`${API_BASE}/learning/roadmaps/generate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate personalized roadmap");
+  }
+  return res.json();
+}
+
+export const generatePersonalizedRoadmap = generateBackendRoadmap;
+
+export async function listUserRoadmaps(): Promise<{ user_id: string; roadmaps: any[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/roadmaps`, { headers });
+  if (!res.ok) throw new Error("Failed to load user roadmaps");
+  return res.json();
+}
+
+export async function getRoadmapByPathId(pathId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/roadmaps/${pathId}`, { headers });
+  if (!res.ok) throw new Error(`Failed to load roadmap ${pathId}`);
+  return res.json();
+}
+
+export async function submitLearningAttempt(payload: {
+  step_id: string;
+  roadmap_id?: string;
+  attempt_type: string;
+  activity_id: string;
+  score: number;
+  signals?: Record<string, number>;
+}): Promise<{
+  attempt_id: string;
+  step_id: string;
+  score: number;
+  passed: boolean;
+  computed_mastery: number;
+  step_updated: boolean;
+  governance_note: string;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/attempts`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Attempt recording failed");
+  return res.json();
+}
+
+export async function getLearningMasteryTelemetry(): Promise<{
+  user_id: string;
+  average_mastery: number;
+  snapshot_count: number;
+  recent_snapshots: any[];
+  recent_attempts: any[];
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/mastery`, { headers });
+  if (!res.ok) throw new Error("Failed to load mastery telemetry");
+  return res.json();
+}
+
+export async function getLearningOverview(): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(`${API_BASE}/learning/overview`, { headers });
+  if (!res.ok) throw new Error("Failed to load learning overview");
+  return res.json();
+}
+
+export async function generateBackendAssessment(payload: {
+  skill_id: string;
+  skill_name?: string;
+  roadmap_id?: string;
+  step_id?: string;
+  learning_objective?: string;
+  difficulty?: string;
+  force_regenerate?: boolean;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/assessments/generate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to generate assessment (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getBackendAssessment(assessmentId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(
+    `${API_BASE}/learning/assessments/${encodeURIComponent(assessmentId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Assessment ${assessmentId} not found (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function submitBackendAssessment(
+  assessmentId: string,
+  answers: Record<string, number>
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_BASE}/learning/assessments/${encodeURIComponent(assessmentId)}/submit`,
+    {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Assessment submission failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getLearningStep(stepId: string, roadmapId?: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const url = roadmapId
+    ? `${API_BASE}/learning/steps/${encodeURIComponent(stepId)}?roadmap_id=${encodeURIComponent(roadmapId)}`
+    : `${API_BASE}/learning/steps/${encodeURIComponent(stepId)}`;
+  const res = await fetchWithDedupe(url, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Step ${stepId} not found (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function ensureLearningStep(payload: {
+  topic_id: string;
+  domain_id?: string;
+  roadmap_id?: string;
+  target_role_id?: string;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/ensure`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to ensure learning step (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getLearningStepPacket(
+  stepId: string,
+  roadmapId?: string,
+  regenerate?: boolean
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams();
+  if (roadmapId) params.set("roadmap_id", roadmapId);
+  if (regenerate) params.set("regenerate", "true");
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  const url = `${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/packet${qs}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Step packet ${stepId} not found (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function validatePracticeCode(payload: {
+  exercise_id: string;
+  code: string;
+  language?: string;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/practice/validate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Practice validation failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export const submitMiniProjectApi = submitProjectToBackend;
+
+export async function submitProjectToBackend(payload: {
+  project_id: string;
+  github_repo_url: string;
+  summary_notes?: string;
+  step_id?: string;
+  roadmap_id?: string;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/projects/submit`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Project submission failed (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getProjectSubmission(projectId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(
+    `${API_BASE}/learning/projects/submissions/${encodeURIComponent(projectId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to fetch project submission (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function listMiniProjects(params?: {
+  domain_id?: string;
+  gap_id?: string;
+  roadmap_id?: string;
+}): Promise<{ domain_id?: string; count: number; projects: any[] }> {
+  const headers = await getAuthHeaders();
+  const searchParams = new URLSearchParams();
+  if (params?.domain_id) searchParams.set("domain_id", params.domain_id);
+  if (params?.gap_id) searchParams.set("gap_id", params.gap_id);
+  if (params?.roadmap_id) searchParams.set("roadmap_id", params.roadmap_id);
+
+  const queryStr = searchParams.toString();
+  const url = `${API_BASE}/learning/projects${queryStr ? `?${queryStr}` : ""}`;
+  const res = await fetchWithDedupe(url, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to list mini-projects (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function generateMiniProjects(payload: {
+  domain_id: string;
+  domain_title?: string;
+  skill_id?: string;
+  skill_name?: string;
+  gap_id?: string;
+  target_role_id?: string;
+  roadmap_id?: string;
+  count?: number;
+  force_regenerate?: boolean;
+}): Promise<{ status: string; count: number; domain_id: string; projects: any[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/projects/generate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to generate mini-projects (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getMiniProjectDetail(projectId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetchWithDedupe(
+    `${API_BASE}/learning/projects/${encodeURIComponent(projectId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to load project details (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 9 — Evidence Provenance APIs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getSkillGapProvenance(
+  skillId: string,
+  roleId?: string,
+  gapId?: string,
+  forceRefresh: boolean = false
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams();
+  if (roleId) params.append("role_id", roleId);
+  if (gapId) params.append("gap_id", gapId);
+  if (forceRefresh) params.append("force_refresh", "true");
+
+  const queryStr = params.toString() ? `?${params.toString()}` : "";
+  const url = `${API_BASE}/learning/assessments/provenance/${encodeURIComponent(skillId)}${queryStr}`;
+
+  // Use standard fetch if forceRefresh is true to avoid cached promise
+  const fetcher = forceRefresh ? fetch : fetchWithDedupe;
+  const res = await fetcher(url, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to fetch skill provenance (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function evaluateSkillGapProvenance(payload: {
+  skill_id: string;
+  target_role_id?: string;
+  gap_id?: string;
+  force_refresh?: boolean;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/assessments/provenance/evaluate`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to evaluate skill provenance (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 12 — Learning Progress & History APIs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function markStepComplete(
+  stepId: string,
+  payload?: { roadmap_id?: string; notes?: string }
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/complete`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to mark step complete (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function getLearningHistory(params?: {
+  limit?: number;
+  offset?: number;
+  domain_id?: string;
+  activity_type?: string;
+  roadmap_id?: string;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.append("limit", String(params.limit));
+  if (params?.offset) searchParams.append("offset", String(params.offset));
+  if (params?.domain_id) searchParams.append("domain_id", params.domain_id);
+  if (params?.activity_type) searchParams.append("activity_type", params.activity_type);
+  if (params?.roadmap_id) searchParams.append("roadmap_id", params.roadmap_id);
+
+  const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const res = await fetch(`${API_BASE}/learning/history${queryStr}`, {
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to fetch learning history (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function recordLearningActivity(payload: {
+  activity_type: string;
+  title: string;
+  detail?: string;
+  roadmap_id?: string;
+  step_id?: string;
+  domain_id?: string;
+  skill_id?: string;
+  target_role_id?: string;
+  resource_id?: string;
+  assessment_id?: string;
+  project_id?: string;
+  score?: number;
+  link_route?: string;
+  activity_status?: string;
+  activity_metadata?: Record<string, any>;
+}): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/history/record`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to record learning activity (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
 }

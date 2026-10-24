@@ -9,6 +9,7 @@ from backend.app.api.profile import router as profile_router
 from backend.app.api.ai import router as ai_router
 from backend.app.api.passport import router as passport_router
 from backend.app.api.career import router as career_router
+from backend.app.learning.router import router as learning_router
 
 api_router = APIRouter()
 
@@ -41,3 +42,6 @@ api_router.include_router(passport_router)
 
 # Career Intelligence & Job Discovery (Domain 3)
 api_router.include_router(career_router)
+
+# Learn & Grow Engine (Domain 5)
+api_router.include_router(learning_router)

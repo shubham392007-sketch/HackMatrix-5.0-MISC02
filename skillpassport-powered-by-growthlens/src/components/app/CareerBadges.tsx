@@ -8,6 +8,7 @@ import {
   CompetencyMatchResult,
   ImportanceLevel,
   RoleDemandModel,
+  GapExplanationType,
 } from "@/types/career";
 import {
   CheckCircle2,
@@ -135,6 +136,41 @@ export function GapTypeBadge({ type }: { type: GapClassification }) {
   }
 }
 
+export function GapExplanationTypeBadge({ type }: { type: GapExplanationType }) {
+  switch (type) {
+    case "genuine_proficiency_gap":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+          <AlertTriangle className="w-3 h-3 text-amber-700" /> Genuine Proficiency Gap
+        </span>
+      );
+    case "evidence_gap":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-900 border border-purple-300">
+          <HelpCircle className="w-3 h-3 text-purple-700" /> Evidence Gap
+        </span>
+      );
+    case "verification_gap":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">
+          <ShieldAlert className="w-3 h-3 text-blue-700" /> Verification Gap
+        </span>
+      );
+    case "conflicting_evidence":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-900 border border-rose-300">
+          <Scale className="w-3 h-3 text-rose-700" /> Conflicting Evidence
+        </span>
+      );
+    case "insufficient_data":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-300">
+          <XCircle className="w-3 h-3 text-slate-600" /> Insufficient Data
+        </span>
+      );
+  }
+}
+
 export function MatchStatusBadge({
   status,
 }: {
@@ -180,6 +216,42 @@ export function TargetRoleSelectorBar() {
 
   const userTargets = savedTargetRoles && savedTargetRoles.length > 0 ? savedTargetRoles : [];
   const benchmarkRoles = catalogueRoles && catalogueRoles.length > 0 ? catalogueRoles : [];
+
+  if (!activeRole) {
+    return (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 shadow-sm text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-200/60 border border-amber-300 flex items-center justify-center shrink-0">
+            <Compass className="w-4 h-4 text-amber-900" />
+          </div>
+          <div>
+            <span className="text-[10px] font-mono text-amber-800 uppercase tracking-wider block">
+              Active Target Role Model
+            </span>
+            <span className="font-bold text-amber-950 text-sm">
+              No active target role selected
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/app/career/roles"
+            className="pill-btn bg-ink hover:bg-ink/90 text-white text-xs py-1.5 px-3.5 shrink-0 flex items-center gap-1.5 font-bold shadow-sm"
+          >
+            <Compass className="w-3.5 h-3.5" />
+            Select a Target Role
+          </Link>
+          <Link
+            href="/app/career/discover"
+            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-1.5 px-3 shrink-0"
+          >
+            Discover Jobs
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white/90 rounded-2xl border border-ink/10 shadow-sm text-xs">

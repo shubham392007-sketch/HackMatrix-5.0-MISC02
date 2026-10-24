@@ -116,14 +116,17 @@ class SkillExtractionService:
                 EvidenceCompetencyMapping.competency_id == tax_uuid,
             ).first()
 
-            # Normalize proficiency display level
+            # Normalize proficiency display level to canonical 6-level scale
             prof_map = {
+                "foundation": "Foundation",
                 "foundational": "Foundation",
-                "intermediate": "Working",
-                "advanced": "Practitioner",
-                "expert": "Advanced",
+                "working": "Working",
+                "intermediate": "Practitioner",
+                "practitioner": "Practitioner",
+                "advanced": "Advanced",
+                "expert": "Expert",
             }
-            display_prof = prof_map.get(c_level.lower(), "Practitioner")
+            display_prof = prof_map.get(c_level.lower().strip(), "Practitioner")
 
             if existing_map:
                 existing_map.relevance_score = c_score

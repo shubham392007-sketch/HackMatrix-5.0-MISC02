@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Compass,
+  Briefcase,
 } from "lucide-react";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -41,6 +42,42 @@ export default function RoleMatchOverviewPage() {
     if (activeTab === "missing") return m.match_status === "missing_weak";
     return true;
   });
+
+  if (!activeRole) {
+    return (
+      <div className="flex-1 flex flex-col">
+        <AppTopBar
+          title="Role Match Evaluation"
+          description="Detailed alignment between your Skill Passport and target role competency demands."
+          badge="Match Engine"
+          badgeColor="border-lime text-ink bg-lime/40"
+        />
+        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+          <TargetRoleSelectorBar />
+          <div className="gl-card p-12 bg-white border border-ink/10 text-center space-y-4 max-w-xl mx-auto my-8 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
+              <Compass className="w-6 h-6 text-ink" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-ink">No active target role selected</h3>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Select a target role from our curated catalogue or parse a custom job description to calculate role match scores and competency coverage.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Link
+                href="/app/career/roles"
+                className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold inline-flex items-center gap-1.5"
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                Select Target Role
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col">
@@ -73,10 +110,7 @@ export default function RoleMatchOverviewPage() {
                   {activeRole.seniority}
                 </span>
               </div>
-              <p className="text-xs text-ink-muted max-w-lg">
-                Calculated against <strong>{activeRole.version}</strong> demand model on{" "}
-                {activeMatch.calculated_at}.
-              </p>
+
               <button
                 onClick={() => setShowExplanation(true)}
                 className="text-xs font-semibold text-ink underline flex items-center gap-1 hover:text-sky-800 pt-1"
@@ -223,35 +257,63 @@ export default function RoleMatchOverviewPage() {
                 <MatchStatusBadge status={m.match_status} />
               </div>
 
-              {/* Grid Metrics for this row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-sand/15 p-3 rounded-xl text-[11px] font-mono">
+              {/* Disentangled 5-Dimension Evaluation Breakdown */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 bg-sand/15 p-3 rounded-xl text-[11px] font-mono">
                 <div>
-                  <span className="text-ink-muted block text-[10px] uppercase">Expected Target</span>
+                  <span className="text-ink-muted block text-[10px] uppercase">Target Requirement</span>
                   <strong className="text-ink text-xs">{m.expected_level}</strong>
+                  <span className="text-[10px] text-ink-muted block">Tier {m.expected_level_numeric}/5</span>
                 </div>
                 <div>
-                  <span className="text-ink-muted block text-[10px] uppercase">Current Supported</span>
+                  <span className="text-ink-muted block text-[10px] uppercase">Current Demonstrated</span>
                   <strong className={m.current_proficiency === "Not Established" ? "text-red-700" : "text-ink"}>
                     {m.current_proficiency}
                   </strong>{" "}
-                  <span className="text-[10px] text-ink-muted">({m.verification_status})</span>
+                  <span className={`text-[10px] font-semibold block ${
+                    m.verification_status === "verified"
+                      ? "text-emerald-800"
+                      : m.verification_status === "candidate"
+                      ? "text-amber-800"
+                      : "text-ink-muted"
+                  }`}>
+                    ({m.verification_status})
+                  </span>
                 </div>
                 <div>
-                  <span className="text-ink-muted block text-[10px] uppercase">Effective Coverage</span>
+                  <span className="text-ink-muted block text-[10px] uppercase">Proficiency Coverage</span>
                   <strong className="text-ink text-xs">
-                    {Math.round(m.effective_coverage * 100)}%
+                    {m.proficiency_coverage !== undefined ? m.proficiency_coverage : Math.round(m.raw_coverage * 100)}%
                   </strong>
+                  {m.current_proficiency_numeric > m.expected_level_numeric ? (
+                    <span className="text-[10px] text-emerald-800 font-semibold block">
+                      Exceeds (+{m.current_proficiency_numeric - m.expected_level_numeric} tier)
+                    </span>
+                  ) : m.current_proficiency_numeric === 0 ? (
+                    <span className="text-[10px] text-red-700 font-semibold block">No evidence</span>
+                  ) : (
+                    <span className="text-[10px] text-ink-muted block">Baseline match</span>
+                  )}
                 </div>
                 <div>
-                  <span className="text-ink-muted block text-[10px] uppercase">Supporting Evidence</span>
-                  <span className="text-ink">
+                  <span className="text-ink-muted block text-[10px] uppercase">Model Confidence</span>
+                  <strong className="text-ink text-xs">
+                    {m.confidence ? (m.confidence > 1 ? Math.round(m.confidence) : Math.round(m.confidence * 100)) : 0}%
+                  </strong>
+                  <span className="text-[10px] text-ink-muted block">Extraction certainty</span>
+                </div>
+                <div>
+                  <span className="text-ink-muted block text-[10px] uppercase">Traceable Evidence</span>
+                  <span className="text-ink font-bold text-xs block">
                     {m.evidence_ids.length > 0 ? (
-                      <span className="font-bold text-emerald-800">
-                        {m.evidence_ids.length} Artifacts
+                      <span className="text-emerald-800">
+                        {m.evidence_ids.length} Artifact{m.evidence_ids.length > 1 ? "s" : ""}
                       </span>
                     ) : (
                       <span className="text-red-700">0 Artifacts</span>
                     )}
+                  </span>
+                  <span className="text-[10px] text-ink-muted block capitalize">
+                    {m.evidence_strength || (m.evidence_ids.length ? "medium" : "none")} strength
                   </span>
                 </div>
               </div>

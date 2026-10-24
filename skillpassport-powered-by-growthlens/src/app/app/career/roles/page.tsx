@@ -50,7 +50,7 @@ export default function TargetRolesCataloguePage() {
 
   // Determine which list to display based on active tab
   const displayedRoles = activeTab === "targets"
-    ? (savedTargetRoles && savedTargetRoles.length > 0 ? savedTargetRoles : targetRoles)
+    ? (savedTargetRoles || [])
     : catalogueRoles;
 
   const filteredRoles = displayedRoles.filter((role) => {
@@ -129,31 +129,13 @@ export default function TargetRolesCataloguePage() {
       </AppTopBar>
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
-        {/* Navigation Tabs */}
+        {/* Navigation / Header */}
         <div className="flex items-center justify-between border-b border-ink/10 pb-4">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab("targets")}
-              className={`pill-btn text-xs py-2 px-4 flex items-center gap-2 font-bold transition-all ${
-                activeTab === "targets"
-                  ? "bg-ink text-white shadow"
-                  : "bg-white text-ink hover:bg-sand/30 border border-ink/10"
-              }`}
-            >
+            <span className="pill-btn bg-ink text-white shadow text-xs py-2 px-4 flex items-center gap-2 font-bold">
               <Target className="w-3.5 h-3.5" />
               My Target Roles ({savedTargetRoles.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("catalogue")}
-              className={`pill-btn text-xs py-2 px-4 flex items-center gap-2 font-bold transition-all ${
-                activeTab === "catalogue"
-                  ? "bg-ink text-white shadow"
-                  : "bg-white text-ink hover:bg-sand/30 border border-ink/10"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Explore Catalogue Benchmarks ({catalogueRoles.length})
-            </button>
+            </span>
           </div>
 
           <div className="hidden sm:block text-xs font-mono text-ink-muted">
@@ -167,7 +149,7 @@ export default function TargetRolesCataloguePage() {
         <div className="gl-card p-4 bg-white space-y-3">
           <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none z-10" />
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none z-10" />
               <input
                 type="text"
                 placeholder={
@@ -177,8 +159,8 @@ export default function TargetRolesCataloguePage() {
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pill-input w-full !pl-11 text-xs"
-                style={{ paddingLeft: "2.75rem" }}
+                className="pill-input w-full !pl-12 text-xs"
+                style={{ paddingLeft: "3.25rem" }}
               />
             </div>
 
@@ -222,15 +204,15 @@ export default function TargetRolesCataloguePage() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => setActiveTab("catalogue")}
-                className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+              <Link
+                href="/app/career/discover"
+                className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5 font-bold shadow-sm"
               >
-                <BookOpen className="w-3.5 h-3.5" /> Explore Catalogue Benchmarks
-              </button>
+                <Globe className="w-3.5 h-3.5" /> Discover Jobs
+              </Link>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-4 flex items-center gap-1.5"
+                className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-4 flex items-center gap-1.5 font-medium"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Custom Role
               </button>
@@ -238,9 +220,46 @@ export default function TargetRolesCataloguePage() {
           </div>
         )}
 
-        {/* Role Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredRoles.map((role) => {
+        {/* Role Cards Grid or Empty States */}
+        {activeTab === "targets" && (!savedTargetRoles || savedTargetRoles.length === 0) ? (
+          <div className="gl-card p-12 text-center bg-white border border-ink/10 space-y-4 max-w-xl mx-auto my-8 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
+              <Compass className="w-6 h-6 text-ink" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-ink">
+                You haven&apos;t selected a target role yet
+              </h3>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Choose a benchmark role from our curated catalogue or create a custom role from any job posting to begin skill gap analysis.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Link
+                href="/app/career/discover"
+                className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold flex items-center gap-1.5 shadow-sm"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Discover Jobs
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-xs py-2 px-4 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Custom Role
+              </button>
+            </div>
+          </div>
+        ) : filteredRoles.length === 0 ? (
+          <div className="gl-card p-10 text-center bg-white border border-ink/10 space-y-2">
+            <h4 className="text-sm font-bold text-ink">No roles match your search filters</h4>
+            <p className="text-xs text-ink-muted">Try clearing your search query or seniority filter.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {filteredRoles.map((role, roleIdx) => {
             const isSelected = role.role_id === selectedRoleId;
             const isSavedTarget = savedTargetRoles.some((r) => r.role_id === role.role_id);
             const coreCount = (role.competencies || []).filter(
@@ -252,7 +271,7 @@ export default function TargetRolesCataloguePage() {
 
             return (
               <div
-                key={role.role_id}
+                key={`${role.role_id || "role"}-${roleIdx}`}
                 className={`gl-card p-6 bg-white transition-all border flex flex-col justify-between space-y-4 ${
                   isSelected
                     ? "ring-2 ring-ink border-ink shadow-md"
@@ -309,9 +328,9 @@ export default function TargetRolesCataloguePage() {
 
                   {/* Competency badges */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {(role.competencies || []).slice(0, 5).map((comp) => (
+                    {(role.competencies || []).slice(0, 5).map((comp, compIdx) => (
                       <span
-                        key={comp.skill_id}
+                        key={`${role.role_id || "role"}-${comp.skill_id || comp.canonical_name || "comp"}-${compIdx}`}
                         className="text-[11px] px-2 py-0.5 rounded-md bg-sand/30 border border-ink/10 text-ink font-mono"
                       >
                         {comp.canonical_name} ({comp.expected_level})
@@ -384,7 +403,8 @@ export default function TargetRolesCataloguePage() {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Add Custom Target Role Modal */}

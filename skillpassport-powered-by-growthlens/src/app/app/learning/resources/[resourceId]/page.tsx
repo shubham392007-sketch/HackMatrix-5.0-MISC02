@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import { TopicDifficultyBadge } from "@/components/app/LearningBadges";
+import { getLearningResourceById } from "@/lib/evidenceApi";
+import { LearningResource } from "@/types/learning";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
   ArrowLeft,
@@ -26,12 +28,29 @@ export default function ResourceExplanationPage() {
 
   const { resources, activeRoadmap } = useEvidence();
 
+  const [remoteResource, setRemoteResource] = useState<LearningResource | null>(null);
+
+  useEffect(() => {
+    if (resourceId) {
+      getLearningResourceById(resourceId)
+        .then((res) => {
+          if (res && res.id) {
+            setRemoteResource(res);
+          }
+        })
+        .catch(() => {
+          // If not in DB yet, fallback to context resources
+        });
+    }
+  }, [resourceId]);
+
   const resource = useMemo(() => {
+    if (remoteResource) return remoteResource;
     return (
       resources.find((r) => r.id === resourceId) ||
       resources[0]
     );
-  }, [resources, resourceId]);
+  }, [resources, resourceId, remoteResource]);
 
   return (
     <div className="flex-1 flex flex-col">

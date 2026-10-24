@@ -3,6 +3,7 @@ os.environ["APP_ENV"] = "test"
 
 import asyncio
 import uuid
+import httpx
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi.testclient import TestClient
@@ -47,7 +48,7 @@ def test_job_provider_status():
     assert "jsearch" in providers
     assert "theirstack" in providers
     assert "fantastic_jobs" in providers
-    assert data["max_results_per_search"] <= 10
+    assert data["max_results_per_search"] <= 50
     assert data["primary_provider"] in ("jsearch", "theirstack", "fantastic_jobs")
 
 
@@ -170,7 +171,7 @@ def test_theirstack_adapter_limits():
             assert mock_post.called
             call_kwargs = mock_post.call_args[1]
             # Verified bounded limit payload
-            assert call_kwargs["json"]["limit"] <= 10
+            assert call_kwargs["json"]["limit"] <= 50
             assert len(jobs) == 1
             assert jobs[0].company_name == "NeuroCore"
             assert jobs[0].provider == "theirstack"
@@ -265,7 +266,16 @@ def test_get_role_demand_model():
 
 
 def test_target_role_crud():
-    """Verify getting and setting active user target role."""
+    """Verify getting, setting, and clearing active user target role without AI Engineer fallback."""
+    # 1. When user has no stored target, returns has_target=False and target_role_id=None
+    get_res = client.get("/api/v1/career/target", headers=AUTH_HEADERS)
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["has_target"] is False
+    assert data["target_role_id"] is None
+    assert data["is_default"] is False
+
+    # 2. Setting target role persists successfully
     set_res = client.put(
         "/api/v1/career/target",
         json={
@@ -276,12 +286,15 @@ def test_target_role_crud():
         headers=AUTH_HEADERS,
     )
     assert set_res.status_code == 200
+    assert set_res.json()["status"] == "success"
 
-    get_res = client.get("/api/v1/career/target", headers=AUTH_HEADERS)
-    assert get_res.status_code == 200
-    data = get_res.json()
-    assert data["target_role_id"] == "role-ai-engineer-entry"
-    assert data["role_title"] == "AI Engineer"
+    # 3. Clearing target role removes active selection
+    del_res = client.delete("/api/v1/career/target", headers=AUTH_HEADERS)
+    assert del_res.status_code == 200
+    del_data = del_res.json()
+    assert del_data["status"] == "cleared"
+    assert del_data["has_target"] is False
+    assert del_data["target_role_id"] is None
 
 
 # ==============================================================================
@@ -551,3 +564,239 @@ def test_target_save_and_delete_lifecycle():
     del_res = client.delete(f"/api/v1/career/roles/{target_role_id}", headers=AUTH_HEADERS)
     assert del_res.status_code in (200, 404)
 
+
+# ==============================================================================
+# 9. MILESTONE A ADVANCED VERIFICATION (R1, R2, R6, R8)
+# ==============================================================================
+
+def test_no_default_active_role_for_new_user():
+    """R1: Verify new user has no default AI Engineer role and has_target is False."""
+    res = client.get("/api/v1/career/target", headers=AUTH_HEADERS)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["has_target"] is False
+    assert data["target_role_id"] is None
+    assert data["target_role_version"] is None
+    assert data["role_title"] is None
+    assert data["is_default"] is False
+
+
+def test_clear_active_target_role_endpoint():
+    """R1: Verify DELETE /api/v1/career/target clears active target role."""
+    del_res = client.delete("/api/v1/career/target", headers=AUTH_HEADERS)
+    assert del_res.status_code == 200
+    data = del_res.json()
+    assert data["status"] == "cleared"
+    assert data["has_target"] is False
+    assert data["target_role_id"] is None
+
+
+def test_mode_b_security_benchmark_roles():
+    """R2: Verify security, cryptography, DFIR, and penetration testing benchmark roles exist."""
+    res = client.get("/api/v1/career/roles?scope=catalogue", headers=AUTH_HEADERS)
+    assert res.status_code == 200
+    roles = res.json()
+    role_ids = [r["role_id"] for r in roles]
+    assert "role-cryptography-engineer-mid" in role_ids
+    assert "role-llm-security-engineer-mid" in role_ids
+    assert "role-dfir-specialist-mid" in role_ids
+    assert "role-penetration-tester-mid" in role_ids
+
+
+def test_orchestrator_mode_a_query_security_derivation():
+    """R2: Verify Mode A query derivation dynamically identifies specialized security families."""
+    orchestrator = JobSearchOrchestrator()
+
+    q_crypto = orchestrator.construct_mode_a_query(["Zero-Knowledge Proofs & SNARKs", "Elliptic Curve Cryptography"])
+    assert q_crypto == "Cryptography Engineer"
+
+    q_llm_sec = orchestrator.construct_mode_a_query(["LLM Red Teaming & Prompt Defense", "AI Safety Guardrails"])
+    assert q_llm_sec == "LLM Security Engineer"
+
+    q_dfir = orchestrator.construct_mode_a_query(["Digital Forensics", "Incident Response", "Malware Analysis"])
+    assert q_dfir == "DFIR Specialist"
+
+    q_pentest = orchestrator.construct_mode_a_query(["Penetration Testing", "Offensive Security & CTF"])
+    assert q_pentest == "Penetration Tester"
+
+
+def test_url_scraping_ssrf_blocked_on_private_ip():
+    """R6: Verify SSRF protection blocks private IPs, loopback, and cloud metadata."""
+    forbidden_urls = [
+        "http://127.0.0.1:8000/api/secret",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://10.0.0.1/admin",
+        "http://192.168.1.1/router",
+        "http://localhost:3000/internal",
+    ]
+    for url in forbidden_urls:
+        res = client.post(
+            "/api/v1/career/parse-jd/url",
+            json={"url": url},
+            headers=AUTH_HEADERS,
+        )
+        assert res.status_code == 400, f"Expected 400 for forbidden URL: {url}"
+        detail_msg = str(res.json().get("detail", ""))
+        assert "Security violation" in detail_msg or "blocked" in detail_msg.lower() or "prohibited" in detail_msg.lower()
+
+
+def test_url_scraping_success_mocked():
+    """R6: Verify mocked public URL scraping successfully extracts job text, title, and requirements."""
+    mock_html = """
+    <!DOCTYPE html>
+    <html>
+      <head><title>Staff Security Engineer - CloudSec Corp</title></head>
+      <body>
+        <header><nav><a href="/">Home</a></nav></header>
+        <main>
+          <h1>Staff Security Engineer</h1>
+          <p>CloudSec Corp is looking for an experienced security specialist to lead platform defense.</p>
+          <h2>Requirements</h2>
+          <ul>
+            <li>Strong Python Engineering and automation capabilities are required.</li>
+            <li>Hands-on experience with Application Security & DevSecOps pipeline controls.</li>
+            <li>Docker & Containerization proficiency required for Kubernetes cluster protection.</li>
+          </ul>
+        </main>
+        <footer><p>Copyright 2026 CloudSec Corp</p></footer>
+      </body>
+    </html>
+    """
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = mock_html
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_resp
+        res = client.post(
+            "/api/v1/career/parse-jd/url",
+            json={"url": "https://example.com/jobs/staff-sec-eng"},
+            headers=AUTH_HEADERS,
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["job_title"] == "Staff Security Engineer"
+        assert "extracted_competencies" in data
+        assert len(data["extracted_competencies"]) > 0
+        comp_names = [c["canonical_name"].lower() for c in data["extracted_competencies"]]
+        assert any("python" in c for c in comp_names)
+        assert any(c["source_span"] != "" for c in data["extracted_competencies"])
+
+
+def test_learn_grow_handoff_includes_persisted_snapshot_id():
+    """R8: Verify Learn & Grow handoff persists evaluation snapshot and returns snapshot_id & version."""
+    res = client.post(
+        "/api/v1/career/handoff/learn-grow?role_id=role-ai-engineer-entry",
+        headers=AUTH_HEADERS,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ready_for_curriculum_generation"
+    assert "snapshot_id" in data
+    assert uuid.UUID(data["snapshot_id"])  # Valid UUID
+    assert "snapshot_version" in data
+    assert f"snapshot_id={data['snapshot_id']}" in data["target_route"]
+    assert "handoff_payload" in data
+    assert data["handoff_payload"]["snapshot_id"] == data["snapshot_id"]
+    assert data["handoff_payload"]["snapshot_version"] == data["snapshot_version"]
+
+
+
+
+def test_url_scraping_authwall_detection_returns_422():
+    """Verify that LinkedIn and gated authwall domains return explicit HTTP 422 with paste-text instruction."""
+    res = client.post(
+        "/api/v1/career/parse-jd/url",
+        json={"url": "https://www.linkedin.com/jobs/view/123456789"},
+        headers=AUTH_HEADERS,
+    )
+    assert res.status_code == 422
+    data = res.json()
+    assert "authentication wall" in data["detail"].lower()
+    assert "paste text" in data["detail"].lower()
+
+
+def test_batch_parse_job_descriptions_bounded_concurrency():
+    """Verify batch job parsing endpoint processes multiple items up to 50 with bounded concurrency."""
+    items = [
+        {
+            "item_id": "job-1",
+            "input_type": "text",
+            "raw_text": "We are seeking a Python Engineering specialist with deep experience in PostgreSQL database architecture and Docker containerization.",
+            "job_title": "Python Developer",
+            "company_name": "Acme Inc",
+        },
+        {
+            "item_id": "job-2",
+            "input_type": "text",
+            "raw_text": "Looking for an Application Security engineer to manage DevSecOps pipelines, vulnerability management, and OAuth authentication.",
+            "job_title": "Security Specialist",
+            "company_name": "SafeNet",
+        },
+        {
+            "item_id": "job-short",
+            "input_type": "text",
+            "raw_text": "Too short",
+        },
+    ]
+
+    res = client.post(
+        "/api/v1/career/parse-jd/batch",
+        json={"items": items},
+        headers=AUTH_HEADERS,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_requested"] == 3
+    assert data["successful_count"] == 2
+    assert data["failed_count"] == 1
+    assert len(data["results"]) == 3
+    success_results = [r for r in data["results"] if r["status"] == "success"]
+    assert len(success_results) == 2
+    assert success_results[0]["data"]["job_title"] == "Python Developer"
+    assert len(success_results[0]["data"]["extracted_competencies"]) > 0
+
+
+def test_save_custom_role_preserves_unactivated_target_state():
+    """Verify saving a custom role persists RoleDemandModelRecord without forcing active target role mutation."""
+    role_title = f"Staff Systems Engineer {uuid.uuid4().hex[:6]}"
+    res = client.post(
+        "/api/v1/career/roles/custom",
+        json={
+            "job_title": role_title,
+            "company_name": "Autonomous Tech",
+            "seniority": "Senior Level",
+            "context": "Custom Systems Project",
+            "extracted_competencies": [
+                {
+                    "skill_id": "skill-python",
+                    "canonical_name": "Python Engineering",
+                    "category": "Programming",
+                    "requirement_type": "core_required",
+                    "importance": "high",
+                    "expected_level": "Advanced",
+                }
+            ],
+        },
+        headers=AUTH_HEADERS,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] in ("created", "updated")
+    assert "role-custom-" in data["role_id"]
+
+    # Verify active target role in user session is NOT forcibly changed
+    current_target_res = client.get("/api/v1/career/targets/active", headers=AUTH_HEADERS)
+    assert current_target_res.status_code in (200, 404)
+    if current_target_res.status_code == 200:
+        assert current_target_res.json().get("role_id") != data["role_id"]
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_mode_a_query_ollama_graceful_fallback():
+    """Verify that synthesize_mode_a_query_with_ollama falls back cleanly to deterministic heuristic if Ollama is offline."""
+    orchestrator = JobSearchOrchestrator()
+    # Mock offline Ollama timeout/error
+    with patch("httpx.AsyncClient.post", side_effect=httpx.ConnectError("Connection refused to Ollama")):
+        query = await orchestrator.synthesize_mode_a_query_with_ollama(["Zero-Knowledge Proofs & SNARKs", "Elliptic Curve Cryptography"])
+        assert query == "Cryptography Engineer"

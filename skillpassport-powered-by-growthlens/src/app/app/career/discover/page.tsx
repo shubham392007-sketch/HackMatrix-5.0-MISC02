@@ -26,9 +26,9 @@ import {
   X,
   ChevronRight,
   Bookmark,
+  FileSearch,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
-import { TargetRoleSelectorBar } from "@/components/app/CareerBadges";
 import CountrySelector from "@/components/app/CountrySelector";
 import { CountryOption } from "@/data/countries";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -132,44 +132,37 @@ export default function DiscoverJobsPage() {
     setErrorCategory(null);
     setActionNotice(null);
 
-    // Build effective query
+    // Build parameters for Mode A or Mode B
     let queryToSubmit: string | undefined = undefined;
+    let selectedSkillsPayload: any[] | undefined = undefined;
+
     if (mode === "mode_b_role") {
       queryToSubmit = roleQuery.trim();
     } else {
-      // For Mode A: build query from selected skills
-      const selectedNames = eligibleSkills
+      // For Mode A: Pass structured selected skills with proficiencies and evidence
+      selectedSkillsPayload = eligibleSkills
         .filter((s) => selectedSkillIds.includes(s.id))
-        .map((s) => s.canonicalName || (s as any).name || (s as any).title)
-        .filter(Boolean);
-
-      if (selectedNames.length > 0) {
-        const combined = selectedNames.join(" ").toLowerCase();
-        if (combined.includes("machine learning") || combined.includes("ai") || combined.includes("deep learning")) {
-          queryToSubmit = "AI Machine Learning Engineer";
-        } else if (combined.includes("frontend") || combined.includes("react") || combined.includes("typescript") || combined.includes("javascript")) {
-          queryToSubmit = "Frontend Engineer";
-        } else if (combined.includes("python") || combined.includes("fastapi") || combined.includes("django")) {
-          queryToSubmit = "Python Developer";
-        } else if (combined.includes("devops") || combined.includes("cloud") || combined.includes("docker") || combined.includes("kubernetes")) {
-          queryToSubmit = "DevOps Engineer";
-        } else if (combined.includes("data") || combined.includes("sql") || combined.includes("postgresql")) {
-          queryToSubmit = "Data Engineer";
-        } else {
-          queryToSubmit = "Software Engineer";
-        }
-      }
+        .map((s) => ({
+          id: s.id,
+          name: s.canonicalName || (s as any).name || (s as any).title || "",
+          proficiency: s.verifiedProficiency || s.estimatedProficiency || "Practitioner",
+          verification_status: s.verificationState || "candidate",
+          confidence: s.confidence ?? 85,
+          evidence_summary: s.assessmentRationale || (s.evidenceIds?.length ? `Verified across ${s.evidenceIds.length} technical work items` : undefined),
+        }));
     }
 
     try {
-      setSearchStep("Querying live job listings with deduplication & caching...");
+      setSearchStep(mode === "mode_a_skills" ? "Synthesizing security search intent via Ollama & querying provider..." : "Querying live job listings with deduplication & caching...");
       const res = await discoverJobs({
         mode,
         query: queryToSubmit,
         location: selectedCountry ? selectedCountry.name : undefined,
         country_code: selectedCountry ? selectedCountry.code : undefined,
         remote_only: remoteOnly,
-        limit: 10,
+        limit: 50,
+        selected_skill_ids: mode === "mode_a_skills" ? selectedSkillIds : undefined,
+        selected_skills: mode === "mode_a_skills" ? selectedSkillsPayload : undefined,
       });
 
       setDiscoveryResult(res);
@@ -289,8 +282,6 @@ export default function DiscoverJobsPage() {
       </AppTopBar>
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-20">
-        <TargetRoleSelectorBar />
-
         {/* Configuration Notice if Providers Unconfigured */}
         {!isAnyProviderConfigured && providerStatus && (
           <div className="gl-card p-5 bg-amber-50 border border-amber-300 space-y-3">
@@ -382,12 +373,8 @@ export default function DiscoverJobsPage() {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
-                    <Sparkles className="w-4 h-4 text-amber-700" />
                     Mode A — Find Jobs That Fit My Skills
                   </span>
-                  {mode === "mode_a_skills" && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                  )}
                 </div>
                 <p className="text-[11px] text-ink-muted leading-relaxed">
                   Queries openings tailored directly to your verified and candidate Skill Intelligence profile.
@@ -411,9 +398,6 @@ export default function DiscoverJobsPage() {
                     <Search className="w-4 h-4 text-ink" />
                     Mode B — Search for a Role I Choose
                   </span>
-                  {mode === "mode_b_role" && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                  )}
                 </div>
                 <p className="text-[11px] text-ink-muted leading-relaxed">
                   Search for any career you aspire to explore, even if you do not yet have its prerequisites.
@@ -426,14 +410,11 @@ export default function DiscoverJobsPage() {
           <form onSubmit={handleSearch} className="space-y-5 pt-2 border-t border-ink/10">
             {mode === "mode_a_skills" ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <label className="text-xs font-bold text-ink flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                    <ShieldCheck className="w-4 h-4 text-ink" />
                     Influencing Skills from your Skill Intelligence Profile:
                   </label>
-                  <span className="text-[11px] font-mono text-ink-muted">
-                    {selectedSkillIds.length} of 8 selected
-                  </span>
                 </div>
 
                 {initialLoading ? (
@@ -452,33 +433,36 @@ export default function DiscoverJobsPage() {
                           skill.verifiedProficiency && skill.verifiedProficiency !== "Not Established"
                             ? skill.verifiedProficiency
                             : skill.estimatedProficiency || (skill as any).proficiencyLevel || "Practitioner";
-                        const isVerified = skill.verificationState === "verified";
 
                         return (
                           <button
                             key={skill.id}
                             type="button"
                             onClick={() => toggleSkillSelection(skill.id)}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all border ${
+                            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs transition-all border ${
                               isSelected
-                                ? isVerified
-                                  ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-medium shadow-sm"
-                                  : "bg-amber-50 border-amber-400 text-amber-950 font-medium shadow-sm"
-                                : "bg-sand/15 border-ink/15 text-ink-muted/80 opacity-60 hover:opacity-100"
+                                ? "bg-[#F6BB84] text-ink border-ink font-bold shadow-xs"
+                                : "bg-white hover:bg-sand/30 border-ink/20 text-ink/75 font-medium"
                             }`}
                             title={isSelected ? "Click to exclude from this search" : "Click to include in search query"}
                           >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isVerified ? "bg-emerald-600" : "bg-amber-500"
-                              }`}
-                            />
+                            <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-ink" : "bg-ink/30"}`} />
                             <span>{skillName}</span>
-                            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-white/60 border border-ink/10 text-ink-muted">
+                            <span
+                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                                isSelected
+                                  ? "bg-white/80 border-ink/20 text-ink font-semibold"
+                                  : "bg-sand/40 border-ink/10 text-ink-muted"
+                              }`}
+                            >
                               {profLevel}
                             </span>
                             {skill.confidence && (
-                              <span className="text-[10px] font-mono text-ink-muted font-bold">
+                              <span
+                                className={`text-[10px] font-mono ${
+                                  isSelected ? "text-ink font-bold" : "text-ink-muted"
+                                }`}
+                              >
                                 {skill.confidence}%
                               </span>
                             )}
@@ -501,21 +485,45 @@ export default function DiscoverJobsPage() {
                 )}
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <label htmlFor="role-query-input" className="block text-xs font-bold text-ink">
-                  What role do you want to become?
-                </label>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                  <input
-                    id="role-query-input"
-                    type="text"
-                    value={roleQuery}
-                    onChange={(e) => setRoleQuery(e.target.value)}
-                    placeholder="e.g. AI Engineer, Machine Learning Engineer, MLOps Specialist, Backend Developer..."
-                    className="w-full bg-white border border-ink/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-muted/70 focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-                    autoComplete="off"
-                  />
+              <div className="space-y-2.5">
+                <div className="space-y-1.5">
+                  <label htmlFor="role-query-input" className="block text-xs font-bold text-ink">
+                    What role do you want to become?
+                  </label>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                    <input
+                      id="role-query-input"
+                      type="text"
+                      value={roleQuery}
+                      onChange={(e) => setRoleQuery(e.target.value)}
+                      placeholder="e.g. AI Engineer, Machine Learning Engineer, MLOps Specialist, Backend Developer..."
+                      className="w-full bg-white border border-ink/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-muted/70 focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-sand/20 border border-ink/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs mt-3">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-lime/70 border border-ink/15 flex items-center justify-center shrink-0 mt-0.5 text-ink">
+                      <FileSearch className="w-5 h-5 text-ink" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        Can&apos;t find your target job or posting?
+                      </h4>
+                      <p className="text-[11px] text-ink-muted leading-relaxed">
+                        Parse any external job description or public careers URL to extract custom competencies and compare directly against your Skill Passport.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/app/career/job-parser"
+                    className="pill-btn pill-btn-primary text-xs py-2 px-4 shrink-0 inline-flex items-center justify-center gap-1.5 font-bold shadow-xs whitespace-nowrap self-start sm:self-center"
+                  >
+                    Parse Job Description &rarr;
+                  </Link>
                 </div>
               </div>
             )}
@@ -557,7 +565,7 @@ export default function DiscoverJobsPage() {
                   </span>
                 ) : (
                   <span>
-                    Cost-aware query strictly bounded to 10 jobs &bull; 120-min deduplicated cache
+                    Live job extraction retrieving up to 50 openings &bull; 120-min deduplicated cache
                   </span>
                 )}
               </div>
@@ -595,8 +603,13 @@ export default function DiscoverJobsPage() {
                     {discoveryResult.total_results ?? discoveryResult.jobs?.length ?? 0}
                   </span>
                 </h3>
-                <p className="text-xs text-ink-muted">
-                  Queried for: <strong className="text-ink">&quot;{discoveryResult.query}&quot;</strong>
+                <p className="text-xs text-ink-muted flex items-center gap-2 flex-wrap">
+                  <span>Queried for: <strong className="text-ink">&quot;{discoveryResult.query}&quot;</strong></span>
+                  {discoveryResult.primary_domain && (
+                    <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-sand/50 border border-ink/15 text-ink capitalize font-semibold">
+                      Domain: {discoveryResult.primary_domain.replace(/_/g, " ")}
+                    </span>
+                  )}
                   {selectedCountry && (
                     <span> in <strong className="text-ink">{selectedCountry.name}</strong></span>
                   )}
@@ -669,6 +682,11 @@ export default function DiscoverJobsPage() {
 
                         {/* Badges */}
                         <div className="flex items-center gap-2 flex-wrap">
+                          {typeof job.local_relevance_score === "number" && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-moss/10 text-moss border border-moss/20 font-bold">
+                              Relevance: {job.local_relevance_score}%
+                            </span>
+                          )}
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono border ${
                               job.remote_status === "remote"

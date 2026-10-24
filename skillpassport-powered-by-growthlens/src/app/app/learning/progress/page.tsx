@@ -224,13 +224,23 @@ export default function LearningProgressPage() {
                     </td>
 
                     <td className="p-3.5 text-right">
-                      <Link
-                        href={`/app/learning/steps/step-${topic.id}`}
-                        className="text-xs font-bold text-ink hover:underline inline-flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Learn →
-                      </Link>
+                      {(() => {
+                        const matchingStep = activeRoadmap?.steps?.find(
+                          (s) => s.topic_id === topic.id || s.step_id === `step-${topic.id}` || s.step_id === topic.id
+                        );
+                        const stepHref = matchingStep
+                          ? `/app/learning/steps/${matchingStep.step_id}?roadmap_id=${encodeURIComponent(activeRoadmap.path_id || activeRoadmap.id || "")}`
+                          : `/app/learning/steps/step-${topic.id}`;
+                        return (
+                          <Link
+                            href={stepHref}
+                            className="text-xs font-bold text-ink hover:underline inline-flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Learn →
+                          </Link>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );

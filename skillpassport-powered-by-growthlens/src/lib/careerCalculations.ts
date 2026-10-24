@@ -139,9 +139,10 @@ export function classifyCompetencyGap(
   competency: RoleCompetency,
   userSkill: SkillItem | undefined,
   currentNumeric: number,
-  expectedNumeric: number
+  expectedNumeric: number,
+  currentProf: string
 ): { gapType: GapClassification | null; explanation: string } {
-  if (!userSkill || currentNumeric === 0) {
+  if (!userSkill || currentNumeric === 0 || currentProf === "Not Established") {
     if (competency.requirement_type === "differentiating") {
       return {
         gapType: "differentiation_opportunity",
@@ -169,35 +170,51 @@ export function classifyCompetencyGap(
   if (vState === "rejected") {
     return {
       gapType: "evidence_gap",
-      explanation: "Capability claim was rejected during verification.",
+      explanation: `Capability claim at ${currentProf} was rejected during verification.`,
+    };
+  }
+
+  if (currentNumeric >= expectedNumeric && vState === "verified" && hasEvidence) {
+    if (currentNumeric > expectedNumeric) {
+      const surplus = currentNumeric - expectedNumeric;
+      return {
+        gapType:
+          competency.requirement_type === "preferred" ||
+          competency.requirement_type === "differentiating"
+            ? "differentiation_opportunity"
+            : null,
+        explanation: `Requirement exceeded at ${currentProf} (+${surplus} level surplus above ${competency.expected_level}) with verified evidence.`,
+      };
+    }
+    return {
+      gapType:
+        competency.requirement_type === "preferred" ||
+        competency.requirement_type === "differentiating"
+          ? "differentiation_opportunity"
+          : null,
+      explanation: `Target requirement fully satisfied at ${competency.expected_level} with verified evidence.`,
     };
   }
 
   if (currentNumeric < expectedNumeric) {
     const shortfall = expectedNumeric - currentNumeric;
+    const vLabel = vState !== "verified" ? ` (${vState})` : "";
     return {
       gapType: "depth_gap",
-      explanation: `Demonstrated at ${userSkill.verifiedProficiency || userSkill.estimatedProficiency} (${vState}); target requires ${competency.expected_level} (-${shortfall} level shortfall).`,
+      explanation: `Demonstrated at ${currentProf}${vLabel}; target requires ${competency.expected_level} (-${shortfall} level shortfall).`,
     };
   }
 
-  if (!hasEvidence || vState === "candidate" || vState === "insufficient_evidence") {
+  if (!hasEvidence || vState === "candidate" || vState === "insufficient_evidence" || (vState as string) === "unverified") {
     return {
       gapType: "evidence_gap",
-      explanation: `Demonstrated at ${userSkill.verifiedProficiency || userSkill.estimatedProficiency}, but marked as ${vState}; corroborating evidence or verification review needed.`,
-    };
-  }
-
-  if (competency.requirement_type === "preferred" || competency.requirement_type === "differentiating") {
-    return {
-      gapType: "differentiation_opportunity",
-      explanation: "Proficiency meets or exceeds expectations; strategically strengthens candidature.",
+      explanation: `Demonstrated at ${currentProf} (provisional claim); corroborating evidence or verification review required to confirm.`,
     };
   }
 
   return {
     gapType: null,
-    explanation: `Target requirement fully satisfied at ${competency.expected_level} with verified evidence.`,
+    explanation: `Requirement met at ${currentProf}.`,
   };
 }
 
@@ -211,7 +228,9 @@ export function evaluateRoleMatch(
     const currentProf =
       userSkill?.verifiedProficiency && userSkill.verifiedProficiency !== "Not Established"
         ? userSkill.verifiedProficiency
-        : userSkill?.estimatedProficiency || "Not Established";
+        : (userSkill?.estimatedProficiency && userSkill.estimatedProficiency !== "Not Established"
+            ? userSkill.estimatedProficiency
+            : "Not Established");
 
     const currentNumeric = proficiencyToNumeric(currentProf);
     const expectedNumeric =
@@ -221,6 +240,7 @@ export function evaluateRoleMatch(
     const rawCoverage = expectedNumeric > 0
       ? Math.min(1.0, currentNumeric / expectedNumeric)
       : 1.0;
+    const proficiencyCoverage = Math.round(rawCoverage * 1000) / 10;
 
     // Verification adjustment
     const vState = userSkill?.verificationState || "not_established";
@@ -228,8 +248,9 @@ export function evaluateRoleMatch(
     if (vState === "verified") {
       verificationFactor = 1.0;
     } else if (vState === "candidate") {
-      verificationFactor = Math.max(0.5, (userSkill?.confidence || 80) / 100);
-    } else if (vState === "insufficient_evidence") {
+      const conf = userSkill?.confidence ? (userSkill.confidence <= 1.0 ? userSkill.confidence : userSkill.confidence / 100) : 0.60;
+      verificationFactor = Math.min(0.75, Math.max(0.50, conf));
+    } else if (vState === "insufficient_evidence" || (vState as string) === "insufficient") {
       verificationFactor = 0.50;
     } else if (vState === "conflicting") {
       verificationFactor = 0.35;
@@ -243,24 +264,35 @@ export function evaluateRoleMatch(
       comp,
       userSkill,
       currentNumeric,
-      expectedNumeric
+      expectedNumeric,
+      currentProf
     );
 
     let matchStatus: CompetencyMatchResult["match_status"] = "missing_weak";
-    if (vState === "verified" && currentNumeric >= expectedNumeric && (userSkill?.evidenceIds?.length || 0) > 0) {
-      matchStatus = "strong_match";
-    } else if (currentNumeric > 0 && currentNumeric < expectedNumeric) {
-      matchStatus = "partial_match";
-    } else if (vState === "candidate" || vState === "insufficient_evidence") {
-      matchStatus = "evidence_gap";
-    } else if (vState === "conflicting") {
+    let matchClassification = "not_found";
+    if (vState === "conflicting") {
       matchStatus = "conflicting";
-    } else {
+      matchClassification = "conflicting";
+    } else if (vState === "rejected" || currentNumeric === 0 || currentProf === "Not Established") {
       matchStatus = "missing_weak";
+      matchClassification = "not_found";
+    } else if (currentNumeric >= expectedNumeric && vState === "verified" && (userSkill?.evidenceIds?.length || 0) > 0) {
+      matchStatus = "strong_match";
+      matchClassification = "meets";
+    } else if (currentNumeric < expectedNumeric) {
+      matchStatus = "partial_match";
+      matchClassification = (expectedNumeric - currentNumeric) > 1 ? "below" : "partial";
+    } else if (vState === "candidate" || vState === "insufficient_evidence" || (vState as string) === "unverified" || (userSkill?.evidenceIds?.length || 0) === 0) {
+      matchStatus = "evidence_gap";
+      matchClassification = "unverified";
+    } else {
+      matchStatus = "strong_match";
+      matchClassification = "meets";
     }
 
     return {
       skill_id: comp.skill_id,
+      canonical_skill_id: (comp as any).canonical_skill_id || (userSkill as any)?.id,
       canonical_name: comp.canonical_name,
       requirement_type: comp.requirement_type,
       importance: comp.importance,
@@ -273,10 +305,13 @@ export function evaluateRoleMatch(
       evidence_strength: userSkill?.evidenceStrength || (userSkill?.evidenceIds?.length ? "medium" : "none"),
       evidence_ids: userSkill?.evidenceIds || [],
       raw_coverage: Math.round(rawCoverage * 1000) / 1000,
+      proficiency_coverage: proficiencyCoverage,
       effective_coverage: Math.round(effectiveCoverage * 1000) / 1000,
       gap_type: gapType,
       gap_explanation: explanation,
       match_status: matchStatus,
+      match_classification: matchClassification,
+      exceeds_by: Math.max(0, currentNumeric - expectedNumeric),
       reason_codes: comp.reason_codes || [],
     };
   });
@@ -309,9 +344,10 @@ export function evaluateRoleMatch(
     ? Math.round((weightedEffectiveSum / totalWeight) * 100)
     : 0;
 
-  const reqScore = reqWeight > 0
+  const hasCore = reqWeight > 0;
+  const reqScore = hasCore
     ? Math.round((reqEffectiveSum / reqWeight) * 100)
-    : 0;
+    : overallScore;
 
   const suppScore = suppWeight > 0
     ? Math.round((suppEffectiveSum / suppWeight) * 100)
@@ -453,12 +489,28 @@ export function evaluateCareerReadiness(
       100
   );
 
-  // Unified readiness index: 50% core coverage + 35% overall match + 15% evidence completeness
-  const readinessIndex = Math.round(
-    match.required_coverage_score * 0.50 +
-      match.overall_match_score * 0.35 +
-      evidenceQualityPct * 0.15
+  const coreMatches = match.competency_matches.filter(
+    (m) => m.requirement_type === "core_required"
   );
+  const hasCore = coreMatches.length > 0;
+
+  // Unified readiness index:
+  // If role defines core requirements: 50% core coverage + 35% overall match + 15% evidence completeness
+  // If role has no core requirements designated: 85% overall match + 15% evidence completeness
+  const effectiveCoreScore = hasCore
+    ? match.required_coverage_score
+    : match.overall_match_score;
+
+  const readinessIndex = hasCore
+    ? Math.round(
+        match.required_coverage_score * 0.50 +
+          match.overall_match_score * 0.35 +
+          evidenceQualityPct * 0.15
+      )
+    : Math.round(
+        match.overall_match_score * 0.85 +
+          evidenceQualityPct * 0.15
+      );
 
   let tier: CareerReadinessAssessment["readiness_tier"] = "Early Stage";
   if (readinessIndex >= 80) tier = "High Readiness";
@@ -469,7 +521,7 @@ export function evaluateCareerReadiness(
   const criticalBlockers = gaps
     .filter(
       (g) =>
-        g.requirement_type === "core_required" &&
+        (hasCore ? g.requirement_type === "core_required" : true) &&
         (g.proficiency_distance >= 2 || g.gap_type === "skill_gap" || g.priority_score >= 60)
     )
     .map((g) => ({

@@ -62,6 +62,7 @@ export interface RoleDemandModel {
 
 export interface CompetencyMatchResult {
   skill_id: string;
+  canonical_skill_id?: string;
   canonical_name: string;
   requirement_type: RequirementType;
   importance: ImportanceLevel;
@@ -74,6 +75,7 @@ export interface CompetencyMatchResult {
   evidence_strength: "high" | "medium" | "low" | "none";
   evidence_ids: string[];
   raw_coverage: number; // min(1, current / expected)
+  proficiency_coverage?: number; // 0 to 100 percentage
   effective_coverage: number; // adjusted for verification state
   gap_type: GapClassification | null;
   gap_explanation: string;
@@ -83,6 +85,8 @@ export interface CompetencyMatchResult {
     | "evidence_gap"
     | "missing_weak"
     | "conflicting";
+  match_classification?: string;
+  exceeds_by?: number;
   reason_codes: string[];
 }
 
@@ -116,6 +120,7 @@ export interface GapPriorityInputs {
 export interface GapRecord {
   gap_id: string;
   skill_id: string;
+  canonical_skill_id?: string;
   canonical_name: string;
   role_id: string;
   role_title: string;
@@ -124,6 +129,8 @@ export interface GapRecord {
   importance: ImportanceLevel;
   expected_level: ProficiencyLevel;
   current_supported_level: ProficiencyLevel;
+  proficiency_coverage?: number;
+  effective_coverage?: number;
   verification_status: SkillVerificationState | "not_established";
   evidence_status: "sufficient" | "insufficient" | "none" | "conflicting";
   proficiency_distance: number;
@@ -139,6 +146,45 @@ export interface GapRecord {
   diagnosis: string;
   next_step_direction: string;
   relevant_evidence_ids: string[];
+  explanation?: GapExplanation;
+}
+
+export type GapExplanationType =
+  | "genuine_proficiency_gap"
+  | "evidence_gap"
+  | "verification_gap"
+  | "conflicting_evidence"
+  | "insufficient_data";
+
+export interface GapExplanation {
+  skill_id: string;
+  requirement_id: string;
+  gap_type: GapExplanationType;
+  summary: string;
+  required_capability: string;
+  demonstrated_capabilities: string[];
+  specific_shortfall: string;
+  evidence_limitations: string;
+  supporting_evidence_ids: string[];
+  contradicting_evidence_ids: string[];
+  reasoning_confidence: number;
+  recommended_next_actions: string[];
+  insufficient_information: boolean;
+  analysis_version: string;
+  evaluated_at: string;
+  is_cached?: boolean;
+}
+
+export interface GapExplanationsResponse {
+  role_id: string;
+  role_title: string;
+  snapshot_id?: string | null;
+  total_gaps: number;
+  explanations: Record<string, GapExplanation>;
+  from_cache: boolean;
+  model_used: string;
+  analysis_version: string;
+  generated_at: string;
 }
 
 export interface CareerReadinessAssessment {
