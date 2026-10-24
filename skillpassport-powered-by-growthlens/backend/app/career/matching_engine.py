@@ -119,6 +119,12 @@ class MatchingEngine:
             if c.candidate_skill_id:
                 conflicted_comp_ids.add(c.candidate_skill_id)
 
+        decision_by_comp_id = {}
+        for d in decisions:
+            comp_id = getattr(d, "competency_id", None)
+            if comp_id:
+                decision_by_comp_id[comp_id] = d
+
         user_skills_by_comp: Dict[uuid.UUID, Dict[str, Any]] = {}
 
         for mapping, comp, ev in mappings:
