@@ -560,11 +560,15 @@ class JobSearchOrchestrator:
         selected_skills: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
-<<<<<<< HEAD
-        Main entry point for cost-aware job discovery across Mode A, Mode B, and Mode C.
+Main entry point for cost-aware, security-prioritized job discovery across Mode A, Mode B, and Mode C.
+        Enforces:
+        - Exactly 1 Ollama inference call per uncached Mode A search
+        - Exactly 1 provider request per search
+        - Strict local ranking of returned listings
+        - Direct retrieval of verified recruiter postings for Mode C
         """
         influencing_skills: List[str] = []
-        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 10)
+        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
         now = datetime.now(timezone.utc)
 
         # ----------------------------------------------------------------------
@@ -649,15 +653,7 @@ class JobSearchOrchestrator:
         # ----------------------------------------------------------------------
         # MODE A & B: Query Determination
         # ----------------------------------------------------------------------
-=======
-        Main entry point for cost-aware, security-prioritized job discovery.
-        Enforces:
-        - Exactly 1 Ollama inference call per uncached Mode A search
-        - Exactly 1 provider request per search
-        - Strict local ranking of returned listings
-        """
         overall_start = asyncio.get_event_loop().time()
-        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
         skills_data: List[Dict[str, Any]] = []
         intent: Optional[ModeASearchIntent] = None
         ollama_latency_ms = 0.0
@@ -665,7 +661,6 @@ class JobSearchOrchestrator:
         skill_snapshot: Optional[str] = None
 
         # 1. Mode A: Resolve skills and synthesize structured search intent
->>>>>>> origin/Career-Intelligence
         if mode == "mode_a_skills":
             if selected_skills and isinstance(selected_skills, list) and len(selected_skills) > 0:
                 skills_data = selected_skills

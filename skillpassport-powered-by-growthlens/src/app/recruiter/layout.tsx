@@ -3,6 +3,7 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import RecruiterTopBar from "@/components/recruiter/RecruiterTopBar";
+import RecruiterAuthGuard from "@/components/recruiter/RecruiterAuthGuard";
 
 export default function RecruiterLayout({
   children,
@@ -15,7 +16,9 @@ export default function RecruiterLayout({
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1918] flex flex-col font-sans selection:bg-[#DFE968] selection:text-[#1A1918]">
       {!isAuthPage && <RecruiterTopBar />}
-      <main className="flex-1 flex flex-col">{children}</main>
+      <main className="flex-1 flex flex-col">
+        {isAuthPage ? children : <RecruiterAuthGuard>{children}</RecruiterAuthGuard>}
+      </main>
     </div>
   );
 }

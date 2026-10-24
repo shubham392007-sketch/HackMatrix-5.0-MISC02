@@ -334,16 +334,16 @@ export default function InteractiveDotGrid() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none select-none z-0"
+      className="fixed inset-0 pointer-events-none select-none -z-10"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         width: "100vw",
         height: "100vh",
-        backgroundColor: "#F8F5EF",
+        backgroundColor: "transparent",
         pointerEvents: "none",
-        zIndex: 0,
+        zIndex: -10,
       }}
       aria-hidden="true"
     />

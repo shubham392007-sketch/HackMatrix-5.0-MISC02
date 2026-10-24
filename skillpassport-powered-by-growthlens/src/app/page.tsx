@@ -28,7 +28,7 @@ export default function LandingPage() {
   const { isAuthenticated, logoutDemo } = useEvidence();
   const [navigatingTarget, setNavigatingTarget] = useState<string | null>(null);
   return (
-    <div className="min-h-screen w-full flex flex-col text-[#1A1918]">
+    <div className="min-h-screen w-full flex flex-col text-[#1A1918] relative z-[1]">
       <SPHeader />
 
       <main className="flex-1 w-full">
@@ -40,7 +40,7 @@ export default function LandingPage() {
               {/* Card 1: Top Left (-3° tilt) */}
               <Hero3DCard initialRotate={-3}>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">-3°</span>
+                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/70">-3°</span>
                   <div className="w-8 h-8 rounded-lg bg-[#000000] border border-[#1A1918] flex items-center justify-center shadow-[1px_1px_0px_#1A1918]">
                     <FileCode className="w-4.5 h-4.5 text-[#FAF8F5]" />
                   </div>
@@ -51,7 +51,7 @@ export default function LandingPage() {
                   </span>
                   <span className="text-sm font-extrabold truncate">PR #204: redis_pubsub.py</span>
                 </div>
-                <p className="text-xs font-medium text-[#1A1918]/70 mb-4">
+                <p className="text-xs font-semibold text-[#1A1918]/85 mb-4">
                   Contributor • 14 commits verified
                 </p>
                 <div className="inline-block px-3 py-1.5 rounded-full border border-[#1A1918] bg-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
@@ -62,7 +62,7 @@ export default function LandingPage() {
               {/* Card 3: Bottom Left (-2° tilt) */}
               <Hero3DCard initialRotate={-2}>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">-2°</span>
+                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/70">-2°</span>
                   <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
                     <Search className="w-3.5 h-3.5" />
                     PASSPORT PIPELINE
@@ -177,19 +177,19 @@ export default function LandingPage() {
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#000000] border border-[#1A1918] text-[#FAF8F5] hero-3d-pop shadow-[1px_1px_0px_#1A1918]">
                       PROVEN
                     </span>
-                    <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">+2°</span>
+                    <span className="text-[11px] font-mono font-bold text-[#1A1918]/70">+2°</span>
                   </div>
                 </div>
-                <p className="text-[10px] font-bold uppercase text-[#1A1918]/50">COMPETENCY:</p>
+                <p className="text-[10px] font-bold uppercase text-[#1A1918]/75">COMPETENCY:</p>
                 <p className="text-sm font-semibold italic text-[#1A1918] mb-2.5">
                   &ldquo;Distributed Systems Architecture&rdquo;
                 </p>
-                <p className="text-[10px] font-bold uppercase text-[#1A1918]/50">EVIDENCE VERIFICATION:</p>
+                <p className="text-[10px] font-bold uppercase text-[#1A1918]/75">EVIDENCE VERIFICATION:</p>
                 <p className="text-xs font-medium text-[#1A1918]/90 mb-4 leading-snug">
                   &ldquo;14 commits, 3 PR approvals, 1 RFC doc. 94% confidence. Match for Staff Engineer.&rdquo;
                 </p>
                 <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                  <span className="text-[#1A1918]/50">CITATIONS:</span>
+                  <span className="text-[#1A1918]/75">CITATIONS:</span>
                   <span className="px-2 py-1 rounded border border-[#1A1918] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1A1918]">PR #204</span>
                   <span className="px-2 py-1 rounded border border-[#1A1918] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1A1918]">RFC-09</span>
                   <span className="px-2 py-1 rounded border border-[#1A1918] bg-white/80 hero-3d-pop shadow-[1px_1px_0px_#1A1918]">Git #88</span>
@@ -203,16 +203,16 @@ export default function LandingPage() {
                     <ShieldCheck className="w-4 h-4 text-[#FAF8F5]" />
                     VERIFIED PASSPORT
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">+4°</span>
+                  <span className="text-[11px] font-mono font-bold text-[#1A1918]/70">+4°</span>
                 </div>
                 <p className="text-sm font-extrabold text-[#1A1918] mb-1.5">
                   AUDITABLE PROOF GRAPH
                 </p>
-                <div className="flex items-center gap-2 text-sm font-bold text-[#4A7A4E] mb-3 hero-3d-pop">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#4A7A4E] animate-pulse"></span>
+                <div className="flex items-center gap-2 text-sm font-bold text-[#2D5A43] mb-3 hero-3d-pop">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#2D5A43] animate-pulse"></span>
                   ZERO UNSUPPORTED CLAIMS
                 </div>
-                <p className="text-[11px] font-semibold text-[#1A1918]/60 leading-tight">
+                <p className="text-[11px] font-semibold text-[#1A1918]/85 leading-tight">
                   Canonical Taxonomy • Objective Verification Guard
                 </p>
               </Hero3DCard>
