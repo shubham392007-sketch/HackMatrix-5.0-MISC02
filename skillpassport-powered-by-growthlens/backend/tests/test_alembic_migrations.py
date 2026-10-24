@@ -17,6 +17,14 @@ from backend.app.models.learning import (
     LearningAssessmentModel,
     LearningProjectSubmission,
     LearningProjectSubmissionModel,
+    SkillGapAssessmentRecord,
+    SkillGapAssessmentModel,
+    LearningStepPacketRecord,
+    LearningStepPacketModel,
+    LearningMiniProject,
+    LearningMiniProjectModel,
+    LearningActivityRecord,
+    LearningActivityModel,
 )
 
 
@@ -57,8 +65,12 @@ def test_alembic_migration_chain():
         assert 'learning_roadmaps' in tables, "learning_roadmaps table was not created by migrations"
         assert 'learning_steps' in tables, "learning_steps table was not created by migrations"
         assert 'learning_project_submissions' in tables, "learning_project_submissions table was not created by migrations"
+        assert 'skill_gap_assessments' in tables, "skill_gap_assessments table was not created by migrations"
+        assert 'learning_step_packets' in tables, "learning_step_packets table was not created by migrations"
+        assert 'learning_mini_projects' in tables, "learning_mini_projects table was not created by migrations"
+        assert 'learning_activities' in tables, "learning_activities table was not created by migrations"
 
-        # 2. Verify schema columns match LearningAssessment & LearningAssessmentModel exactly
+        # 2. Verify schema columns match models exactly
         assert LearningAssessmentModel is LearningAssessment
         orm_cols = {c.name: c for c in LearningAssessmentModel.__table__.columns}
         db_cols = {c['name']: c for c in inspector.get_columns('learning_assessments')}
@@ -72,7 +84,55 @@ def test_alembic_migration_chain():
         for col_name in proj_orm_cols:
             assert col_name in proj_db_cols, f"Column {col_name} missing from migrated learning_project_submissions table"
 
-        # 3. Test downgrade -1 (downgrades 005 to 004)
+        assert SkillGapAssessmentModel is SkillGapAssessmentRecord
+        gap_orm_cols = {c.name: c for c in SkillGapAssessmentModel.__table__.columns}
+        gap_db_cols = {c['name']: c for c in inspector.get_columns('skill_gap_assessments')}
+        for col_name in gap_orm_cols:
+            assert col_name in gap_db_cols, f"Column {col_name} missing from migrated skill_gap_assessments table"
+
+        assert LearningStepPacketModel is LearningStepPacketRecord
+        packet_orm_cols = {c.name: c for c in LearningStepPacketModel.__table__.columns}
+        packet_db_cols = {c['name']: c for c in inspector.get_columns('learning_step_packets')}
+        for col_name in packet_orm_cols:
+            assert col_name in packet_db_cols, f"Column {col_name} missing from migrated learning_step_packets table"
+
+        assert LearningMiniProjectModel is LearningMiniProject
+        mini_proj_orm_cols = {c.name: c for c in LearningMiniProjectModel.__table__.columns}
+        mini_proj_db_cols = {c['name']: c for c in inspector.get_columns('learning_mini_projects')}
+        for col_name in mini_proj_orm_cols:
+            assert col_name in mini_proj_db_cols, f"Column {col_name} missing from migrated learning_mini_projects table"
+
+        assert LearningActivityModel is LearningActivityRecord
+        act_orm_cols = {c.name: c for c in LearningActivityModel.__table__.columns}
+        act_db_cols = {c['name']: c for c in inspector.get_columns('learning_activities')}
+        for col_name in act_orm_cols:
+            assert col_name in act_db_cols, f"Column {col_name} missing from migrated learning_activities table"
+
+        # 3. Test downgrade -1 (downgrades 009 to 008)
+        command.downgrade(alembic_cfg, '-1')
+        inspector = sa.inspect(engine)
+        assert 'learning_activities' not in inspector.get_table_names(), "learning_activities should be dropped on downgrade of 009"
+        assert 'learning_mini_projects' in inspector.get_table_names(), "learning_mini_projects should still be present in 008"
+
+        # Downgrade 008 to 007
+        command.downgrade(alembic_cfg, '-1')
+        inspector = sa.inspect(engine)
+        assert 'learning_mini_projects' not in inspector.get_table_names(), "learning_mini_projects should be dropped on downgrade of 008"
+        assert 'learning_step_packets' in inspector.get_table_names(), "learning_step_packets should still be present in 007"
+
+        # Downgrade 007 to 006
+        command.downgrade(alembic_cfg, '-1')
+        inspector = sa.inspect(engine)
+        assert 'learning_step_packets' not in inspector.get_table_names(), "learning_step_packets should be dropped on downgrade of 007"
+        assert 'skill_gap_assessments' in inspector.get_table_names(), "skill_gap_assessments should still be present in 006"
+
+        # Downgrade 006 to 005
+        command.downgrade(alembic_cfg, '-1')
+        inspector = sa.inspect(engine)
+        assert 'skill_gap_assessments' not in inspector.get_table_names(), "skill_gap_assessments should be dropped on downgrade of 006"
+        assert 'learning_project_submissions' in inspector.get_table_names(), "learning_project_submissions should still be present in 005"
+
+        # Downgrade 005 to 004
         command.downgrade(alembic_cfg, '-1')
         inspector = sa.inspect(engine)
         assert 'learning_project_submissions' not in inspector.get_table_names(), "learning_project_submissions should be dropped on downgrade of 005"
@@ -95,6 +155,10 @@ def test_alembic_migration_chain():
         assert 'learning_assessments' in inspector.get_table_names(), "learning_assessments should be re-created on upgrade"
         assert 'job_postings' in inspector.get_table_names(), "job_postings should be re-created on upgrade"
         assert 'learning_project_submissions' in inspector.get_table_names(), "learning_project_submissions should be re-created on upgrade"
+        assert 'skill_gap_assessments' in inspector.get_table_names(), "skill_gap_assessments should be re-created on upgrade"
+        assert 'learning_step_packets' in inspector.get_table_names(), "learning_step_packets should be re-created on upgrade"
+        assert 'learning_mini_projects' in inspector.get_table_names(), "learning_mini_projects should be re-created on upgrade"
+        assert 'learning_activities' in inspector.get_table_names(), "learning_activities should be re-created on upgrade"
 
     finally:
         if os.path.exists(db_path):

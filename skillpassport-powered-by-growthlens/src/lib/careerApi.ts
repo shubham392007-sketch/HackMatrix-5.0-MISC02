@@ -12,7 +12,7 @@ import {
 } from "@/types/career";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
+const API_BASE = typeof window !== "undefined" ? "/api/v1" : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
@@ -37,7 +37,12 @@ async function getAuthHeaders(): Promise<HeadersInit> {
       };
     }
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    let token = data.session?.access_token;
+    if (!token && process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+      if (sessionStorage.getItem("sp_session_auth") === "true" || localStorage.getItem("sp_dev_auth") === "true") {
+        token = "sp_demo_vernit";
+      }
+    }
     if (token) {
       cachedToken = token;
       const expiresAt = data.session?.expires_at ? data.session.expires_at * 1000 : now + 60000;
@@ -240,7 +245,8 @@ export async function listRoles(params?: {
   seniority?: string;
 }): Promise<RoleDemandModel[]> {
   const authHeaders = await getAuthHeaders();
-  const url = new URL(`${API_BASE}/career/roles`);
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001");
+  const url = new URL(`${API_BASE}/career/roles`, baseUrl);
   if (params?.category) url.searchParams.set("category", params.category);
   if (params?.seniority) url.searchParams.set("seniority", params.seniority);
 

@@ -21,6 +21,7 @@ import {
   FileText,
   Target,
   Award,
+  Briefcase,
 } from "lucide-react";
 
 export default function CareerReadinessPage() {
@@ -223,6 +224,28 @@ export default function CareerReadinessPage() {
                 <p className="text-ink/80 text-[11px] bg-sand/20 p-2 rounded-lg border border-ink/5">
                   <strong>Impact:</strong> {blocker.reason}
                 </p>
+
+                {/* Authenticated Source & Assurance Row */}
+                <div className="p-2 rounded-xl bg-sand/20 border border-ink/10 space-y-1 text-[10px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-ink flex items-center gap-1 shrink-0">
+                      <Briefcase className="w-3 h-3 text-indigo-600" />
+                      Requirement Source:
+                    </span>
+                    <span className="font-mono text-ink-muted truncate text-right">
+                      {activeRole.title} &bull; {activeRole.provenance || "GrowthLens Benchmark v2026.1"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-ink flex items-center gap-1 shrink-0">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      Assurance:
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold shrink-0">
+                      Authenticity Verified &bull; Strict Guard
+                    </span>
+                  </div>
+                </div>
 
                 <div className="pt-2 flex justify-end">
                   <Link

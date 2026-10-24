@@ -139,6 +139,10 @@ export interface GapRecord {
   diagnosis: string;
   next_step_direction: string;
   relevant_evidence_ids: string[];
+  requirement_source?: string;
+  source_references?: string[];
+  provenance?: string;
+  authenticity_status?: "verified" | "authentic_benchmark" | "unreviewed" | "source_checked";
 }
 
 export interface CareerReadinessAssessment {

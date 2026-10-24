@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
+import { getLearningHistory } from "@/lib/evidenceApi";
 import {
   ActiveDomainSelectorBar,
 } from "@/components/app/LearningBadges";
@@ -20,6 +21,7 @@ import {
   ExternalLink,
   Code,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 
@@ -28,16 +30,59 @@ export default function LearningHistoryPage() {
 
   const [selectedType, setSelectedType] = useState<string>("all");
   const [copiedExport, setCopiedExport] = useState<boolean>(false);
+  const [serverEvents, setServerEvents] = useState<any[] | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchLiveHistory = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await getLearningHistory({ limit: 100 });
+      if (res && Array.isArray(res.activities)) {
+        const mapped = res.activities.map((a: any) => ({
+          id: a.id,
+          timestamp: a.created_at ? new Date(a.created_at).toLocaleString() : "Recently",
+          type: a.activity_type,
+          title: a.title,
+          domain_id: a.domain_id || "general",
+          topic_id: a.step_id || undefined,
+          step_id: a.step_id || undefined,
+          roadmap_id: a.roadmap_id || undefined,
+          detail: a.detail || "",
+          link_route: a.link_route || undefined,
+          score: a.score != null ? a.score : undefined,
+          activity_status: a.activity_status,
+          activity_metadata: a.activity_metadata,
+          created_at: a.created_at,
+        }));
+        setServerEvents(mapped);
+      }
+    } catch (e) {
+      console.warn("Could not fetch server learning history:", e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveHistory();
+  }, [fetchLiveHistory]);
+
+  const allDisplayHistory = useMemo(() => {
+    if (serverEvents && serverEvents.length > 0) {
+      return serverEvents;
+    }
+    return learningHistory;
+  }, [serverEvents, learningHistory]);
 
   const filteredHistory = useMemo(() => {
-    return learningHistory.filter((ev) => {
+    return allDisplayHistory.filter((ev) => {
       if (selectedType !== "all" && ev.type !== selectedType) return false;
       return true;
     });
-  }, [learningHistory, selectedType]);
+  }, [allDisplayHistory, selectedType]);
 
   const handleExportJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(learningHistory, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allDisplayHistory, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", `skillpassport_learning_audit_${Date.now()}.json`);
@@ -58,11 +103,17 @@ export default function LearningHistoryPage() {
       case "resource_viewed":
         return { label: "Resource Viewed", icon: BookOpen, color: "bg-blue-100 text-blue-900 border-blue-200" };
       case "practice_completed":
+      case "practice_attempted":
         return { label: "Practice", icon: Code, color: "bg-amber-100 text-amber-900 border-amber-200" };
       case "assessment_attempt":
+      case "assessment_completed":
         return { label: "Assessment", icon: Award, color: "bg-rose-100 text-rose-900 border-rose-200" };
       case "project_submitted":
-        return { label: "Mini-Project", icon: FolderGit2, color: "bg-indigo-100 text-indigo-900 border-indigo-200" };
+        return { label: "Mini-Project Submitted", icon: FolderGit2, color: "bg-indigo-100 text-indigo-900 border-indigo-200" };
+      case "project_evaluated":
+        return { label: "Mini-Project Evaluated", icon: FolderGit2, color: "bg-teal-100 text-teal-900 border-teal-200" };
+      case "roadmap_started":
+        return { label: "Roadmap Started", icon: Sparkles, color: "bg-cyan-100 text-cyan-900 border-cyan-200" };
       case "remediation_completed":
         return { label: "Remediation", icon: LifeBuoy, color: "bg-orange-100 text-orange-900 border-orange-200" };
       default:
@@ -79,6 +130,14 @@ export default function LearningHistoryPage() {
         badgeColor="border-peach/40 text-ink bg-peach/20"
       >
         <div className="flex items-center gap-2">
+          <button
+            onClick={fetchLiveHistory}
+            disabled={isRefreshing}
+            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-amber-600" : ""}`} />
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </button>
           <button
             onClick={handleExportJSON}
             className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5"

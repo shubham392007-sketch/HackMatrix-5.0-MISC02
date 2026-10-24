@@ -251,6 +251,669 @@ CANONICAL_BLUEPRINTS: List[Dict[str, Any]] = [
     },
 ]
 
+# ──────────────────────────────────────────────────────────────────────────────
+# CAREER INTELLIGENCE DYNAMIC GAP BLUEPRINTS
+# Directly aligns Learn & Grow domains to verified career skill gaps
+# ──────────────────────────────────────────────────────────────────────────────
+
+CAREER_GAP_BLUEPRINTS: Dict[str, Dict[str, Any]] = {
+    "gap-skill-api-integration": {
+        "domain_id": "gap-skill-api-integration",
+        "title": "API Integration & Messaging",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Designing and integrating robust APIs, event streaming, webhook ingestion, rate-limiting, and resilient messaging architectures.",
+        "target_mastery": 85,
+        "estimated_hours": 16,
+        "learning_objectives": [
+            "Construct idempotent HTTP API consumers with exponential backoff and jitter",
+            "Implement event-driven asynchronous messaging patterns with message queues",
+            "Design robust webhook ingestion pipelines with cryptographic signature validation",
+            "Handle distributed partial network failures using circuit breakers",
+        ],
+        "modules": [
+            {
+                "id": "mod-api-1",
+                "title": "REST & HTTP Client Engineering",
+                "description": "HTTP semantics, connection pooling, and retry policies.",
+                "topics": [
+                    {
+                        "id": "topic-http-resilience",
+                        "title": "Exponential Backoff & Idempotency",
+                        "description": "Handling transient network errors and duplicate HTTP submissions with Idempotency-Key headers.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Implement an idempotent HTTP client with jittered exponential retry loops.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-api-integration",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-webhook-ingestion",
+                        "title": "Webhook Ingestion & Signature Verification",
+                        "description": "HMAC SHA-256 signature validation and asynchronous event dispatching.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 40,
+                        "learning_objective": "Verify webhook authenticity and process payloads asynchronously.",
+                        "prerequisites": ["topic-http-resilience"],
+                        "related_skill_id": "skill-api-integration",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+            {
+                "id": "mod-api-2",
+                "title": "Event-Driven Messaging & Queues",
+                "description": "Message brokers, at-least-once delivery, and dead-letter queues.",
+                "topics": [
+                    {
+                        "id": "topic-message-queues",
+                        "title": "Message Broker Patterns & Dead-Letter Queues",
+                        "description": "Designing persistent message queues with dead-letter queue routing for failed messages.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 55,
+                        "learning_objective": "Build resilient producer-consumer pipelines with DLQ fallback.",
+                        "prerequisites": ["topic-http-resilience"],
+                        "related_skill_id": "skill-api-integration",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-fastapi": {
+        "domain_id": "gap-skill-fastapi",
+        "title": "FastAPI Web Framework",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Production API engineering with FastAPI, Pydantic schemas, dependency injection, async concurrency, and automated testing.",
+        "target_mastery": 80,
+        "estimated_hours": 14,
+        "learning_objectives": [
+            "Design robust asynchronous RESTful endpoints with FastAPI and Starlette",
+            "Implement reusable request validation and authentication with Depends()",
+            "Enforce strict schema validation and data serialization using Pydantic v2",
+            "Write integration tests with Pytest and FastAPI TestClient",
+        ],
+        "modules": [
+            {
+                "id": "mod-fastapi-1",
+                "title": "Core Routing & Pydantic Validation",
+                "description": "Path parameters, query parameters, request bodies, and Pydantic models.",
+                "topics": [
+                    {
+                        "id": "topic-fastapi-routes",
+                        "title": "FastAPI Route Handlers & Status Codes",
+                        "description": "Configuring typed route signatures, query parameters, and HTTP response codes.",
+                        "difficulty": "Beginner",
+                        "estimated_minutes": 40,
+                        "learning_objective": "Build RESTful route handlers with explicit response models and status codes.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-fastapi",
+                        "current_mastery": 0,
+                        "target_mastery": 80,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-pydantic-schemas",
+                        "title": "Pydantic v2 Schemas & Data Constraints",
+                        "description": "Defining input validation rules, Field constraints, and nested schemas.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Enforce request payload contracts with Pydantic v2 validators.",
+                        "prerequisites": ["topic-fastapi-routes"],
+                        "related_skill_id": "skill-fastapi",
+                        "current_mastery": 0,
+                        "target_mastery": 80,
+                        "status": "available",
+                    },
+                ],
+            },
+            {
+                "id": "mod-fastapi-2",
+                "title": "Dependency Injection & Middleware",
+                "description": "Reusable dependencies, security schemes, and middleware.",
+                "topics": [
+                    {
+                        "id": "topic-fastapi-depends",
+                        "title": "Depends() & Database Session Injection",
+                        "description": "Injecting database sessions, configuration objects, and authentication credentials.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 50,
+                        "learning_objective": "Implement hierarchical dependency injection with yield generators.",
+                        "prerequisites": ["topic-fastapi-routes"],
+                        "related_skill_id": "skill-fastapi",
+                        "current_mastery": 0,
+                        "target_mastery": 80,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-fastapi-testing",
+                        "title": "Integration Testing with TestClient",
+                        "description": "Testing asynchronous endpoints, overriding dependencies, and verifying JSON responses.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Write automated test suites for FastAPI routes using Pytest fixtures.",
+                        "prerequisites": ["topic-fastapi-depends"],
+                        "related_skill_id": "skill-fastapi",
+                        "current_mastery": 0,
+                        "target_mastery": 80,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-machine-learning": {
+        "domain_id": "gap-skill-machine-learning",
+        "title": "Machine Learning (Supervised)",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Supervised machine learning algorithms, model training pipelines, cross-validation, hyperparameter tuning, and metric evaluation.",
+        "target_mastery": 85,
+        "estimated_hours": 18,
+        "learning_objectives": [
+            "Train and optimize supervised regression and classification models",
+            "Implement rigorous cross-validation without data leakage",
+            "Tune gradient boosting hyperparameters (learning rate, depth, regularization)",
+            "Benchmark models using ROC-AUC, PR-AUC, F1-score, and calibration curves",
+        ],
+        "modules": [
+            {
+                "id": "mod-ml-1",
+                "title": "Supervised Estimators & Loss Optimization",
+                "description": "Loss functions, gradient descent, and regularization.",
+                "topics": [
+                    {
+                        "id": "topic-loss-regularization",
+                        "title": "Loss Functions & Regularization (L1/L2)",
+                        "description": "MSE, Binary Cross-Entropy, and preventing overfitting with Ridge and Lasso penalties.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 50,
+                        "learning_objective": "Select and optimize loss functions with appropriate regularization.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-machine-learning",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-tree-ensembles",
+                        "title": "Tree Ensembles & Gradient Boosting",
+                        "description": "Random Forests, XGBoost, and LightGBM architectures.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 60,
+                        "learning_objective": "Train and tune XGBoost models with early stopping.",
+                        "prerequisites": ["topic-loss-regularization"],
+                        "related_skill_id": "skill-machine-learning",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+            {
+                "id": "mod-ml-2",
+                "title": "Model Evaluation & Diagnostics",
+                "description": "Cross-validation, bias-variance analysis, and ROC-AUC metrics.",
+                "topics": [
+                    {
+                        "id": "topic-cv-leakage-prevention",
+                        "title": "Cross-Validation & Metric Diagnostics",
+                        "description": "Stratified K-fold cross-validation and evaluation across precision-recall curves.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 55,
+                        "learning_objective": "Diagnose model generalization using cross-validated learning curves.",
+                        "prerequisites": ["topic-tree-ensembles"],
+                        "related_skill_id": "skill-machine-learning",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-system-architecture": {
+        "domain_id": "gap-skill-system-architecture",
+        "title": "Distributed System Architecture",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Designing high-scale, partition-tolerant distributed architectures, consensus protocols, horizontal sharding, and resilience patterns.",
+        "target_mastery": 85,
+        "estimated_hours": 16,
+        "learning_objectives": [
+            "Evaluate architectural trade-offs using CAP theorem and PACELC principles",
+            "Design horizontal sharding topologies with consistent hashing",
+            "Implement leader election and consensus mechanisms",
+            "Architect zero-downtime distributed failover strategies",
+        ],
+        "modules": [
+            {
+                "id": "mod-arch-1",
+                "title": "Distributed State & Consensus",
+                "description": "Partition tolerance, leader election, and consensus protocols.",
+                "topics": [
+                    {
+                        "id": "topic-cap-tradeoffs",
+                        "title": "CAP & PACELC Architectural Trade-offs",
+                        "description": "Analyzing consistency vs latency and availability across distributed service boundaries.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Formulate architecture design RFCs balancing consistency and availability.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-system-architecture",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-consistent-hashing",
+                        "title": "Consistent Hashing & Partitioning Topologies",
+                        "description": "Virtual node distribution and minimal key relocation during cluster scaling.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 55,
+                        "learning_objective": "Construct a distributed hash ring with virtual node replication.",
+                        "prerequisites": ["topic-cap-tradeoffs"],
+                        "related_skill_id": "skill-system-architecture",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-docker": {
+        "domain_id": "gap-skill-docker",
+        "title": "Docker Containerization & Production Workflows",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Production container engineering: writing minimal multi-stage Dockerfiles, optimizing layer caching, securing containers with non-root privileges, managing volume persistence, and orchestrating multi-container services with Docker Compose.",
+        "target_mastery": 85,
+        "estimated_hours": 14,
+        "learning_objectives": [
+            "Author secure, minimal multi-stage Dockerfiles utilizing slim base images and non-root execution",
+            "Optimize Docker build cache hit ratios via .dockerignore and deterministic dependency ordering",
+            "Configure isolated container networking topologies and bridge network interfaces",
+            "Orchestrate multi-service applications using Docker Compose with declarative healthchecks and volume mounts",
+        ],
+        "modules": [
+            {
+                "id": "mod-docker-1",
+                "title": "Multi-Stage Builds & Container Security",
+                "description": "Constructing lean, hardened container images ready for production deployment.",
+                "topics": [
+                    {
+                        "id": "topic-gap-skill-docker-core",
+                        "title": "Multi-Stage Dockerfile Construction & Layer Optimization",
+                        "description": "Separating compilation dependencies from runtime artifacts to minimize attack surface and image size.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Construct a multi-stage Dockerfile that discards build toolchains and runs under an unprivileged user.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-docker",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-docker-layer-caching",
+                        "title": "Layer Caching Strategies & .dockerignore Best Practices",
+                        "description": "Structuring instructions to maximize cache reuse during continuous integration pipelines.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 40,
+                        "learning_objective": "Prevent cache invalidation by isolating dependency manifests from application source code.",
+                        "prerequisites": ["topic-gap-skill-docker-core"],
+                        "related_skill_id": "skill-docker",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+            {
+                "id": "mod-docker-2",
+                "title": "Docker Compose Orchestration & Storage",
+                "description": "Multi-service environment configuration, volume lifecycle, and service discovery.",
+                "topics": [
+                    {
+                        "id": "topic-gap-skill-docker-compose",
+                        "title": "Docker Compose Multi-Container Orchestration",
+                        "description": "Coordinating web services, relational databases, and background workers with healthchecks and dependencies.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 50,
+                        "learning_objective": "Define declarative service topologies with condition-based depends_on and isolated networks.",
+                        "prerequisites": ["topic-gap-skill-docker-core"],
+                        "related_skill_id": "skill-docker",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-postgresql": {
+        "domain_id": "gap-skill-postgresql",
+        "title": "PostgreSQL & Relational Data Engineering",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Advanced relational engineering with PostgreSQL: ACID transaction semantics, MVCC concurrency, index design (B-tree, GIN), query plan analysis, and connection pooling.",
+        "target_mastery": 85,
+        "estimated_hours": 16,
+        "learning_objectives": [
+            "Analyze and resolve transaction concurrency anomalies across standard isolation levels",
+            "Design optimal B-Tree and GIN indexing strategies for high-throughput relational queries",
+            "Profile and optimize slow queries using EXPLAIN (ANALYZE, BUFFERS)",
+            "Configure connection pooling and connection limits for production resilience",
+        ],
+        "modules": [
+            {
+                "id": "mod-postgres-1",
+                "title": "Transaction Isolation & Indexing Topologies",
+                "description": "Concurrency safety, deadlocks, and high-performance indexing.",
+                "topics": [
+                    {
+                        "id": "topic-sql-indexing",
+                        "title": "B-Tree vs GIN Index Selection & Covering Indexes",
+                        "description": "Selecting optimal index types for equality, range, and JSONB containment filters.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Eliminate sequential table scans on multi-million row tables using covering indexes.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-postgresql",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                    {
+                        "id": "topic-acid-isolation",
+                        "title": "ACID Isolation Levels & MVCC Concurrency",
+                        "description": "Preventing dirty reads, non-repeatable reads, and serialization anomalies under high load.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 55,
+                        "learning_objective": "Implement safe optimistic and pessimistic locking protocols preventing double-write hazards.",
+                        "prerequisites": ["topic-sql-indexing"],
+                        "related_skill_id": "skill-postgresql",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-cloud-devops": {
+        "domain_id": "gap-skill-cloud-devops",
+        "title": "Cloud Infrastructure & DevOps CI/CD",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Production DevOps automation: Infrastructure as Code, CI/CD pipeline design, secret management, and distributed telemetry with Prometheus and OpenTelemetry.",
+        "target_mastery": 85,
+        "estimated_hours": 15,
+        "learning_objectives": [
+            "Construct declarative CI/CD delivery pipelines with automated testing and security gates",
+            "Manage infrastructure state and immutable deployments with IaC tooling",
+            "Implement secret rotation and zero-trust credential distribution",
+            "Instrument distributed services with Prometheus metrics and structured JSON logging",
+        ],
+        "modules": [
+            {
+                "id": "mod-devops-1",
+                "title": "Continuous Delivery & Pipeline Automation",
+                "description": "Automated build-test-deploy lifecycles with security scans.",
+                "topics": [
+                    {
+                        "id": "topic-cicd-pipelines",
+                        "title": "Automated CI/CD Delivery & Release Gates",
+                        "description": "Building continuous integration workflows that enforce static analysis, unit tests, and artifact signing.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 50,
+                        "learning_objective": "Configure an end-to-end delivery pipeline that halts deployment on test regression or security alert.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-cloud-devops",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+    "gap-skill-appsec": {
+        "domain_id": "gap-skill-appsec",
+        "title": "Application Security & OWASP Defense",
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": "Defensive application engineering: asymmetric cryptographic token validation (RS256 JWT), role-based access control (RBAC), SQL/SSRF injection defense, and rate-limiting middleware.",
+        "target_mastery": 85,
+        "estimated_hours": 14,
+        "learning_objectives": [
+            "Validate asymmetric RS256 JWT signatures and enforce fine-grained scope claims",
+            "Implement defensive sanitization guarding against OWASP Top 10 vulnerabilities",
+            "Deploy Redis token-bucket rate limiting to mitigate denial of service attacks",
+            "Audit application endpoints for Server-Side Request Forgery (SSRF) risks",
+        ],
+        "modules": [
+            {
+                "id": "mod-appsec-1",
+                "title": "Cryptographic Authentication & Scope Enforcement",
+                "description": "Asymmetric token validation, claims verification, and defense-in-depth.",
+                "topics": [
+                    {
+                        "id": "topic-jwt-security",
+                        "title": "Asymmetric JWT Validation & Scope Verification",
+                        "description": "Validating RS256 signed public key certificates, checking expiration, issuer, and claim entitlements.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 45,
+                        "learning_objective": "Write a secure JWT validation middleware rejecting unsigned tokens and revoked signing algorithms.",
+                        "prerequisites": [],
+                        "related_skill_id": "skill-appsec",
+                        "current_mastery": 0,
+                        "target_mastery": 85,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    },
+}
+
+
+def synthesize_gap_blueprint(
+    skill_id: str,
+    canonical_name: str,
+    expected_level: str = "Practitioner",
+    diagnosis: str = "",
+) -> Dict[str, Any]:
+    """
+    Returns a pre-authored blueprint if known, or deterministically synthesizes
+    a high-quality DomainBlueprint with 2 modules and 4 topics for any skill gap.
+    """
+    clean_id = skill_id.lower().replace(" ", "-")
+    domain_id = clean_id if clean_id.startswith("gap-") else f"gap-{clean_id}"
+
+    if domain_id in CAREER_GAP_BLUEPRINTS:
+        return CAREER_GAP_BLUEPRINTS[domain_id]
+
+    # Check by raw skill ID without prefix
+    for gid, bp in CAREER_GAP_BLUEPRINTS.items():
+        if gid.replace("gap-", "") == clean_id.replace("gap-", ""):
+            return bp
+
+    # Domain alias normalization
+    id_lower = clean_id.lower()
+    if any(k in id_lower for k in ("docker", "container", "containerization")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-docker"]
+    if any(k in id_lower for k in ("postgres", "postgresql", "sql-modeling", "rdbms")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-postgresql"]
+    if any(k in id_lower for k in ("fastapi", "asgi", "starlette")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-fastapi"]
+    if any(k in id_lower for k in ("api-integration", "rest-client", "http-resilience", "microservice-api")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-api-integration"]
+    if any(k in id_lower for k in ("system-architecture", "distributed", "consensus", "partitioning")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-system-architecture"]
+    if any(k in id_lower for k in ("machine-learning", "scikit", "xgboost", "model-training")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-machine-learning"]
+    if any(k in id_lower for k in ("cloud", "devops", "aws", "infrastructure", "ci-cd")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-cloud-devops"]
+    if any(k in id_lower for k in ("appsec", "security", "owasp", "oauth", "jwt")):
+        return CAREER_GAP_BLUEPRINTS["gap-skill-appsec"]
+
+    # Deterministic synthesis for custom or arbitrary skills
+    target_mastery = 85 if expected_level in ("Practitioner", "Advanced", "Expert") else 75
+    clean_title = canonical_name or skill_id.replace("skill-", "").replace("gap-", "").replace("-", " ").title()
+
+    return {
+        "domain_id": domain_id,
+        "title": clean_title,
+        "version": "v2026.1-TARGET-GAP",
+        "status": "active",
+        "description": diagnosis or f"Targeted skill remediation for {clean_title} to achieve {expected_level} proficiency in production environments.",
+        "target_mastery": target_mastery,
+        "estimated_hours": 14,
+        "learning_objectives": [
+            f"Deconstruct core primitives, lifecycle management, and architectural boundaries in {clean_title}",
+            f"Implement production-grade code patterns, error handling, and performance optimization for {clean_title}",
+            f"Design end-to-end integration workflows and automated test suites validating {clean_title}",
+            f"Audit failure scenarios, security boundaries, and telemetry instrumentation for {clean_title}",
+        ],
+        "modules": [
+            {
+                "id": f"mod-{clean_id}-1",
+                "title": f"1. Foundations & Implementation Patterns",
+                "description": f"Core syntax, API contracts, and practical implementations in {clean_title}.",
+                "topics": [
+                    {
+                        "id": f"topic-{clean_id}-core",
+                        "title": f"Core Principles & Implementation in {clean_title}",
+                        "description": f"Essential patterns, idioms, and standard library conventions for {clean_title}.",
+                        "difficulty": "Beginner",
+                        "estimated_minutes": 45,
+                        "learning_objective": f"Demonstrate foundational working knowledge of {clean_title}.",
+                        "prerequisites": [],
+                        "related_skill_id": skill_id,
+                        "current_mastery": 0,
+                        "target_mastery": target_mastery,
+                        "status": "available",
+                    },
+                    {
+                        "id": f"topic-{clean_id}-applied",
+                        "title": f"Applied Engineering Patterns in {clean_title}",
+                        "description": f"Practical architecture, error handling, and robust typing for {clean_title}.",
+                        "difficulty": "Intermediate",
+                        "estimated_minutes": 50,
+                        "learning_objective": f"Construct reliable, maintainable modules using {clean_title}.",
+                        "prerequisites": [f"topic-{clean_id}-core"],
+                        "related_skill_id": skill_id,
+                        "current_mastery": 0,
+                        "target_mastery": target_mastery,
+                        "status": "available",
+                    },
+                ],
+            },
+            {
+                "id": f"mod-{clean_id}-2",
+                "title": f"2. Production Optimization & Testing",
+                "description": f"Scalability, performance tuning, and automated verification in {clean_title}.",
+                "topics": [
+                    {
+                        "id": f"topic-{clean_id}-adv",
+                        "title": f"Advanced Diagnostics & Optimization in {clean_title}",
+                        "description": f"Benchmarking, throughput optimization, and edge-case mitigation in {clean_title}.",
+                        "difficulty": "Advanced",
+                        "estimated_minutes": 60,
+                        "learning_objective": f"Optimize execution performance and diagnose failure modes in {clean_title}.",
+                        "prerequisites": [f"topic-{clean_id}-applied"],
+                        "related_skill_id": skill_id,
+                        "current_mastery": 0,
+                        "target_mastery": target_mastery,
+                        "status": "available",
+                    },
+                ],
+            },
+        ],
+    }
+
+
+def get_user_augmented_blueprints(
+    db: Any = None,
+    user: Any = None,
+) -> List[Dict[str, Any]]:
+    """
+    Returns an integrated list of domain blueprints:
+    1. Prioritizes the user's active career skill gaps from their active target role.
+    2. Includes any domains for which the user has generated an active LearningRoadmap.
+    3. Follows with the canonical baseline blueprints.
+    Guarantees no duplicate domain_id entries.
+    """
+    augmented: List[Dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    # 1. Inspect user's active career target role and gaps
+    if db is not None and user is not None:
+        try:
+            import uuid
+            from backend.app.learning.upstream_adapter import CareerIntelligenceDbAdapter
+            from backend.app.models.learning import LearningRoadmap
+
+            adapter = CareerIntelligenceDbAdapter()
+            owner_uuid = uuid.UUID(str(user.id))
+
+            # Fetch active target role triggers
+            triggers = adapter.fetch_upstream_triggers(db, str(owner_uuid))
+            for t in triggers:
+                gap_bp = synthesize_gap_blueprint(
+                    skill_id=t.competency.canonical_skill_id,
+                    canonical_name=t.competency.canonical_name,
+                    expected_level=t.capability.target_proficiency_level.value if hasattr(t.capability.target_proficiency_level, "value") else str(t.capability.target_proficiency_level),
+                    diagnosis=t.gap_diagnosis,
+                )
+                if gap_bp["domain_id"] not in seen_ids:
+                    seen_ids.add(gap_bp["domain_id"])
+                    augmented.append(gap_bp)
+
+            # Also check existing user roadmaps in the database
+            roadmaps = (
+                db.query(LearningRoadmap)
+                .filter(LearningRoadmap.owner_user_id == owner_uuid)
+                .all()
+            )
+            for rm in roadmaps:
+                if rm.domain_id and rm.domain_id not in seen_ids:
+                    seen_ids.add(rm.domain_id)
+                    # Create blueprint from roadmap metadata
+                    bp = synthesize_gap_blueprint(
+                        skill_id=rm.domain_id,
+                        canonical_name=rm.domain_title or rm.domain_id,
+                    )
+                    augmented.append(bp)
+        except Exception:
+            pass
+
+    # If no career gaps were loaded from DB, provide pre-authored career gap blueprints
+    if not augmented:
+        for gid, bp in CAREER_GAP_BLUEPRINTS.items():
+            if gid not in seen_ids:
+                seen_ids.add(gid)
+                augmented.append(bp)
+
+    # 2. Append canonical blueprints (avoiding duplicates)
+    for cbp in CANONICAL_BLUEPRINTS:
+        if cbp["domain_id"] not in seen_ids:
+            seen_ids.add(cbp["domain_id"])
+            augmented.append(cbp)
+
+    return augmented
+
+
 CANONICAL_DIAGNOSTICS: Dict[str, List[Dict[str, Any]]] = {
     "dist-sys": [
         {

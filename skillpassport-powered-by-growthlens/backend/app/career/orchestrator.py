@@ -77,11 +77,19 @@ class JobSearchOrchestrator:
             seen.add(primary_name)
 
         if self.settings.job_search_enable_fallback:
-            fallback_name = (self.settings.job_search_fallback_provider or "theirstack").lower()
+            fallback_name = (self.settings.job_search_fallback_provider or "jsearch").lower()
             fallback = self.adapters.get(fallback_name)
             if fallback and fallback.is_configured() and fallback_name not in seen:
                 cascade.append(fallback)
                 seen.add(fallback_name)
+
+            # Append any remaining configured providers (e.g. fantastic_jobs)
+            for extra_name in ["theirstack", "jsearch", "fantastic_jobs"]:
+                if extra_name not in seen:
+                    extra_adapter = self.adapters.get(extra_name)
+                    if extra_adapter and extra_adapter.is_configured():
+                        cascade.append(extra_adapter)
+                        seen.add(extra_name)
 
         return cascade
 
@@ -210,7 +218,12 @@ class JobSearchOrchestrator:
             cached_entry = db.query(JobSearchCacheRecord).filter(JobSearchCacheRecord.cache_key == cache_key).first()
         except Exception as e:
             logger.warning(f"Database cache query bypassed: {e}")
-        if cached_entry and cached_entry.expires_at > now and cached_entry.result_job_ids:
+
+        expires_at = cached_entry.expires_at if cached_entry else None
+        if expires_at and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if cached_entry and expires_at and expires_at > now and cached_entry.result_job_ids:
             logger.info(f"Cache hit for search '{search_query}'. Serving {cached_entry.result_count} cached jobs.")
             job_uuids = [uuid.UUID(jid) for jid in cached_entry.result_job_ids if jid]
             postings = db.query(JobPostingRecord).filter(JobPostingRecord.id.in_(job_uuids)).all()

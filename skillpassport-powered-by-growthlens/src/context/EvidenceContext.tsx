@@ -53,6 +53,9 @@ import {
   submitLearningAttempt,
   generateBackendRoadmap,
   submitProjectToBackend,
+  markStepComplete,
+  getLearningHistory,
+  recordLearningActivity,
   DatabaseUnavailableError,
 } from "@/lib/evidenceApi";
 import {
@@ -280,7 +283,7 @@ interface EvidenceContextType {
     pace: "standard" | "fast_track"
   ) => void;
   recordDiagnosticResult: (result: DiagnosticResult) => void;
-  completeStep: (stepId: string) => void;
+  completeStep: (stepId: string, roadmapId?: string, notes?: string) => Promise<any>;
   completePracticeExercise: (exerciseId: string, score: number) => void;
   recordAssessmentAttempt: (attempt: AssessmentAttempt, skipBackendSync?: boolean) => void;
   submitMiniProject: (
@@ -498,7 +501,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
   // Domain 5 Learning Intelligence State
   const [blueprints, setBlueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
-  const [activeDomainId, setActiveDomainId] = useState<string>("domain-data-preprocessing");
+  const [activeDomainId, setActiveDomainId] = useState<string>("gap-skill-api-integration");
   const [roadmaps, setRoadmaps] = useState<Record<string, LearningRoadmap>>(() => {
     const initialMap: Record<string, LearningRoadmap> = {};
     INITIAL_BLUEPRINTS.forEach((bp) => {
@@ -896,7 +899,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
             if (!mappedCands || mappedCands.length === 0) return item;
 
             const existingSkills = item.candidateSkills || [];
-            const newSkills: CandidateSkill[] = mappedCands.map((c: any) => {
+            const rawNewSkills: CandidateSkill[] = mappedCands.map((c: any) => {
               const rawScore = c.confidence_score !== undefined && c.confidence_score !== null ? c.confidence_score : c.relevance_score;
               const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 85;
               return {
@@ -911,6 +914,20 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
               };
             });
 
+            // Deduplicate within incoming skills
+            const seenNewIds = new Set<string>();
+            const seenNewNames = new Set<string>();
+            const newSkills: CandidateSkill[] = [];
+            for (const sk of rawNewSkills) {
+              const idK = sk.id?.trim();
+              const nameK = sk.name?.trim().toLowerCase();
+              if (idK && seenNewIds.has(idK)) continue;
+              if (nameK && seenNewNames.has(nameK)) continue;
+              if (idK) seenNewIds.add(idK);
+              if (nameK) seenNewNames.add(nameK);
+              newSkills.push(sk);
+            }
+
             if (existingSkills.length === 0) {
               return {
                 ...item,
@@ -918,8 +935,13 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
               };
             }
 
-            const existingNames = new Set(existingSkills.map((s) => s.name.toLowerCase()));
-            const toAdd = newSkills.filter((s) => !existingNames.has(s.name.toLowerCase()));
+            const existingIds = new Set(existingSkills.map((s) => s.id).filter(Boolean));
+            const existingNames = new Set(existingSkills.map((s) => s.name?.toLowerCase().trim()).filter(Boolean));
+            const toAdd = newSkills.filter((s) => {
+              if (s.id && existingIds.has(s.id)) return false;
+              if (s.name && existingNames.has(s.name.toLowerCase().trim())) return false;
+              return true;
+            });
             return {
               ...item,
               candidateSkills: [...existingSkills, ...toAdd],
@@ -1193,17 +1215,47 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
       // Domain 5: Learn & Grow Engine Live Hydration
       try {
-        const [overviewRes, blueprintsRes] = await Promise.allSettled([
+        const [overviewRes, blueprintsRes, historyRes] = await Promise.allSettled([
           getLearningOverview(),
           listDomainBlueprints(),
+          getLearningHistory({ limit: 100 }),
         ]);
 
         if (blueprintsRes.status === "fulfilled" && Array.isArray(blueprintsRes.value?.blueprints)) {
           setBlueprints(blueprintsRes.value.blueprints);
         }
 
+        if (historyRes.status === "fulfilled" && Array.isArray(historyRes.value?.activities) && historyRes.value.activities.length > 0) {
+          const serverEvents: LearningHistoryEvent[] = historyRes.value.activities.map((a: any) => ({
+            id: a.id,
+            timestamp: a.created_at ? new Date(a.created_at).toLocaleString() : "Recently",
+            type: a.activity_type,
+            title: a.title,
+            domain_id: a.domain_id || "general",
+            topic_id: a.step_id || undefined,
+            step_id: a.step_id || undefined,
+            roadmap_id: a.roadmap_id || undefined,
+            detail: a.detail || "",
+            link_route: a.link_route || undefined,
+            score: a.score != null ? a.score : undefined,
+            activity_status: a.activity_status,
+            activity_metadata: a.activity_metadata,
+            created_at: a.created_at,
+          }));
+          setLearningHistory(serverEvents);
+        }
+
         if (overviewRes.status === "fulfilled" && overviewRes.value) {
           const overview = overviewRes.value;
+          if (overview.active_blueprint?.domain_id) {
+            setActiveDomainId((prev) => {
+              // If previously on legacy default or empty, switch to backend's prioritized active blueprint
+              if (!prev || prev === "domain-data-preprocessing") {
+                return overview.active_blueprint.domain_id;
+              }
+              return prev;
+            });
+          }
           if (overview.active_roadmap) {
             setRoadmaps((prev) => ({
               ...prev,
@@ -1426,6 +1478,84 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   const activeReadiness = useMemo(() => {
     return evaluateCareerReadiness(activeMatch, activeGaps);
   }, [activeMatch, activeGaps]);
+
+  // Synchronize Learn & Grow blueprints and active domain with Career Intelligence active gaps
+  useEffect(() => {
+    if (!activeGaps || activeGaps.length === 0) return;
+
+    setBlueprints((prev) => {
+      const existingIds = new Set(prev.map((b) => b.domain_id));
+      const additions: DomainBlueprint[] = [];
+
+      for (const gap of activeGaps) {
+        const rawSkillId = gap.skill_id || (gap as any).id || (gap as any).gap_id || (gap.canonical_name ? gap.canonical_name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "skill");
+        const gapDomainId = rawSkillId.startsWith("gap-")
+          ? rawSkillId
+          : `gap-${rawSkillId}`;
+
+        if (!existingIds.has(gapDomainId)) {
+          const synthesized: DomainBlueprint = {
+            domain_id: gapDomainId,
+            title: gap.canonical_name || "Targeted Skill Remediation",
+            version: "v2026.1-TARGET-GAP",
+            status: "active",
+            description: gap.diagnosis
+              ? `${gap.diagnosis} ${gap.next_step_direction || ""}`
+              : `Targeted remediation blueprint for ${gap.canonical_name || "targeted gap"} in ${gap.role_title || "target role"}.`,
+            target_mastery: gap.expected_level === "Working" ? 75 : 85,
+            estimated_hours: 12 + (gap.proficiency_distance || 1) * 3,
+            learning_objectives: [
+              `Demonstrate verified proficiency in ${gap.canonical_name || "targeted gap"} required for ${gap.role_title || "target role"}`,
+              `Implement robust patterns and practical coding exercises for ${gap.canonical_name || "targeted gap"}`,
+              `Produce attributable candidate evidence meeting target role expectations`,
+            ],
+            modules: [
+              {
+                id: `mod-${rawSkillId}-1`,
+                title: `1. Core Principles & Practical Implementation`,
+                description: `Foundational requirements and hands-on patterns for ${gap.canonical_name || "targeted gap"}.`,
+                topics: [
+                  {
+                    id: `topic-${rawSkillId}-core`,
+                    title: `${gap.canonical_name || "Targeted Skill"} Foundations`,
+                    description: `Core concepts, standard libraries, and key techniques.`,
+                    difficulty: "Beginner",
+                    estimated_minutes: 45,
+                    learning_objective: `Master fundamental patterns in ${gap.canonical_name || "targeted gap"}.`,
+                    prerequisites: [],
+                    related_skill_id: rawSkillId,
+                    knowledge_signal: 60,
+                    practice_signal: 50,
+                    assessment_signal: 40,
+                    project_signal: 30,
+                    current_mastery: 45,
+                    target_mastery: 85,
+                    status: "available",
+                  },
+                ],
+              },
+            ],
+          };
+          additions.push(synthesized);
+          existingIds.add(gapDomainId);
+        }
+      }
+
+      return additions.length > 0 ? [...additions, ...prev] : prev;
+    });
+
+    // If current domain is default/generic, auto-switch to top priority career gap
+    setActiveDomainId((prev) => {
+      if (!prev || prev === "domain-data-preprocessing") {
+        const topGap = activeGaps[0];
+        if (topGap) {
+          const rawSkillId = topGap.skill_id || (topGap as any).id || (topGap as any).gap_id || (topGap.canonical_name ? topGap.canonical_name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "skill");
+          return rawSkillId.startsWith("gap-") ? rawSkillId : `gap-${rawSkillId}`;
+        }
+      }
+      return prev;
+    });
+  }, [activeGaps]);
 
   const saveState = (
     _items: EvidenceItem[],
@@ -1793,7 +1923,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, [blueprints, activeDomainId]);
 
   const activeRoadmap = useMemo(() => {
-    return roadmaps[activeDomainId] || roadmaps["domain-data-preprocessing"] || generatePersonalizedRoadmap(activeBlueprint);
+    return roadmaps[activeDomainId] || generatePersonalizedRoadmap(activeBlueprint);
   }, [roadmaps, activeDomainId, activeBlueprint]);
 
   const activeDiagnosticResult = diagnosticResults[activeDomainId];
@@ -1808,6 +1938,16 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       ...event,
     };
     setLearningHistory((prev) => [newEv, ...prev]);
+
+    // Backend activity persistence dispatch
+    recordLearningActivity({
+      activity_type: event.type,
+      title: event.title,
+      detail: event.detail,
+      domain_id: event.domain_id,
+      score: event.score,
+      link_route: event.link_route,
+    }).catch((err) => console.warn("Background activity record failed:", err));
   };
 
   const updateRoadmapPreferences = (
@@ -1851,48 +1991,81 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => console.warn("Backend roadmap generation sync:", e));
   };
 
-  const completeStep = (stepId: string) => {
+  const completeStep = async (stepId: string, roadmapId?: string, notes?: string) => {
     const roadmap = roadmaps[activeDomainId];
-    if (!roadmap) return;
-    const updatedSteps = roadmap.steps.map((s) => {
-      if (s.step_id === stepId) {
-        return { ...s, status: "completed" as const, current_mastery: s.target_mastery };
-      }
-      return s;
-    });
-    const currentCompletedIds = updatedSteps.filter((s) => s.status === "completed").map((s) => s.topic_id);
-    const fullyUpdated = updatedSteps.map((s) => {
-      if (s.status === "locked" && s.prerequisite_ids.every((pid) => currentCompletedIds.includes(pid))) {
-        return { ...s, status: "available" as const, prerequisites_met: true };
-      }
-      return s;
-    });
-
-    const stepObj = roadmap.steps.find((s) => s.step_id === stepId);
-    setRoadmaps((prev) => ({
-      ...prev,
-      [activeDomainId]: { ...roadmap, steps: fullyUpdated },
-    }));
-
-    if (stepObj) {
-      addLearningHistoryEvent({
-        timestamp: "Just now",
-        type: "step_completed",
-        title: `Completed Objective: ${stepObj.title}`,
-        domain_id: activeDomainId,
-        topic_id: stepObj.topic_id,
-        detail: `Demonstrated objective: ${stepObj.learning_objective}`,
-        link_route: `/app/learning/steps/${stepId}`,
+    if (roadmap) {
+      const updatedSteps = roadmap.steps.map((s) => {
+        if (s.step_id === stepId) {
+          return { ...s, status: "completed" as const, current_mastery: s.target_mastery };
+        }
+        return s;
       });
+      const currentCompletedIds = updatedSteps.filter((s) => s.status === "completed").map((s) => s.topic_id);
+      const fullyUpdated = updatedSteps.map((s) => {
+        if (s.status === "locked" && (s.prerequisite_ids || []).every((pid) => currentCompletedIds.includes(pid))) {
+          return { ...s, status: "available" as const, prerequisites_met: true };
+        }
+        return s;
+      });
+
+      const completedCount = fullyUpdated.filter((s) => s.status === "completed").length;
+      const totalCount = fullyUpdated.length || 1;
+      const mastery = Math.round(fullyUpdated.reduce((acc, s) => acc + s.current_mastery, 0) / totalCount);
+
+      setRoadmaps((prev) => ({
+        ...prev,
+        [activeDomainId]: {
+          ...roadmap,
+          steps: fullyUpdated,
+          completed_steps: completedCount,
+          total_steps: totalCount,
+          current_mastery: mastery,
+        },
+      }));
+
+      const stepObj = roadmap.steps.find((s) => s.step_id === stepId);
+      if (stepObj) {
+        addLearningHistoryEvent({
+          timestamp: "Just now",
+          type: "step_completed",
+          title: `Completed Objective: ${stepObj.title}`,
+          domain_id: activeDomainId,
+          topic_id: stepObj.topic_id,
+          detail: `Demonstrated objective: ${stepObj.learning_objective}`,
+          link_route: `/app/learning/steps/${stepId}`,
+          score: stepObj.target_mastery,
+        });
+      }
     }
 
     // Backend database persistence dispatch
-    submitLearningAttempt({
-      step_id: stepId,
-      attempt_type: "assessment",
-      activity_id: stepId,
-      score: 100,
-    }).catch((e) => console.warn("Backend step attempt sync failed:", e));
+    try {
+      const targetRoadmapId = roadmapId || roadmap?.path_id || roadmap?.id;
+      const res = await markStepComplete(stepId, {
+        roadmap_id: targetRoadmapId,
+        notes,
+      });
+      if (res?.roadmap_progress) {
+        setRoadmaps((prev) => {
+          const current = prev[activeDomainId];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [activeDomainId]: {
+              ...current,
+              completed_steps: res.roadmap_progress.completed_steps,
+              total_steps: res.roadmap_progress.total_steps,
+              current_mastery: res.roadmap_progress.current_mastery,
+              status: res.roadmap_progress.status,
+            },
+          };
+        });
+      }
+      return res;
+    } catch (e) {
+      console.warn("Backend step completion sync failed:", e);
+      return null;
+    }
   };
 
   const completePracticeExercise = (exerciseId: string, score: number) => {

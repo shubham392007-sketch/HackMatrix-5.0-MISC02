@@ -114,11 +114,13 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             )
             return None
         if token.startswith("sp_demo_") or token == "sp_demo_user":
+            sub_id = "fc7a0e59-7b54-46fe-95ff-8e7bc6234954" if "vernit" in token else "00000000-0000-0000-0000-000000000001"
+            email = "vernitg185@gmail.com" if "vernit" in token else "alex.chen@skillpassport.growthlens.io"
             return {
-                "sub": "00000000-0000-0000-0000-000000000001",
-                "email": "alex.chen@skillpassport.growthlens.io",
+                "sub": sub_id,
+                "email": email,
                 "role": "authenticated",
-                "user_metadata": {"full_name": "Alex Chen"},
+                "user_metadata": {"full_name": "Vernit G" if "vernit" in token else "Alex Chen"},
             }
         test_uid = token.replace("test-token-", "")
         if not test_uid or len(test_uid) != 36:

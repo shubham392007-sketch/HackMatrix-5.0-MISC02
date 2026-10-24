@@ -136,9 +136,11 @@ export default function EvidenceDetailPage({
 
   // 3. Resolve candidate skills across all sources (DB mappings, context items, extraction candidates, work analyses)
   const resolvedCandidateSkills: CandidateSkill[] = (() => {
+    let rawSkills: CandidateSkill[] = [];
+
     // 1. Direct from fresh backend query
     if (detailItem && Array.isArray(detailItem.candidateSkills) && detailItem.candidateSkills.length > 0) {
-      return detailItem.candidateSkills.map((c: any) => {
+      rawSkills = detailItem.candidateSkills.map((c: any) => {
         const rawScore = c.confidence !== undefined ? c.confidence : (c.confidence_score !== undefined ? c.confidence_score : c.relevance_score);
         const dynamicScore = typeof rawScore === "number" ? Math.round(rawScore <= 1.0 ? rawScore * 100 : rawScore) : 85;
         return {
@@ -152,46 +154,57 @@ export default function EvidenceDetailPage({
           confidence: dynamicScore,
         };
       });
+    } else if (contextItem && Array.isArray(contextItem.candidateSkills) && contextItem.candidateSkills.length > 0) {
+      // 2. From context item
+      rawSkills = contextItem.candidateSkills;
+    } else {
+      // 3. From extraction candidates in context matching this item id
+      const matchingCandidates = extractionCandidates.filter(
+        (c) => c.evidence_ids?.includes(id) || (c as any).evidence_id === id
+      );
+      if (matchingCandidates.length > 0) {
+        rawSkills = matchingCandidates.map((c) => ({
+          id: c.id,
+          name: c.canonical_name || c.original_label,
+          category: c.category || "Extracted Competency",
+          excerpt: c.supporting_excerpt || "",
+          associationReason: c.extraction_rationale || "Extracted from verified evidence artifact",
+          status: (c.review_state === "reviewed" ? "reviewed" : c.review_state === "insufficient" ? "insufficient" : "candidate") as any,
+          proficiencyLevel: "Practitioner" as any,
+          confidence: c.confidence,
+        }));
+      } else {
+        // 4. Fallback to work analysis demonstrated skills
+        const analysis = workAnalyses.find((a) => a.source_id === id);
+        if (analysis && Array.isArray(analysis.demonstrated_skills) && analysis.demonstrated_skills.length > 0) {
+          rawSkills = analysis.demonstrated_skills.map((s, idx) => ({
+            id: `analysis-skill-${idx}`,
+            name: s.name,
+            category: s.category || "Demonstrated Competency",
+            excerpt: s.justification || "",
+            associationReason: s.corroborated_with_evidence ? "Corroborated with evidence analysis" : "Demonstrated in artifact code/stack",
+            status: "candidate" as any,
+            proficiencyLevel: (s.proficiency || "Intermediate") as any,
+            confidence: Math.round(analysis.inferred_attributes?.[0]?.confidence || 85),
+          }));
+        }
+      }
     }
 
-    // 2. From context item
-    if (contextItem && Array.isArray(contextItem.candidateSkills) && contextItem.candidateSkills.length > 0) {
-      return contextItem.candidateSkills;
+    // Deduplicate strictly by both unique ID and skill name to guarantee clean unique keys
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const deduped: CandidateSkill[] = [];
+    for (const sk of rawSkills) {
+      const idKey = sk.id?.trim();
+      const nameKey = sk.name?.trim().toLowerCase();
+      if (idKey && seenIds.has(idKey)) continue;
+      if (nameKey && seenNames.has(nameKey)) continue;
+      if (idKey) seenIds.add(idKey);
+      if (nameKey) seenNames.add(nameKey);
+      deduped.push(sk);
     }
-
-    // 3. From extraction candidates in context matching this item id
-    const matchingCandidates = extractionCandidates.filter(
-      (c) => c.evidence_ids?.includes(id) || (c as any).evidence_id === id
-    );
-    if (matchingCandidates.length > 0) {
-      return matchingCandidates.map((c) => ({
-        id: c.id,
-        name: c.canonical_name || c.original_label,
-        category: c.category || "Extracted Competency",
-        excerpt: c.supporting_excerpt || "",
-        associationReason: c.extraction_rationale || "Extracted from verified evidence artifact",
-        status: (c.review_state === "reviewed" ? "reviewed" : c.review_state === "insufficient" ? "insufficient" : "candidate") as any,
-        proficiencyLevel: "Practitioner" as any,
-        confidence: c.confidence,
-      }));
-    }
-
-    // 4. Fallback to work analysis demonstrated skills
-    const analysis = workAnalyses.find((a) => a.source_id === id);
-    if (analysis && Array.isArray(analysis.demonstrated_skills) && analysis.demonstrated_skills.length > 0) {
-      return analysis.demonstrated_skills.map((s, idx) => ({
-        id: `analysis-skill-${idx}`,
-        name: s.name,
-        category: s.category || "Demonstrated Competency",
-        excerpt: s.justification || "",
-        associationReason: s.corroborated_with_evidence ? "Corroborated with evidence analysis" : "Demonstrated in artifact code/stack",
-        status: "candidate" as any,
-        proficiencyLevel: (s.proficiency || "Intermediate") as any,
-        confidence: Math.round(analysis.inferred_attributes?.[0]?.confidence || 85),
-      }));
-    }
-
-    return [];
+    return deduped;
   })();
 
   const handleReprocess = async () => {
@@ -539,11 +552,12 @@ export default function EvidenceDetailPage({
             </div>
           ) : (
             <div className="space-y-3">
-              {resolvedCandidateSkills.map((sk) => {
+              {resolvedCandidateSkills.map((sk, idx) => {
                 const confScore = typeof sk.confidence === "number" ? Math.round(sk.confidence <= 1 ? sk.confidence * 100 : sk.confidence) : null;
+                const childKey = sk.id ? `cand-skill-${sk.id}-${idx}` : `cand-skill-${sk.name}-${idx}`;
                 return (
                   <div
-                    key={sk.id || sk.name}
+                    key={childKey}
                     className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[2px_2px_0_0_#1C1C1C]"
                   >
                     <div className="space-y-1.5 flex-1">

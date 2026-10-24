@@ -186,6 +186,9 @@ export default function DiscoverJobsPage() {
       if (rawMsg.toLowerCase().includes("authentication") || rawMsg.toLowerCase().includes("401") || rawMsg.toLowerCase().includes("403")) {
         setErrorCategory("provider_authentication_error");
         setErrorMessage("The job provider rejected authentication. Please check server-side provider credentials in backend/.env.");
+      } else if (rawMsg.toLowerCase().includes("quota") || rawMsg.toLowerCase().includes("credit") || rawMsg.toLowerCase().includes("402")) {
+        setErrorCategory("rate_limit_exceeded");
+        setErrorMessage("All configured provider API credits have been exhausted. Please configure fresh keys in backend/.env or try again later.");
       } else if (rawMsg.toLowerCase().includes("rate limit") || rawMsg.toLowerCase().includes("429")) {
         setErrorCategory("rate_limit_exceeded");
         setErrorMessage("The external job provider has reached its request limit. Please try again shortly or use cached data.");

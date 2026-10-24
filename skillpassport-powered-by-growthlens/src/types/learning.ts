@@ -94,19 +94,27 @@ export interface RoadmapStep {
 }
 
 export interface LearningRoadmap {
+  id?: string;
   path_id: string;
   domain_id: string;
   domain_title: string;
-  blueprint_version: string;
+  blueprint_version?: string;
+  target_role_id?: string;
+  target_role_title?: string;
+  generation_method?: string;
+  ai_model?: string;
+  latency_seconds?: number;
   baseline_mastery: number;
   current_mastery: number;
   target_mastery: number;
-  study_hours_per_week: number;
-  preference: "text-first" | "video-first" | "practice-first";
-  pace: "standard" | "fast_track";
+  total_steps?: number;
+  completed_steps?: number;
+  study_hours_per_week?: number;
+  preference?: "text-first" | "video-first" | "practice-first";
+  pace?: "standard" | "fast_track";
   steps: RoadmapStep[];
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LearningStepPacket {
@@ -252,15 +260,45 @@ export interface MiniProjectAttempt {
 
 export interface MiniProject {
   id: string;
+  project_id?: string;
   title: string;
   domain_id: string;
+  domain_title?: string;
+  skill_id?: string;
+  skill_name?: string;
+  gap_id?: string;
+  roadmap_id?: string;
+  target_role_id?: string;
+  difficulty?: string;
+  estimated_hours?: number;
   problem_statement: string;
   relevance_to_gap: string;
   objectives: string[];
+  learning_objectives?: string[];
   required_steps: string[];
+  expected_deliverables?: string[];
+  implementation_requirements?: string[];
+  milestones?: Array<{
+    step: number;
+    title: string;
+    description: string;
+    acceptance: string;
+  }>;
+  acceptance_criteria?: string[];
   dataset_description: string;
   submission_requirements: string[];
   rubric: MiniProjectRubricItem[];
+  submission_instructions?: string;
+  resources?: Array<{
+    title: string;
+    type: string;
+    url_hint?: string;
+  }>;
+  generation_method?: string;
+  ai_provider?: string;
+  ai_model?: string;
+  latency_seconds?: number;
+  generation_status?: string;
   status: "not_started" | "in_progress" | "submitted" | "evaluated";
   submitted_attempt?: MiniProjectAttempt;
 }
@@ -295,17 +333,75 @@ export interface LearningHistoryEvent {
     | "step_completed"
     | "resource_viewed"
     | "practice_completed"
+    | "practice_attempted"
     | "assessment_attempt"
+    | "assessment_completed"
     | "project_submitted"
+    | "project_evaluated"
     | "remediation_completed"
     | "roadmap_adjusted"
-    | "candidate_evidence_generated";
+    | "roadmap_started"
+    | "candidate_evidence_generated"
+    | string;
   title: string;
   domain_id: string;
   topic_id?: string;
+  step_id?: string;
+  roadmap_id?: string;
   detail: string;
   link_route?: string;
   score?: number;
+  activity_status?: string;
+  activity_metadata?: Record<string, any>;
+  created_at?: string;
+}
+
+export interface StepCompleteResponse {
+  status: string;
+  already_completed: boolean;
+  step_id: string;
+  title: string;
+  current_mastery: number;
+  target_mastery: number;
+  completed_at: string;
+  roadmap_id: string;
+  path_id: string;
+  activity_id?: string;
+  roadmap_progress: {
+    completed_steps: number;
+    total_steps: number;
+    completion_percentage: number;
+    current_mastery: number;
+    target_mastery: number;
+    status: string;
+  };
+}
+
+export interface LearningHistoryResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  activities: Array<{
+    id: string;
+    owner_user_id: string;
+    roadmap_id?: string | null;
+    step_id?: string | null;
+    activity_type: string;
+    activity_status: string;
+    title: string;
+    detail?: string | null;
+    domain_id?: string | null;
+    skill_id?: string | null;
+    target_role_id?: string | null;
+    resource_id?: string | null;
+    assessment_id?: string | null;
+    project_id?: string | null;
+    score?: number | null;
+    link_route?: string | null;
+    activity_metadata?: Record<string, any>;
+    created_at?: string;
+    updated_at?: string;
+  }>;
 }
 
 export interface CandidateLearningEvidence {
@@ -327,4 +423,68 @@ export interface CandidateLearningEvidence {
     | "Verified"
     | "Insufficient Evidence";
   verification_notes: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 9 — Evidence-Provenance Types for Lagging Skills
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RequirementSourceRef {
+  title: string;
+  source_type: "target_role_model" | "job_description" | "benchmark_curriculum" | "canonical_taxonomy" | string;
+  requirement: string;
+  source_reference: string;
+  source_url?: string | null;
+}
+
+export interface UserEvidenceSourceRef {
+  evidence_id: string;
+  title: string;
+  provider: "github" | "document_upload" | "jira" | "portfolio" | "assessment" | string;
+  source_type: string;
+  observed_date?: string | null;
+  source_url?: string | null;
+  evidence_strength: "high" | "medium" | "low" | string;
+  extraction_confidence: number;
+  verification_status: "verified" | "source_checked" | "candidate" | "unreviewed" | "conflicting" | "rejected" | string;
+  excerpt: string;
+  is_contradicting: boolean;
+  contradiction_reason?: string | null;
+}
+
+export type EvidenceSufficiencyType =
+  | "verified_skill_gap"
+  | "evidence_gap"
+  | "conflicting_evidence"
+  | "awaiting_analysis"
+  | "verified_learning_need";
+
+export interface SkillGapAssessment {
+  id: string;
+  owner_user_id: string;
+  skill_id: string;
+  canonical_name: string;
+  target_role_id: string;
+  target_role_title: string;
+  gap_id: string;
+  gap_type: string;
+  required_proficiency: string;
+  current_proficiency: string;
+  proficiency_distance: number;
+  evidence_sufficiency: EvidenceSufficiencyType;
+  confidence_score: number;
+  assessment_rationale: string;
+  requirement_sources: RequirementSourceRef[];
+  supporting_evidence: UserEvidenceSourceRef[];
+  contradicting_evidence: UserEvidenceSourceRef[];
+  analysis_run_id: string;
+  ai_provider: "ollama_qwen" | "cached_existing" | "deterministic_engine" | string;
+  ai_model: string;
+  prompt_version: string;
+  validation_status: "passed" | "flagged" | "partial" | string;
+  is_human_reviewed: boolean;
+  roadmap_id?: string | null;
+  roadmap_path_id?: string | null;
+  created_at: string;
+  updated_at: string;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useEvidence } from "@/context/EvidenceContext";
 import { TopicDifficultyBadge, ActiveDomainSelectorBar } from "@/components/app/LearningBadges";
@@ -123,6 +123,16 @@ export default function LearningResourcesPage() {
       prev.includes(resId) ? prev : [...prev, resId]
     );
   };
+
+  // Auto-fetch live resources if active domain has few resources
+  useEffect(() => {
+    const domainMatches = allResources.filter(
+      (r) => !r.domain_id || r.domain_id === activeDomainId
+    );
+    if (domainMatches.length < 2 && activeBlueprint?.title) {
+      handleLiveSearch();
+    }
+  }, [activeDomainId]);
 
   return (
     <div className="flex-1 flex flex-col">

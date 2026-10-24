@@ -1,8 +1,19 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from alembic import context
 import os
 import sys
+
+# Provide SQLite-compatible compilation for PostgreSQL-specific types during test & local SQLite migrations
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
+
+@compiles(UUID, "sqlite")
+def compile_uuid_sqlite(type_, compiler, **kw):
+    return "CHAR(36)"
 
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -20,9 +31,16 @@ if config is not None and getattr(config, "config_file_name", None) is not None:
 target_metadata = Base.metadata
 
 def get_url():
+    # 1. Config option passed explicitly (e.g. alembic_cfg.set_main_option)
     url = config.get_main_option("sqlalchemy.url") if config is not None else None
-    if url:
-        return url
+    if url and url.strip():
+        return url.strip()
+
+    # 2. Explicit environment override for testing or local migrations
+    env_override = os.environ.get("ALEMBIC_DATABASE_URL") or os.environ.get("MIGRATION_DATABASE_URL")
+    if env_override and env_override.strip():
+        return env_override.strip()
+
     settings = get_settings()
     # Prefer direct_url for transactional migrations (bypasses statement-level transaction poolers)
     if settings.direct_url and settings.direct_url.strip():

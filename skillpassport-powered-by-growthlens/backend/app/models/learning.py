@@ -51,6 +51,10 @@ class LearningRoadmap(Base, TimestampMixin):
     total_steps: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     completed_steps: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    generation_method: Mapped[str] = mapped_column(String(50), default="ollama_qwen", nullable=False)
+    ai_model: Mapped[Optional[str]] = mapped_column(String(50), default="qwen3:8b", nullable=True)
+    latency_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     upstream_snapshot_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
     upstream_snapshot_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
@@ -264,6 +268,209 @@ class LearningProjectSubmission(Base, TimestampMixin):
     )
 
 
+class SkillGapAssessmentRecord(Base, TimestampMixin):
+    """
+    Persisted evidence-provenance assessment for a lagging skill or skill gap (Phase 9).
+    Connects Career Intelligence requirements, Evidence Workspace artifacts,
+    and Learn & Grow remediation roadmaps with verifiable provenance.
+    """
+    __tablename__ = "skill_gap_assessments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+
+    skill_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    canonical_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    target_role_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    target_role_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    gap_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    gap_type: Mapped[str] = mapped_column(String(50), default="depth_gap", nullable=False)
+
+    required_proficiency: Mapped[str] = mapped_column(String(50), default="Practitioner", nullable=False)
+    current_proficiency: Mapped[str] = mapped_column(String(50), default="Not Established", nullable=False)
+    proficiency_distance: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    evidence_sufficiency: Mapped[str] = mapped_column(String(50), default="evidence_gap", nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, default=0.75, nullable=False)
+    assessment_rationale: Mapped[str] = mapped_column(Text, nullable=False)
+
+    requirement_sources: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    supporting_evidence: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    contradicting_evidence: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+
+    analysis_run_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    ai_provider: Mapped[str] = mapped_column(String(50), default="ollama_qwen", nullable=False)
+    ai_model: Mapped[str] = mapped_column(String(50), default="qwen3:8b", nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(50), default="v1.0", nullable=False)
+    validation_status: Mapped[str] = mapped_column(String(50), default="passed", nullable=False)
+    is_human_reviewed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    roadmap_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("learning_roadmaps.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    roadmap_path_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    __table_args__ = (
+        Index("idx_gap_asmt_owner_skill_role", "owner_user_id", "skill_id", "target_role_id"),
+        Index("idx_gap_asmt_owner_gap", "owner_user_id", "gap_id"),
+    )
+
+
+class LearningStepPacketRecord(Base, TimestampMixin):
+    """
+    Persisted study packet for a learning step or topic (Phase 10B).
+    Stores substantive pedagogical content, code examples, knowledge checks,
+    and explicit generation provenance (Ollama AI vs Curated Catalogue vs Deterministic Fallback).
+    """
+    __tablename__ = "learning_step_packets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    step_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    topic_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    domain_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    owner_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    learning_objective: Mapped[str] = mapped_column(Text, nullable=False)
+    why_this_matters: Mapped[str] = mapped_column(Text, nullable=False)
+    what_is_it: Mapped[str] = mapped_column(Text, nullable=False)
+    why_and_when: Mapped[str] = mapped_column(Text, nullable=False)
+
+    worked_example: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    common_mistakes: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    implementation_steps: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    knowledge_check: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    source_attribution: Mapped[str] = mapped_column(String(500), nullable=False)
+
+    # Provenance fields
+    generation_method: Mapped[str] = mapped_column(String(50), nullable=False)  # "ollama_qwen", "curated_catalogue", "saved_ai_packet", "deterministic_fallback"
+    ai_provider: Mapped[Optional[str]] = mapped_column(String(50), default="ollama", nullable=True)
+    ai_model: Mapped[Optional[str]] = mapped_column(String(50), default="qwen3:8b", nullable=True)
+    latency_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    generation_status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False)  # "completed", "curated", "fallback", "failed"
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_packets_step_owner", "step_id", "owner_user_id"),
+        Index("idx_packets_topic", "topic_id"),
+    )
+
+
+class LearningMiniProject(Base, TimestampMixin):
+    """
+    Persisted mini-project specification generated for an authenticated user (Phase 11).
+    Stores domain-specific project briefs generated by the AI advisor or curated catalogue.
+    Strictly separate from LearningProjectSubmission (user deliverables).
+    Does NOT represent a completed or scored outcome; that belongs to LearningProjectSubmission.
+    """
+    __tablename__ = "learning_mini_projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+
+    # Stable string project ID used in URLs and submissions (e.g. "proj-<uuid-prefix>")
+    project_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+
+    domain_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    domain_title: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Source references
+    skill_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    skill_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    gap_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    roadmap_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("learning_roadmaps.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    target_role_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Specification fields
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    difficulty: Mapped[str] = mapped_column(String(50), default="Intermediate", nullable=False)
+    estimated_hours: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    problem_statement: Mapped[str] = mapped_column(Text, nullable=False)
+    relevance_to_gap: Mapped[str] = mapped_column(Text, nullable=False)
+    learning_objectives: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    expected_deliverables: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    implementation_requirements: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    milestones: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    acceptance_criteria: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
+    rubric: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    submission_instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    resources: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+
+    # Provenance
+    generation_method: Mapped[str] = mapped_column(String(50), nullable=False)  # "ollama_qwen", "curated_catalogue", "deterministic_fallback"
+    ai_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ai_model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    latency_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    generation_status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Lifecycle
+    status: Mapped[str] = mapped_column(String(50), default="not_started", nullable=False)  # "not_started", "in_progress", "submitted", "evaluated"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        Index("idx_mini_projects_owner_domain", "owner_user_id", "domain_id"),
+        Index("idx_mini_projects_owner_gap", "owner_user_id", "gap_id"),
+        Index("idx_mini_projects_project_id", "project_id"),
+    )
+
+
+class LearningActivityRecord(Base, TimestampMixin):
+    """
+    Authoritative timeline of learning actions, milestones, and achievements.
+    Records study packet views, resource interactions, exercise attempts,
+    assessment submissions, mini-project submissions, and step completions.
+    """
+    __tablename__ = "learning_activities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+
+    roadmap_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("learning_roadmaps.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    step_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+
+    activity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # Types: step_completed, step_opened, packet_viewed, resource_viewed, practice_completed, assessment_submitted, project_submitted, project_evaluated, roadmap_started, diagnostic_completed
+
+    activity_status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False)
+    # Statuses: completed, in_progress, started, submitted, evaluated, passed, failed
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    domain_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    skill_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    target_role_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    resource_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    assessment_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    project_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    link_route: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    activity_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+
+    __table_args__ = (
+        Index("idx_activities_owner_type", "owner_user_id", "activity_type"),
+        Index("idx_activities_owner_created", "owner_user_id", "created_at"),
+        Index("idx_activities_domain", "domain_id"),
+    )
+
+
 # Architectural compatibility aliases
 LearningRoadmapModel = LearningRoadmap
 LearningStepModel = LearningStep
@@ -272,5 +479,8 @@ LearningAttemptModel = LearningAttempt
 LearningMasterySnapshotModel = LearningMasterySnapshot
 LearningAssessmentModel = LearningAssessment
 LearningProjectSubmissionModel = LearningProjectSubmission
-
+SkillGapAssessmentModel = SkillGapAssessmentRecord
+LearningStepPacketModel = LearningStepPacketRecord
+LearningMiniProjectModel = LearningMiniProject
+LearningActivityModel = LearningActivityRecord
 

@@ -669,6 +669,17 @@ def save_catalogue_role_to_targets(
         return {"status": "already_saved", "role_id": existing.role_id, "title": existing.title}
 
     target_id = f"role-target-{template.role_id[:20]}-{user_uuid.hex[:6]}"
+    existing_saved = (
+        db.query(RoleDemandModelRecord)
+        .filter(
+            RoleDemandModelRecord.role_id == target_id,
+            RoleDemandModelRecord.owner_user_id == user_uuid,
+        )
+        .first()
+    )
+    if existing_saved:
+        return {"status": "saved", "role_id": target_id, "title": template.title}
+
     new_saved = RoleDemandModelRecord(
         role_id=target_id,
         version=template.version,
@@ -687,6 +698,7 @@ def save_catalogue_role_to_targets(
         db.commit()
         db.refresh(new_saved)
     except Exception as e:
+        db.rollback()
         logger.warning(f"Could not commit saved target to DB ({e})")
 
     return {"status": "saved", "role_id": target_id, "title": template.title}

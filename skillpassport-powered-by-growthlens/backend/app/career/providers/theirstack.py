@@ -1,4 +1,5 @@
 import uuid
+import time
 import httpx
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
@@ -25,6 +26,8 @@ class TheirStackAdapter(BaseJobSearchAdapter):
     Billed per job returned: strictly bounds limit <= job_search_max_results (default 10)
     to protect API credits.
     """
+
+    _exhausted_keys: Dict[str, float] = {}
 
     def __init__(self):
         self.settings = get_settings()
@@ -97,8 +100,18 @@ class TheirStackAdapter(BaseJobSearchAdapter):
         url = "https://api.theirstack.com/v1/jobs/search"
         last_exception: Optional[ProviderException] = None
 
+        # Clean expired entries from exhausted keys cache (> 1 hour)
+        now_ts = time.time()
+        self._exhausted_keys = {k: ts for k, ts in self._exhausted_keys.items() if now_ts - ts < 3600}
+        if len(self._exhausted_keys) >= len(keys_to_try):
+            self._exhausted_keys.clear()
+
         # Iterate sequentially through configured keys (automatic rollover on exhaustion / 402 / 429 / 401)
         for key_idx, current_key in enumerate(keys_to_try):
+            if current_key in self._exhausted_keys and len(self._exhausted_keys) < len(keys_to_try):
+                logger.info(f"Skipping known exhausted/unauthorized TheirStack key {key_idx + 1}/{len(keys_to_try)}")
+                continue
+
             headers = {
                 "Authorization": f"Bearer {current_key}",
                 "Content-Type": "application/json",
@@ -132,6 +145,7 @@ class TheirStackAdapter(BaseJobSearchAdapter):
 
             # Detect quota exhaustion (402), rate limits (429), or auth/permission errors (401, 403)
             if response.status_code in (401, 402, 403, 429):
+                self._exhausted_keys[current_key] = time.time()
                 logger.warning(
                     f"TheirStack key {key_idx + 1}/{len(keys_to_try)} failed with HTTP {response.status_code}: "
                     f"{response.text[:120]}. Falling back to next key..."
@@ -237,6 +251,7 @@ class TheirStackAdapter(BaseJobSearchAdapter):
                     )
                 )
 
+            self._exhausted_keys.pop(current_key, None)
             logger.info(f"TheirStack key {key_idx + 1} succeeded: returned {len(results)} normalized jobs.")
             return results
 

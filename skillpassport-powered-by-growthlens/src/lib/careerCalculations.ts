@@ -394,6 +394,13 @@ export function extractGapRecords(
       `${comp.requirement_type.replace(/_/g, " ")} urgency, and remaining gap of ${Math.round(gapFactor * 100)}%.` +
       (hasEvidence ? ` Supported by ${comp.evidence_ids.length} existing project artifact(s).` : "");
 
+    const matchingRoleComp = role.competencies?.find((c) => c.skill_id === comp.skill_id);
+    const sourceRefs = matchingRoleComp?.source_references?.length
+      ? matchingRoleComp.source_references
+      : [role.provenance || "GrowthLens Curated Industry Benchmark v2026.1"];
+    const reqSource = `${role.title} (${role.version || "v2026.1"}) Specification`;
+    const provText = role.provenance || "GrowthLens Curated Industry Benchmark v2026.1";
+
     gaps.push({
       gap_id: `gap-${comp.skill_id}`,
       skill_id: comp.skill_id,
@@ -431,6 +438,10 @@ export function extractGapRecords(
       diagnosis: comp.gap_explanation,
       next_step_direction: nextStep,
       relevant_evidence_ids: comp.evidence_ids,
+      requirement_source: reqSource,
+      source_references: sourceRefs,
+      provenance: provText,
+      authenticity_status: comp.verification_status === "verified" ? "verified" : "authentic_benchmark",
     });
   });
 

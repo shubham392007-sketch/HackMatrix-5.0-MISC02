@@ -15,8 +15,292 @@ import { generatePersonalizedRoadmap } from "@/lib/learningCalculations";
 
 export const INITIAL_BLUEPRINTS: DomainBlueprint[] = [
   {
+    domain_id: "gap-skill-api-integration",
+    title: "API Integration & Messaging",
+    version: "v2026.1-TARGET-GAP",
+    status: "active",
+    description:
+      "Production API integration, asynchronous messaging, webhook ingestion, exponential backoff, and distributed service communication.",
+    target_mastery: 85,
+    estimated_hours: 16,
+    learning_objectives: [
+      "Construct idempotent HTTP API consumers with exponential backoff and jitter",
+      "Implement event-driven asynchronous messaging patterns with message queues",
+      "Design robust webhook ingestion pipelines with cryptographic signature validation",
+      "Handle distributed partial network failures using circuit breakers",
+    ],
+    modules: [
+      {
+        id: "mod-api-1",
+        title: "1. REST & HTTP Client Engineering",
+        description: "HTTP semantics, connection pooling, and retry policies.",
+        topics: [
+          {
+            id: "topic-http-resilience",
+            title: "Exponential Backoff & Idempotency",
+            description: "Handling transient network errors and duplicate HTTP submissions with Idempotency-Key headers.",
+            difficulty: "Intermediate",
+            estimated_minutes: 45,
+            learning_objective: "Implement an idempotent HTTP client with jittered exponential retry loops.",
+            prerequisites: [],
+            related_skill_id: "skill-api-integration",
+            knowledge_signal: 70,
+            practice_signal: 65,
+            assessment_signal: 60,
+            project_signal: 50,
+            current_mastery: 62,
+            target_mastery: 85,
+            status: "available",
+          },
+          {
+            id: "topic-webhook-ingestion",
+            title: "Webhook Ingestion & Signature Verification",
+            description: "HMAC SHA-256 signature validation and asynchronous event dispatching.",
+            difficulty: "Intermediate",
+            estimated_minutes: 40,
+            learning_objective: "Verify webhook authenticity and process payloads asynchronously.",
+            prerequisites: ["topic-http-resilience"],
+            related_skill_id: "skill-api-integration",
+            knowledge_signal: 60,
+            practice_signal: 55,
+            assessment_signal: 50,
+            project_signal: 40,
+            current_mastery: 52,
+            target_mastery: 85,
+            status: "available",
+          },
+        ],
+      },
+      {
+        id: "mod-api-2",
+        title: "2. Event-Driven Messaging & Queues",
+        description: "Message brokers, at-least-once delivery, and dead-letter queues.",
+        topics: [
+          {
+            id: "topic-message-queues",
+            title: "Message Broker Patterns & Dead-Letter Queues",
+            description: "Designing persistent message queues with dead-letter queue routing for failed messages.",
+            difficulty: "Advanced",
+            estimated_minutes: 55,
+            learning_objective: "Build resilient producer-consumer pipelines with DLQ fallback.",
+            prerequisites: ["topic-http-resilience"],
+            related_skill_id: "skill-api-integration",
+            knowledge_signal: 50,
+            practice_signal: 40,
+            assessment_signal: 30,
+            project_signal: 20,
+            current_mastery: 36,
+            target_mastery: 85,
+            status: "available",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    domain_id: "gap-skill-fastapi",
+    title: "FastAPI Web Framework",
+    version: "v2026.1-TARGET-GAP",
+    status: "active",
+    description:
+      "Production API engineering with FastAPI, Pydantic schemas, dependency injection, async concurrency, and automated testing.",
+    target_mastery: 80,
+    estimated_hours: 14,
+    learning_objectives: [
+      "Design robust asynchronous RESTful endpoints with FastAPI and Starlette",
+      "Implement reusable request validation and authentication with Depends()",
+      "Enforce strict schema validation and data serialization using Pydantic v2",
+      "Write integration tests with Pytest and FastAPI TestClient",
+    ],
+    modules: [
+      {
+        id: "mod-fastapi-1",
+        title: "1. Core Routing & Pydantic Validation",
+        description: "Path parameters, query parameters, request bodies, and Pydantic models.",
+        topics: [
+          {
+            id: "topic-fastapi-routes",
+            title: "FastAPI Route Handlers & Status Codes",
+            description: "Configuring typed route signatures, query parameters, and HTTP response codes.",
+            difficulty: "Beginner",
+            estimated_minutes: 40,
+            learning_objective: "Build RESTful route handlers with explicit response models and status codes.",
+            prerequisites: [],
+            related_skill_id: "skill-fastapi",
+            knowledge_signal: 75,
+            practice_signal: 70,
+            assessment_signal: 65,
+            project_signal: 55,
+            current_mastery: 67,
+            target_mastery: 80,
+            status: "available",
+          },
+          {
+            id: "topic-pydantic-schemas",
+            title: "Pydantic v2 Schemas & Data Constraints",
+            description: "Defining input validation rules, Field constraints, and nested schemas.",
+            difficulty: "Intermediate",
+            estimated_minutes: 45,
+            learning_objective: "Enforce request payload contracts with Pydantic v2 validators.",
+            prerequisites: ["topic-fastapi-routes"],
+            related_skill_id: "skill-fastapi",
+            knowledge_signal: 65,
+            practice_signal: 60,
+            assessment_signal: 55,
+            project_signal: 45,
+            current_mastery: 57,
+            target_mastery: 80,
+            status: "available",
+          },
+        ],
+      },
+      {
+        id: "mod-fastapi-2",
+        title: "2. Dependency Injection & Testing",
+        description: "Reusable dependencies, database sessions, and Pytest TestClient.",
+        topics: [
+          {
+            id: "topic-fastapi-depends",
+            title: "Depends() & Database Session Injection",
+            description: "Injecting database sessions, configuration objects, and authentication credentials.",
+            difficulty: "Intermediate",
+            estimated_minutes: 50,
+            learning_objective: "Implement hierarchical dependency injection with yield generators.",
+            prerequisites: ["topic-fastapi-routes"],
+            related_skill_id: "skill-fastapi",
+            knowledge_signal: 55,
+            practice_signal: 50,
+            assessment_signal: 45,
+            project_signal: 35,
+            current_mastery: 47,
+            target_mastery: 80,
+            status: "available",
+          },
+          {
+            id: "topic-fastapi-testing",
+            title: "Integration Testing with TestClient",
+            description: "Testing asynchronous endpoints, overriding dependencies, and verifying JSON responses.",
+            difficulty: "Intermediate",
+            estimated_minutes: 45,
+            learning_objective: "Write automated test suites for FastAPI routes using Pytest fixtures.",
+            prerequisites: ["topic-fastapi-depends"],
+            related_skill_id: "skill-fastapi",
+            knowledge_signal: 50,
+            practice_signal: 45,
+            assessment_signal: 40,
+            project_signal: 30,
+            current_mastery: 42,
+            target_mastery: 80,
+            status: "available",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    domain_id: "gap-skill-system-architecture",
+    title: "Distributed System Architecture",
+    version: "v2026.1-TARGET-GAP",
+    status: "active",
+    description:
+      "Designing high-scale, partition-tolerant distributed architectures, consensus protocols, horizontal sharding, and resilience patterns.",
+    target_mastery: 85,
+    estimated_hours: 16,
+    learning_objectives: [
+      "Evaluate architectural trade-offs using CAP theorem and PACELC principles",
+      "Design horizontal sharding topologies with consistent hashing",
+      "Implement leader election and consensus mechanisms",
+      "Architect zero-downtime distributed failover strategies",
+    ],
+    modules: [
+      {
+        id: "mod-arch-1",
+        title: "1. Distributed State & Consensus",
+        description: "Partition tolerance, leader election, and consensus protocols.",
+        topics: [
+          {
+            id: "topic-cap-tradeoffs",
+            title: "CAP & PACELC Architectural Trade-offs",
+            description: "Analyzing consistency vs latency and availability across distributed service boundaries.",
+            difficulty: "Intermediate",
+            estimated_minutes: 45,
+            learning_objective: "Formulate architecture design RFCs balancing consistency and availability.",
+            prerequisites: [],
+            related_skill_id: "skill-system-architecture",
+            knowledge_signal: 60,
+            practice_signal: 55,
+            assessment_signal: 50,
+            project_signal: 40,
+            current_mastery: 52,
+            target_mastery: 85,
+            status: "available",
+          },
+          {
+            id: "topic-consistent-hashing",
+            title: "Consistent Hashing & Partitioning Topologies",
+            description: "Virtual node distribution and minimal key relocation during cluster scaling.",
+            difficulty: "Advanced",
+            estimated_minutes: 55,
+            learning_objective: "Construct a distributed hash ring with virtual node replication.",
+            prerequisites: ["topic-cap-tradeoffs"],
+            related_skill_id: "skill-system-architecture",
+            knowledge_signal: 45,
+            practice_signal: 40,
+            assessment_signal: 35,
+            project_signal: 25,
+            current_mastery: 37,
+            target_mastery: 85,
+            status: "available",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    domain_id: "gap-skill-application-security-&-devsecops",
+    title: "Application Security & DevSecOps",
+    version: "v2026.1-TARGET-GAP",
+    status: "active",
+    description:
+      "Securing production applications, threat modeling, JWT authentication verification, vulnerability scanning, and secure CI/CD gates.",
+    target_mastery: 85,
+    estimated_hours: 16,
+    learning_objectives: [
+      "Implement cryptographically verified token handling and key rotation",
+      "Mitigate OWASP Top 10 vulnerabilities in modern web APIs",
+      "Automate dependency vulnerability scanning in CI/CD pipelines",
+      "Enforce least-privilege role-based access control (RBAC)",
+    ],
+    modules: [
+      {
+        id: "mod-appsec-1",
+        title: "1. Authentication & Cryptographic Tokens",
+        description: "JWT signatures, replay attacks, and token validation.",
+        topics: [
+          {
+            id: "topic-jwt-security",
+            title: "JWT Token Validation & Cryptographic Verification",
+            description: "Signature verification, token expiry, and asymmetric key rotation.",
+            difficulty: "Intermediate",
+            estimated_minutes: 50,
+            learning_objective: "Validate RS256 token claims with strict public key pinning.",
+            prerequisites: [],
+            related_skill_id: "skill-application-security-&-devsecops",
+            knowledge_signal: 65,
+            practice_signal: 60,
+            assessment_signal: 55,
+            project_signal: 45,
+            current_mastery: 57,
+            target_mastery: 85,
+            status: "available",
+          },
+        ],
+      },
+    ],
+  },
+  {
     domain_id: "domain-data-preprocessing",
-    title: "Data Preprocessing",
+    title: "Data Preprocessing & Feature Engineering",
     version: "v2026.1-RELEASE",
     status: "active",
     description:
@@ -575,9 +859,375 @@ print("Before max:", data.max(), "-> After max:", cleaned.max())`,
     ],
     source_attribution: "Scikit-Learn Documentation & NIST Engineering Statistics Handbook (Section 1.3.5.17)",
   },
+  "step-topic-gap-skill-docker-core": {
+    step_id: "step-topic-gap-skill-docker-core",
+    topic_id: "topic-gap-skill-docker-core",
+    title: "Multi-Stage Dockerfile Construction & Layer Optimization",
+    learning_objective: "Construct a multi-stage Dockerfile that discards build toolchains and runs under an unprivileged user.",
+    why_this_matters: "Production cloud deployments demand minimal container image size and defense-in-depth isolation. Monolithic Docker images leak build tools (compilers, package managers) and run as root by default, introducing critical vulnerability exposure and slow container startup times.",
+    what_is_it: "Multi-stage Docker builds use multiple FROM directives in a single Dockerfile. An intermediate builder stage compiles source code, installs dependencies, and generates static wheels. The final production stage starts from a minimal, unprivileged base image (e.g., python:3.12-slim or distroless), copying only required runtime artifacts and discarding all compiler toolchains.",
+    why_and_when: "Use multi-stage builds whenever deploying containerized web services, microservices, or batch workers to container registries (Docker Hub, AWS ECR, GCP Artifact Registry) where pull latency, storage costs, and CIS benchmark compliance are required.",
+    worked_example: {
+      title: "Hardened Multi-Stage Dockerfile for Python / FastAPI",
+      explanation: "Separates compilation dependencies from runtime artifacts and enforces unprivileged UID 10001 execution with container healthchecks:",
+      code: `# Stage 1: Build & wheels compilation stage
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    build-essential gcc libpq-dev \\
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Hardened runtime stage
+FROM python:3.12-slim AS runner
+
+WORKDIR /app
+
+# Create unprivileged system group and user (UID 10001)
+RUN groupadd -g 10001 appgroup && \\
+    useradd -u 10001 -g appgroup -s /bin/false appuser && \\
+    apt-get update && apt-get install -y --no-install-recommends \\
+    libpq5 curl \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed python dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appgroup src/ /app/src/
+
+ENV PATH=/home/appuser/.local/bin:$PATH \\
+    PYTHONUNBUFFERED=1 \\
+    PYTHONDONTWRITEBYTECODE=1
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \\
+  CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]`,
+      visual_note: "Image size drops from 850MB to 110MB with zero compiler binaries present in the shipping artifact.",
+    },
+    common_mistakes: [
+      "Running containers as default root (UID 0), granting potential container breakouts host root permissions",
+      "Placing 'COPY . .' before dependency installation, invalidating Docker's layer cache on every code change",
+      "Omitting a .dockerignore file, accidentally baking .git history, credentials, or node_modules into the image",
+      "Leaving build compilers (gcc, make) inside the shipping runtime image",
+    ],
+    implementation_steps: [
+      "1. Create a minimal .dockerignore excluding .git, __pycache__, .env, and local test files",
+      "2. Define the builder stage with FROM ... AS builder and install build dependencies into ~/.local",
+      "3. Define the final runtime stage with FROM ... AS runner and create a dedicated non-root user (UID 10001)",
+      "4. Copy only the compiled dependencies using COPY --from=builder",
+      "5. Configure explicit HEALTHCHECK and EXPOSE directives and activate USER appuser before CMD",
+    ],
+    knowledge_check: [
+      {
+        question: "Why should dependency manifests (requirements.txt) be copied and installed before copying application source code in a Dockerfile?",
+        options: [
+          "To maximize layer cache hits so package re-installation is skipped when only source code edits occur",
+          "Because pip requires code to exist before installing dependencies",
+          "To compress the image archive during export",
+          "Because Linux kernels require sequential file writes",
+        ],
+        correct_index: 0,
+        explanation: "Docker caches instructions sequentially. If requirements.txt has not changed, Docker reuses the existing cached layer, speeding up CI builds from minutes to seconds.",
+      },
+      {
+        question: "What security risk is mitigated by specifying an explicit non-root USER in production Dockerfiles?",
+        options: [
+          "Container escape exploits from escalating to host-level root control",
+          "Network packet sniffing on local bridge networks",
+          "Database deadlock conditions during batch transactions",
+          "DNS spoofing during external API calls",
+        ],
+        correct_index: 0,
+        explanation: "Running as an unprivileged user ensures that even if an attacker achieves remote code execution within the container, they cannot modify host root files or escape namespace boundaries as UID 0.",
+      },
+    ],
+    source_attribution: "Docker Official Best Practices Guide & CIS Docker Benchmark v1.6.0",
+  },
+  "step-topic-gap-skill-docker-compose": {
+    step_id: "step-topic-gap-skill-docker-compose",
+    topic_id: "topic-gap-skill-docker-compose",
+    title: "Docker Compose Multi-Container Orchestration",
+    learning_objective: "Define declarative service topologies with condition-based depends_on and isolated networks.",
+    why_this_matters: "Modern architectures rely on multiple coordinated containers (API, Database, Cache). Manual container linking causes race conditions on startup and insecure host port exposure.",
+    what_is_it: "Docker Compose is a declarative specification (compose.yaml) defining multi-container environments with isolated bridge networks, named persistent storage volumes, and service startup healthcheck dependencies.",
+    why_and_when: "Use Docker Compose for local microservice development, CI integration testing, and single-host production deployments.",
+    worked_example: {
+      title: "Coordinated Web, PostgreSQL & Redis Topology with Healthchecks",
+      explanation: "Uses depends_on condition: service_healthy to prevent connection crashes on cold boots:",
+      code: `services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://app:secret@db:5432/appdb
+      - REDIS_URL=redis://cache:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=appdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend-net
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend-net
+
+volumes:
+  pgdata:
+
+networks:
+  backend-net:
+    driver: bridge`,
+      visual_note: "The web application waits until the PostgreSQL database and Redis pass their readiness probes.",
+    },
+    common_mistakes: [
+      "Using plain depends_on without healthcheck conditions, causing the web app to crash before PostgreSQL is initialized",
+      "Binding internal database ports to 0.0.0.0 on public interfaces",
+      "Omitting named persistent volumes for database containers",
+    ],
+    implementation_steps: [
+      "1. Define service declarations for all stack components",
+      "2. Implement robust healthcheck directives using database CLI utilities",
+      "3. Use depends_on with condition: service_healthy",
+      "4. Isolate inter-service traffic on a user-defined bridge network",
+    ],
+    knowledge_check: [
+      {
+        question: "Why is 'condition: service_healthy' necessary when specifying depends_on for a database service in Docker Compose?",
+        options: [
+          "Because a database container reports 'running' before the database daemon is ready to accept socket connections",
+          "Because Docker Compose does not support databases without it",
+          "To force Docker to download the image again",
+          "It is only required for legacy MySQL databases",
+        ],
+        correct_index: 0,
+        explanation: "Container runtime startup is instantaneous, but database initialization and WAL replay take several seconds. Healthchecks verify the service is truly listening for connections.",
+      },
+    ],
+    source_attribution: "Docker Compose Specification & CNCF Cloud Native Reference Guide",
+  },
+  "step-topic-fastapi-routes": {
+    step_id: "step-topic-fastapi-routes",
+    topic_id: "topic-fastapi-routes",
+    title: "FastAPI Route Handlers & Status Codes",
+    learning_objective: "Build RESTful route handlers with explicit response models and status codes.",
+    why_this_matters: "APIs lacking explicit status codes and response schemas leak internal models and violate standard HTTP REST semantics.",
+    what_is_it: "FastAPI is a modern, high-performance web framework for building APIs with Python 3.8+ based on standard Python type hints and Pydantic schema validation.",
+    why_and_when: "Use FastAPI route handlers with explicit status codes and response models when building robust microservice interfaces and public developer APIs.",
+    worked_example: {
+      title: "Typed RESTful Resource Creation Handler",
+      explanation: "Enforces 201 Created on insertion and validates duplicate conflict states:",
+      code: `from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field, EmailStr
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    full_name: str = Field(..., min_length=2, max_length=100)
+
+class UserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: str
+
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(payload: UserCreate):
+    if payload.email == "exists@example.com":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this email already exists."
+        )
+    return UserResponse(id="usr_123", email=payload.email, full_name=payload.full_name)`,
+      visual_note: "Automatically documents schema, status codes, and error models in OpenAPI docs.",
+    },
+    common_mistakes: [
+      "Returning 200 OK for POST creation endpoints instead of 201 CREATED",
+      "Catching exceptions and returning dicts instead of raising typed HTTPException",
+      "Omitting response_model, allowing password hashes or internal fields to leak",
+    ],
+    implementation_steps: [
+      "1. Define typed request and response Pydantic models",
+      "2. Annotate route with @router.post and status_code=201",
+      "3. Raise HTTPException with explicit status codes for validation failures",
+      "4. Return schema-conforming dictionary or Pydantic instance",
+    ],
+    knowledge_check: [
+      {
+        question: "What is the primary role of the response_model parameter in FastAPI route decorators?",
+        options: [
+          "To filter and serialize output data, preventing unauthorized model fields from leaking to clients",
+          "To encrypt the response payload with AES-256",
+          "To speed up network round-trips by disabling TCP handshakes",
+          "To convert Python objects into CSV format",
+        ],
+        correct_index: 0,
+        explanation: "response_model filters the returned data through the Pydantic schema, ensuring internal database columns or sensitive fields are not serialized.",
+      },
+    ],
+    source_attribution: "FastAPI Documentation (Response Model & Status Codes)",
+  },
 };
 
 export const INITIAL_RESOURCES: LearningResource[] = [
+  // API Integration & Messaging
+  {
+    id: "res-api-01",
+    title: "Building Resilient REST APIs with Exponential Backoff and Retries",
+    resource_type: "article",
+    provider: "DEV.to",
+    duration_minutes: 15,
+    difficulty: "Intermediate",
+    domain_id: "gap-skill-api-integration",
+    topic_id: "topic-http-resilience",
+    learning_objective: "Implement an idempotent HTTP client with jittered exponential retry loops.",
+    relevance_score: 95,
+    selection_explanation: "Essential architectural patterns for resilient API consumers and microservice communication.",
+    concepts_covered: ["Exponential backoff", "Jitter", "Idempotency keys", "HTTP 429 & 503"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 1 in API Integration",
+    url: "https://dev.to/aws-builders/resilient-api-design-patterns-4flk",
+  },
+  {
+    id: "res-api-02",
+    title: "Event-Driven Architecture & Message Queues with RabbitMQ and Kafka",
+    resource_type: "video",
+    provider: "YouTube",
+    duration_minutes: 28,
+    difficulty: "Advanced",
+    domain_id: "gap-skill-api-integration",
+    topic_id: "topic-message-queues",
+    learning_objective: "Build resilient producer-consumer pipelines with DLQ fallback.",
+    relevance_score: 92,
+    selection_explanation: "Visual walkthrough of dead-letter queues, at-least-once delivery semantics, and consumer rebalancing.",
+    concepts_covered: ["Dead-letter queues", "Pub/Sub", "Message acknowledgment"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 2 in API Integration",
+    url: "https://www.youtube.com/watch?v=oUJbuFMyBDk",
+  },
+  {
+    id: "res-api-03",
+    title: "Secure Webhook Ingestion & HMAC SHA256 Signature Verification",
+    resource_type: "article",
+    provider: "FreeCodeCamp",
+    duration_minutes: 20,
+    difficulty: "Intermediate",
+    domain_id: "gap-skill-api-integration",
+    topic_id: "topic-webhook-ingestion",
+    learning_objective: "Verify webhook authenticity and process payloads asynchronously.",
+    relevance_score: 90,
+    selection_explanation: "Practical guide to webhook payload authenticity verification and replay attack prevention.",
+    concepts_covered: ["HMAC SHA-256", "Timing attack prevention", "Webhook retries"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 2 in API Integration",
+    url: "https://www.freecodecamp.org/news/what-are-webhooks-and-how-to-use-them/",
+  },
+
+  // FastAPI Web Framework
+  {
+    id: "res-fastapi-01",
+    title: "Python FastAPI Tutorial: Build a REST API in 15 Minutes",
+    resource_type: "video",
+    provider: "YouTube",
+    duration_minutes: 20,
+    difficulty: "Beginner",
+    domain_id: "gap-skill-fastapi",
+    topic_id: "topic-fastapi-routes",
+    learning_objective: "Build RESTful route handlers with explicit response models and status codes.",
+    relevance_score: 96,
+    selection_explanation: "Clear, production-focused tutorial covering route definitions, Pydantic schemas, and Swagger docs.",
+    concepts_covered: ["FastAPI routing", "Path & query params", "Automatic OpenAPI docs"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 1 in FastAPI Framework",
+    url: "https://www.youtube.com/watch?v=iWS9ogMPOI0",
+  },
+  {
+    id: "res-fastapi-02",
+    title: "FastAPI Dependency Injection & Database Sessions with Depends()",
+    resource_type: "official_docs",
+    provider: "FastAPI Official Docs",
+    duration_minutes: 25,
+    difficulty: "Intermediate",
+    domain_id: "gap-skill-fastapi",
+    topic_id: "topic-fastapi-depends",
+    learning_objective: "Implement hierarchical dependency injection with yield generators.",
+    relevance_score: 98,
+    selection_explanation: "Comprehensive reference on yielding generators for atomic database sessions and clean cleanup.",
+    concepts_covered: ["Depends()", "Yield dependencies", "Context managers", "OAuth2 schemes"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 2 in FastAPI Framework",
+    url: "https://fastapi.tiangolo.com/tutorial/dependencies/",
+  },
+  {
+    id: "res-fastapi-03",
+    title: "FastAPI Production Codebase: GitHub Repository Reference",
+    resource_type: "tutorial",
+    provider: "GitHub",
+    duration_minutes: 30,
+    difficulty: "Advanced",
+    domain_id: "gap-skill-fastapi",
+    topic_id: "topic-fastapi-testing",
+    learning_objective: "Write automated test suites for FastAPI routes using Pytest fixtures.",
+    relevance_score: 94,
+    selection_explanation: "Official open source framework repository with 100k+ stars demonstrating standard test fixture patterns.",
+    concepts_covered: ["TestClient", "Pytest fixtures", "Async tests"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 3 in FastAPI Framework",
+    url: "https://github.com/fastapi/fastapi",
+  },
+
+  // Distributed System Architecture
+  {
+    id: "res-arch-01",
+    title: "Consistent Hashing Explained with Interactive Visualizations",
+    resource_type: "article",
+    provider: "DEV.to",
+    duration_minutes: 20,
+    difficulty: "Advanced",
+    domain_id: "gap-skill-system-architecture",
+    topic_id: "topic-consistent-hashing",
+    learning_objective: "Construct a distributed hash ring with virtual node replication.",
+    relevance_score: 96,
+    selection_explanation: "Deep dive into hash rings, virtual nodes, and minimal cache churn during horizontal node scaling.",
+    concepts_covered: ["Hash rings", "Virtual nodes", "Data partitioning", "Chord DHT"],
+    concepts_not_covered: [],
+    roadmap_position: "Step 1 in Distributed Architecture",
+    url: "https://dev.to/coderbyte/a-guide-to-consistent-hashing-4d0g",
+  },
+
+  // Data Preprocessing (Existing)
   {
     id: "res-topic-outlier-winsorization-01",
     title: "Handling Outliers with Winsorization and Trimming in Python",
@@ -635,6 +1285,162 @@ export const INITIAL_RESOURCES: LearningResource[] = [
 ];
 
 export const INITIAL_PRACTICE_EXERCISES: PracticeExercise[] = [
+  // API Integration & Messaging
+  {
+    id: "prac-api-idempotency-01",
+    topic_id: "topic-http-resilience",
+    domain_id: "gap-skill-api-integration",
+    title: "Idempotent Webhook Request Handler with Deduplication",
+    difficulty: "Intermediate",
+    estimated_minutes: 20,
+    learning_objective: "Implement an idempotent HTTP client with jittered exponential retry loops.",
+    format: "code_completion",
+    prompt:
+      "Complete the `process_idempotent_event` handler to verify if an event's `event_id` has already been processed within the last 3600 seconds. Return cached result if already seen, otherwise process and atomically record the key.",
+    starter_code: `async def process_idempotent_event(redis_client, event_id: str, payload: dict) -> dict:
+    # 1. Check if event_id already exists as processed key
+    # 2. If already processed, return status: 'duplicate_ignored'
+    # 3. Else, mark key with TTL=3600 and return status: 'processed'
+    exists = await redis_client.get(f"evt:{event_id}")
+    if exists:
+        return {"status": "duplicate_ignored", "event_id": event_id}
+    await redis_client.setex(f"evt:{event_id}", 3600, "1")
+    return {"status": "processed", "event_id": event_id}`,
+    solution_explanation:
+      "Idempotency keys prevent duplicate execution when network drops cause upstream clients to retry HTTP POST payloads.",
+    completed: false,
+  },
+  {
+    id: "prac-api-backoff-01",
+    topic_id: "topic-http-resilience",
+    domain_id: "gap-skill-api-integration",
+    title: "Exponential Backoff with Full Jitter",
+    difficulty: "Intermediate",
+    estimated_minutes: 15,
+    learning_objective: "Implement an idempotent HTTP client with jittered exponential retry loops.",
+    format: "applied_scenario",
+    prompt:
+      "A downstream payment API rate-limits clients during peak load (HTTP 429). Implement the delay calculation for attempt `i` using exponential backoff with full randomized jitter to prevent the thundering herd problem.",
+    starter_code: `import random
+
+def calculate_jittered_delay(attempt: int, base_delay: float = 0.5, max_delay: float = 30.0) -> float:
+    # Calculate exponential ceiling: min(max_delay, base_delay * (2 ** attempt))
+    # Full jitter selects uniform random between 0 and exponential ceiling
+    ceiling = min(max_delay, base_delay * (2 ** attempt))
+    return random.uniform(0, ceiling)`,
+    solution_explanation:
+      "Full jitter spreads retry traffic uniformly across the retry window, preventing synchronized traffic spikes that overwhelm recovering services.",
+    completed: true,
+    score: 95,
+  },
+
+  // FastAPI Web Framework
+  {
+    id: "prac-fastapi-depends-01",
+    topic_id: "topic-fastapi-depends",
+    domain_id: "gap-skill-fastapi",
+    title: "Database Session Injection with Depends() and Yield",
+    difficulty: "Intermediate",
+    estimated_minutes: 15,
+    learning_objective: "Implement hierarchical dependency injection with yield generators.",
+    format: "code_completion",
+    prompt:
+      "Implement the `get_db_session` dependency generator using Python's `yield` statement. Ensure the database session is closed in a `finally` block even if the request raises an exception.",
+    starter_code: `from fastapi import Depends
+from sqlalchemy.orm import Session
+
+def get_db_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()`,
+    solution_explanation:
+      "FastAPI's dependency injection runs code after `yield` as exit teardown, guaranteeing connection pool exhaustion is prevented.",
+    completed: false,
+  },
+  {
+    id: "prac-fastapi-pydantic-01",
+    topic_id: "topic-pydantic-schemas",
+    domain_id: "gap-skill-fastapi",
+    title: "Pydantic v2 Schema with Field Constraints & Validators",
+    difficulty: "Beginner",
+    estimated_minutes: 15,
+    learning_objective: "Enforce request payload contracts with Pydantic v2 validators.",
+    format: "code_completion",
+    prompt:
+      "Define a Pydantic `UserRegistrationRequest` model with an email string, username (min length 3, max length 30), and password (min length 8).",
+    starter_code: `from pydantic import BaseModel, EmailStr, Field
+
+class UserRegistrationRequest(BaseModel):
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=30)
+    password: str = Field(..., min_length=8)`,
+    solution_explanation:
+      "Pydantic v2 enforces schema validation prior to route handler execution, generating RFC 7807 422 Unprocessable Entity responses for malformed bodies.",
+    completed: false,
+  },
+  {
+    id: "prac-fastapi-testclient-01",
+    topic_id: "topic-fastapi-testing",
+    domain_id: "gap-skill-fastapi",
+    title: "Route Integration Testing with TestClient",
+    difficulty: "Intermediate",
+    estimated_minutes: 18,
+    learning_objective: "Write automated test suites for FastAPI routes using Pytest fixtures.",
+    format: "applied_scenario",
+    prompt:
+      "Write a pytest function `test_create_item_success` using FastAPI's `TestClient` to verify that `POST /api/v1/items` returns HTTP 201 with the created object's title.",
+    starter_code: `def test_create_item_success(client):
+    payload = {"title": "Production Server", "priority": "high"}
+    response = client.post("/api/v1/items", json=payload)
+    assert response.status_code == 201
+    assert response.json()["title"] == "Production Server"`,
+    solution_explanation:
+      "FastAPI TestClient leverages Starlette and HTTPX under the hood, running requests in-process without binding external sockets.",
+    completed: true,
+    score: 100,
+  },
+
+  // Distributed System Architecture
+  {
+    id: "prac-arch-consistent-hashing-01",
+    topic_id: "topic-consistent-hashing",
+    domain_id: "gap-skill-system-architecture",
+    title: "Consistent Hash Ring with Virtual Node Lookup",
+    difficulty: "Advanced",
+    estimated_minutes: 25,
+    learning_objective: "Construct a distributed hash ring with virtual node replication.",
+    format: "code_completion",
+    prompt:
+      "Complete `get_node_for_key` on the `ConsistentHashRing` to find the next clock-wise server in the sorted ring using binary search (`bisect`).",
+    starter_code: `import bisect
+
+class ConsistentHashRing:
+    def __init__(self, nodes: list, vnodes: int = 100):
+        self.ring = []
+        self.vnode_map = {}
+        for node in nodes:
+            for i in range(vnodes):
+                h = hash(f"{node}#vnode{i}")
+                self.ring.append(h)
+                self.vnode_map[h] = node
+        self.ring.sort()
+
+    def get_node(self, key: str) -> str:
+        if not self.ring:
+            return None
+        k_hash = hash(key)
+        idx = bisect.bisect_right(self.ring, k_hash)
+        if idx == len(self.ring):
+            idx = 0
+        return self.vnode_map[self.ring[idx]]`,
+    solution_explanation:
+      "Consistent hashing ensures that adding or removing a cache node only relocates K/N keys rather than invalidating the entire cluster.",
+    completed: false,
+  },
+
+  // Existing Data Preprocessing exercises
   {
     id: "prac-topic-outlier-winsorization-01",
     topic_id: "topic-outlier-winsorization",

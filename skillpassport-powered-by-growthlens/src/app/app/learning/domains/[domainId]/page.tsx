@@ -202,22 +202,33 @@ export default function DomainBlueprintDetailPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/app/learning/steps/step-${topic.id}`}
-                        className="pill-btn bg-sand/20 hover:bg-sand/40 text-ink text-[11px] py-1 px-3 flex items-center gap-1"
-                      >
-                        <PlayCircle className="w-3 h-3" />
-                        Study Packet
-                      </Link>
-                      <Link
-                        href="/app/learning/practice"
-                        className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-[11px] py-1 px-3 flex items-center gap-1"
-                      >
-                        <Code2 className="w-3 h-3" />
-                        Practice
-                      </Link>
-                    </div>
+                    {(() => {
+                      const matchingStep = activeRoadmap?.steps?.find(
+                        (s) => s.topic_id === topic.id || s.step_id === `step-${topic.id}` || s.step_id === topic.id
+                      );
+                      const stepHref = matchingStep
+                        ? `/app/learning/steps/${matchingStep.step_id}?roadmap_id=${encodeURIComponent(activeRoadmap.path_id || activeRoadmap.id || "")}`
+                        : `/app/learning/steps/step-${topic.id}?roadmap_id=roadmap-${blueprint.domain_id}`;
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={stepHref}
+                            className="pill-btn bg-sand/20 hover:bg-sand/40 text-ink text-[11px] py-1 px-3 flex items-center gap-1 font-semibold"
+                          >
+                            <PlayCircle className="w-3 h-3" />
+                            Study Packet
+                          </Link>
+                          <Link
+                            href="/app/learning/practice"
+                            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-ink text-[11px] py-1 px-3 flex items-center gap-1 font-semibold"
+                          >
+                            <Code2 className="w-3 h-3" />
+                            Practice
+                          </Link>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}

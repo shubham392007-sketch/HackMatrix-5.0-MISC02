@@ -95,14 +95,14 @@ class Settings(BaseSettings):
     ollama_qwen_model: str = "qwen3:8b"
     ollama_ocr_model: str = "glm-ocr"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_timeout_seconds: float = 45.0
+    ollama_timeout_seconds: float = 120.0
     ollama_roadmap_timeout_seconds: Optional[float] = Field(
         default=None,
-        description="Dedicated timeout in seconds for roadmap generation requests (defaults to 45.0s, falls back to ollama_timeout_seconds)",
+        description="Dedicated timeout in seconds for roadmap generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds)",
     )
     ollama_assessment_timeout_seconds: Optional[float] = Field(
         default=None,
-        description="Dedicated timeout in seconds for assessment generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds if > 45.0)",
+        description="Dedicated timeout in seconds for assessment generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds)",
     )
     ollama_num_ctx: int = Field(
         default=8192,
@@ -117,7 +117,7 @@ class Settings(BaseSettings):
             return float(self.ollama_roadmap_timeout_seconds)
         if "OLLAMA_TIMEOUT_SECONDS" in os.environ:
             return float(os.environ["OLLAMA_TIMEOUT_SECONDS"])
-        return float(self.ollama_timeout_seconds or 45.0)
+        return float(self.ollama_timeout_seconds or 120.0)
 
     @property
     def effective_assessment_timeout_seconds(self) -> float:
@@ -156,7 +156,7 @@ class Settings(BaseSettings):
     @property
     def theirstack_keys(self) -> List[str]:
         keys: List[str] = []
-        source_strings = [self.theirstack_api_keys, self.theirstack_api_key]
+        source_strings = [self.theirstack_api_key, self.theirstack_api_keys]
         for src in source_strings:
             if not src:
                 continue

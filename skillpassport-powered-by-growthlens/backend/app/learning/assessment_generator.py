@@ -89,7 +89,10 @@ class LearningAssessmentGenerator:
         model: Optional[str] = None,
         timeout_seconds: Optional[float] = None,
     ):
-        self.ollama_url = (ollama_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
+        raw_url = (ollama_url or os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
+        if "localhost" in raw_url:
+            raw_url = raw_url.replace("localhost", "127.0.0.1")
+        self.ollama_url = raw_url
         self.model = model or os.environ.get("OLLAMA_QWEN_MODEL") or os.environ.get("OLLAMA_MODEL", "qwen3:8b")
         if timeout_seconds is not None:
             self.timeout_seconds = timeout_seconds

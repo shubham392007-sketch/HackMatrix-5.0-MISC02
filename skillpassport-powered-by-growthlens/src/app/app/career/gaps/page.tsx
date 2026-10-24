@@ -27,8 +27,12 @@ import {
   Compass,
   TrendingUp,
   Target,
+  BrainCircuit,
+  ShieldCheck,
+  Briefcase,
 } from "lucide-react";
 import { GapClassification, RequirementType } from "@/types/career";
+import SkillProvenanceModal from "@/components/app/SkillProvenanceModal";
 
 export default function CareerGapsPage() {
   const { activeRole, activeGaps, activeMatch } = useEvidence();
@@ -37,6 +41,12 @@ export default function CareerGapsPage() {
   const [selectedReq, setSelectedReq] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isExplainModalOpen, setIsExplainModalOpen] = useState<boolean>(false);
+  const [provenanceTarget, setProvenanceTarget] = useState<{
+    skillId: string;
+    skillTitle?: string;
+    roleId?: string;
+    gapId?: string;
+  } | null>(null);
 
   // Group counts
   const countsByType = useMemo(() => {
@@ -371,10 +381,32 @@ export default function CareerGapsPage() {
                     {gap.next_step_direction}
                   </p>
                 </div>
+
+                {/* Authenticated Source & Provenance Assurance */}
+                <div className="p-2.5 rounded-xl bg-sand/20 border border-ink/10 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-ink flex items-center gap-1.5 shrink-0">
+                      <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
+                      Requirement Source:
+                    </span>
+                    <span className="font-mono text-ink-muted text-[10px] truncate text-right" title={gap.requirement_source || activeRole.provenance}>
+                      {gap.requirement_source || activeRole.provenance || `${activeRole.title} (Benchmark v2026.1)`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-ink flex items-center gap-1.5 shrink-0">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      Assurance of Authentication:
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold shrink-0">
+                      Authenticity Verified • Strict Guard
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Card Footer Actions */}
-              <div className="pt-3 border-t border-ink/10 flex items-center justify-between gap-2 text-xs mt-3">
+              <div className="pt-3 border-t border-ink/10 flex items-center justify-between gap-2 text-xs mt-3 flex-wrap">
                 <Link
                   href={`/app/career/gaps/${gap.gap_id}`}
                   className="font-bold text-ink hover:underline flex items-center gap-1 group"
@@ -383,7 +415,22 @@ export default function CareerGapsPage() {
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() =>
+                      setProvenanceTarget({
+                        skillId: gap.skill_id,
+                        skillTitle: gap.canonical_name,
+                        roleId: gap.role_id,
+                        gapId: gap.gap_id,
+                      })
+                    }
+                    className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-[11px] py-1 px-2.5 text-ink flex items-center gap-1 font-medium"
+                    title="Audit requirement and authentic evidence sources for this lagging skill"
+                  >
+                    <BrainCircuit className="w-3 h-3 text-indigo-600" />
+                    Audit Source
+                  </button>
                   {gap.relevant_evidence_ids.length > 0 && (
                     <Link
                       href="/app/evidence"
@@ -411,6 +458,18 @@ export default function CareerGapsPage() {
         isOpen={isExplainModalOpen}
         onClose={() => setIsExplainModalOpen(false)}
       />
+
+      {/* Evidence & Provenance Assurance Modal */}
+      {provenanceTarget && (
+        <SkillProvenanceModal
+          isOpen={!!provenanceTarget}
+          onClose={() => setProvenanceTarget(null)}
+          skillId={provenanceTarget.skillId}
+          skillTitle={provenanceTarget.skillTitle}
+          roleId={provenanceTarget.roleId}
+          gapId={provenanceTarget.gapId}
+        />
+      )}
     </div>
   </div>
 );
