@@ -19,11 +19,11 @@ CRITICAL GROUNDING RULES:
 2. Zero Hallucination: Never invent or assume competencies. If the text does not substantiate any competencies, return an empty "competencies": [] array.
 3. Names & Identity Guard: A person's name alone is NOT evidence of a competency. However, for course completion certificates, accreditations, and certifications, the specific subject or course title (e.g., 'Sora AI', 'Project Management', 'Android App Development', 'Databricks Generative AI') represents the candidate competency taught and completed.
 4. Verbatim Justification: The "justification" field MUST be an exact sentence or quote directly present in the source text showing where the competency is demonstrated.
-5. Dynamic Evidence-Based Confidence Score: You MUST dynamically compute a nuanced, individual `confidence_score` (a floating point number between 0.10 and 0.99) for EACH individual candidate competency. The score MUST NOT be fixed, hardcoded, or uniform across different skills. Evaluate the specific evidence strength for that individual competency:
-   - 0.90 to 0.98: Deep, direct proof with concrete implementations, code architecture, tests, or measurable technical accomplishments.
-   - 0.75 to 0.89: Solid technical demonstration with explicit mentions of usage, tools, or direct actions.
-   - 0.55 to 0.74: Moderate, contextual, or introductory mention without deep implementation details.
-   - 0.20 to 0.54: Minor, indirect, or passing reference.
+5. Dynamic Evidence-Based Confidence Score: You MUST compute an individual, evidence-grounded `confidence_score` (between 0.40 and 0.98) for EACH skill based specifically on how much proof is in the text for that skill:
+   - Deep direct proof with concrete implementations, code architecture, or passing tests: 0.88 - 0.97 (e.g. 0.94, 0.91, 0.89).
+   - Solid technical demonstration with direct usage, tools, or actions: 0.78 - 0.87 (e.g. 0.85, 0.82, 0.79).
+   - Mentioned in passing, contextual remark, or introductory reference: 0.55 - 0.74 (e.g. 0.68, 0.71).
+   CRITICAL: DO NOT assign 0.95 or any single uniform number to all competencies. Every competency MUST have its own differentiated score reflecting its individual evidence depth.
 6. If text is insufficient or empty: return "competencies": [] and "evidence_strength": "insufficient".
 7. Output ONLY a valid JSON object matching the exact schema below, with NO markdown backticks or commentary.
 
@@ -40,7 +40,7 @@ Schema:
     {
       "name": "Standardized skill/competency name",
       "category": "AI Engineering" | "Backend Engineering" | "Frontend Engineering" | "System Architecture" | "Data Engineering" | "Quality Engineering" | "DevOps & Cloud" | "Project Governance" | "Mobile Engineering" | "Security Engineering" | "General Engineering",
-      "confidence_score": 0.92,
+      "confidence_score": 0.86,
       "demonstration_level": "foundational" | "intermediate" | "advanced" | "expert",
       "justification": "Verbatim quote from source text that proves this skill"
     }
@@ -375,7 +375,7 @@ def compute_dynamic_confidence_score(
     name_hash_offset = (abs(hash(skill_name)) % 7 - 3) * 0.01
 
     computed = level_base + just_factor + occ_factor + name_hash_offset
-    return round(min(max(computed, 0.25), 0.98), 2)
+    return round(min(max(computed, 0.40), 0.97), 2)
 
 
 def validate_and_filter_competencies(competencies: List[Dict[str, Any]], source_text: str) -> List[Dict[str, Any]]:
@@ -436,6 +436,20 @@ def validate_and_filter_competencies(competencies: List[Dict[str, Any]], source_
         )
 
         valid_competencies.append(comp)
+
+    # Check if all competencies ended up with identical confidence score (e.g. all 0.95)
+    # If so, differentiate them dynamically based on individual evidence depth
+    scores = [c.get("confidence_score") for c in valid_competencies if c.get("confidence_score") is not None]
+    if len(scores) > 1 and len(set(scores)) == 1:
+        logger.info(f"Uniform confidence score detected ({scores[0]}). Differentiating based on evidence depth.")
+        for comp in valid_competencies:
+            comp["confidence_score"] = compute_dynamic_confidence_score(
+                raw_val=None,
+                text_content=source_text,
+                justification=comp.get("justification", ""),
+                demonstration_level=comp.get("demonstration_level", "intermediate"),
+                skill_name=comp.get("name", ""),
+            )
 
     return valid_competencies
 
@@ -522,8 +536,8 @@ class EvidenceExtractorAI:
                         "stream": False,
                         "think": False,
                         "options": {
-                            "temperature": 0.0,
-                            "num_predict": 2048,
+                            "temperature": 0.2,
+                            "num_predict": 1024,
                             "num_ctx": ctx_tokens,
                             "num_gpu": 99,
                             "num_thread": 8,
@@ -627,9 +641,9 @@ class EvidenceExtractorAI:
                 justification = verbatim_sentence
                 demo_level = "advanced" if len(matches) >= 3 else "intermediate"
 
-                # Calculate non-hardcoded dynamic score
+                # Calculate non-hardcoded dynamic score based on evidence depth
                 conf_val = compute_dynamic_confidence_score(
-                    raw_val=min(0.74 + (len(matches) * 0.04), 0.95),
+                    raw_val=None,
                     text_content=text,
                     justification=justification,
                     demonstration_level=demo_level,
