@@ -19,11 +19,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase/client";
 import LoadingAnimation from "@/components/ui/LoadingAnimation";
+import { sanitizeRedirectUrl } from "@/lib/urlUtils";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams?.get("redirect") || "/app/evidence";
+  const rawRedirect = searchParams?.get("redirect");
+  const redirectTarget = sanitizeRedirectUrl(rawRedirect, "/app/evidence", {
+    redirectOnboardingToEvidence: true,
+  });
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -108,8 +112,7 @@ function LoginForm() {
         }
       }
 
-      const finalTarget = redirectTarget === "/app/onboarding" ? "/app/evidence" : (redirectTarget || "/app/evidence");
-      router.push(finalTarget);
+      router.push(redirectTarget);
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
       setLoading(false);

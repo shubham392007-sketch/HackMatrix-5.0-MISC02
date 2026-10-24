@@ -386,7 +386,7 @@ export default function SharePassportWizardPage() {
                 <span
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
                     step === s.num
-                      ? "bg-ink text-paper"
+                      ? "bg-[#1A1918] text-[#FAF8F5]"
                       : step > s.num
                       ? "bg-emerald-100 text-emerald-800"
                       : "bg-paper border border-ink/20"
@@ -720,8 +720,8 @@ export default function SharePassportWizardPage() {
                     onClick={() => setExpiryDays(opt.days)}
                     className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
                       expiryDays === opt.days
-                        ? "bg-ink text-paper border-ink"
-                        : "bg-paper text-ink/70 border-ink/10 hover:bg-card"
+                        ? "bg-[#1A1918] text-[#FAF8F5] border-[#1A1918] font-black shadow-sm"
+                        : "bg-white text-[#1A1918] border-[#1A1918]/20 hover:border-[#1A1918] hover:bg-[#FAF8F5]"
                     }`}
                   >
                     {opt.label}

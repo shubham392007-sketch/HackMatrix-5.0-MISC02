@@ -269,11 +269,25 @@ def update_my_profile(
         if body.app_settings is not None:
             profile.app_settings = body.app_settings
         if body.onboarding_status is not None:
-            profile.onboarding_status = body.onboarding_status
-            if body.onboarding_status == "completed" and not profile.onboarding_completed_at:
-                profile.onboarding_completed_at = datetime.now(timezone.utc)
+            # Preserve completed onboarding status: do not allow regression to in_progress or not_started
+            if profile.onboarding_status == "completed" and body.onboarding_status != "completed":
+                logger.info(
+                    f"Preserving completed onboarding status for user {current_user.id} "
+                    f"(attempted update: {body.onboarding_status})"
+                )
+            else:
+                profile.onboarding_status = body.onboarding_status
+                if body.onboarding_status == "completed" and not profile.onboarding_completed_at:
+                    profile.onboarding_completed_at = datetime.now(timezone.utc)
         if body.onboarding_current_step is not None:
-            profile.onboarding_current_step = body.onboarding_current_step
+            # If already completed, do not regress current step below completed baseline
+            if profile.onboarding_status == "completed" and body.onboarding_current_step < (profile.onboarding_current_step or 5):
+                logger.info(
+                    f"Preserving completed onboarding step for user {current_user.id} "
+                    f"(attempted step update: {body.onboarding_current_step})"
+                )
+            else:
+                profile.onboarding_current_step = body.onboarding_current_step
         if body.onboarding_current_category is not None:
             profile.onboarding_current_category = body.onboarding_current_category
         if body.github_skipped is not None:

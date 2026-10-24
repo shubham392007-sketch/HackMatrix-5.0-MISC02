@@ -27,6 +27,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
+import ArtifactInspectorViewer from "@/components/evidence/ArtifactInspectorViewer";
 import {
   reprocessUploadedDocument,
   runWorkAnalysis,
@@ -333,6 +334,13 @@ export default function EvidenceDetailPage({
             <span>{reprocessMsg.text}</span>
           </div>
         )}
+
+        {/* Embedded Full Artifact Inspector */}
+        <ArtifactInspectorViewer
+          evidenceItem={item}
+          artifactId={item.id}
+          mode="page"
+        />
 
         {/* A. Evidence Overview & Status Bar */}
         {(() => {

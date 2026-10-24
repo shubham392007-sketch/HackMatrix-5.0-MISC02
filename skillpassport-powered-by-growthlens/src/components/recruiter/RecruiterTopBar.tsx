@@ -21,6 +21,7 @@ import {
   getStoredRecruiterUser,
   clearRecruiterAuthSession,
   getCurrentRecruiterProfile,
+  logoutRecruiter,
   RecruiterProfile,
 } from "@/lib/recruiterApi";
 
@@ -34,39 +35,13 @@ export default function RecruiterTopBar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 1. Try stored session
-    const stored = getStoredRecruiterUser();
-    if (stored) {
-      setProfile({
-        user_id: stored.user_id,
-        email: stored.email,
-        full_name: stored.full_name || stored.email.split("@")[0],
-        role: stored.role || "recruiter",
-        status: stored.status || "active",
-        is_public_contact_enabled: true,
-        organization: stored.organization || {
-          id: "",
-          name: "Employer Org",
-          slug: "org",
-          is_verified: true,
-        },
-      });
-    }
-
-    // 2. Fetch fresh profile from API
+    // Fetch authoritative profile from API
     getCurrentRecruiterProfile()
       .then((p) => setProfile(p))
       .catch((err) => {
-        // If not logged in and on protected page, redirect
-        if (
-          !pathname.includes("/recruiter/login") &&
-          !pathname.includes("/recruiter/register") &&
-          !stored
-        ) {
-          router.push("/recruiter/login");
-        }
+        console.warn("Could not retrieve recruiter profile in topbar:", err);
       });
-  }, [pathname, router]);
+  }, [pathname]);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -79,8 +54,8 @@ export default function RecruiterTopBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSignOut = () => {
-    clearRecruiterAuthSession();
+  const handleSignOut = async () => {
+    await logoutRecruiter();
     router.push("/recruiter/login");
   };
 

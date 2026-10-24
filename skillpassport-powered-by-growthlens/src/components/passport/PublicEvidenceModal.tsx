@@ -17,6 +17,7 @@ import {
   GitBranch,
   Loader2,
   Sparkles,
+  Award,
 } from "lucide-react";
 import { sharingApi } from "@/lib/sharingApi";
 
@@ -178,6 +179,57 @@ export default function PublicEvidenceModal({
                 <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
                   Independently Substantiated
                 </span>
+              </div>
+            )}
+
+            {/* Specialized Artifact Presentation */}
+            {(data.sourceType === "certificate" || data.title.toLowerCase().includes("cert")) && (
+              <div className="p-4 rounded-2xl bg-[#FFFDF5] border-[2px] border-[#1C1C1C] space-y-2 shadow-[2px_2px_0_0_#1C1C1C]">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1C1C1C]">
+                  <Award className="w-4 h-4 text-amber-600" />
+                  <span>Verified Completion &amp; Accreditation Record</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="p-2 bg-white rounded-lg border border-[#1C1C1C]/15">
+                    <span className="text-[9px] uppercase font-bold text-[#1C1C1C]/60 block">Issuing Authority / Program</span>
+                    <span className="font-bold text-[#1C1C1C]">{data.project || "Accredited Program"}</span>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg border border-[#1C1C1C]/15">
+                    <span className="text-[9px] uppercase font-bold text-[#1C1C1C]/60 block">Cryptographic Verification</span>
+                    <span className="font-bold text-emerald-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Tamper-Evident SHA-256</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {data.sourceType === "jira" && (
+              <div className="p-4 rounded-2xl bg-[#FFFDF5] border-[2px] border-[#1C1C1C] space-y-2 shadow-[2px_2px_0_0_#1C1C1C]">
+                <div className="flex items-center justify-between text-xs font-black uppercase text-[#1C1C1C]">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    <span>Jira Tracked Work Item</span>
+                  </span>
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300">
+                    {data.sourceReference || data.project}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {data.sourceType === "github" && (
+              <div className="p-4 rounded-2xl bg-[#FFFDF5] border-[2px] border-[#1C1C1C] space-y-2 shadow-[2px_2px_0_0_#1C1C1C]">
+                <div className="flex items-center justify-between text-xs font-black uppercase text-[#1C1C1C]">
+                  <span className="flex items-center gap-1.5">
+                    <GitBranch className="w-4 h-4 text-[#1C1C1C]" />
+                    <span>GitHub Code Repository Deliverable</span>
+                  </span>
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300">
+                    {data.project}
+                  </span>
+                </div>
               </div>
             )}
 

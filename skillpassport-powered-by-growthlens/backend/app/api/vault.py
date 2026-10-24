@@ -717,6 +717,248 @@ def get_vault_artifact_detail(
             },
         }
 
+    elif artifact_type in ("evidence", "evidence_item"):
+        ev = db.query(EvidenceItem).filter(
+            EvidenceItem.id == item_uuid,
+            EvidenceItem.owner_user_id == user_id,
+            EvidenceItem.is_deleted == False,
+        ).first()
+
+        if not ev:
+            raise HTTPException(status_code=404, detail="Evidence artifact not found in private vault")
+
+        mappings = db.query(EvidenceCompetencyMapping).filter(
+            EvidenceCompetencyMapping.evidence_id == ev.id
+        ).all()
+        candidate_skills = []
+        for m in mappings:
+            tax = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id == m.competency_id).first()
+            candidate_skills.append({
+                "id": str(m.id),
+                "name": tax.canonical_name if tax else "Competency",
+                "category": tax.category if tax else "General",
+                "proficiency_level": m.proficiency_level,
+                "confidence": getattr(m, "relevance_score", getattr(m, "confidence_score", 0.85)),
+                "supporting_excerpt": m.supporting_excerpt,
+                "rationale": m.rationale,
+                "status": m.status,
+            })
+
+        audits = db.query(ReviewAuditEvent).filter(
+            ReviewAuditEvent.target_record_id == ev.id
+        ).order_by(ReviewAuditEvent.event_timestamp.desc()).all()
+        audit_trail = [
+            {
+                "id": str(a.id),
+                "event_type": a.event_type,
+                "previous_state": a.previous_state,
+                "new_state": a.new_state,
+                "reason_note": a.reason_note,
+                "timestamp": a.event_timestamp.isoformat() if a.event_timestamp else None,
+            }
+            for a in audits
+        ]
+
+        doc = None
+        if ev.document_id:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.id == ev.document_id,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+        if not doc and ev.content_hash:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.sha256_hash == ev.content_hash,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+
+        if doc:
+            has_file = storage_manager.retrieve_file(doc.private_storage_key) is not None
+            chunks = [
+                {
+                    "chunk_index": c.chunk_index,
+                    "page_or_slide_number": c.page_or_slide_number,
+                    "section_title": c.section_title,
+                    "original_text": c.original_text,
+                    "normalized_text": c.normalized_text,
+                    "extraction_method": c.extraction_method,
+                }
+                for c in doc.chunks
+            ]
+            return {
+                "id": str(ev.id),
+                "artifact_type": "uploaded_document",
+                "evidence_id": str(ev.id),
+                "document_id": str(doc.id),
+                "title": ev.title or (doc.user_metadata or {}).get("title") or doc.original_filename,
+                "filename": doc.original_filename,
+                "mime_type": doc.mime_type,
+                "file_size_bytes": doc.file_size_bytes,
+                "category": ev.evidence_category or doc.evidence_category,
+                "source_provider": ev.source_provider or "document_upload",
+                "source_url": ev.source_url,
+                "created_at": ev.observed_timestamp.isoformat() if ev.observed_timestamp else (doc.created_at.isoformat() if doc.created_at else None),
+                "processing_state": ev.processing_status or doc.processing_state,
+                "has_original_file": has_file,
+                "has_snapshot": False,
+                "has_extracted_text": len(chunks) > 0 or bool(ev.extracted_excerpt or doc.extraction_summary),
+                "extracted_summary": ev.extracted_summary or doc.extraction_summary or ev.description,
+                "chunks": chunks,
+                "full_extracted_text": "\n\n".join(c["original_text"] for c in chunks) if chunks else (ev.extracted_excerpt or ev.description or doc.extraction_summary),
+                "user_metadata": {**(doc.user_metadata or {}), **(ev.metadata or {}), **(ev.normalized_metadata or {})},
+                "provenance": {
+                    "sha256": doc.sha256_hash or ev.content_hash,
+                    "private_storage_key": doc.private_storage_key,
+                    "storage_bucket": doc.storage_bucket,
+                    "document_version": doc.document_version,
+                    **(ev.provenance or {}),
+                },
+                "linked_evidence": {
+                    "id": str(ev.id),
+                    "title": ev.title,
+                    "evidence_strength": ev.evidence_strength if ev.evidence_strength else "medium",
+                    "verification_status": ev.verification_status if ev.verification_status else "unreviewed",
+                    "extraction_confidence": ev.extraction_confidence if ev.extraction_confidence else 0.85,
+                    "candidate_skills": candidate_skills,
+                    "audit_trail": audit_trail,
+                },
+            }
+
+        if ev.source_provider in ("portfolio", "web_crawl") or ev.evidence_category == "portfolio":
+            crawl = db.query(WebCrawlRecord).filter(
+                WebCrawlRecord.owner_user_id == user_id,
+                or_(
+                    WebCrawlRecord.final_url == ev.source_url,
+                    WebCrawlRecord.submitted_url == ev.source_url,
+                    WebCrawlRecord.content_hash == ev.content_hash,
+                )
+            ).first()
+
+            if crawl:
+                return {
+                    "id": str(ev.id),
+                    "artifact_type": "web_snapshot",
+                    "evidence_id": str(ev.id),
+                    "title": crawl.page_title or ev.title,
+                    "filename": None,
+                    "mime_type": "text/html",
+                    "file_size_bytes": len(crawl.cleaned_content.encode("utf-8")) if crawl.cleaned_content else 0,
+                    "category": "portfolio",
+                    "source_provider": "portfolio",
+                    "source_url": crawl.final_url or crawl.submitted_url or ev.source_url,
+                    "created_at": crawl.created_at.isoformat() if crawl.created_at else None,
+                    "processing_state": crawl.extraction_status or "completed",
+                    "has_original_file": False,
+                    "has_snapshot": bool(crawl.cleaned_content),
+                    "has_extracted_text": bool(crawl.cleaned_content),
+                    "extracted_summary": f"Web capture: {len(crawl.cleaned_content or '')} characters",
+                    "full_extracted_text": crawl.cleaned_content or ev.extracted_excerpt or ev.description,
+                    "extracted_headings": crawl.extracted_headings or {},
+                    "discovered_links": crawl.discovered_links or {},
+                    "provenance": {
+                        "submitted_url": crawl.submitted_url,
+                        "final_url": crawl.final_url,
+                        "content_hash": crawl.content_hash,
+                        "crawl_depth": crawl.crawl_depth,
+                        "http_status": crawl.http_status,
+                        "capture_timestamp": crawl.created_at.isoformat() if crawl.created_at else None,
+                        **(ev.provenance or {}),
+                    },
+                    "linked_evidence": {
+                        "id": str(ev.id),
+                        "title": ev.title,
+                        "verification_status": ev.verification_status,
+                        "candidate_skills": candidate_skills,
+                        "audit_trail": audit_trail,
+                    },
+                }
+
+        if ev.source_provider == "github":
+            readme = db.query(RepositoryReadmeSnapshot).filter(
+                RepositoryReadmeSnapshot.owner_user_id == user_id,
+                or_(
+                    RepositoryReadmeSnapshot.repo_full_name.ilike(f"%{ev.project_name or ''}%"),
+                    RepositoryReadmeSnapshot.content_hash == ev.content_hash,
+                )
+            ).first()
+
+            if readme:
+                return {
+                    "id": str(ev.id),
+                    "artifact_type": "repository_readme",
+                    "evidence_id": str(ev.id),
+                    "title": ev.title or f"{readme.repo_full_name}: {readme.readme_path}",
+                    "filename": readme.readme_path,
+                    "mime_type": "text/markdown",
+                    "file_size_bytes": len(readme.raw_content.encode("utf-8")) if readme.raw_content else 0,
+                    "category": "code_repository",
+                    "source_provider": "github",
+                    "source_url": readme.html_url or ev.source_url or f"https://github.com/{readme.repo_full_name}",
+                    "created_at": readme.retrieval_timestamp.isoformat() if readme.retrieval_timestamp else None,
+                    "processing_state": "completed" if readme.sync_status == "success" else "failed",
+                    "has_original_file": False,
+                    "has_snapshot": bool(readme.raw_content),
+                    "has_extracted_text": bool(readme.raw_content),
+                    "extracted_summary": readme.extracted_summary or ev.extracted_summary or ev.description,
+                    "full_extracted_text": readme.raw_content or ev.extracted_excerpt or ev.description,
+                    "sections_json": readme.sections_json or [],
+                    "provenance": {
+                        "repo_full_name": readme.repo_full_name,
+                        "readme_path": readme.readme_path,
+                        "blob_sha": readme.blob_sha,
+                        "html_url": readme.html_url,
+                        "content_hash": readme.content_hash,
+                        "sync_status": readme.sync_status,
+                        "is_current": readme.is_current,
+                        "retrieval_timestamp": readme.retrieval_timestamp.isoformat() if readme.retrieval_timestamp else None,
+                        **(ev.provenance or {}),
+                    },
+                    "linked_evidence": {
+                        "id": str(ev.id),
+                        "title": ev.title,
+                        "verification_status": ev.verification_status,
+                        "candidate_skills": candidate_skills,
+                        "audit_trail": audit_trail,
+                    },
+                }
+
+        return {
+            "id": str(ev.id),
+            "artifact_type": "connected_source_record",
+            "evidence_id": str(ev.id),
+            "title": ev.title,
+            "filename": None,
+            "mime_type": "application/json",
+            "file_size_bytes": len((ev.description or "").encode("utf-8")),
+            "category": ev.evidence_category,
+            "source_provider": ev.source_provider,
+            "source_url": ev.source_url,
+            "created_at": ev.observed_timestamp.isoformat() if ev.observed_timestamp else (ev.ingestion_timestamp.isoformat() if ev.ingestion_timestamp else None),
+            "processing_state": ev.processing_status,
+            "has_original_file": False,
+            "has_snapshot": False,
+            "has_extracted_text": bool(ev.extracted_excerpt or ev.description),
+            "extracted_summary": ev.extracted_summary or ev.description,
+            "full_extracted_text": ev.extracted_excerpt or ev.description,
+            "user_metadata": {**(ev.metadata or {}), **(ev.normalized_metadata or {})},
+            "provenance": {
+                "source_provider": ev.source_provider,
+                "source_name": ev.source_name,
+                "external_record_id": ev.external_record_id,
+                "contributor_identity": ev.contributor_identity,
+                "attribution_status": ev.attribution_status,
+                **(ev.provenance or {}),
+            },
+            "linked_evidence": {
+                "id": str(ev.id),
+                "title": ev.title,
+                "verification_status": ev.verification_status,
+                "candidate_skills": candidate_skills,
+                "audit_trail": audit_trail,
+            },
+        }
+
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported artifact type '{artifact_type}'")
 
@@ -807,6 +1049,80 @@ def preview_vault_file(
             },
         )
 
+    elif artifact_type in ("evidence", "evidence_item"):
+        ev = db.query(EvidenceItem).filter(
+            EvidenceItem.id == item_uuid,
+            EvidenceItem.owner_user_id == user_id,
+            EvidenceItem.is_deleted == False,
+        ).first()
+
+        if not ev:
+            raise HTTPException(status_code=404, detail="Evidence artifact not found")
+
+        doc = None
+        if ev.document_id:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.id == ev.document_id,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+        if not doc and ev.content_hash:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.sha256_hash == ev.content_hash,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+
+        if doc:
+            file_bytes = storage_manager.retrieve_file(doc.private_storage_key)
+            if file_bytes:
+                media_type = doc.mime_type or "application/octet-stream"
+                encoded_filename = urllib.parse.quote(doc.original_filename)
+                return Response(
+                    content=file_bytes,
+                    media_type=media_type,
+                    headers={
+                        "Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}",
+                        "X-Content-Type-Options": "nosniff",
+                        "Cache-Control": "private, max-age=300",
+                    },
+                )
+
+        if ev.source_provider in ("portfolio", "web_crawl") or ev.evidence_category == "portfolio":
+            crawl = db.query(WebCrawlRecord).filter(
+                WebCrawlRecord.owner_user_id == user_id,
+                or_(
+                    WebCrawlRecord.final_url == ev.source_url,
+                    WebCrawlRecord.submitted_url == ev.source_url,
+                    WebCrawlRecord.content_hash == ev.content_hash,
+                )
+            ).first()
+            if crawl and crawl.cleaned_content:
+                return Response(
+                    content=crawl.cleaned_content.encode("utf-8"),
+                    media_type="text/plain; charset=utf-8",
+                    headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+                )
+
+        if ev.source_provider == "github":
+            readme = db.query(RepositoryReadmeSnapshot).filter(
+                RepositoryReadmeSnapshot.owner_user_id == user_id,
+                RepositoryReadmeSnapshot.repo_full_name.ilike(f"%{ev.project_name or ''}%"),
+            ).first()
+            if readme and readme.raw_content:
+                return Response(
+                    content=readme.raw_content.encode("utf-8"),
+                    media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+                )
+
+        preview_text = ev.extracted_excerpt or ev.extracted_summary or ev.description or "Evidence record snapshot"
+        return Response(
+            content=preview_text.encode("utf-8"),
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+        )
+
     else:
         raise HTTPException(status_code=400, detail="Preview not available for this artifact type")
 
@@ -893,6 +1209,83 @@ def download_vault_file(
                 "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
                 "X-Content-Type-Options": "nosniff",
             },
+        )
+
+    elif artifact_type in ("evidence", "evidence_item"):
+        ev = db.query(EvidenceItem).filter(
+            EvidenceItem.id == item_uuid,
+            EvidenceItem.owner_user_id == user_id,
+            EvidenceItem.is_deleted == False,
+        ).first()
+
+        if not ev:
+            raise HTTPException(status_code=404, detail="Evidence artifact not found")
+
+        doc = None
+        if ev.document_id:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.id == ev.document_id,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+        if not doc and ev.content_hash:
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.sha256_hash == ev.content_hash,
+                UploadedDocument.owner_user_id == user_id,
+                UploadedDocument.is_deleted == False,
+            ).first()
+
+        if doc:
+            file_bytes = storage_manager.retrieve_file(doc.private_storage_key)
+            if file_bytes:
+                encoded_filename = urllib.parse.quote(doc.original_filename)
+                return Response(
+                    content=file_bytes,
+                    media_type=doc.mime_type or "application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+                        "X-Content-Type-Options": "nosniff",
+                        "Cache-Control": "private, no-cache",
+                    },
+                )
+
+        if ev.source_provider in ("portfolio", "web_crawl") or ev.evidence_category == "portfolio":
+            crawl = db.query(WebCrawlRecord).filter(
+                WebCrawlRecord.owner_user_id == user_id,
+                or_(
+                    WebCrawlRecord.final_url == ev.source_url,
+                    WebCrawlRecord.submitted_url == ev.source_url,
+                    WebCrawlRecord.content_hash == ev.content_hash,
+                )
+            ).first()
+            if crawl and crawl.cleaned_content:
+                safe_name = urllib.parse.quote(f"{crawl.page_title or 'web_snapshot'}.html")
+                return Response(
+                    content=crawl.cleaned_content.encode("utf-8"),
+                    media_type="text/html; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}", "X-Content-Type-Options": "nosniff"},
+                )
+
+        if ev.source_provider == "github":
+            readme = db.query(RepositoryReadmeSnapshot).filter(
+                RepositoryReadmeSnapshot.owner_user_id == user_id,
+                RepositoryReadmeSnapshot.repo_full_name.ilike(f"%{ev.project_name or ''}%"),
+            ).first()
+            if readme and readme.raw_content:
+                repo_slug = readme.repo_full_name.replace("/", "_")
+                safe_name = urllib.parse.quote(f"{repo_slug}_README.md")
+                return Response(
+                    content=readme.raw_content.encode("utf-8"),
+                    media_type="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}", "X-Content-Type-Options": "nosniff"},
+                )
+
+        safe_name = urllib.parse.quote(f"evidence_{str(ev.id)[:8]}.txt")
+        content_text = ev.extracted_excerpt or ev.extracted_summary or ev.description or "Evidence record"
+        return Response(
+            content=content_text.encode("utf-8"),
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}", "X-Content-Type-Options": "nosniff"},
         )
 
     else:

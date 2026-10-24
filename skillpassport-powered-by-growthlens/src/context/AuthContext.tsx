@@ -38,6 +38,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: UserProfileData | null;
+  profileError: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isEmailVerified: boolean;
@@ -103,21 +104,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileRequestIdRef = React.useRef(0);
 
   const isEmailVerified = Boolean(
     user && (user.email_confirmed_at || (user as any).confirmed_at)
   );
 
   const fetchProfile = useCallback(async (currentSession: Session | null) => {
+    const requestId = ++profileRequestIdRef.current;
     if (!currentSession?.access_token) {
-      setProfile(null);
+      if (requestId === profileRequestIdRef.current) {
+        setProfile(null);
+        setProfileError(null);
+      }
       return;
     }
     try {
+      setProfileError(null);
       const resp = await fetchProfileMe(currentSession.access_token);
+      if (requestId !== profileRequestIdRef.current) return;
+
       if (resp.ok) {
         const data = await resp.json();
+        if (requestId !== profileRequestIdRef.current) return;
         setProfile(data);
+        setProfileError(null);
         if (typeof window !== "undefined") {
           sessionStorage.setItem("sp_user_profile", JSON.stringify(data));
         }
@@ -128,16 +140,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             await supabase.auth.signOut({ scope: "local" });
           } catch {}
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem("sp_user_profile");
+          if (requestId === profileRequestIdRef.current) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setProfileError(null);
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("sp_user_profile");
+            }
+          }
+        } else {
+          let errorMsg = `Unable to load workspace profile (HTTP ${resp.status})`;
+          try {
+            const errJson = await resp.json();
+            if (errJson.detail) errorMsg = errJson.detail;
+          } catch {}
+          if (requestId === profileRequestIdRef.current) {
+            setProfileError(errorMsg);
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (requestId !== profileRequestIdRef.current) return;
       console.error("Error fetching user profile:", err);
+      setProfileError(
+        err?.message || "Network error loading workspace profile. Please check your connection."
+      );
     }
   }, []);
 
@@ -371,6 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    profileRequestIdRef.current++;
     try {
       // Use local scope to safely clear local session and avoid 403 Forbidden
       // if the token was invalidated, expired, or deleted on the server.
@@ -381,6 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setProfile(null);
+      setProfileError(null);
       // Clean local storage cache and session storage
       if (typeof window !== "undefined") {
         sessionStorage.clear();
@@ -444,6 +474,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
+    setProfileError(null);
     await fetchProfile(session);
   };
 
@@ -459,6 +490,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const data = await resp.json();
       setProfile(data);
+      setProfileError(null);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("sp_user_profile", JSON.stringify(data));
       }
@@ -474,6 +506,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         profile,
+        profileError,
         isLoading,
         isAuthenticated: !!user && !!session,
         isEmailVerified,
