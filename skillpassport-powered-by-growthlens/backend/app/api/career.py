@@ -20,6 +20,7 @@ from backend.app.career.orchestrator import job_orchestrator
 from backend.app.career.matching_engine import matching_engine
 from backend.app.career.prioritization_service import prioritization_service
 from backend.app.career.parser_service import parser_service
+from backend.app.career.confidence_explainer import confidence_explainer
 
 logger = get_logger("api.career")
 router = APIRouter(prefix="/career", tags=["Domain: Career Intelligence & Role Discovery"])
@@ -954,6 +955,52 @@ def get_skill_gaps(
             "dependency_gap": sum(1 for g in gaps if g.get("gap_type") == "dependency_gap"),
         },
     }
+
+
+@router.get("/roles/{role_id}/confidence-explanation/{skill_id}")
+def get_skill_confidence_explanation(
+    role_id: str,
+    skill_id: str,
+    enrich: bool = Query(False, description="Whether to request Ollama Qwen3 8B synthesis"),
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Returns an evidence-grounded confidence score rationale for a specific role requirement.
+    Answers: 'Why was this confidence score assigned?'
+    """
+    role_match = get_role_match(role_id, db, user)
+    matches = role_match.get("competency_matches", [])
+    clean_sid = skill_id.strip().lower()
+
+    comp_match = next(
+        (m for m in matches if m["skill_id"].lower() == clean_sid or m["canonical_name"].lower() == clean_sid),
+        None,
+    )
+    if not comp_match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Requirement '{skill_id}' not found in role '{role_id}'",
+        )
+
+    if not enrich and comp_match.get("confidence_rationale"):
+        return comp_match["confidence_rationale"]
+
+    req = {
+        "canonical_name": comp_match["canonical_name"],
+        "expected_level": comp_match["expected_level"],
+        "expected_level_numeric": comp_match["expected_level_numeric"],
+        "requirement_type": comp_match["requirement_type"],
+        "importance": comp_match["importance"],
+    }
+    rationale = confidence_explainer.generate_rationale(
+        requirement=req,
+        matched_user_skill=None,
+        evaluation=comp_match,
+        role_context={"role_id": role_id, "title": role_match.get("role_title")},
+        allow_ollama=enrich,
+    )
+    return rationale
 
 
 @router.post("/priorities/{role_id}")

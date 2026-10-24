@@ -60,6 +60,18 @@ export interface RoleDemandModel {
   updated_at: string;
 }
 
+export interface ConfidenceRationale {
+  score: number;
+  score_percent: number;
+  score_meaning: string;
+  summary: string;
+  supporting_factors: string[];
+  evidence_limitations: string[];
+  uncertainty_notes: string[];
+  is_verified: boolean;
+  model_assisted?: boolean;
+}
+
 export interface CompetencyMatchResult {
   skill_id: string;
   canonical_name: string;
@@ -84,6 +96,8 @@ export interface CompetencyMatchResult {
     | "missing_weak"
     | "conflicting";
   reason_codes: string[];
+  confidence_explanation?: string;
+  confidence_rationale?: ConfidenceRationale;
 }
 
 export interface RoleMatchResult {
@@ -139,6 +153,9 @@ export interface GapRecord {
   diagnosis: string;
   next_step_direction: string;
   relevant_evidence_ids: string[];
+  confidence?: number;
+  confidence_explanation?: string;
+  confidence_rationale?: ConfidenceRationale;
 }
 
 export interface CareerReadinessAssessment {

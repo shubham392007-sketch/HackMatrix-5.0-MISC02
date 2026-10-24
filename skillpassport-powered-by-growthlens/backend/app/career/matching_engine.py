@@ -8,6 +8,7 @@ from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMa
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.ai_governance import VerificationDecision, EvidenceConflictRecord
 from backend.app.models.career import RoleDemandModelRecord, RoleMatchSnapshotRecord
+from backend.app.career.confidence_explainer import confidence_explainer
 
 logger = get_logger("career.matching_engine")
 
@@ -313,7 +314,7 @@ class MatchingEngine:
         req_weight = REQUIREMENT_WEIGHTS.get(req_type, 0.6)
 
         if not matched_user_skill:
-            return {
+            eval_unmatched = {
                 "skill_id": req.get("skill_id", f"skill-{c_name.lower().replace(' ', '-')}"),
                 "canonical_name": c_name,
                 "requirement_type": req_type,
@@ -337,6 +338,15 @@ class MatchingEngine:
                 "reason_codes": ["NO_EVIDENCE_RECORDED"],
                 "source_span": req.get("source_span"),
             }
+            rationale = confidence_explainer.generate_rationale(
+                requirement=req,
+                matched_user_skill=None,
+                evaluation=eval_unmatched,
+                allow_ollama=False,
+            )
+            eval_unmatched["confidence_explanation"] = rationale["summary"]
+            eval_unmatched["confidence_rationale"] = rationale
+            return eval_unmatched
 
         curr_num = matched_user_skill.get("proficiency_numeric") or matched_user_skill.get("current_numeric", 0)
         curr_level = matched_user_skill.get("proficiency_level") or matched_user_skill.get("current_level", "Not Established")
@@ -401,7 +411,7 @@ class MatchingEngine:
             gap_explanation = f"Requirement met at {curr_level}."
             reason_codes.append("REQUIREMENT_MET")
 
-        return {
+        eval_matched = {
             "skill_id": req.get("skill_id", f"skill-{c_name.lower().replace(' ', '-')}"),
             "canonical_name": c_name,
             "requirement_type": req_type,
@@ -426,6 +436,15 @@ class MatchingEngine:
             "reason_codes": reason_codes,
             "source_span": req.get("source_span"),
         }
+        rationale = confidence_explainer.generate_rationale(
+            requirement=req,
+            matched_user_skill=matched_user_skill,
+            evaluation=eval_matched,
+            allow_ollama=False,
+        )
+        eval_matched["confidence_explanation"] = rationale["summary"]
+        eval_matched["confidence_rationale"] = rationale
+        return eval_matched
 
     def evaluate_role_match(
         self,
@@ -499,6 +518,9 @@ class MatchingEngine:
                     "diagnosis": m["gap_explanation"],
                     "next_step_direction": f"Produce attributable evidence demonstrating {m['canonical_name']} at {m['expected_level']} level.",
                     "relevant_evidence_ids": m["evidence_ids"],
+                    "confidence": m.get("confidence", 0.0),
+                    "confidence_explanation": m.get("confidence_explanation"),
+                    "confidence_rationale": m.get("confidence_rationale"),
                 })
 
         # Unified Career Readiness Assessment

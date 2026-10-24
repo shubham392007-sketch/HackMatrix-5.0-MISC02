@@ -11,6 +11,7 @@ import {
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
 import AppTopBar from "@/components/app/AppTopBar";
+import { ConfidenceScoreExplainer } from "@/components/app/ConfidenceRationaleCard";
 import {
   AlertTriangle,
   HelpCircle,
@@ -351,6 +352,14 @@ export default function CareerGapsPage() {
                     })}
                   </div>
                 </div>
+
+                {/* Confidence Score & Rationale */}
+                <ConfidenceScoreExplainer
+                  score={gap.confidence}
+                  explanation={gap.confidence_explanation}
+                  rationale={gap.confidence_rationale}
+                  skillName={gap.canonical_name}
+                />
 
                 {/* Diagnosis */}
                 <div className="text-xs space-y-1">

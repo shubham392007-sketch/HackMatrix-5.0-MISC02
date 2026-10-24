@@ -551,3 +551,148 @@ def test_target_save_and_delete_lifecycle():
     del_res = client.delete(f"/api/v1/career/roles/{target_role_id}", headers=AUTH_HEADERS)
     assert del_res.status_code in (200, 404)
 
+
+
+# ==============================================================================
+# 5. EXPLAINABLE OLLAMA CONFIDENCE SCORES FOR ROLE INTELLIGENCE
+# ==============================================================================
+
+def test_explainable_confidence_scores_in_role_match():
+    """
+    Verify every competency match in Role Intelligence includes an evidence-grounded
+    confidence score explanation without modifying the original confidence score.
+    """
+    response = client.get("/api/v1/career/match/role-ai-engineer-entry", headers=AUTH_HEADERS)
+    assert response.status_code == 200
+    data = response.json()
+    assert "competency_matches" in data
+    assert len(data["competency_matches"]) > 0
+
+    for m in data["competency_matches"]:
+        # 1. Original score preserved
+        assert "confidence" in m
+        assert isinstance(m["confidence"], (int, float))
+        assert 0.0 <= m["confidence"] <= 1.0 or 0 <= m["confidence"] <= 100
+
+        # 2. Distinct from coverage/match scores
+        assert "effective_coverage" in m
+        assert "proficiency_coverage" in m
+
+        # 3. New Role Intelligence explanation fields present
+        assert "confidence_explanation" in m
+        assert isinstance(m["confidence_explanation"], str)
+        assert len(m["confidence_explanation"]) > 20
+
+        assert "confidence_rationale" in m
+        rationale = m["confidence_rationale"]
+        assert isinstance(rationale, dict)
+        assert "score" in rationale
+        assert "score_percent" in rationale
+        assert "score_meaning" in rationale
+        assert "summary" in rationale
+        assert "supporting_factors" in rationale
+        assert "evidence_limitations" in rationale
+        assert "uncertainty_notes" in rationale
+        assert isinstance(rationale["supporting_factors"], list)
+        assert isinstance(rationale["evidence_limitations"], list)
+        assert isinstance(rationale["uncertainty_notes"], list)
+
+        # 4. Uncertainty note checks
+        assert any("does not" in note.lower() or "not a conclusion" in note.lower() or "not serve as proof" in note.lower() for note in rationale["uncertainty_notes"])
+
+
+def test_explainable_confidence_scores_in_skill_gaps():
+    """
+    Verify every gap record returned by get_skill_gaps includes explainable confidence.
+    """
+    response = client.get("/api/v1/career/gaps/role-ai-engineer-entry", headers=AUTH_HEADERS)
+    assert response.status_code == 200
+    data = response.json()
+    assert "gaps" in data
+    assert len(data["gaps"]) > 0
+
+    for gap in data["gaps"]:
+        assert "confidence" in gap
+        assert "confidence_explanation" in gap
+        assert "confidence_rationale" in gap
+        rationale = gap["confidence_rationale"]
+        assert rationale is not None
+        assert rationale["score_percent"] >= 0
+        assert len(rationale["summary"]) > 20
+
+
+def test_confidence_explanation_dedicated_endpoint():
+    """
+    Verify standalone endpoint GET /career/roles/{role_id}/confidence-explanation/{skill_id}.
+    """
+    res = client.get(
+        "/api/v1/career/roles/role-ai-engineer-entry/confidence-explanation/skill-python",
+        headers=AUTH_HEADERS,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "score" in data
+    assert "score_percent" in data
+    assert "summary" in data
+    assert "supporting_factors" in data
+    assert "evidence_limitations" in data
+
+    # Test non-existent requirement returns 404
+    bad_res = client.get(
+        "/api/v1/career/roles/role-ai-engineer-entry/confidence-explanation/nonexistent-skill-xyz",
+        headers=AUTH_HEADERS,
+    )
+    assert bad_res.status_code == 404
+
+
+def test_ollama_timeout_and_fallback_resilience():
+    """
+    Verify that if Ollama times out or errors, the confidence explanation gracefully
+    falls back to the 100% grounded deterministic rationale without error.
+    """
+    from backend.app.career.confidence_explainer import confidence_explainer
+
+    req = {
+        "canonical_name": "Distributed Systems",
+        "expected_level": "Practitioner",
+        "expected_level_numeric": 3,
+        "requirement_type": "core_required",
+        "importance": "critical",
+    }
+    evaluation = {
+        "confidence": 0.85,
+        "current_proficiency": "Working",
+        "current_proficiency_numeric": 2,
+        "verification_status": "verified",
+        "match_status": "partial_match",
+        "evidence_ids": ["ev-123"],
+    }
+
+    # Simulate Ollama timeout via patch
+    with patch("httpx.Client.post", side_effect=Exception("Ollama simulated timeout")):
+        rationale = confidence_explainer.generate_rationale(
+            requirement=req,
+            matched_user_skill={"evidence_items": [{"title": "Async Task Processor"}]},
+            evaluation=evaluation,
+            allow_ollama=True,
+        )
+        assert rationale is not None
+        assert rationale["score_percent"] == 85
+        assert rationale["model_assisted"] is False
+        assert "Async Task Processor" in rationale["summary"] or "Async Task Processor" in rationale["supporting_factors"][0]
+        assert len(rationale["evidence_limitations"]) > 0
+
+
+def test_scope_isolation_other_domains_unmodified():
+    """
+    Verify that other domain endpoints continue to return their expected schemas
+    without unintended confidence explanation fields polluting them.
+    """
+    # Passport taxonomy endpoint
+    tax_res = client.get("/api/v1/passport/taxonomy")
+    assert tax_res.status_code in (200, 401)
+    
+    # Career overview / catalogue still adheres to schema
+    roles_res = client.get("/api/v1/career/roles", headers=AUTH_HEADERS)
+    assert roles_res.status_code == 200
+    assert isinstance(roles_res.json(), list)

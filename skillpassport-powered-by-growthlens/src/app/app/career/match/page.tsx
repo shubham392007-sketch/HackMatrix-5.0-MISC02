@@ -27,6 +27,7 @@ import {
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
 import AppTopBar from "@/components/app/AppTopBar";
+import { ConfidenceScoreExplainer } from "@/components/app/ConfidenceRationaleCard";
 
 export default function RoleMatchOverviewPage() {
   const { activeRole, activeMatch, activeGaps, activeReadiness } = useEvidence();
@@ -255,6 +256,14 @@ export default function RoleMatchOverviewPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Confidence Score & Grounded Rationale */}
+              <ConfidenceScoreExplainer
+                score={m.confidence}
+                explanation={m.confidence_explanation}
+                rationale={m.confidence_rationale}
+                skillName={m.canonical_name}
+              />
 
               {/* Diagnosis and Actionable Links */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 text-xs">
