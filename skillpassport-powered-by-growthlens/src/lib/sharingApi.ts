@@ -79,18 +79,18 @@ export const sharingApi = {
         is_ready_to_share: true,
       },
       links: {
-        active_links_count: 0,
-        total_views: 0,
-        views_last_7_days: 0,
-        inquiries_count: 0,
-        unread_inquiries_count: 0,
+        total_links: 0,
+        active_links: 0,
+        expired_links: 0,
+        revoked_links: 0,
+        total_access_count: 0,
         recent_links: [],
       },
-      telemetry: {
-        total_shares_created: 0,
-        avg_view_duration_seconds: 0,
-        evidence_inspection_rate: 0,
+      messaging: {
+        unread_count: 0,
+        total_count: 0,
       },
+      recent_activities: [],
     };
   },
 

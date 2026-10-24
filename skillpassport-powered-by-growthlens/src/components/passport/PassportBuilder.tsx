@@ -135,6 +135,16 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
     loadMaster();
   }, []);
 
+  useEffect(() => {
+    const handleTrigger = () => {
+      handleConfirmAndFinalize();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("sp_trigger_confirm_builder_flow", handleTrigger);
+      return () => window.removeEventListener("sp_trigger_confirm_builder_flow", handleTrigger);
+    }
+  }, [master]);
+
   const handleConfirmAndFinalize = async () => {
     setFinalizing(true);
     setErrorMessage(null);
@@ -143,6 +153,7 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
       if (typeof window !== "undefined") {
         localStorage.setItem("sp_master_content_finalized", "true");
         localStorage.setItem("sp_master_content_finalized_at", new Date().toISOString());
+        window.dispatchEvent(new CustomEvent("sp_passport_content_finalized", { detail: { timestamp: new Date().toISOString() } }));
       }
       setFinalized(true);
       setSaveSuccess(true);
