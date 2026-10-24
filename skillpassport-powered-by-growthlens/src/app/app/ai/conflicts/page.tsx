@@ -185,7 +185,7 @@ export default function EvidenceConflictsPage() {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Philosophy Callout */}
-      <div className="gl-card p-5 bg-gradient-to-r from-amber-50/60 via-sand/20 to-white border border-amber-200">
+      <div className="gl-card p-5 bg-[#FAF8F5] border border-amber-200">
         <div className="flex items-start gap-3">
           <Scale className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
           <div className="space-y-1">

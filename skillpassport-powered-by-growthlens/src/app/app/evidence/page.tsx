@@ -189,23 +189,26 @@ export default function EvidenceCenterPage() {
               { num: "04", name: "Deduplication", status: "completed", desc: "Cross-source overlap" },
               { num: "05", name: "Indexing", status: "completed", desc: "ChromaDB vector store" },
               { num: "06", name: "Ready for Review", status: "active", desc: "Human confirmation" },
-            ].map((st) => (
-              <div
-                key={st.num}
-                className={`p-3.5 rounded-xl border border-[#1C1C1C] flex flex-col justify-between ${
-                  st.status === "active" ? "bg-[#DFE968]" : "bg-[#FBF1CF]"
-                }`}
-              >
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] font-mono font-bold text-[#1C1C1C]/50">{st.num}</span>
-                    <span className="w-2 h-2 rounded-full bg-[#1C1C1C]" />
+            ].map((st) => {
+              const isActive = st.status === "active";
+              return (
+                <div
+                  key={st.num}
+                  className={`p-3.5 rounded-xl border border-[#1A1918] flex flex-col justify-between shadow-[1.5px_1.5px_0_0_#1A1918] ${
+                    isActive ? "bg-[#1E3A5F] text-[#FAF8F5]" : "bg-[#FAF8F5] text-[#1A1918]"
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[9px] font-mono font-bold ${isActive ? "text-[#FAF8F5]/70" : "text-[#1A1918]/50"}`}>{st.num}</span>
+                      <span className={`w-2 h-2 rounded-full ${isActive ? "bg-[#FAF8F5]" : "bg-[#1A1918]"}`} />
+                    </div>
+                    <h4 className={`text-xs font-black ${isActive ? "text-[#FAF8F5]" : "text-[#1A1918]"}`}>{st.name}</h4>
+                    <p className={`text-[10px] mt-0.5 ${isActive ? "text-[#FAF8F5]/80" : "text-[#1A1918]/70"}`}>{st.desc}</p>
                   </div>
-                  <h4 className="text-xs font-black">{st.name}</h4>
-                  <p className="text-[10px] text-[#1C1C1C]/70 mt-0.5">{st.desc}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

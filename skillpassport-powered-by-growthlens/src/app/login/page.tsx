@@ -246,7 +246,7 @@ export default function LoginPage() {
           {/* Right Column: Organic Graphic Visual */}
           <div className="hidden lg:flex flex-1 justify-center relative w-full h-[540px]">
             <div
-              className="w-full max-w-md h-full bg-gradient-to-tr from-[#DFE968] via-[#FBF1CF] to-[#F3A878] border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center p-8 text-center overflow-hidden shadow-[4px_4px_0_0_#1C1C1C]"
+              className="w-full max-w-md h-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center p-8 text-center overflow-hidden shadow-[4px_4px_0_0_#1C1C1C]"
               style={{ borderRadius: "45% 55% 45% 55% / 58% 42% 55% 45%" }}
             >
               <h2

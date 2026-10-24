@@ -334,8 +334,8 @@ export default function GlobalPageTransitionLoader() {
           className="fixed top-0 left-0 right-0 z-[99999] h-[3.5px] pointer-events-none transition-all duration-200 ease-out"
           style={{
             width: `${progress}%`,
-            background: "linear-gradient(90deg, #1C1C1C 0%, #F3A878 50%, #DFE968 100%)",
-            boxShadow: "0 0 14px rgba(223, 233, 104, 0.95), 0 0 4px #1C1C1C",
+            background: "#1E3A5F",
+            boxShadow: "0 0 14px rgba(30, 58, 95, 0.6), 0 0 4px #1C1C1C",
           }}
         />
       )}
@@ -347,7 +347,7 @@ export default function GlobalPageTransitionLoader() {
             active ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           style={{
-            background: "rgba(251, 241, 207, 0.72)",
+            background: "rgba(245, 242, 235, 0.85)",
           }}
           aria-live="polite"
           aria-busy="true"

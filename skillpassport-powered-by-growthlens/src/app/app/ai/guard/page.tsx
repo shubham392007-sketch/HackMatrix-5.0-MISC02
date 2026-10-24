@@ -338,7 +338,7 @@ export default function HallucinationGuardPage() {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* The 7 Automated Checks Banner */}
-      <div className="gl-card p-5 bg-gradient-to-r from-red-50/40 via-amber-50/20 to-white border border-red-200">
+      <div className="gl-card p-5 bg-[#FAF8F5] border border-red-200">
         <h3 className="text-xs font-mono uppercase tracking-wider text-red-950 font-bold mb-3 flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-red-700" />
           The Seven Deterministic Verification Checks

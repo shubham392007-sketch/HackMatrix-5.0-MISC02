@@ -638,12 +638,12 @@ export default function UnifiedOnboardingPage() {
 
   if (loadingInitialState || authLoading) {
     return (
-      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]">
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center text-[#1A1918]">
         <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
-          <div className="absolute -inset-2 bg-[#DFE968]/30 rounded-3xl blur-xl pointer-events-none" />
-          <div className="relative p-8 rounded-3xl bg-[#FBF6DF]/90 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full overflow-hidden">
+          <div className="absolute -inset-2 bg-[#1E3A5F]/30 rounded-3xl blur-xl pointer-events-none" />
+          <div className="relative p-8 rounded-3xl bg-[#FAF8F5]/90 border-[1.5px] border-[#1A1918] shadow-[5px_5px_0_0_#1A1918] flex flex-col items-center justify-center w-full overflow-hidden">
             <LoadingAnimation size="md" className="relative z-10" />
-            <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
+            <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1A1918]/70">
               INITIALIZING SKILL PASSPORT SETUP WIZARD ···
             </p>
           </div>
@@ -672,22 +672,22 @@ export default function UnifiedOnboardingPage() {
   );
 
   return (
-    <div className="min-h-screen text-[#1C1C1C] flex flex-col font-sans bg-transparent">
+    <div className="min-h-screen text-[#1A1918] flex flex-col font-sans bg-transparent">
       {/* Top Header / Wizard Navigation Bar */}
-      <header className="border-b-[1.5px] border-[#1C1C1C] bg-[#FFFFFF]/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
+      <header className="border-b-[1.5px] border-[#1A1918] bg-[#FFFFFF]/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#DFE968] border-[1.5px] border-[#1C1C1C] flex items-center justify-center shadow-[2px_2px_0px_#1C1C1C]">
-              <Sparkles className="w-5 h-5 text-[#1C1C1C]" />
+            <div className="w-9 h-9 rounded-xl bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[2px_2px_0px_#1A1918]">
+              <Sparkles className="w-5 h-5 text-[#1A1918]" />
             </div>
             <div>
               <span
-                className="text-2xl text-[#1C1C1C] leading-none block font-normal"
+                className="text-2xl text-[#1A1918] leading-none block font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Skill Passport
               </span>
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block mt-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 block mt-0.5">
                 FIRST-TIME SETUP WIZARD
               </span>
             </div>
@@ -711,10 +711,10 @@ export default function UnifiedOnboardingPage() {
                   onClick={() => setCurrentStep(step.num)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-[1.5px] transition-all cursor-pointer ${
                     isActive
-                      ? "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C] shadow-[2px_2px_0px_#1C1C1C]"
+                      ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918] shadow-[2px_2px_0px_#1A1918]"
                       : isPast
-                      ? "bg-[#FFFFFF] border-[#1C1C1C] text-[#1C1C1C] hover:bg-[#FBF1CF]"
-                      : "bg-[#FFFFFF]/40 border-[#1C1C1C]/25 text-[#1C1C1C]/40 cursor-not-allowed"
+                      ? "bg-[#FFFFFF] border-[#1A1918] text-[#1A1918] hover:bg-[#FAF8F5]"
+                      : "bg-[#FFFFFF]/40 border-[#1A1918]/25 text-[#1A1918]/40 cursor-not-allowed"
                   }`}
                 >
                   <span
@@ -722,8 +722,8 @@ export default function UnifiedOnboardingPage() {
                       isPast
                         ? "bg-[#2E7D32] text-white"
                         : isActive
-                        ? "bg-[#1C1C1C] text-white"
-                        : "bg-[#1C1C1C]/10 text-[#1C1C1C]/40"
+                        ? "bg-[#1A1918] text-white"
+                        : "bg-[#1A1918]/10 text-[#1A1918]/40"
                     }`}
                   >
                     {isPast ? <Check className="w-3 h-3 stroke-[3]" /> : step.num}
@@ -748,33 +748,33 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 1 && (
           <div className="space-y-6">
-            <div className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider">
-                <User className="w-3 h-3 text-[#1C1C1C]" />
+            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+                <User className="w-3 h-3 text-[#1A1918]" />
                 STEP 1 OF 4 · PROFILE CALIBRATION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1C1C1C] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Role &amp; Profile Calibration
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
                 Tell us about your professional background so Skill Passport can organize your work evidence and tailor your skill profile.
               </p>
             </div>
 
             {profileError && (
-              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1C1C1C]">
+              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{profileError}</p>
+                <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{profileError}</p>
               </div>
             )}
 
-            <form onSubmit={handleSaveProfile} className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-6">
+            <form onSubmit={handleSaveProfile} className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-6">
               {/* Full Name */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                   Full Name <span className="text-[#E0533C]">*</span>
                 </label>
                 <input
@@ -783,13 +783,13 @@ export default function UnifiedOnboardingPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Alex Chen"
                   required
-                  className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                  className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                 />
               </div>
 
               {/* Job Title / Specialization */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                   Job Title / Specialization <span className="text-[#E0533C]">*</span>
                 </label>
                 <input
@@ -798,7 +798,7 @@ export default function UnifiedOnboardingPage() {
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="e.g. Software Developer, AI Engineer, Student"
                   required
-                  className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                  className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                 />
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                   {JOB_TITLE_SUGGESTIONS.map((sug) => (
@@ -808,8 +808,8 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setJobTitle(sug)}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
                         jobTitle === sug
-                          ? "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C]"
-                          : "bg-[#FFFFFF] border-[#1C1C1C]/30 text-[#1C1C1C]/70 hover:border-[#1C1C1C]"
+                          ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918]"
+                          : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:border-[#1A1918]"
                       }`}
                     >
                       {sug}
@@ -820,7 +820,7 @@ export default function UnifiedOnboardingPage() {
 
               {/* Department / Team / Academic Program */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                   Department, Team, or Academic Institution
                 </label>
                 <input
@@ -828,7 +828,7 @@ export default function UnifiedOnboardingPage() {
                   value={departmentOrTeam}
                   onChange={(e) => setDepartmentOrTeam(e.target.value)}
                   placeholder="e.g. Computer Science & Engineering, Core Platform, Research Lab"
-                  className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                  className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                 />
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                   {DEPARTMENT_SUGGESTIONS.map((dept) => (
@@ -838,8 +838,8 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setDepartmentOrTeam(dept)}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
                         departmentOrTeam === dept
-                          ? "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C]"
-                          : "bg-[#FFFFFF] border-[#1C1C1C]/30 text-[#1C1C1C]/70 hover:border-[#1C1C1C]"
+                          ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918]"
+                          : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:border-[#1A1918]"
                       }`}
                     >
                       {dept}
@@ -850,7 +850,7 @@ export default function UnifiedOnboardingPage() {
 
               {/* Experience Level */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-2">
                   Experience Level
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -861,8 +861,8 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setExperienceLevel(lvl)}
                       className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border-[1.5px] transition-all text-left flex items-center justify-between ${
                         experienceLevel === lvl
-                          ? "bg-[#DFE968] border-[#1C1C1C] shadow-[2px_2px_0px_#1C1C1C]"
-                          : "bg-[#FFFFFF] border-[#1C1C1C]/30 text-[#1C1C1C]/70 hover:bg-[#FBF6DF]"
+                          ? "bg-[#1E3A5F] border-[#1A1918] shadow-[2px_2px_0px_#1A1918]"
+                          : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:bg-[#FAF8F5]"
                       }`}
                     >
                       <span>{lvl}</span>
@@ -874,7 +874,7 @@ export default function UnifiedOnboardingPage() {
 
               {/* Professional Goals */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                   Career Goals &amp; Target Roles
                 </label>
                 <input
@@ -882,26 +882,26 @@ export default function UnifiedOnboardingPage() {
                   value={professionalGoal}
                   onChange={(e) => setProfessionalGoal(e.target.value)}
                   placeholder="e.g. Senior Backend Architect, Distributed Systems Specialist, Machine Learning Engineer"
-                  className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                  className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                 />
               </div>
 
               {/* Professional Summary */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
-                  Professional Bio / Short Summary <span className="text-[10px] text-[#1C1C1C]/50 font-normal">(Optional)</span>
+                <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
+                  Professional Bio / Short Summary <span className="text-[10px] text-[#1A1918]/50 font-normal">(Optional)</span>
                 </label>
                 <textarea
                   value={professionalSummary}
                   onChange={(e) => setProfessionalSummary(e.target.value)}
                   rows={3}
                   placeholder="A short overview of your technical background, passions, and core competencies..."
-                  className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-4 text-xs font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C] resize-none"
+                  className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-2xl p-4 text-xs font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918] resize-none"
                 />
               </div>
 
               {/* Form Action */}
-              <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-end">
+              <div className="pt-4 border-t border-[#1A1918]/15 flex items-center justify-end">
                 <button
                   type="submit"
                   disabled={savingProfile}
@@ -929,78 +929,78 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <div className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider">
-                <GitBranch className="w-3 h-3 text-[#1C1C1C]" />
+            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+                <GitBranch className="w-3 h-3 text-[#1A1918]" />
                 STEP 2 OF 4 · CODE INTELLIGENCE
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1C1C1C] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 GitHub Evidence Source
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
                 Connect GitHub to collect authorized repository activity and use it as source material for your Skill Passport.
               </p>
             </div>
 
             {/* Privacy & Token Security Explainer */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 shadow-[3px_3px_0px_#1C1C1C] space-y-3">
-              <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 shadow-[3px_3px_0px_#1A1918] space-y-3">
+              <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-wider text-[#1A1918]">
                 <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
                 <span>Zero Storage of Raw PATs · AES-256 Fernet Encryption</span>
               </div>
-              <p className="text-xs font-medium text-[#1C1C1C]/75 leading-relaxed">
+              <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
                 Skill Passport only requests read-only repository permissions. Your token is encrypted with AES-GCM-256 before persistence and is never exposed in client logs or browser storage.
               </p>
             </div>
 
             {githubError && (
-              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1C1C1C]">
+              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{githubError}</p>
+                <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{githubError}</p>
               </div>
             )}
 
             {githubSuccess && (
-              <div className="p-4 rounded-2xl bg-[#DFE968]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1C1C1C]">
+              <div className="p-4 rounded-2xl bg-[#1E3A5F]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <CheckCircle className="w-5 h-5 text-[#2E7D32] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{githubSuccess}</p>
+                <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{githubSuccess}</p>
               </div>
             )}
 
             {/* Connection Form or Repository Selector */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-6">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-6">
               {!isGitHubConnected ? (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918]">
                         GitHub Personal Access Token (PAT)
                       </label>
                       <a
                         href="https://github.com/settings/tokens?type=beta"
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] font-black underline text-[#1C1C1C]/70 hover:text-[#1C1C1C] inline-flex items-center gap-1"
+                        className="text-[11px] font-black underline text-[#1A1918]/70 hover:text-[#1A1918] inline-flex items-center gap-1"
                       >
                         Generate Fine-Grained PAT <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
                     <div className="relative">
-                      <Key className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Key className="w-4 h-4 text-[#1A1918]/40 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type={showGithubToken ? "text" : "password"}
                         value={githubToken}
                         onChange={(e) => setGithubToken(e.target.value)}
                         placeholder="github_pat_... or ghp_..."
-                        className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full pl-11 pr-12 py-3 text-sm font-bold text-[#1C1C1C] font-mono focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                        className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full pl-11 pr-12 py-3 text-sm font-bold text-[#1A1918] font-mono focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowGithubToken(!showGithubToken)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1C1C1C]/50 hover:text-[#1C1C1C]"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1A1918]/50 hover:text-[#1A1918]"
                       >
                         {showGithubToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -1012,7 +1012,7 @@ export default function UnifiedOnboardingPage() {
                       type="button"
                       onClick={handleTestGitHub}
                       disabled={testingGithub || !githubToken.trim()}
-                      className="pill-btn bg-[#FFFFFF] hover:bg-[#FBF6DF] border-[#1C1C1C] text-[#1C1C1C] text-xs font-black uppercase tracking-wider px-5 py-3 disabled:opacity-40"
+                      className="pill-btn bg-[#FFFFFF] hover:bg-[#FAF8F5] border-[#1A1918] text-[#1A1918] text-xs font-black uppercase tracking-wider px-5 py-3 disabled:opacity-40"
                     >
                       {testingGithub ? "TESTING API TOKEN ···" : "TEST CONNECTION"}
                     </button>
@@ -1038,14 +1038,14 @@ export default function UnifiedOnboardingPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-2xl bg-[#DFE968]/40 border-[1.5px] border-[#1C1C1C] flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#1E3A5F]/40 border-[1.5px] border-[#1A1918] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2E7D32] text-white flex items-center justify-center font-black text-xs">
                         ✓
                       </div>
                       <div>
                         <div className="text-xs font-black uppercase tracking-wider">GitHub Connected</div>
-                        <div className="text-[11px] font-medium text-[#1C1C1C]/70">
+                        <div className="text-[11px] font-medium text-[#1A1918]/70">
                           {selectedRepos.length} repositories selected for work ingestion
                         </div>
                       </div>
@@ -1072,41 +1072,41 @@ export default function UnifiedOnboardingPage() {
                   {/* Repository Picker - Single Select for Initial Setup */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <label className="text-xs font-black uppercase tracking-wider text-[#1A1918]">
                         Select 1 Repository for Initial Setup
                       </label>
-                      <span className="text-[11px] font-bold text-[#1C1C1C]/70">
+                      <span className="text-[11px] font-bold text-[#1A1918]/70">
                         {selectedRepos.length === 1 ? "1 repository selected" : "Select 1 repository"}
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#DFE968]/30 border border-[#1C1C1C] flex items-center gap-2.5 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
+                    <div className="p-3 rounded-xl bg-[#1E3A5F]/30 border border-[#1A1918] flex items-center gap-2.5 text-xs shadow-[1px_1px_0_0_#1A1918]">
                       <ShieldCheck className="w-4 h-4 text-[#4A7A4E] shrink-0" />
-                      <span className="font-bold text-[#1C1C1C] leading-snug">
+                      <span className="font-bold text-[#1A1918] leading-snug">
                         Select <strong>exactly 1 repository</strong> for your initial evidence import. You can discover and add additional repositories anytime from <strong>Connected Sources</strong> after completing onboarding.
                       </span>
                     </div>
 
                     <div className="relative">
-                      <Search className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Search className="w-4 h-4 text-[#1A1918]/40 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={repoSearch}
                         onChange={(e) => setRepoSearch(e.target.value)}
                         placeholder="Filter repositories..."
-                        className="w-full bg-[#FBF6DF] border border-[#1C1C1C] rounded-full pl-11 pr-4 py-2 text-xs font-bold"
+                        className="w-full bg-[#FAF8F5] border border-[#1A1918] rounded-full pl-11 pr-4 py-2 text-xs font-bold"
                       />
                     </div>
 
                     {loadingRepos ? (
                       <div className="p-8 text-center">
                         <LoadingAnimation size="sm" className="mx-auto -my-3" />
-                        <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">FETCHING REPOSITORIES FROM GITHUB ···</p>
+                        <p className="text-xs font-bold text-[#1A1918]/60 mt-1">FETCHING REPOSITORIES FROM GITHUB ···</p>
                       </div>
                     ) : filteredRepos.length === 0 ? (
-                      <div className="p-6 text-center bg-white rounded-xl border border-[#1C1C1C]/20 space-y-1">
-                        <p className="text-xs font-bold text-[#1C1C1C]">No accessible repositories found</p>
-                        <p className="text-[11px] text-[#1C1C1C]/60">Check that your PAT has access to repositories under your account.</p>
+                      <div className="p-6 text-center bg-white rounded-xl border border-[#1A1918]/20 space-y-1">
+                        <p className="text-xs font-bold text-[#1A1918]">No accessible repositories found</p>
+                        <p className="text-[11px] text-[#1A1918]/60">Check that your PAT has access to repositories under your account.</p>
                       </div>
                     ) : (
                       <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
@@ -1118,36 +1118,36 @@ export default function UnifiedOnboardingPage() {
                               onClick={() => handleToggleRepo(repo.full_name || repo.name)}
                               className={`p-3 rounded-xl border-[1.5px] cursor-pointer flex items-center justify-between transition-all ${
                                 isSel
-                                  ? "bg-[#DFE968]/40 border-[#1C1C1C] shadow-[1px_1px_0px_#1C1C1C]"
-                                  : "bg-[#FFFFFF] border-[#1C1C1C]/20 hover:border-[#1C1C1C]"
+                                  ? "bg-[#1E3A5F]/40 border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
+                                  : "bg-[#FFFFFF] border-[#1A1918]/20 hover:border-[#1A1918]"
                               }`}
                             >
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-extrabold">{repo.full_name || repo.name}</span>
                                   {repo.language && (
-                                    <span className="text-[10px] font-mono font-bold bg-[#FBF1CF] px-1.5 py-0.5 rounded border border-[#1C1C1C]/20 text-[#1C1C1C]/70">
+                                    <span className="text-[10px] font-mono font-bold bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#1A1918]/20 text-[#1A1918]/70">
                                       {repo.language}
                                     </span>
                                   )}
                                   {repo.is_private && (
-                                    <span className="text-[9px] font-black uppercase tracking-wider bg-stone-100 px-1.5 py-0.5 rounded border border-[#1C1C1C]/20 text-stone-600">
+                                    <span className="text-[9px] font-black uppercase tracking-wider bg-stone-100 px-1.5 py-0.5 rounded border border-[#1A1918]/20 text-stone-600">
                                       Private
                                     </span>
                                   )}
                                 </div>
                                 {repo.description && (
-                                  <div className="text-[11px] text-[#1C1C1C]/60 truncate max-w-md">
+                                  <div className="text-[11px] text-[#1A1918]/60 truncate max-w-md">
                                     {repo.description}
                                   </div>
                                 )}
                               </div>
                               <div
-                                className={`w-5 h-5 rounded-full border-[1.5px] border-[#1C1C1C] flex items-center justify-center shrink-0 ${
-                                  isSel ? "bg-[#DFE968]" : "bg-white"
+                                className={`w-5 h-5 rounded-full border-[1.5px] border-[#1A1918] flex items-center justify-center shrink-0 ${
+                                  isSel ? "bg-[#1E3A5F]" : "bg-white"
                                 }`}
                               >
-                                {isSel && <div className="w-2.5 h-2.5 rounded-full bg-[#1C1C1C]" />}
+                                {isSel && <div className="w-2.5 h-2.5 rounded-full bg-[#1A1918]" />}
                               </div>
                             </div>
                           );
@@ -1160,7 +1160,7 @@ export default function UnifiedOnboardingPage() {
 
 
               {/* Navigation Actions */}
-              <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#1A1918]/15 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
@@ -1175,7 +1175,7 @@ export default function UnifiedOnboardingPage() {
                     <button
                       type="button"
                       onClick={handleSkipGitHub}
-                      className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/70 hover:text-[#1C1C1C] underline px-3"
+                      className="text-xs font-black uppercase tracking-wider text-[#1A1918]/70 hover:text-[#1A1918] underline px-3"
                     >
                       Skip for Now
                     </button>
@@ -1199,53 +1199,53 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 3 && (
           <div className="space-y-6">
-            <div className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider">
-                <Layers className="w-3 h-3 text-[#1C1C1C]" />
+            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+                <Layers className="w-3 h-3 text-[#1A1918]" />
                 STEP 3 OF 4 · PROJECT MANAGEMENT
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1C1C1C] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Jira Evidence Source
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
                 Connect your Jira Cloud workspace to collect authorized project and issue activity.
               </p>
             </div>
 
             {/* Privacy & Token Security Explainer */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 shadow-[3px_3px_0px_#1C1C1C] space-y-3">
-              <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 shadow-[3px_3px_0px_#1A1918] space-y-3">
+              <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-wider text-[#1A1918]">
                 <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
                 <span>Atlassian Cloud Basic Auth · Cryptographically Redacted</span>
               </div>
-              <p className="text-xs font-medium text-[#1C1C1C]/75 leading-relaxed">
+              <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
                 Connect your Jira site using your Atlassian email and API token. Only issues and tasks within authorized projects will be ingested as candidate competencies.
               </p>
             </div>
 
             {jiraError && (
-              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1C1C1C]">
+              <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{jiraError}</p>
+                <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{jiraError}</p>
               </div>
             )}
 
             {jiraSuccess && (
-              <div className="p-4 rounded-2xl bg-[#DFE968]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1C1C1C]">
+              <div className="p-4 rounded-2xl bg-[#1E3A5F]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <CheckCircle className="w-5 h-5 text-[#2E7D32] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{jiraSuccess}</p>
+                <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{jiraSuccess}</p>
               </div>
             )}
 
             {/* Connection Form or Project Selector */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-6">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-6">
               {!isJiraConnected ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                    <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                       Jira Cloud Site URL
                     </label>
                     <input
@@ -1253,12 +1253,12 @@ export default function UnifiedOnboardingPage() {
                       value={jiraSiteUrl}
                       onChange={(e) => setJiraSiteUrl(e.target.value)}
                       placeholder="https://your-company.atlassian.net"
-                      className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                      className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                    <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                       Atlassian Account Email
                     </label>
                     <input
@@ -1266,37 +1266,37 @@ export default function UnifiedOnboardingPage() {
                       value={jiraEmail}
                       onChange={(e) => setJiraEmail(e.target.value)}
                       placeholder="your.email@company.com"
-                      className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                      className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918]">
                         Jira API Token
                       </label>
                       <a
                         href="https://id.atlassian.com/manage-profile/security/api-tokens"
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] font-black underline text-[#1C1C1C]/70 hover:text-[#1C1C1C] inline-flex items-center gap-1"
+                        className="text-[11px] font-black underline text-[#1A1918]/70 hover:text-[#1A1918] inline-flex items-center gap-1"
                       >
                         Create API Token on Atlassian <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
                     <div className="relative">
-                      <Key className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Key className="w-4 h-4 text-[#1A1918]/40 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type={showJiraToken ? "text" : "password"}
                         value={jiraApiToken}
                         onChange={(e) => setJiraApiToken(e.target.value)}
                         placeholder="ATATT3xFfGF0..."
-                        className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full pl-11 pr-12 py-3 text-sm font-bold text-[#1C1C1C] font-mono focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                        className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full pl-11 pr-12 py-3 text-sm font-bold text-[#1A1918] font-mono focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowJiraToken(!showJiraToken)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1C1C1C]/50 hover:text-[#1C1C1C]"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1A1918]/50 hover:text-[#1A1918]"
                       >
                         {showJiraToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -1308,7 +1308,7 @@ export default function UnifiedOnboardingPage() {
                       type="button"
                       onClick={handleTestJira}
                       disabled={testingJira || !jiraSiteUrl.trim() || !jiraEmail.trim() || !jiraApiToken.trim()}
-                      className="pill-btn bg-[#FFFFFF] hover:bg-[#FBF6DF] border-[#1C1C1C] text-[#1C1C1C] text-xs font-black uppercase tracking-wider px-5 py-3 disabled:opacity-40"
+                      className="pill-btn bg-[#FFFFFF] hover:bg-[#FAF8F5] border-[#1A1918] text-[#1A1918] text-xs font-black uppercase tracking-wider px-5 py-3 disabled:opacity-40"
                     >
                       {testingJira ? "TESTING JIRA API ···" : "TEST JIRA CREDENTIALS"}
                     </button>
@@ -1334,14 +1334,14 @@ export default function UnifiedOnboardingPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-2xl bg-[#DFE968]/40 border-[1.5px] border-[#1C1C1C] flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#1E3A5F]/40 border-[1.5px] border-[#1A1918] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2E7D32] text-white flex items-center justify-center font-black text-xs">
                         ✓
                       </div>
                       <div>
                         <div className="text-xs font-black uppercase tracking-wider">Jira Cloud Connected</div>
-                        <div className="text-[11px] font-medium text-[#1C1C1C]/70">
+                        <div className="text-[11px] font-medium text-[#1A1918]/70">
                           {selectedProjects.length} projects selected for ingestion
                         </div>
                       </div>
@@ -1368,29 +1368,29 @@ export default function UnifiedOnboardingPage() {
                   {/* Project Picker */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <label className="text-xs font-black uppercase tracking-wider text-[#1A1918]">
                         Select Jira Projects to Connect
                       </label>
-                      <span className="text-[11px] font-bold text-[#1C1C1C]/60">
+                      <span className="text-[11px] font-bold text-[#1A1918]/60">
                         {selectedProjects.length} of {jiraProjects.length} selected
                       </span>
                     </div>
 
                     <div className="relative">
-                      <Search className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Search className="w-4 h-4 text-[#1A1918]/40 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                         placeholder="Filter projects..."
-                        className="w-full bg-[#FBF6DF] border border-[#1C1C1C] rounded-full pl-11 pr-4 py-2 text-xs font-bold"
+                        className="w-full bg-[#FAF8F5] border border-[#1A1918] rounded-full pl-11 pr-4 py-2 text-xs font-bold"
                       />
                     </div>
 
                     {loadingProjects ? (
                       <div className="p-8 text-center">
                         <LoadingAnimation size="sm" className="mx-auto -my-3" />
-                        <p className="text-xs font-bold text-[#1C1C1C]/60 mt-1">FETCHING PROJECTS FROM JIRA ···</p>
+                        <p className="text-xs font-bold text-[#1A1918]/60 mt-1">FETCHING PROJECTS FROM JIRA ···</p>
                       </div>
                     ) : (
                       <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
@@ -1402,21 +1402,21 @@ export default function UnifiedOnboardingPage() {
                               onClick={() => handleToggleProject(project.key)}
                               className={`p-3 rounded-xl border-[1.5px] cursor-pointer flex items-center justify-between transition-all ${
                                 isSel
-                                  ? "bg-[#DFE968]/40 border-[#1C1C1C] shadow-[1px_1px_0px_#1C1C1C]"
-                                  : "bg-[#FFFFFF] border-[#1C1C1C]/20 hover:border-[#1C1C1C]"
+                                  ? "bg-[#1E3A5F]/40 border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
+                                  : "bg-[#FFFFFF] border-[#1A1918]/20 hover:border-[#1A1918]"
                               }`}
                             >
                               <div className="space-y-0.5">
                                 <div className="text-xs font-extrabold flex items-center gap-2">
                                   <span>{project.name}</span>
-                                  <span className="px-1.5 py-0.5 rounded bg-white border border-[#1C1C1C] text-[10px] font-mono">
+                                  <span className="px-1.5 py-0.5 rounded bg-white border border-[#1A1918] text-[10px] font-mono">
                                     {project.key}
                                   </span>
                                 </div>
                               </div>
                               <div
-                                className={`w-5 h-5 rounded-md border-[1.5px] border-[#1C1C1C] flex items-center justify-center ${
-                                  isSel ? "bg-[#DFE968]" : "bg-white"
+                                className={`w-5 h-5 rounded-md border-[1.5px] border-[#1A1918] flex items-center justify-center ${
+                                  isSel ? "bg-[#1E3A5F]" : "bg-white"
                                 }`}
                               >
                                 {isSel && <Check className="w-3 h-3 stroke-[3]" />}
@@ -1431,7 +1431,7 @@ export default function UnifiedOnboardingPage() {
               )}
 
               {/* Navigation Actions */}
-              <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#1A1918]/15 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
@@ -1446,7 +1446,7 @@ export default function UnifiedOnboardingPage() {
                     <button
                       type="button"
                       onClick={handleSkipJira}
-                      className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/70 hover:text-[#1C1C1C] underline px-3"
+                      className="text-xs font-black uppercase tracking-wider text-[#1A1918]/70 hover:text-[#1A1918] underline px-3"
                     >
                       Skip for Now
                     </button>
@@ -1470,18 +1470,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            <div className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider">
-                <FileText className="w-3 h-3 text-[#1C1C1C]" />
+            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+                <FileText className="w-3 h-3 text-[#1A1918]" />
                 STEP 4 OF 4 · INITIAL WORK COLLECTION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1C1C1C] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Add Your First Evidence
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
                 Start with one document or project link. Skill Passport will process it and show you what was extracted before you add another item.
               </p>
             </div>
@@ -1505,12 +1505,12 @@ export default function UnifiedOnboardingPage() {
                     }}
                     className={`p-3 rounded-2xl border-[1.5px] text-left transition-all relative flex flex-col justify-between ${
                       isCurrent
-                        ? "bg-[#DFE968] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C]"
-                        : "bg-[#FFFFFF] border-[#1C1C1C]/30 hover:border-[#1C1C1C] hover:bg-[#FBF6DF]"
+                        ? "bg-[#1E3A5F] border-[#1A1918] shadow-[3px_3px_0px_#1A1918]"
+                        : "bg-[#FFFFFF] border-[#1A1918]/30 hover:border-[#1A1918] hover:bg-[#FAF8F5]"
                     }`}
                   >
                     <div className="space-y-1">
-                      <IconComponent className="w-5 h-5 text-[#1C1C1C] mb-1" />
+                      <IconComponent className="w-5 h-5 text-[#1A1918] mb-1" />
                       <div className="text-[11px] font-extrabold leading-tight">{cat.title.split("/")[0]}</div>
                     </div>
                     {count > 0 && (
@@ -1524,22 +1524,22 @@ export default function UnifiedOnboardingPage() {
             </div>
 
             {/* Focused Single-Item Submission Card */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-6">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-6">
               {(() => {
                 const activeMeta = CATEGORIES.find((c) => c.id === selectedCategory)!;
                 const IconComponent = activeMeta.icon;
 
                 return (
                   <div className="space-y-6">
-                    <div className="flex items-start justify-between border-b border-[#1C1C1C]/15 pb-4">
+                    <div className="flex items-start justify-between border-b border-[#1A1918]/15 pb-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <IconComponent className="w-5 h-5 text-[#1C1C1C]" />
-                          <h3 className="text-lg font-black text-[#1C1C1C]">{activeMeta.title}</h3>
+                          <IconComponent className="w-5 h-5 text-[#1A1918]" />
+                          <h3 className="text-lg font-black text-[#1A1918]">{activeMeta.title}</h3>
                         </div>
-                        <p className="text-xs font-medium text-[#1C1C1C]/70">{activeMeta.shortDesc}</p>
+                        <p className="text-xs font-medium text-[#1A1918]/70">{activeMeta.shortDesc}</p>
                       </div>
-                      <span className="text-[10px] font-mono font-bold bg-[#FBF6DF] px-2.5 py-1 rounded-full border border-[#1C1C1C]">
+                      <span className="text-[10px] font-mono font-bold bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#1A1918]">
                         {activeMeta.acceptedFormats}
                       </span>
                     </div>
@@ -1547,7 +1547,7 @@ export default function UnifiedOnboardingPage() {
                     {evidenceError && (
                       <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-                        <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{evidenceError}</p>
+                        <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{evidenceError}</p>
                       </div>
                     )}
 
@@ -1555,56 +1555,56 @@ export default function UnifiedOnboardingPage() {
                     {latestExtracted ? (
                       <div className="space-y-5 animate-in fade-in duration-300">
                         {/* Submission Complete Header Card */}
-                        <div className="p-6 sm:p-7 rounded-3xl bg-[#DFE968] border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C] space-y-3">
+                        <div className="p-6 sm:p-7 rounded-3xl bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] shadow-[3px_3px_0px_#1A1918] space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#2E7D32] shadow-[1px_1px_0px_#1C1C1C]">
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#2E7D32] shadow-[1px_1px_0px_#1A1918]">
                               <CheckCircle className="w-4 h-4 text-[#2E7D32]" />
                               <span>SUBMISSION COMPLETE · PROCESSED &amp; INDEXED</span>
                             </div>
                             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider">
-                              <span className="px-2.5 py-1 rounded-full bg-white/70 border border-[#1C1C1C]">
+                              <span className="px-2.5 py-1 rounded-full bg-white/70 border border-[#1A1918]">
                                 STRENGTH: {(latestExtracted.strength || "HIGH").toUpperCase()}
                               </span>
-                              <span className="px-2.5 py-1 rounded-full bg-[#1C1C1C] text-white">
+                              <span className="px-2.5 py-1 rounded-full bg-[#1A1918] text-white">
                                 CONFIDENCE: {Math.round((latestExtracted.confidence || 0.92) * 100)}%
                               </span>
                             </div>
                           </div>
 
                           <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-[#1C1C1C] tracking-tight">
+                            <h3 className="text-xl sm:text-2xl font-black text-[#1A1918] tracking-tight">
                               {latestExtracted.title || "Evidence Artifact"}
                             </h3>
-                            <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 mt-1 leading-relaxed">
+                            <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 mt-1 leading-relaxed">
                               {latestExtracted.description || "Parsed, text extracted, and indexed into the Domain 1 candidate skill engine."}
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-bold text-[#1C1C1C]/70">
-                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1C1C1C]/40">
+                          <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-bold text-[#1A1918]/70">
+                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1A1918]/40">
                               Source: {latestExtracted.provider || "Document Upload"}
                             </span>
-                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1C1C1C]/40">
+                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1A1918]/40">
                               Category: {latestExtracted.category || activeMeta.title}
                             </span>
-                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1C1C1C]/40">
+                            <span className="px-3 py-1 rounded-full bg-white/80 border border-[#1A1918]/40">
                               Status: Candidate Evidence (Unreviewed)
                             </span>
                           </div>
                         </div>
 
                         {/* Extracted Candidate Skills Box */}
-                        <div className="p-6 rounded-3xl bg-white border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C] space-y-4">
+                        <div className="p-6 rounded-3xl bg-white border-[1.5px] border-[#1A1918] shadow-[3px_3px_0px_#1A1918] space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                              <h4 className="text-sm font-black uppercase tracking-wider text-[#1A1918]">
                                 Extracted Candidate Competencies
                               </h4>
-                              <p className="text-[11px] font-medium text-[#1C1C1C]/60">
+                              <p className="text-[11px] font-medium text-[#1A1918]/60">
                                 First-pass competencies mapped to supporting excerpts. Final verification will be conducted in downstream domains.
                               </p>
                             </div>
-                            <span className="px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-black">
+                            <span className="px-3 py-1 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black">
                               {Array.isArray(latestExtracted.candidateSkills) ? latestExtracted.candidateSkills.length : 0} Candidates
                             </span>
                           </div>
@@ -1620,23 +1620,23 @@ export default function UnifiedOnboardingPage() {
                                 return (
                                   <div
                                     key={idx}
-                                    className="p-3.5 rounded-2xl bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] space-y-1.5 shadow-[2px_2px_0px_#1C1C1C]"
+                                    className="p-3.5 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] space-y-1.5 shadow-[2px_2px_0px_#1A1918]"
                                   >
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-black text-[#1C1C1C]">{skillName}</span>
+                                      <span className="text-xs font-black text-[#1A1918]">{skillName}</span>
                                       {level && (
-                                        <span className="px-2 py-0.5 rounded-full bg-white border border-[#1C1C1C] text-[9px] font-black uppercase text-[#1C1C1C]">
+                                        <span className="px-2 py-0.5 rounded-full bg-white border border-[#1A1918] text-[9px] font-black uppercase text-[#1A1918]">
                                           {level}
                                         </span>
                                       )}
                                     </div>
                                     {category && (
-                                      <span className="text-[10px] font-bold text-[#1C1C1C]/60 block">
+                                      <span className="text-[10px] font-bold text-[#1A1918]/60 block">
                                         {category}
                                       </span>
                                     )}
                                     {excerpt && (
-                                      <p className="text-[10px] font-medium text-[#1C1C1C]/75 italic line-clamp-2 bg-white/70 p-2 rounded-xl border border-[#1C1C1C]/20">
+                                      <p className="text-[10px] font-medium text-[#1A1918]/75 italic line-clamp-2 bg-white/70 p-2 rounded-xl border border-[#1A1918]/20">
                                         &ldquo;{excerpt}&rdquo;
                                       </p>
                                     )}
@@ -1645,17 +1645,17 @@ export default function UnifiedOnboardingPage() {
                               })}
                             </div>
                           ) : (
-                            <div className="p-4 rounded-2xl bg-[#FBF6DF] border border-[#1C1C1C]/30 text-xs font-medium text-[#1C1C1C]/70">
+                            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#1A1918]/30 text-xs font-medium text-[#1A1918]/70">
                               Document parsed and stored. No matching taxonomy competencies were identified with high confidence.
                             </div>
                           )}
 
                           {latestExtracted.extractedExcerpt && (
-                            <div className="space-y-1 pt-2 border-t border-[#1C1C1C]/15">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+                            <div className="space-y-1 pt-2 border-t border-[#1A1918]/15">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 block">
                                 Extracted Content Excerpt:
                               </span>
-                              <p className="text-xs font-medium text-[#1C1C1C]/80 line-clamp-3 bg-[#FBF6DF]/60 p-3 rounded-xl border border-[#1C1C1C]/20">
+                              <p className="text-xs font-medium text-[#1A1918]/80 line-clamp-3 bg-[#FAF8F5]/60 p-3 rounded-xl border border-[#1A1918]/20">
                                 {latestExtracted.extractedExcerpt}
                               </p>
                             </div>
@@ -1673,7 +1673,7 @@ export default function UnifiedOnboardingPage() {
                               setEvidenceRole("");
                               setPortfolioUrl("");
                             }}
-                            className="w-full sm:w-auto pill-btn bg-white hover:bg-[#FBF6DF] border-[#1C1C1C] px-6 py-3.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-[2px_2px_0px_#1C1C1C]"
+                            className="w-full sm:w-auto pill-btn bg-white hover:bg-[#FAF8F5] border-[#1A1918] px-6 py-3.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-[2px_2px_0px_#1A1918]"
                           >
                             <UploadCloud className="w-4 h-4" />
                             <span>ADD ANOTHER EVIDENCE ITEM</span>
@@ -1694,45 +1694,45 @@ export default function UnifiedOnboardingPage() {
                       <form onSubmit={handleSubmitEvidenceItem} className="space-y-4">
                         {selectedCategory === "portfolio" ? (
                           <div>
-                            <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                            <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                               Public Project or Portfolio URL <span className="text-[#E0533C]">*</span>
                             </label>
                             <div className="relative">
-                              <Globe className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                              <Globe className="w-4 h-4 text-[#1A1918]/40 absolute left-4 top-1/2 -translate-y-1/2" />
                               <input
                                 type="url"
                                 value={portfolioUrl}
                                 onChange={(e) => setPortfolioUrl(e.target.value)}
                                 placeholder="https://alexchen.dev or https://my-project.com"
                                 required
-                                className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full pl-11 pr-5 py-3 text-sm font-bold text-[#1C1C1C] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
+                                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full pl-11 pr-5 py-3 text-sm font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1A1918]"
                               />
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
+                            <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
                               Select File <span className="text-[#E0533C]">*</span>
                             </label>
-                            <div className="border-[2px] border-dashed border-[#1C1C1C]/40 rounded-2xl p-6 text-center bg-[#FBF6DF]/50 hover:bg-[#FBF6DF] transition-all relative">
+                            <div className="border-[2px] border-dashed border-[#1A1918]/40 rounded-2xl p-6 text-center bg-[#FAF8F5]/50 hover:bg-[#FAF8F5] transition-all relative">
                               <input
                                 type="file"
                                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                                 accept={activeMeta.acceptedFormats}
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                               />
-                              <UploadCloud className="w-8 h-8 text-[#1C1C1C]/50 mx-auto mb-2" />
+                              <UploadCloud className="w-8 h-8 text-[#1A1918]/50 mx-auto mb-2" />
                               {selectedFile ? (
                                 <div className="space-y-1">
-                                  <p className="text-xs font-black text-[#1C1C1C]">{selectedFile.name}</p>
-                                  <p className="text-[10px] font-bold text-[#1C1C1C]/60">
+                                  <p className="text-xs font-black text-[#1A1918]">{selectedFile.name}</p>
+                                  <p className="text-[10px] font-bold text-[#1A1918]/60">
                                     {(selectedFile.size / 1024).toFixed(1)} KB · Ready to submit
                                   </p>
                                 </div>
                               ) : (
                                 <div className="space-y-1">
-                                  <p className="text-xs font-bold text-[#1C1C1C]">Click or drag a file to upload</p>
-                                  <p className="text-[10px] font-medium text-[#1C1C1C]/60">
+                                  <p className="text-xs font-bold text-[#1A1918]">Click or drag a file to upload</p>
+                                  <p className="text-[10px] font-medium text-[#1A1918]/60">
                                     Supported formats: {activeMeta.acceptedFormats} (max 50MB)
                                   </p>
                                 </div>
@@ -1743,44 +1743,44 @@ export default function UnifiedOnboardingPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
-                              Document or Artifact Title <span className="text-[10px] text-[#1C1C1C]/50 font-normal">(Optional)</span>
+                            <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
+                              Document or Artifact Title <span className="text-[10px] text-[#1A1918]/50 font-normal">(Optional)</span>
                             </label>
                             <input
                               type="text"
                               value={evidenceTitle}
                               onChange={(e) => setEvidenceTitle(e.target.value)}
                               placeholder="e.g. Q3 Microservices Refactor Architecture"
-                              className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-2.5 text-xs font-bold text-[#1C1C1C]"
+                              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-2.5 text-xs font-bold text-[#1A1918]"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
-                              Your Role / Contribution <span className="text-[10px] text-[#1C1C1C]/50 font-normal">(Optional)</span>
+                            <label className="block text-xs font-black uppercase tracking-wider text-[#1A1918] mb-1.5">
+                              Your Role / Contribution <span className="text-[10px] text-[#1A1918]/50 font-normal">(Optional)</span>
                             </label>
                             <input
                               type="text"
                               value={evidenceRole}
                               onChange={(e) => setEvidenceRole(e.target.value)}
                               placeholder="e.g. Lead Author, Solo Developer, Architect"
-                              className="w-full bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-5 py-2.5 text-xs font-bold text-[#1C1C1C]"
+                              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-full px-5 py-2.5 text-xs font-bold text-[#1A1918]"
                             />
                           </div>
                         </div>
 
                         {/* Processing Stage Indicator */}
                         {submittingEvidence && (
-                          <div className="p-5 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] space-y-3 flex flex-col items-center">
+                          <div className="p-5 rounded-2xl bg-[#1E3A5F]/30 border-[1.5px] border-[#1A1918] space-y-3 flex flex-col items-center">
                             <LoadingAnimation size="sm" className="-my-3" />
                             <div className="w-full space-y-2">
                               <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider">
                                 <span>Processing Pipeline: {evidenceStage.replace("_", " ")}</span>
-                                <span className="text-[10px] text-[#1C1C1C]/60 font-bold uppercase">DOMAIN 1 ENGINE ACTIVE</span>
+                                <span className="text-[10px] text-[#1A1918]/60 font-bold uppercase">DOMAIN 1 ENGINE ACTIVE</span>
                               </div>
-                              <div className="w-full bg-white rounded-full h-2 overflow-hidden border border-[#1C1C1C]">
+                              <div className="w-full bg-white rounded-full h-2 overflow-hidden border border-[#1A1918]">
                                 <div
-                                  className="bg-[#1C1C1C] h-full transition-all duration-300"
+                                  className="bg-[#1A1918] h-full transition-all duration-300"
                                   style={{
                                     width:
                                       evidenceStage === "uploading"
@@ -1793,7 +1793,7 @@ export default function UnifiedOnboardingPage() {
                                   }}
                                 />
                               </div>
-                              <p className="text-[11px] font-medium text-[#1C1C1C]/70 text-center">
+                              <p className="text-[11px] font-medium text-[#1A1918]/70 text-center">
                                 {evidenceStage === "uploading" && "Uploading artifact to secure private storage..."}
                                 {evidenceStage === "validating" && "Performing cryptographic fingerprinting & OCR text parsing..."}
                                 {evidenceStage === "extracting" && "Extracting candidate skills and competencies via local Ollama LLM..."}
@@ -1825,7 +1825,7 @@ export default function UnifiedOnboardingPage() {
                           <button
                             type="button"
                             onClick={() => setCurrentStep(5)}
-                            className="pill-btn bg-white hover:bg-[#FBF6DF] border-[#1C1C1C] text-xs font-black uppercase tracking-wider px-5 py-3 flex items-center gap-1.5"
+                            className="pill-btn bg-white hover:bg-[#FAF8F5] border-[#1A1918] text-xs font-black uppercase tracking-wider px-5 py-3 flex items-center gap-1.5"
                           >
                             <span>REVIEW &amp; FINISH SETUP</span>
                             <ArrowRight className="w-4 h-4" />
@@ -1838,7 +1838,7 @@ export default function UnifiedOnboardingPage() {
               })()}
 
               {/* Navigation Back */}
-              <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#1A1918]/15 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
@@ -1857,37 +1857,37 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 5 && (
           <div className="space-y-6">
-            <div className="bg-[#DFE968] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
                 <CheckCircle className="w-3 h-3 text-[#2E7D32]" />
                 SETUP COMPLETE · READY FOR PRODUCTION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1C1C1C] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Review Your Skill Passport
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1C1C1C]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
                 Your profile calibration, external connections, and initial work evidence have been securely configured.
               </p>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[3px_3px_0px_#1C1C1C] space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-2xl p-5 shadow-[3px_3px_0px_#1A1918] space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 block">
                   PROFILE RECORD
                 </span>
-                <div className="text-base font-extrabold text-[#1C1C1C]">{fullName || user?.email}</div>
-                <div className="text-xs font-medium text-[#1C1C1C]/70">{jobTitle || "Calibrated"}</div>
+                <div className="text-base font-extrabold text-[#1A1918]">{fullName || user?.email}</div>
+                <div className="text-xs font-medium text-[#1A1918]/70">{jobTitle || "Calibrated"}</div>
               </div>
 
-              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[3px_3px_0px_#1C1C1C] space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-2xl p-5 shadow-[3px_3px_0px_#1A1918] space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 block">
                   CONNECTED SOURCES
                 </span>
-                <div className="text-base font-extrabold text-[#1C1C1C]">
+                <div className="text-base font-extrabold text-[#1A1918]">
                   {isGitHubConnected && isJiraConnected
                     ? "GitHub & Jira"
                     : isGitHubConnected
@@ -1896,29 +1896,29 @@ export default function UnifiedOnboardingPage() {
                     ? "Jira Connected"
                     : "No Sources (Skipped)"}
                 </div>
-                <div className="text-xs font-medium text-[#1C1C1C]/70">
+                <div className="text-xs font-medium text-[#1A1918]/70">
                   {selectedRepos.length || summaryData?.github_selected_repos_count || (isGitHubConnected ? 1 : 0)} repos · {selectedProjects.length || summaryData?.jira_selected_projects_count || (isJiraConnected ? 1 : 0)} projects
                 </div>
               </div>
 
-              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-2xl p-5 shadow-[3px_3px_0px_#1C1C1C] space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+              <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-2xl p-5 shadow-[3px_3px_0px_#1A1918] space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 block">
                   EVIDENCE SUBMITTED
                 </span>
-                <div className="text-base font-extrabold text-[#1C1C1C]">
+                <div className="text-base font-extrabold text-[#1A1918]">
                   {summaryData?.total_evidence_count || (latestExtracted ? 1 : 0)} Items
                 </div>
-                <div className="text-xs font-medium text-[#1C1C1C]/70">
+                <div className="text-xs font-medium text-[#1A1918]/70">
                   {summaryData?.total_documents_count || (latestExtracted ? 1 : 0)} documents parsed
                 </div>
               </div>
             </div>
 
             {/* Final Action Banner */}
-            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1C1C1C] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="bg-[#FFFFFF] border-[1.5px] border-[#1A1918] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-black text-[#1C1C1C]">Enter Evidence Workspace</h3>
-                <p className="text-xs font-medium text-[#1C1C1C]/75">
+                <h3 className="text-base font-black text-[#1A1918]">Enter Evidence Workspace</h3>
+                <p className="text-xs font-medium text-[#1A1918]/75">
                   You can upload further evidence, manage connections, or review candidate skills anytime.
                 </p>
               </div>

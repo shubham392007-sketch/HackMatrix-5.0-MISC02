@@ -31,10 +31,12 @@ import {
   FolderSync,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
+import { useEvidence } from "@/context/EvidenceContext";
 import { sharingApi } from "@/lib/sharingApi";
 import { SharingOverviewData } from "@/types/sharing";
 
 export default function PassportSharingOverviewPage() {
+  const { skills, evidenceItems, shareRecords, shareActivities } = useEvidence();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<SharingOverviewData | null>(null);
@@ -47,8 +49,44 @@ export default function PassportSharingOverviewPage() {
       const data = await sharingApi.getOverview();
       setOverview(data);
     } catch (err: any) {
-      console.error("Failed to load sharing overview:", err);
-      setError("Unable to connect to sharing service. Using authenticated cache.");
+      console.warn("Could not load sharing overview from API, using local state fallback:", err?.message || err);
+      setOverview({
+        readiness: {
+          verified_skills_count: skills.filter((s) => s.verificationState === "verified").length,
+          candidate_skills_count: skills.filter((s) => s.verificationState !== "verified").length,
+          eligible_evidence_count: evidenceItems.length,
+          custom_skills_count: 0,
+          is_ready_to_share: skills.length > 0 || evidenceItems.length > 0,
+        },
+        links: {
+          total_links: shareRecords.length,
+          active_links: shareRecords.filter((r) => r.status === "active").length,
+          expired_links: shareRecords.filter((r) => r.status === "expired").length,
+          revoked_links: shareRecords.filter((r) => r.status === "revoked").length,
+          total_access_count: shareRecords.reduce((acc, r) => acc + (r.accessCount || 0), 0),
+          recent_links: shareRecords.map((r) => ({
+            id: r.id || `share-${r.shareId}`,
+            token: r.shareId,
+            label: r.label,
+            template_id: (r.templateId || r.permissions?.templateId || "classic") as any,
+            status: r.status,
+            created_at: r.createdAt || new Date().toISOString(),
+            expires_at: r.expiresAt || null,
+            access_count: r.accessCount || 0,
+          })),
+        },
+        messaging: {
+          unread_count: 0,
+          total_count: 0,
+        },
+        recent_activities: shareActivities.map((a) => ({
+          id: a.id,
+          action: a.action,
+          details: a.details,
+          timestamp: a.timestamp,
+          share_link_id: a.shareId || "",
+        })),
+      });
     } finally {
       setLoading(false);
     }

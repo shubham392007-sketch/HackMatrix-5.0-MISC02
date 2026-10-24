@@ -26,8 +26,7 @@ export default function EvidenceOnboardingRedirect() {
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]"
       style={{
-        background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
-        backgroundAttachment: "fixed",
+        background: "transparent",
       }}
     >
       <div className="relative flex items-center justify-center max-w-sm w-full mx-4">

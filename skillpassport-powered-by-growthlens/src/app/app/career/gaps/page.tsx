@@ -101,7 +101,7 @@ export default function CareerGapsPage() {
       <TargetRoleSelectorBar />
 
       {/* Philosophy Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 flex items-start gap-3">
+      <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-amber-200/80 flex items-start gap-3">
         <div className="w-8 h-8 rounded-xl bg-amber-200/60 border border-amber-400/50 flex items-center justify-center shrink-0 mt-0.5">
           <Info className="w-4 h-4 text-amber-900" />
         </div>

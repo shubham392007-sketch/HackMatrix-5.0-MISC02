@@ -328,7 +328,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
   return (
     <>
       {/* Workspace Brand Wordmark (Fixed Top) */}
-      <div className="p-4 sm:p-5 pb-3.5 shrink-0 border-b border-[#1C1C1C]/10 bg-[#FBF6DF] flex items-center justify-between">
+      <div className="p-4 sm:p-5 pb-3.5 shrink-0 border-b border-[#1A1918]/10 bg-[#FAF8F5] flex items-center justify-between">
         <Link
           href="/app/passport"
           scroll={false}
@@ -337,19 +337,19 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
         >
           <div className="flex items-center gap-2">
             <span
-              className="text-2xl text-[#1C1C1C] leading-none"
+              className="text-2xl text-[#1A1918] leading-none"
               style={{ fontFamily: "'Yellowtail', cursive" }}
             >
               SkillPassport
             </span>
             <span
-              className="text-base text-[#1C1C1C]"
+              className="text-base text-[#1A1918]"
               style={{ fontFamily: "'Yellowtail', cursive" }}
             >
               app
             </span>
           </div>
-          <span className="text-[8.5px] font-black uppercase tracking-[0.16em] text-[#1C1C1C]/60 block mt-0.5">
+          <span className="text-[8.5px] font-black uppercase tracking-[0.16em] text-[#1A1918]/60 block mt-0.5">
             VERIFIABLE TALENT PASSPORT
           </span>
         </Link>
@@ -358,10 +358,10 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full border border-[#1C1C1C] bg-[#FBF1CF] hover:bg-[#DFE968] transition-colors lg:hidden"
+            className="p-1.5 rounded-full border border-[#1A1918] bg-[#FAF8F5] hover:bg-[#1E3A5F] transition-colors lg:hidden"
             aria-label="Close navigation"
           >
-            <X className="w-4 h-4 text-[#1C1C1C]" />
+            <X className="w-4 h-4 text-[#1A1918]" />
           </button>
         )}
       </div>
@@ -370,12 +370,12 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       <div
         ref={navScrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar"
+        className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 custom-scrollbar bg-[#FAF8F5]"
       >
         {WORKSPACE_NAV.map((section, idx) => (
           <div key={section.category}>
             <p
-              className="text-[17px] text-[#1C1C1C] px-2 mb-1 leading-tight select-none font-normal"
+              className="text-[17px] text-[#1A1918] px-2 mb-1 leading-tight select-none font-normal"
               style={{ fontFamily: "'Yellowtail', cursive" }}
             >
               {section.category}
@@ -405,26 +405,26 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                     }}
                     className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
-                        ? "bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+                        ? "bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] shadow-[1.5px_1.5px_0_0_#1A1918]"
                         : isNavigatingThis
-                        ? "bg-[#FBF1CF] border border-[#1C1C1C]/40 text-[#1C1C1C]"
-                        : "text-[#1C1C1C]/75 hover:bg-[#FBF1CF] hover:text-[#1C1C1C]"
+                        ? "bg-[#FAF8F5] border border-[#1A1918]/40 text-[#1A1918]"
+                        : "text-[#1A1918]/75 hover:bg-[#FAF8F5] hover:text-[#1A1918]"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate pr-1">
-                      <Icon className="w-3.5 h-3.5 text-[#1C1C1C] flex-shrink-0" />
+                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-[#FAF8F5]" : "text-[#1A1918]/70"}`} />
                       <span className="truncate">{item.label}</span>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {isNavigatingThis && (
-                        <Loader2 className="w-3.5 h-3.5 text-[#1C1C1C] animate-spin flex-shrink-0" />
+                        <Loader2 className={`w-3.5 h-3.5 animate-spin flex-shrink-0 ${isActive ? "text-[#FAF8F5]" : "text-[#1A1918]"}`} />
                       )}
                       {item.restricted && (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#1C1C1C]/10 text-[#1C1C1C]">
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#1A1918]/10 text-[#1A1918]">
                           {item.restricted}
                         </span>
                       )}
-                      {isActive && !isNavigatingThis && <ChevronRight className="w-3 h-3 text-[#1C1C1C]" />}
+                      {isActive && !isNavigatingThis && <ChevronRight className="w-3 h-3 text-[#FAF8F5]" />}
                     </div>
                   </Link>
                 );
@@ -434,7 +434,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
             {/* Dividing Line after each domain (except the last section) */}
             {idx < WORKSPACE_NAV.length - 1 && (
               <div className="pt-3.5 pb-0.5 px-2">
-                <hr className="border-t border-[#1C1C1C]/15" />
+                <hr className="border-t border-[#1A1918]/15" />
               </div>
             )}
           </div>
@@ -442,21 +442,21 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       </div>
 
       {/* User Profile at Bottom (Fixed Bottom) */}
-      <div className="p-3.5 border-t border-[#1C1C1C]/15 bg-[#FBF1CF]/70 shrink-0">
+      <div className="p-3.5 border-t border-[#1A1918]/15 bg-[#FAF8F5] shrink-0">
         <Link
           href="/app/settings/profile"
           scroll={false}
           onClick={onLinkClick}
           className="flex items-center gap-2.5 group hover:opacity-85 transition-opacity"
         >
-          <div className="w-8 h-8 rounded-full bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1C1C1C]">
+          <div className="w-8 h-8 rounded-full bg-[#1E3A5F] border border-[#1A1918] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1A1918]">
             {realInitials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black truncate text-[#1C1C1C] group-hover:underline">
+            <p className="text-xs font-black truncate text-[#1A1918] group-hover:underline">
               {realDisplayName}
             </p>
-            <span className="text-[9px] font-bold text-[#1C1C1C]/60 uppercase tracking-wider block truncate">
+            <span className="text-[9px] font-bold text-[#1A1918]/60 uppercase tracking-wider block truncate">
               {realRole}
             </span>
           </div>
@@ -472,7 +472,7 @@ export default function AppSidebar() {
   return (
     <>
       {/* Desktop Persistent Sidebar (Only visible on lg and wider) */}
-      <aside className="hidden lg:flex w-64 shrink-0 bg-[#FBF6DF] border-r-[1.5px] border-[#1C1C1C] flex-col h-screen max-h-screen overflow-hidden select-none">
+      <aside className="hidden lg:flex w-64 shrink-0 bg-[#FAF8F5] border-r-[1.5px] border-[#1A1918] flex-col h-screen max-h-screen overflow-hidden select-none relative z-30 shadow-[1px_0_0_0_#1A1918]">
         <SidebarContent />
       </aside>
 
@@ -481,13 +481,13 @@ export default function AppSidebar() {
         <div className="lg:hidden">
           {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 z-50 bg-[#1C1C1C]/60 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 bg-[#1A1918]/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setMobileSidebarOpen(false)}
             aria-hidden="true"
           />
 
           {/* Sliding Drawer */}
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#FBF6DF] border-r-[1.5px] border-[#1C1C1C] flex flex-col h-screen max-h-screen overflow-hidden select-none shadow-2xl animate-in slide-in-from-left duration-300">
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#FAF8F5] border-r-[1.5px] border-[#1A1918] flex flex-col h-screen max-h-screen overflow-hidden select-none shadow-2xl animate-in slide-in-from-left duration-300">
             <SidebarContent
               onLinkClick={() => setMobileSidebarOpen(false)}
               showCloseButton

@@ -5,6 +5,7 @@ import PageTransition from "@/components/layout/PageTransition";
 import SkillPassportBootScreen from "@/components/layout/SkillPassportBootScreen";
 import GlobalPageTransitionLoader from "@/components/layout/GlobalPageTransitionLoader";
 import AgentationProvider from "@/components/layout/AgentationProvider";
+import InteractiveDotGrid from "@/components/layout/InteractiveDotGrid";
 import { EvidenceProvider } from "@/context/EvidenceContext";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -27,7 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} bg-[#FBF1CF]`} data-scroll-behavior="smooth">
+    <html
+      lang="en"
+      className={`${poppins.variable} bg-[#F5F2EB]`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -36,7 +42,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent">
+      <body
+        className="min-h-screen flex flex-col font-[var(--font-primary)] bg-transparent relative"
+        suppressHydrationWarning
+      >
+        <InteractiveDotGrid />
         <SkillPassportBootScreen />
         <GlobalPageTransitionLoader />
         <AuthProvider>

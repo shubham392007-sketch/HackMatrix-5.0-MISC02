@@ -218,7 +218,7 @@ export default function SettingsHelpDrawer({
     >
       {/* Dimmed Backdrop */}
       <div
-        className="fixed inset-0 bg-[#1C1C1C]/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-[#1A1918]/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -226,24 +226,24 @@ export default function SettingsHelpDrawer({
       {/* Drawer Container */}
       <div
         ref={drawerRef}
-        className="relative z-10 w-full max-w-2xl bg-[#FBF6DF] text-[#1C1C1C] h-full shadow-2xl border-l-2 border-[#1C1C1C] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
+        className="relative z-10 w-full max-w-2xl bg-[#FAF8F5] text-[#1A1918] h-full shadow-2xl border-l-2 border-[#1A1918] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
       >
         {/* Drawer Header */}
-        <div className="p-5 sm:p-6 bg-[#DFE968]/30 border-b-2 border-[#1C1C1C] flex items-start justify-between gap-4 shrink-0">
+        <div className="p-5 sm:p-6 bg-[#1E3A5F]/30 border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1C1C1C] text-white font-mono text-[10px] font-bold uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1918] text-white font-mono text-[10px] font-bold uppercase tracking-wider">
                 <Sliders className="w-3 h-3 text-[#DFE968]" />
                 Settings &amp; Access Guide
               </span>
-              <span className="text-[11px] font-mono text-[#1C1C1C]/60 font-semibold">
+              <span className="text-[11px] font-mono text-[#1A1918]/60 font-semibold">
                 Catalog v2026.1
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#1C1C1C] tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-[#1A1918] tracking-tight">
               Settings &amp; Access Help
             </h2>
-            <p className="text-xs text-[#1C1C1C]/80 font-medium leading-relaxed">
+            <p className="text-xs text-[#1A1918]/80 font-medium leading-relaxed">
               Manage your verified profile, connect external deliverable sources, configure privacy defaults, review persistent activity, and understand core platform invariants.
             </p>
           </div>
@@ -252,23 +252,23 @@ export default function SettingsHelpDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close Settings & Access Help"
-            className="p-2 rounded-xl bg-white border border-[#1C1C1C] hover:bg-[#1C1C1C] hover:text-white transition-all shadow-[1.5px_1.5px_0_0_#1C1C1C] shrink-0"
+            className="p-2 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1A1918] hover:text-white transition-all shadow-[1.5px_1.5px_0_0_#1A1918] shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search Bar */}
-        <div className="p-4 bg-white/70 border-b border-[#1C1C1C]/15 shrink-0">
+        <div className="p-4 bg-white/70 border-b border-[#1A1918]/15 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1C1C1C]/40" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1A1918]/40" />
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search across all 7 features, 4 workflows, or glossary terms..."
-              className="w-full pl-9 pr-9 py-2 rounded-xl bg-white border border-[#1C1C1C] text-xs font-medium placeholder-[#1C1C1C]/40 focus:outline-none focus:ring-2 focus:ring-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+              className="w-full pl-9 pr-9 py-2 rounded-xl bg-white border border-[#1A1918] text-xs font-medium placeholder-[#1A1918]/40 focus:outline-none focus:ring-2 focus:ring-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
             />
             {searchQuery && (
               <button
@@ -277,14 +277,14 @@ export default function SettingsHelpDrawer({
                 aria-label="Clear search"
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-black/10"
               >
-                <X className="w-3.5 h-3.5 text-[#1C1C1C]/60" />
+                <X className="w-3.5 h-3.5 text-[#1A1918]/60" />
               </button>
             )}
           </div>
         </div>
 
         {/* Feature Navigation Pills */}
-        <div className="px-4 py-2.5 bg-[#FBF1CF]/60 border-b border-[#1C1C1C]/15 overflow-x-auto no-scrollbar shrink-0">
+        <div className="px-4 py-2.5 bg-[#FAF8F5]/60 border-b border-[#1A1918]/15 overflow-x-auto no-scrollbar shrink-0">
           <div className="flex items-center gap-1.5 min-w-max">
             {SETTINGS_NAVIGATION_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -299,11 +299,11 @@ export default function SettingsHelpDrawer({
                   }}
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? "bg-[#1C1C1C] text-white shadow-[2px_2px_0_0_#DFE968]"
-                      : "bg-white/80 hover:bg-white text-[#1C1C1C] border border-[#1C1C1C]/30 shadow-[1px_1px_0_0_#1C1C1C]/20"
+                      ? "bg-[#1A1918] text-white shadow-[2px_2px_0_0_#DFE968]"
+                      : "bg-white/80 hover:bg-white text-[#1A1918] border border-[#1A1918]/30 shadow-[1px_1px_0_0_#1A1918]/20"
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#DFE968]" : "text-[#1C1C1C]/70"}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#DFE968]" : "text-[#1A1918]/70"}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -316,11 +316,11 @@ export default function SettingsHelpDrawer({
           {/* SEARCH RESULTS VIEW */}
           {searchResults ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-2 border-b border-[#1C1C1C]/20">
-                <h3 className="font-black text-sm uppercase tracking-wider text-[#1C1C1C]">
+              <div className="flex items-center justify-between pb-2 border-b border-[#1A1918]/20">
+                <h3 className="font-black text-sm uppercase tracking-wider text-[#1A1918]">
                   Search Results for &ldquo;{searchQuery}&rdquo;
                 </h3>
-                <span className="text-xs font-mono font-bold bg-[#1C1C1C] text-white px-2 py-0.5 rounded-full">
+                <span className="text-xs font-mono font-bold bg-[#1A1918] text-white px-2 py-0.5 rounded-full">
                   {searchResults.topics.length +
                     searchResults.workflows.length +
                     searchResults.glossary.length}{" "}
@@ -331,7 +331,7 @@ export default function SettingsHelpDrawer({
               {/* Matching Topics */}
               {searchResults.topics.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1C1C1C]/70">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1A1918]/70">
                     Feature Guides ({searchResults.topics.length})
                   </h4>
                   <div className="grid gap-2.5">
@@ -342,17 +342,17 @@ export default function SettingsHelpDrawer({
                           setActiveTopic(t.id);
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1C1C1C] hover:bg-[#DFE968]/20 cursor-pointer shadow-[2px_2px_0_0_#1C1C1C] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-sm text-[#1C1C1C]">
+                          <span className="font-black text-sm text-[#1A1918]">
                             {t.title}
                           </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1C1C1C]/10 font-bold">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1A1918]/10 font-bold">
                             {t.badgeLabel}
                           </span>
                         </div>
-                        <p className="text-xs text-[#1C1C1C]/75 line-clamp-2">
+                        <p className="text-xs text-[#1A1918]/75 line-clamp-2">
                           {t.summary}
                         </p>
                       </div>
@@ -364,7 +364,7 @@ export default function SettingsHelpDrawer({
               {/* Matching Workflows */}
               {searchResults.workflows.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1C1C1C]/70">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1A1918]/70">
                     Guided Workflows ({searchResults.workflows.length})
                   </h4>
                   <div className="grid gap-2.5">
@@ -375,13 +375,13 @@ export default function SettingsHelpDrawer({
                           setActiveTopic("workflows");
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1C1C1C] hover:bg-[#DFE968]/20 cursor-pointer shadow-[2px_2px_0_0_#1C1C1C] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
-                        <span className="font-black text-sm text-[#1C1C1C] flex items-center gap-1.5">
+                        <span className="font-black text-sm text-[#1A1918] flex items-center gap-1.5">
                           <Compass className="w-4 h-4 text-emerald-700" />
                           {wf.title}
                         </span>
-                        <p className="text-xs text-[#1C1C1C]/75 line-clamp-2">
+                        <p className="text-xs text-[#1A1918]/75 line-clamp-2">
                           {wf.summary}
                         </p>
                       </div>
@@ -393,7 +393,7 @@ export default function SettingsHelpDrawer({
               {/* Matching Glossary Terms */}
               {searchResults.glossary.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1C1C1C]/70">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1A1918]/70">
                     Glossary Terms ({searchResults.glossary.length})
                   </h4>
                   <div className="grid gap-2.5">
@@ -404,12 +404,12 @@ export default function SettingsHelpDrawer({
                           setActiveTopic("glossary");
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1C1C1C] hover:bg-[#DFE968]/20 cursor-pointer shadow-[2px_2px_0_0_#1C1C1C] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
-                        <span className="font-black text-xs text-[#1C1C1C]">
+                        <span className="font-black text-xs text-[#1A1918]">
                           {g.term}
                         </span>
-                        <p className="text-xs text-[#1C1C1C]/80 line-clamp-2">
+                        <p className="text-xs text-[#1A1918]/80 line-clamp-2">
                           {g.definition}
                         </p>
                       </div>
@@ -421,12 +421,12 @@ export default function SettingsHelpDrawer({
               {searchResults.topics.length === 0 &&
                 searchResults.workflows.length === 0 &&
                 searchResults.glossary.length === 0 && (
-                  <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-[#1C1C1C]/30 space-y-2">
+                  <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-[#1A1918]/30 space-y-2">
                     <AlertTriangle className="w-8 h-8 text-amber-600 mx-auto" />
-                    <p className="font-bold text-sm text-[#1C1C1C]">
+                    <p className="font-bold text-sm text-[#1A1918]">
                       No documentation matches &ldquo;{searchQuery}&rdquo;
                     </p>
-                    <p className="text-xs text-[#1C1C1C]/60">
+                    <p className="text-xs text-[#1A1918]/60">
                       Try searching for terms like &ldquo;profile&rdquo;, &ldquo;GitHub&rdquo;, &ldquo;privacy&rdquo;, &ldquo;sync&rdquo;, or &ldquo;audit&rdquo;.
                     </p>
                   </div>
@@ -435,14 +435,14 @@ export default function SettingsHelpDrawer({
           ) : activeTopic === "workflows" ? (
             /* ──────────────── GUIDED WORKFLOWS VIEW ──────────────── */
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#DFE968]/20 border-2 border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] space-y-2">
+              <div className="p-5 rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
                 <div className="flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-[#1C1C1C]" />
-                  <h3 className="text-lg font-black text-[#1C1C1C]">
+                  <Compass className="w-5 h-5 text-[#1A1918]" />
+                  <h3 className="text-lg font-black text-[#1A1918]">
                     Settings &amp; Access Guided Workflows
                   </h3>
                 </div>
-                <p className="text-xs text-[#1C1C1C]/80 leading-relaxed font-medium">
+                <p className="text-xs text-[#1A1918]/80 leading-relaxed font-medium">
                   Follow these 4 canonical operational procedures to configure your identity, link deliverable sources, enforce privacy boundaries, and audit account mutations.
                 </p>
               </div>
@@ -451,26 +451,26 @@ export default function SettingsHelpDrawer({
                 {SETTINGS_GUIDED_WORKFLOWS.map((wf) => (
                   <div
                     key={wf.id}
-                    className="p-5 rounded-2xl bg-white border-2 border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] space-y-4"
+                    className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4"
                   >
                     <div className="space-y-1">
-                      <h4 className="font-black text-sm text-[#1C1C1C]">
+                      <h4 className="font-black text-sm text-[#1A1918]">
                         {wf.title}
                       </h4>
-                      <p className="text-xs text-[#1C1C1C]/75 leading-relaxed">
+                      <p className="text-xs text-[#1A1918]/75 leading-relaxed">
                         {wf.summary}
                       </p>
                     </div>
 
-                    <div className="space-y-2.5 pt-2 border-t border-[#1C1C1C]/15">
+                    <div className="space-y-2.5 pt-2 border-t border-[#1A1918]/15">
                       {wf.phases.map((phase) => (
                         <div
                           key={phase.phaseNumber}
-                          className="p-3 rounded-xl bg-[#FBF6DF] border border-[#1C1C1C]/20 flex flex-col gap-1.5 text-xs"
+                          className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/20 flex flex-col gap-1.5 text-xs"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#1C1C1C] flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-full bg-[#1C1C1C] text-[#DFE968] font-mono text-[10px] flex items-center justify-center font-black">
+                            <span className="font-bold text-[#1A1918] flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-[#1A1918] text-[#DFE968] font-mono text-[10px] flex items-center justify-center font-black">
                                 {phase.phaseNumber}
                               </span>
                               {phase.featureTitle}
@@ -478,14 +478,14 @@ export default function SettingsHelpDrawer({
                             <button
                               type="button"
                               onClick={() => handleNavigate(phase.route)}
-                              className="text-[10px] font-mono font-bold text-[#1C1C1C] hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-[#1C1C1C]/30"
+                              className="text-[10px] font-mono font-bold text-[#1A1918] hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-[#1A1918]/30"
                             >
                               <span>{phase.route}</span>
                               <ExternalLink className="w-2.5 h-2.5" />
                             </button>
                           </div>
-                          <p className="text-[#1C1C1C]/80 pl-6">
-                            <strong className="text-[#1C1C1C]">Action:</strong> {phase.action}
+                          <p className="text-[#1A1918]/80 pl-6">
+                            <strong className="text-[#1A1918]">Action:</strong> {phase.action}
                           </p>
                           <p className="text-emerald-900 bg-emerald-50/80 p-2 rounded-lg border border-emerald-800/20 pl-2 leading-relaxed ml-6">
                             <strong className="text-emerald-950 font-bold">Outcome:</strong> {phase.outcome}
@@ -500,14 +500,14 @@ export default function SettingsHelpDrawer({
           ) : activeTopic === "glossary" ? (
             /* ──────────────── SETTINGS GLOSSARY VIEW ──────────────── */
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#DFE968]/20 border-2 border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] space-y-2">
+              <div className="p-5 rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-[#1C1C1C]" />
-                  <h3 className="text-lg font-black text-[#1C1C1C]">
+                  <BookOpen className="w-5 h-5 text-[#1A1918]" />
+                  <h3 className="text-lg font-black text-[#1A1918]">
                     Settings &amp; Access Conceptual Glossary
                   </h3>
                 </div>
-                <p className="text-xs text-[#1C1C1C]/80 leading-relaxed font-medium">
+                <p className="text-xs text-[#1A1918]/80 leading-relaxed font-medium">
                   Authoritative definitions of architectural boundaries, privacy invariants, least-privilege tokens, and session pool limits governing your account.
                 </p>
               </div>
@@ -516,26 +516,26 @@ export default function SettingsHelpDrawer({
                 {SETTINGS_CONCEPTUAL_GLOSSARY.map((term, i) => (
                   <div
                     key={i}
-                    className="p-4 rounded-2xl bg-white border-2 border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-2"
+                    className="p-4 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <h4 className="font-black text-sm text-[#1C1C1C]">
+                      <h4 className="font-black text-sm text-[#1A1918]">
                         {term.term}
                       </h4>
                       <button
                         type="button"
                         onClick={() => handleNavigate(term.relatedRoute)}
-                        className="text-[10px] font-mono font-bold text-[#1C1C1C] hover:underline flex items-center gap-1 bg-[#FBF6DF] px-2 py-0.5 rounded border border-[#1C1C1C]/30"
+                        className="text-[10px] font-mono font-bold text-[#1A1918] hover:underline flex items-center gap-1 bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]/30"
                       >
                         <span>{term.relatedRouteLabel}</span>
                         <ArrowRight className="w-2.5 h-2.5" />
                       </button>
                     </div>
-                    <p className="text-xs text-[#1C1C1C]/85 leading-relaxed font-medium">
+                    <p className="text-xs text-[#1A1918]/85 leading-relaxed font-medium">
                       {term.definition}
                     </p>
-                    <div className="p-2.5 rounded-xl bg-[#FBF6DF] border border-[#1C1C1C]/15 text-[11px] text-[#1C1C1C]/75">
-                      <strong className="text-[#1C1C1C]">Practical Application:</strong> {term.context}
+                    <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/15 text-[11px] text-[#1A1918]/75">
+                      <strong className="text-[#1A1918]">Practical Application:</strong> {term.context}
                     </div>
                   </div>
                 ))}
@@ -545,13 +545,13 @@ export default function SettingsHelpDrawer({
             /* ──────────────── TOPIC DETAIL VIEW (10 SECTIONS) ──────────────── */
             <div className="space-y-5">
               {/* Feature Title Card */}
-              <div className="p-5 rounded-2xl bg-white border-2 border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] space-y-3">
+              <div className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-black bg-[#1C1C1C] text-[#DFE968] px-2.5 py-0.5 rounded-full">
+                    <span className="font-mono text-xs font-black bg-[#1A1918] text-[#DFE968] px-2.5 py-0.5 rounded-full">
                       {currentTopicData.badgeLabel}
                     </span>
-                    <span className="text-xs font-mono font-semibold text-[#1C1C1C]/70">
+                    <span className="text-xs font-mono font-semibold text-[#1A1918]/70">
                       {currentTopicData.requiredRole}
                     </span>
                   </div>
@@ -565,29 +565,29 @@ export default function SettingsHelpDrawer({
                   </button>
                 </div>
 
-                <h3 className="text-xl font-black text-[#1C1C1C] tracking-tight">
+                <h3 className="text-xl font-black text-[#1A1918] tracking-tight">
                   {currentTopicData.title}
                 </h3>
-                <p className="text-xs text-[#1C1C1C]/80 leading-relaxed font-medium">
+                <p className="text-xs text-[#1A1918]/80 leading-relaxed font-medium">
                   {currentTopicData.summary}
                 </p>
-                <div className="text-[11px] font-mono text-[#1C1C1C]/60 flex items-center gap-1.5 pt-1">
+                <div className="text-[11px] font-mono text-[#1A1918]/60 flex items-center gap-1.5 pt-1">
                   <span className="font-bold">Canonical Route:</span>
-                  <code className="bg-[#1C1C1C]/5 px-1.5 py-0.5 rounded border border-[#1C1C1C]/10">
+                  <code className="bg-[#1A1918]/5 px-1.5 py-0.5 rounded border border-[#1A1918]/10">
                     {currentTopicData.canonicalRoute}
                   </code>
                 </div>
               </div>
 
               {/* ── 1. Purpose & Role ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("purpose")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       1
                     </span>
                     Purpose &amp; Objective
@@ -595,21 +595,21 @@ export default function SettingsHelpDrawer({
                   {expandedSections.purpose ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.purpose && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 text-xs text-[#1C1C1C]/85 leading-relaxed font-medium">
+                  <div className="p-5 border-t border-[#1A1918]/15 text-xs text-[#1A1918]/85 leading-relaxed font-medium">
                     {currentTopicData.purpose}
                   </div>
                 )}
               </div>
 
               {/* ── 2. When to Use ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("whenToUse")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       2
                     </span>
                     When to Use This Feature
@@ -617,10 +617,10 @@ export default function SettingsHelpDrawer({
                   {expandedSections.whenToUse ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.whenToUse && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-2">
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-2">
                     <ul className="space-y-2">
                       {currentTopicData.whenToUse.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-[#1C1C1C]/85 font-medium">
+                        <li key={idx} className="flex items-start gap-2 text-xs text-[#1A1918]/85 font-medium">
                           <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </li>
@@ -631,14 +631,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 3. Who Can Use & Permissions ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("whoCanUse")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       3
                     </span>
                     Who Can Use &amp; RBAC Access Tiers
@@ -646,29 +646,29 @@ export default function SettingsHelpDrawer({
                   {expandedSections.whoCanUse ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.whoCanUse && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-[#DFE968]/20 border border-[#1C1C1C]/20">
-                      <strong className="text-[#1C1C1C] font-bold">Authorized Personas:</strong>{" "}
-                      <span className="text-[#1C1C1C]/85 font-medium">{currentTopicData.whoCanUse}</span>
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-[#1E3A5F]/20 border border-[#1A1918]/20">
+                      <strong className="text-[#1A1918] font-bold">Authorized Personas:</strong>{" "}
+                      <span className="text-[#1A1918]/85 font-medium">{currentTopicData.whoCanUse}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-[#1C1C1C]/70 font-mono">
-                      <Lock className="w-3.5 h-3.5 text-[#1C1C1C]" />
+                    <div className="flex items-center gap-2 text-[11px] text-[#1A1918]/70 font-mono">
+                      <Lock className="w-3.5 h-3.5 text-[#1A1918]" />
                       <span>Current Active Session Role: </span>
-                      <strong className="text-[#1C1C1C] uppercase font-bold">{currentRole}</strong>
+                      <strong className="text-[#1A1918] uppercase font-bold">{currentRole}</strong>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* ── 4. Prerequisites ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("prerequisites")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       4
                     </span>
                     Prerequisites &amp; Prior Conditions
@@ -676,11 +676,11 @@ export default function SettingsHelpDrawer({
                   {expandedSections.prerequisites ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.prerequisites && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-2">
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-2">
                     <ul className="space-y-1.5">
                       {currentTopicData.prerequisites.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-[#1C1C1C]/85 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] shrink-0 mt-2" />
+                        <li key={idx} className="flex items-start gap-2 text-xs text-[#1A1918]/85 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1A1918] shrink-0 mt-2" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -690,14 +690,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 5. Step-by-Step Instructions ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("steps")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       5
                     </span>
                     Step-by-Step Usage Instructions ({currentTopicData.stepByStep.length} Steps)
@@ -705,27 +705,27 @@ export default function SettingsHelpDrawer({
                   {expandedSections.steps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.steps && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-3.5">
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-3.5">
                     {currentTopicData.stepByStep.map((step) => (
                       <div
                         key={step.stepNumber}
-                        className="p-3.5 rounded-xl bg-[#FBF6DF] border border-[#1C1C1C]/20 space-y-1.5 text-xs"
+                        className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/20 space-y-1.5 text-xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-[#1C1C1C] flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-[#1C1C1C] text-[#DFE968] font-mono text-[10px] flex items-center justify-center font-black">
+                          <span className="font-black text-[#1A1918] flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-[#1A1918] text-[#DFE968] font-mono text-[10px] flex items-center justify-center font-black">
                               {step.stepNumber}
                             </span>
                             {step.title}
                           </span>
-                          <span className="text-[10px] font-mono font-bold bg-white px-2 py-0.5 rounded border border-[#1C1C1C]/30 text-[#1C1C1C]">
+                          <span className="text-[10px] font-mono font-bold bg-white px-2 py-0.5 rounded border border-[#1A1918]/30 text-[#1A1918]">
                             {step.buttonOrPath}
                           </span>
                         </div>
-                        <p className="text-[#1C1C1C]/80 font-medium pl-7">
+                        <p className="text-[#1A1918]/80 font-medium pl-7">
                           {step.action}
                         </p>
-                        <p className="text-[11px] text-[#1C1C1C]/65 font-normal pl-7">
+                        <p className="text-[11px] text-[#1A1918]/65 font-normal pl-7">
                           {step.details}
                         </p>
                       </div>
@@ -735,14 +735,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 6. Concrete Practical Example ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("example")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       6
                     </span>
                     Practical Real-World Example
@@ -750,8 +750,8 @@ export default function SettingsHelpDrawer({
                   {expandedSections.example ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.example && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-3 text-xs">
-                    <h5 className="font-black text-sm text-[#1C1C1C]">
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-3 text-xs">
+                    <h5 className="font-black text-sm text-[#1A1918]">
                       {currentTopicData.practicalExample.title}
                     </h5>
 
@@ -788,14 +788,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 7. Inputs & Outputs ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("inputsOutputs")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       7
                     </span>
                     Data Inputs, Outputs &amp; Persistence
@@ -803,28 +803,28 @@ export default function SettingsHelpDrawer({
                   {expandedSections.inputsOutputs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.inputsOutputs && (
-                  <div className="p-5 border-t border-[#1C1C1C]/15 space-y-4 text-xs">
+                  <div className="p-5 border-t border-[#1A1918]/15 space-y-4 text-xs">
                     <div className="space-y-1.5">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1A1918]">
                         Required Inputs:
                       </span>
                       <ul className="space-y-1 pl-1">
                         {currentTopicData.inputsAndOutputs.requiredInputs.map((inp, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1C1C1C]/85">
-                            <span className="text-[#1C1C1C] font-bold">•</span>
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1A1918]/85">
+                            <span className="text-[#1A1918] font-bold">•</span>
                             <span>{inp}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="space-y-1.5 pt-2 border-t border-[#1C1C1C]/10">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]">
+                    <div className="space-y-1.5 pt-2 border-t border-[#1A1918]/10">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1A1918]">
                         Output Artifacts &amp; State Changes:
                       </span>
                       <ul className="space-y-1 pl-1">
                         {currentTopicData.inputsAndOutputs.outputArtifacts.map((out, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1C1C1C]/85">
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1A1918]/85">
                             <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
                             <span>{out}</span>
                           </li>
@@ -832,20 +832,20 @@ export default function SettingsHelpDrawer({
                       </ul>
                     </div>
 
-                    <div className="pt-2 border-t border-[#1C1C1C]/10 space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1C1C1C]/70">
+                    <div className="pt-2 border-t border-[#1A1918]/10 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/70">
                         Origin &amp; Processing Pipeline:
                       </span>
-                      <p className="text-[11px] text-[#1C1C1C]/80 leading-relaxed font-mono bg-[#1C1C1C]/5 p-2 rounded-lg">
+                      <p className="text-[11px] text-[#1A1918]/80 leading-relaxed font-mono bg-[#1A1918]/5 p-2 rounded-lg">
                         {currentTopicData.inputsAndOutputs.originAndProcessing}
                       </p>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1C1C1C]/70">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/70">
                         Generated vs. Persisted State:
                       </span>
-                      <p className="text-[11px] text-[#1C1C1C]/80 leading-relaxed">
+                      <p className="text-[11px] text-[#1A1918]/80 leading-relaxed">
                         {currentTopicData.inputsAndOutputs.generatedVsPersisted}
                       </p>
                     </div>
@@ -854,14 +854,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 8. Status Indicators & Trust Principles ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("status")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       8
                     </span>
                     Status Indicators &amp; Core Invariants
@@ -869,28 +869,28 @@ export default function SettingsHelpDrawer({
                   {expandedSections.status ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.status && (
-                  <div className="p-5 space-y-4 border-t border-[#1C1C1C]/15 text-xs">
+                  <div className="p-5 space-y-4 border-t border-[#1A1918]/15 text-xs">
                     {/* Status Badges */}
                     <div className="space-y-2.5">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C]">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1A1918]">
                         Status Indicators &amp; Badges:
                       </span>
                       {currentTopicData.understandingStatus.statusBadges.map((badge) => (
                         <div
                           key={badge.status}
-                          className="p-3 rounded-xl bg-[#FBF6DF] border border-[#1C1C1C]/15 space-y-1"
+                          className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/15 space-y-1"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-mono font-bold bg-[#1C1C1C] text-white px-2 py-0.5 rounded">
+                            <span className="text-xs font-mono font-bold bg-[#1A1918] text-white px-2 py-0.5 rounded">
                               {badge.badgeLabel}
                             </span>
                             {badge.nextAction && (
-                              <span className="text-[10px] text-[#1C1C1C]/70 font-semibold italic">
+                              <span className="text-[10px] text-[#1A1918]/70 font-semibold italic">
                                 Action: {badge.nextAction}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[#1C1C1C]/80 leading-relaxed pt-1 font-medium">
+                          <p className="text-xs text-[#1A1918]/80 leading-relaxed pt-1 font-medium">
                             {badge.meaning}
                           </p>
                         </div>
@@ -898,14 +898,14 @@ export default function SettingsHelpDrawer({
                     </div>
 
                     {/* Trust Principles */}
-                    <div className="space-y-2 pt-2 border-t border-[#1C1C1C]/10">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] flex items-center gap-1.5">
+                    <div className="space-y-2 pt-2 border-t border-[#1A1918]/10">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-[#1A1918] flex items-center gap-1.5">
                         <ShieldCheck className="w-4 h-4 text-emerald-700" />
                         Trust &amp; Architectural Invariants:
                       </span>
                       <ul className="space-y-1.5 pl-1">
                         {currentTopicData.understandingStatus.trustPrinciples.map((principle, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1C1C1C]/85">
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-[#1A1918]/85">
                             <span className="text-emerald-700 font-bold">✓</span>
                             <span>{principle}</span>
                           </li>
@@ -916,7 +916,7 @@ export default function SettingsHelpDrawer({
                     {/* Privacy Caveat */}
                     <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-800/30 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                      <p className="text-xs font-medium text-[#1C1C1C] leading-relaxed">
+                      <p className="text-xs font-medium text-[#1A1918] leading-relaxed">
                         <strong className="font-bold">Privacy Guarantee:</strong>{" "}
                         {currentTopicData.understandingStatus.privacyCaveat}
                       </p>
@@ -926,11 +926,11 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 9. Troubleshooting & Recovery ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("troubleshooting")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2 text-amber-950">
                     <span className="w-6 h-6 rounded-full bg-amber-700 text-white text-xs font-mono flex items-center justify-center">
@@ -941,7 +941,7 @@ export default function SettingsHelpDrawer({
                   {expandedSections.troubleshooting ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.troubleshooting && (
-                  <div className="p-4 space-y-3 border-t border-[#1C1C1C]/15">
+                  <div className="p-4 space-y-3 border-t border-[#1A1918]/15">
                     {currentTopicData.troubleshooting.map((item, idx) => (
                       <div
                         key={idx}
@@ -949,16 +949,16 @@ export default function SettingsHelpDrawer({
                       >
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                          <h5 className="font-bold text-[#1C1C1C] leading-snug">
+                          <h5 className="font-bold text-[#1A1918] leading-snug">
                             {item.symptom}
                           </h5>
                         </div>
-                        <p className="text-[#1C1C1C]/75 pl-6">
-                          <strong className="text-[#1C1C1C]">Probable Cause:</strong>{" "}
+                        <p className="text-[#1A1918]/75 pl-6">
+                          <strong className="text-[#1A1918]">Probable Cause:</strong>{" "}
                           {item.probableCause}
                         </p>
                         <p className="text-emerald-900 bg-white/90 p-2.5 rounded-lg border border-emerald-800/30 pl-3 leading-relaxed">
-                          <strong className="text-[#1C1C1C]">Verified Remedy:</strong>{" "}
+                          <strong className="text-[#1A1918]">Verified Remedy:</strong>{" "}
                           {item.verifiedRemedy}
                         </p>
                       </div>
@@ -968,14 +968,14 @@ export default function SettingsHelpDrawer({
               </div>
 
               {/* ── 10. What happens next? ── */}
-              <div className="rounded-2xl bg-white border border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] overflow-hidden">
+              <div className="rounded-2xl bg-white border border-[#1A1918] shadow-[2.5px_2.5px_0_0_#1A1918] overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleSection("whatNext")}
-                  className="w-full p-4 bg-[#FBF1CF]/60 hover:bg-[#FBF1CF] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1C1C1C]"
+                  className="w-full p-4 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5] transition-colors flex items-center justify-between text-left font-black text-sm text-[#1A1918]"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-[#1C1C1C] text-[#DFE968] text-xs font-mono flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-[#1A1918] text-[#DFE968] text-xs font-mono flex items-center justify-center">
                       10
                     </span>
                     What happens next? (Downstream Workflow)
@@ -983,9 +983,9 @@ export default function SettingsHelpDrawer({
                   {expandedSections.whatNext ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections.whatNext && (
-                  <div className="p-5 space-y-3 border-t border-[#1C1C1C]/15 text-xs">
+                  <div className="p-5 space-y-3 border-t border-[#1A1918]/15 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-[#1C1C1C]">
+                      <span className="font-bold text-sm text-[#1A1918]">
                         {currentTopicData.whatHappensNext.downstreamFeature}
                       </span>
                       <button
@@ -997,7 +997,7 @@ export default function SettingsHelpDrawer({
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
-                    <p className="text-[#1C1C1C]/80 leading-relaxed font-medium">
+                    <p className="text-[#1A1918]/80 leading-relaxed font-medium">
                       {currentTopicData.whatHappensNext.nextStepAction}
                     </p>
                   </div>
@@ -1008,12 +1008,12 @@ export default function SettingsHelpDrawer({
         </div>
 
         {/* Drawer Sticky Footer */}
-        <div className="p-4 bg-white border-t-2 border-[#1C1C1C] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-4 bg-white border-t-2 border-[#1A1918] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <Link
               href="/app/help"
               onClick={onClose}
-              className="text-xs font-bold text-[#1C1C1C]/80 hover:text-[#1C1C1C] flex items-center gap-1.5 underline underline-offset-2"
+              className="text-xs font-bold text-[#1A1918]/80 hover:text-[#1A1918] flex items-center gap-1.5 underline underline-offset-2"
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Full Truth Standard</span>
@@ -1021,17 +1021,17 @@ export default function SettingsHelpDrawer({
             <button
               type="button"
               onClick={() => handleNavigate("/app/settings/profile")}
-              className="text-xs font-bold text-[#1C1C1C]/80 hover:text-[#1C1C1C] flex items-center gap-1.5 underline underline-offset-2"
+              className="text-xs font-bold text-[#1A1918]/80 hover:text-[#1A1918] flex items-center gap-1.5 underline underline-offset-2"
             >
-              <User className="w-3.5 h-3.5 text-[#1C1C1C]" />
+              <User className="w-3.5 h-3.5 text-[#1A1918]" />
               <span>Profile →</span>
             </button>
             <button
               type="button"
               onClick={() => handleNavigate("/app/settings/privacy")}
-              className="text-xs font-bold text-[#1C1C1C]/80 hover:text-[#1C1C1C] flex items-center gap-1.5 underline underline-offset-2"
+              className="text-xs font-bold text-[#1A1918]/80 hover:text-[#1A1918] flex items-center gap-1.5 underline underline-offset-2"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#1C1C1C]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#1A1918]" />
               <span>Privacy →</span>
             </button>
           </div>

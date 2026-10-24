@@ -122,7 +122,7 @@ export default function GapPrioritizationPage() {
       <TargetRoleSelectorBar />
 
       {/* Formula & Interactive Strategy Controls */}
-      <div className="gl-card p-5 md:p-6 space-y-5 bg-gradient-to-r from-cream via-white to-sand/20 border-ink/15">
+      <div className="gl-card p-5 md:p-6 space-y-5 bg-[#FAF8F5] border-ink/15">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="text-xs font-mono font-bold text-ink flex items-center gap-2">
@@ -255,9 +255,9 @@ export default function GapPrioritizationPage() {
               key={gap.gap_id}
               className={`gl-card p-5 md:p-6 transition-all border-ink/15 space-y-4 ${
                 index === 0
-                  ? "bg-gradient-to-r from-lime/10 via-white to-white border-lime-400"
+                  ? "bg-[#FAF8F5] border-lime-400"
                   : index === 1
-                  ? "bg-gradient-to-r from-amber-50/40 via-white to-white"
+                  ? "bg-[#FAF8F5]"
                   : "bg-white"
               }`}
             >

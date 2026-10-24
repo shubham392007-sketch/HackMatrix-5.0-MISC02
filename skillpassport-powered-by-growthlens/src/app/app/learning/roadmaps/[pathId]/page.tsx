@@ -188,7 +188,7 @@ export default function PersonalizedRoadmapPage() {
       )}
 
       {/* Progress & Milestone Summary Card */}
-      <div className="gl-card p-6 md:p-8 space-y-6 bg-gradient-to-r from-cream via-white to-sand/20 border-ink/15">
+      <div className="gl-card p-6 md:p-8 space-y-6 bg-[#FAF8F5] border-ink/15">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">

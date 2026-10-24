@@ -55,7 +55,7 @@ export default function ConfidenceUncertaintyPage() {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Philosophy Card: Separate Measurement Types */}
-      <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5] space-y-3">
+      <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5] space-y-3">
         <div className="flex items-center gap-2">
           <Info className="w-5 h-5 text-[#4361EE]" />
           <h2 className="text-base font-bold text-[#1F1E1D]">

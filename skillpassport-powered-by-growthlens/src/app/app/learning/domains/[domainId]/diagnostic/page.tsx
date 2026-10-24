@@ -198,7 +198,7 @@ export default function DiagnosticAssessmentPage() {
         /* Results View */
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* Hero Result Card */}
-          <div className="gl-card p-6 md:p-8 space-y-6 bg-gradient-to-r from-cream via-white to-sand/20 border-ink/15">
+          <div className="gl-card p-6 md:p-8 space-y-6 bg-[#FAF8F5] border-ink/15">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">
                 <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-lime text-ink font-bold border border-ink/15">
