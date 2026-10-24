@@ -20,6 +20,7 @@
   --color-cta: #000000;
   --color-cta-text: #FAF8F5;
   --color-ink: #1A1918;
+  --color-paper: #FAF8F5;
   --color-card: #FAF8F5;
   --color-navy: #000000;
 
@@ -44,6 +45,7 @@
 :root {
   --bg-canvas: #F5F2EB;
   --color-ink: #1A1918;
+  --color-paper: #FAF8F5;
   --color-card: #FAF8F5;
   --color-cta: #000000;
   --color-cta-text: #FAF8F5;

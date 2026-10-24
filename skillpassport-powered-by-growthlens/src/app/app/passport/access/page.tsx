@@ -414,8 +414,8 @@ export default function SharedAccessManagementPage() {
                     onClick={() => setExtendingDays(d)}
                     className={`p-2.5 rounded-xl border text-xs font-bold ${
                       extendingDays === d
-                        ? "bg-ink text-paper border-ink"
-                        : "bg-paper text-ink border-ink/10"
+                        ? "bg-[#1A1918] text-[#FAF8F5] border-[#1A1918] font-black shadow-sm"
+                        : "bg-white text-[#1A1918] border-[#1A1918]/20 hover:border-[#1A1918]"
                     }`}
                   >
                     +{d} Days
