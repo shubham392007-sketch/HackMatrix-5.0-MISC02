@@ -3,10 +3,37 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 import httpx
 from backend.app.main import app
-from backend.app.integrations.jira.client import extract_adf_text, JiraCloudClient
+from backend.app.integrations.jira.client import extract_adf_text, JiraCloudClient, normalize_jira_site_url
 
 client = TestClient(app)
 AUTH_HEADERS = {"Authorization": "Bearer sp_demo_alexchen_valid"}
+
+
+def test_normalize_jira_site_url():
+    assert normalize_jira_site_url("https://company.atlassian.net/jira/your-work") == "https://company.atlassian.net"
+    assert normalize_jira_site_url("https://company.atlassian.net/jira/software/c/projects/1") == "https://company.atlassian.net"
+    assert normalize_jira_site_url("https://company.atlassian.net/") == "https://company.atlassian.net"
+    assert normalize_jira_site_url("company.atlassian.net") == "https://company.atlassian.net"
+    assert normalize_jira_site_url("myteam") == "https://myteam.atlassian.net"
+    assert normalize_jira_site_url("http://127.0.0.1:8080/jira") == "http://127.0.0.1:8080"
+
+
+@pytest.mark.asyncio
+async def test_jira_client_non_json_response_handling():
+    jira = JiraCloudClient("https://company.atlassian.net/jira/your-work", "alex@company.com", "fake_token")
+    assert jira.site_url == "https://company.atlassian.net"
+
+    with patch("httpx.AsyncClient.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.headers = {"content-type": "text/html; charset=utf-8"}
+        mock_resp.json.side_effect = ValueError("Expecting value: line 1 column 1")
+        mock_get.return_value = mock_resp
+
+        res = await jira.test_connection()
+        assert res["valid"] is False
+        assert res["error_category"] == "INVALID_RESPONSE"
+        assert "unexpected non-JSON response" in res["message"]
 
 
 def test_extract_adf_text():
@@ -219,6 +246,20 @@ def test_jira_connect_and_list_flow():
 
 def test_jira_per_project_sync_and_idempotency():
     """Verifies per-project sync, deduplication/idempotency, and evidence integration without auto-verification."""
+    from backend.app.db.session import SessionLocal
+    from backend.app.models.sync_run import RawSourceRecord
+    from backend.app.models.evidence import EvidenceItem
+    with SessionLocal() as db:
+        db.query(RawSourceRecord).filter(
+            RawSourceRecord.provider == "jira",
+            RawSourceRecord.external_record_id == "CORE-101",
+        ).delete()
+        db.query(EvidenceItem).filter(
+            EvidenceItem.source_provider == "jira",
+            EvidenceItem.external_record_id == "CORE-101",
+        ).delete()
+        db.commit()
+
     with patch("backend.app.integrations.jira.client.JiraCloudClient.test_connection") as mock_test, \
          patch("backend.app.integrations.jira.client.JiraCloudClient.search_issues") as mock_search, \
          patch("backend.app.ingestion.pipeline.queue_manager.enqueue_job"):

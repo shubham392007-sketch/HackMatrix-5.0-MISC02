@@ -63,7 +63,10 @@ function EvidenceLibraryContent() {
       item.description.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesSource =
-      sourceFilter === "all" || item.sourceType === sourceFilter;
+      sourceFilter === "all" ||
+      item.sourceType === sourceFilter ||
+      (sourceFilter === "jira" && (item.sourceType === "jira" || (item.sourceType as string) === "jira_issue" || (item as any).provider === "jira")) ||
+      (sourceFilter === "github" && (item.sourceType === "github" || (item.sourceType as string).startsWith("github") || (item as any).provider === "github"));
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -75,18 +78,20 @@ function EvidenceLibraryContent() {
   });
 
   const getSourceIcon = (type: string) => {
-    switch (type) {
-      case "github":
-        return <GitBranch className="w-4 h-4 text-[#1C1C1C]" />;
-      case "jira":
-        return <Layers className="w-4 h-4 text-[#1C1C1C]" />;
-      case "certificate":
-        return <Award className="w-4 h-4 text-[#1C1C1C]" />;
-      case "research":
-        return <BookOpen className="w-4 h-4 text-[#1C1C1C]" />;
-      default:
-        return <FileCode className="w-4 h-4 text-[#1C1C1C]" />;
+    const t = (type || "").toLowerCase();
+    if (t === "github" || t.startsWith("github")) {
+      return <GitBranch className="w-4 h-4 text-[#1C1C1C]" />;
     }
+    if (t === "jira" || t.startsWith("jira")) {
+      return <Layers className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "certificate") {
+      return <Award className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "research") {
+      return <BookOpen className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    return <FileCode className="w-4 h-4 text-[#1C1C1C]" />;
   };
 
   return (

@@ -1,12 +1,43 @@
 import httpx
 import base64
 import asyncio
+import urllib.parse
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from backend.app.core.exceptions import ConnectorAuthError
 from backend.app.core.logging import get_logger
 
 logger = get_logger("integrations.jira")
+
+
+def normalize_jira_site_url(site_url: str) -> str:
+    """
+    Normalizes a Jira site URL to standard 'https://subdomain.atlassian.net'.
+    Handles inputs like:
+      - 'https://company.atlassian.net/jira/your-work' -> 'https://company.atlassian.net'
+      - 'https://company.atlassian.net/' -> 'https://company.atlassian.net'
+      - 'company.atlassian.net' -> 'https://company.atlassian.net'
+      - 'company' -> 'https://company.atlassian.net'
+      - 'http://127.0.0.1:8080/jira' -> 'http://127.0.0.1:8080'
+    """
+    cleaned = (site_url or "").strip().rstrip("/")
+    if not cleaned:
+        return ""
+    if not cleaned.startswith("http://") and not cleaned.startswith("https://"):
+        cleaned = f"https://{cleaned}"
+
+    parsed = urllib.parse.urlparse(cleaned)
+    scheme = parsed.scheme or "https"
+    netloc = parsed.netloc or parsed.path.split("/")[0]
+
+    host = netloc.split(":")[0]
+    port = f":{netloc.split(':')[1]}" if ":" in netloc else ""
+
+    if "." not in host and host.lower() not in ("localhost", "127.0.0.1"):
+        host = f"{host}.atlassian.net"
+        netloc = f"{host}{port}"
+
+    return f"{scheme}://{netloc}"
 
 
 def extract_adf_text(content: Any) -> str:
@@ -28,11 +59,8 @@ def extract_adf_text(content: Any) -> str:
 
 class JiraCloudClient:
     def __init__(self, site_url: str, email: str, api_token: str):
-        # Normalize site URL
-        cleaned_url = site_url.strip().rstrip("/")
-        if not cleaned_url.startswith("http"):
-            cleaned_url = f"https://{cleaned_url}"
-        self.site_url = cleaned_url
+        # Normalize site URL to standard origin
+        self.site_url = normalize_jira_site_url(site_url)
         self.email = email.strip()
         self.api_token = api_token.strip()
 
@@ -52,7 +80,7 @@ class JiraCloudClient:
         Returns user profile and site identity.
         """
         logger.info(f"Testing Jira connection to {self.site_url} for {self.email}")
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
             try:
                 response = await client.get(f"{self.site_url}/rest/api/3/myself", headers=self.headers)
             except (httpx.TimeoutException, httpx.ConnectTimeout) as e:
@@ -68,6 +96,13 @@ class JiraCloudClient:
                     "valid": False,
                     "error_category": "NETWORK_UNAVAILABLE",
                     "message": f"Could not connect to Jira site '{self.site_url}'. Check site URL and network.",
+                }
+            except Exception as e:
+                logger.error(f"Unexpected connection error to Jira: {e}")
+                return {
+                    "valid": False,
+                    "error_category": "NETWORK_UNAVAILABLE",
+                    "message": f"Could not connect to Jira site '{self.site_url}': {str(e)}",
                 }
 
         if response.status_code == 401:
@@ -86,7 +121,7 @@ class JiraCloudClient:
             return {
                 "valid": False,
                 "error_category": "WRONG_SITE_URL",
-                "message": f"Jira Cloud API not found at {self.site_url}. Confirm your Atlassian site domain.",
+                "message": f"Jira Cloud API not found at {self.site_url}. Confirm your Atlassian site domain (e.g. https://your-company.atlassian.net).",
             }
         elif response.status_code == 429:
             retry_after = response.headers.get("Retry-After", "10")
@@ -102,11 +137,31 @@ class JiraCloudClient:
                 "message": f"Jira returned HTTP {response.status_code}.",
             }
 
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception:
+            return {
+                "valid": False,
+                "error_category": "INVALID_RESPONSE",
+                "message": (
+                    f"Jira site '{self.site_url}' returned an unexpected non-JSON response. "
+                    "Please verify your Atlassian site domain (e.g. https://your-company.atlassian.net)."
+                ),
+            }
+
+        if not isinstance(data, dict) or not (
+            "accountId" in data or "displayName" in data or "name" in data or "emailAddress" in data
+        ):
+            return {
+                "valid": False,
+                "error_category": "INVALID_RESPONSE",
+                "message": "Jira site returned an unrecognized response format. Please verify your Atlassian domain.",
+            }
+
         return {
             "valid": True,
-            "account_id": data.get("accountId"),
-            "display_name": data.get("displayName"),
+            "account_id": data.get("accountId") or data.get("name") or "jira_user",
+            "display_name": data.get("displayName") or data.get("name") or self.email,
             "email_address": data.get("emailAddress") or self.email,
             "site_url": self.site_url,
             "time_zone": data.get("timeZone"),
@@ -151,7 +206,14 @@ class JiraCloudClient:
                         break
                     raise ConnectorAuthError("Jira", f"Failed to list projects: HTTP {response.status_code}")
 
-                data = response.json()
+                try:
+                    data = response.json()
+                except Exception as e:
+                    logger.warning(f"Could not parse projects JSON from Jira: {e}")
+                    if results:
+                        break
+                    raise ConnectorAuthError("Jira", f"Jira returned non-JSON response when listing projects: {e}")
+
                 values = data.get("values", [])
                 if not values:
                     break
@@ -225,7 +287,12 @@ class JiraCloudClient:
                     logger.warning(f"Could not search issues for project {project_key}: HTTP {response.status_code}")
                     break
 
-                data = response.json()
+                try:
+                    data = response.json()
+                except Exception as e:
+                    logger.warning(f"Could not parse issues JSON from Jira for project {project_key}: {e}")
+                    break
+
                 issues = data.get("issues", [])
                 if not issues:
                     break
