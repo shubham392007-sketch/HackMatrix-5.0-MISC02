@@ -69,6 +69,7 @@ import {
   Pin,
   PinOff,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 
 export interface NavItem {
@@ -96,6 +97,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Evidence Workspace",
     items: [
       { label: "Evidence Center", href: "/app/evidence", icon: Database },
+      { label: "Onboarding Wizard", href: "/app/onboarding?mode=review", icon: Sparkles },
       { label: "Connected Sources", href: "/app/evidence/sources", icon: GitBranch },
       { label: "Upload Work & Docs", href: "/app/evidence/upload", icon: UploadCloud },
       { label: "Evidence Library", href: "/app/evidence/library", icon: Library },
@@ -155,12 +157,12 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Learn & Grow",
     items: [
       { label: "Learning Overview", href: "/app/learning", icon: GraduationCap },
-      { label: "Personalized Roadmap", href: "/app/learning/roadmaps/roadmap-domain-data-preprocessing", icon: Map },
-      { label: "Domain Blueprints", href: "/app/learning/domains/domain-data-preprocessing", icon: BookOpen },
+      { label: "Personalized Roadmap", href: "/app/learning/roadmaps", icon: Map },
+      { label: "Domain Blueprints", href: "/app/learning/domains", icon: BookOpen },
       { label: "Diagnostic Check", href: "/app/learning/domains/domain-data-preprocessing/diagnostic", icon: CheckSquare },
       { label: "Curated Resources", href: "/app/learning/resources", icon: Layers },
       { label: "Practice Exercises", href: "/app/learning/practice", icon: Code2 },
-      { label: "Assessments", href: "/app/learning/assessments/assessment-domain-data-preprocessing", icon: CheckCircle2 },
+      { label: "Assessments", href: "/app/learning/assessments", icon: CheckCircle2 },
       { label: "Mini-Projects", href: "/app/learning/projects", icon: FileCode },
       { label: "Progress & Mastery", href: "/app/learning/progress", icon: LineChart },
       { label: "Learning History", href: "/app/learning/history", icon: History },

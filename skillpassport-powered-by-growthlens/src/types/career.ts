@@ -46,20 +46,6 @@ export interface RoleCompetency {
   source_span?: string;
 }
 
-export interface RoleDemandModel {
-  role_id: string;
-  version: string; // e.g. "v2026.1"
-  title: string;
-  seniority: "Entry Level" | "Mid Level" | "Senior Level" | "Staff / Lead";
-  context: string; // e.g. "Product / GenAI", "Distributed Systems"
-  description: string;
-  provenance: string;
-  source_type: "curated_model" | "custom_parsed_job";
-  competencies: RoleCompetency[];
-  created_at: string;
-  updated_at: string;
-}
-
 export interface ConfidenceRationale {
   score: number;
   score_percent: number;
@@ -70,6 +56,23 @@ export interface ConfidenceRationale {
   uncertainty_notes: string[];
   is_verified: boolean;
   model_assisted?: boolean;
+}
+
+export interface RoleDemandModel {
+  role_id: string;
+  version: string; // e.g. "v2026.1"
+  title: string;
+  role_title?: string; // alias used across backend/API
+  role_version?: string; // alias used across backend/API
+  seniority: "Entry Level" | "Mid Level" | "Senior Level" | "Staff / Lead" | string;
+  context: string; // e.g. "Product / GenAI", "Distributed Systems"
+  context_domain?: string; // alias used across backend/API
+  description: string;
+  provenance: string;
+  source_type: "curated_model" | "custom_parsed_job";
+  competencies: RoleCompetency[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CompetencyMatchResult {
@@ -202,4 +205,42 @@ export interface ParsedJobDescription {
   }>;
   status: "empty" | "parsing" | "completed" | "partial" | "saved";
   parsed_at: string;
+}
+
+export type GapExplanationType =
+  | "genuine_proficiency_gap"
+  | "evidence_gap"
+  | "verification_gap"
+  | "conflicting_evidence"
+  | "insufficient_data";
+
+export interface GapExplanation {
+  skill_id: string;
+  requirement_id: string;
+  gap_type: GapExplanationType;
+  summary: string;
+  required_capability: string;
+  demonstrated_capabilities: string[];
+  specific_shortfall: string;
+  evidence_limitations: string;
+  supporting_evidence_ids: string[];
+  contradicting_evidence_ids: string[];
+  reasoning_confidence: number;
+  recommended_next_actions: string[];
+  insufficient_information: boolean;
+  analysis_version: string;
+  evaluated_at: string;
+  is_cached?: boolean;
+}
+
+export interface GapExplanationsResponse {
+  role_id: string;
+  role_title: string;
+  snapshot_id?: string | null;
+  total_gaps: number;
+  explanations: Record<string, GapExplanation>;
+  from_cache: boolean;
+  model_used: string;
+  analysis_version: string;
+  generated_at: string;
 }

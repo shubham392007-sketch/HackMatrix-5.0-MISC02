@@ -1,6 +1,11 @@
 import uuid
+import asyncio
+import re
+from urllib.parse import urlparse
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
+import httpx
+from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -9,6 +14,9 @@ from sqlalchemy import desc
 from backend.app.db.session import get_db
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.core.logging import get_logger
+from backend.app.core.config import get_settings
+from backend.app.core.exceptions import SSRFSecurityError
+from backend.app.extraction.ssrf_validator import validate_url_safe
 from backend.app.models.career import (
     JobPostingRecord,
     RoleDemandModelRecord,
@@ -20,7 +28,7 @@ from backend.app.career.orchestrator import job_orchestrator
 from backend.app.career.matching_engine import matching_engine
 from backend.app.career.prioritization_service import prioritization_service
 from backend.app.career.parser_service import parser_service
-from backend.app.career.confidence_explainer import confidence_explainer
+from backend.app.career.gap_explanation_service import gap_explanation_service
 
 logger = get_logger("api.career")
 router = APIRouter(prefix="/career", tags=["Domain: Career Intelligence & Role Discovery"])
@@ -36,7 +44,9 @@ class JobDiscoveryRequest(BaseModel):
     location: Optional[str] = Field(None, description="Optional location / country name")
     country_code: Optional[str] = Field(None, description="Optional 2-letter ISO country code (e.g. 'US', 'IN', 'GB')")
     remote_only: bool = Field(False, description="Filter for remote roles")
-    limit: int = Field(10, ge=1, le=20, description="Maximum number of results to fetch (default: 10)")
+    limit: int = Field(50, ge=1, le=50, description="Maximum number of results to fetch (default: 50)")
+    selected_skill_ids: Optional[List[str]] = Field(None, description="Selected canonical skill IDs for Mode A")
+    selected_skills: Optional[List[Dict[str, Any]]] = Field(None, description="Detailed selected skills with proficiency, verification status, and evidence")
 
 
 class ParseJobDescriptionRequest(BaseModel):
@@ -47,6 +57,28 @@ class ParseJobDescriptionRequest(BaseModel):
     context: Optional[str] = None
     source_url: Optional[str] = None
 
+
+class ParseJobUrlRequest(BaseModel):
+    url: str = Field(..., min_length=4, description="Public job posting URL to scrape and parse")
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    seniority: Optional[str] = None
+    context: Optional[str] = None
+
+
+class BatchParseJobItem(BaseModel):
+    item_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    input_type: str = Field("text", description="'text' or 'url'")
+    url: Optional[str] = None
+    raw_text: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    seniority: Optional[str] = "Mid Level"
+    context: Optional[str] = None
+
+
+class BatchParseJobRequest(BaseModel):
+    items: List[BatchParseJobItem] = Field(..., max_length=50)
 
 class SaveCustomRoleRequest(BaseModel):
     job_title: str = Field(..., min_length=2)
@@ -61,6 +93,7 @@ class SetTargetRoleRequest(BaseModel):
     target_role_id: str
     target_role_version: str = "v2026.1"
     role_title: str
+    is_primary: bool = True
 
 
 class PrioritizeGapsRequest(BaseModel):
@@ -346,6 +379,235 @@ CURATED_ROLES_SEED = [
             },
         ],
     },
+    {
+        "role_id": "role-cryptography-engineer-mid",
+        "version": "v2026.1",
+        "title": "Cryptography Engineer",
+        "seniority": "Mid Level",
+        "context": "Applied Cryptography & Zero-Knowledge",
+        "description": "Designs and validates zero-knowledge circuits, elliptic-curve signature schemes, secure multiparty computation, and post-quantum cryptographic primitives.",
+        "provenance": "GrowthLens Curated Industry Benchmark v2026.1 (synthesized from verified Cryptography & ZK openings)",
+        "source_type": "curated_model",
+        "competencies": [
+            {
+                "skill_id": "skill-zero-knowledge-proofs",
+                "canonical_name": "Zero-Knowledge Proofs & SNARKs",
+                "category": "Security & Cryptography",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "ZK circuit definitions (Circom/Halo2/Noir), constraint optimizations, and proof verification benchmarks.",
+                "status": "mapped",
+                "prerequisite_skill_ids": ["skill-number-theory", "skill-cryptography-foundations"],
+            },
+            {
+                "skill_id": "skill-elliptic-curve-cryptography",
+                "canonical_name": "Elliptic Curve & Applied Cryptography",
+                "category": "Security & Cryptography",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Implementation of BLS/Ed25519 signatures, pairing cryptography, and constant-time arithmetic primitives.",
+                "status": "mapped",
+                "prerequisite_skill_ids": ["skill-number-theory"],
+            },
+            {
+                "skill_id": "skill-python",
+                "canonical_name": "Python Engineering",
+                "category": "Programming",
+                "requirement_type": "core_required",
+                "importance": "high",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Cryptographic simulation tooling, protocol prototyping, and test vectors.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-system-architecture",
+                "canonical_name": "Distributed System Architecture",
+                "category": "Architecture",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Working",
+                "expected_level_numeric": 2,
+                "evidence_expectation": "Decentralized state verification architecture, consensus protocol integration, and key management systems.",
+                "status": "mapped",
+            },
+        ],
+    },
+    {
+        "role_id": "role-llm-security-engineer-mid",
+        "version": "v2026.1",
+        "title": "LLM Security Engineer",
+        "seniority": "Mid Level",
+        "context": "LLM Red Teaming, Prompt Injection & Guardrails",
+        "description": "Specializes in foundation model adversarial robustness, prompt injection mitigation, jailbreak auditing, alignment verification, and runtime defense guardrails.",
+        "provenance": "GrowthLens Curated Industry Benchmark v2026.1 (synthesized from verified AI Security openings)",
+        "source_type": "curated_model",
+        "competencies": [
+            {
+                "skill_id": "skill-llm-security",
+                "canonical_name": "LLM Red Teaming & Prompt Defense",
+                "category": "AI Security",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Adversarial test harness reports, prompt injection attack taxonomy benchmarks, and output sanitizer implementations.",
+                "status": "mapped",
+                "prerequisite_skill_ids": ["skill-machine-learning", "skill-python"],
+            },
+            {
+                "skill_id": "skill-ai-safety-guardrails",
+                "canonical_name": "AI Safety & Guardrail Architecture",
+                "category": "AI Governance",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Llama Guard/NeMo Guardrails deployment, semantic routing rules, and policy evaluation pipelines.",
+                "status": "mapped",
+                "prerequisite_skill_ids": ["skill-python"],
+            },
+            {
+                "skill_id": "skill-python",
+                "canonical_name": "Python Engineering",
+                "category": "Programming",
+                "requirement_type": "core_required",
+                "importance": "high",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Production security middleware, token inspection hooks, and automated evaluation suites.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-fastapi",
+                "canonical_name": "FastAPI Web Framework",
+                "category": "Backend Engineering",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Working",
+                "expected_level_numeric": 2,
+                "evidence_expectation": "Secure proxy gateway endpoints, streaming response inspection, and auth enforcement.",
+                "status": "mapped",
+                "prerequisite_skill_ids": ["skill-python"],
+            },
+        ],
+    },
+    {
+        "role_id": "role-dfir-specialist-mid",
+        "version": "v2026.1",
+        "title": "DFIR Specialist",
+        "seniority": "Mid Level",
+        "context": "Digital Forensics & Incident Response",
+        "description": "Investigates cyber intrusions, analyzes disk/memory forensic artifacts, dissects malware behavior, and formulates containment and eradication strategies.",
+        "provenance": "GrowthLens Curated Industry Benchmark v2026.1 (synthesized from verified Incident Response openings)",
+        "source_type": "curated_model",
+        "competencies": [
+            {
+                "skill_id": "skill-digital-forensics",
+                "canonical_name": "Digital Forensics & Memory Analysis",
+                "category": "Cybersecurity",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Timeline reconstruction, Volatility memory triage dumps, and file system artifact analysis reports.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-incident-response",
+                "canonical_name": "Incident Response & Threat Containment",
+                "category": "Cybersecurity",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Incident post-mortem reports, indicator of compromise (IoC) rule authoring, and forensic playbook automation.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-malware-analysis",
+                "canonical_name": "Malware Triage & Reverse Engineering",
+                "category": "Cybersecurity",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Working",
+                "expected_level_numeric": 2,
+                "evidence_expectation": "Static binary inspection, dynamic sandbox detonation analysis, and YARA signature definitions.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-python",
+                "canonical_name": "Python Engineering",
+                "category": "Programming",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Working",
+                "expected_level_numeric": 2,
+                "evidence_expectation": "Automated log ingestion scripts, SIEM query automation, and evidence collection utilities.",
+                "status": "mapped",
+            },
+        ],
+    },
+    {
+        "role_id": "role-penetration-tester-mid",
+        "version": "v2026.1",
+        "title": "Penetration Tester",
+        "seniority": "Mid Level",
+        "context": "Offensive Security & CTF Development",
+        "description": "Simulates adversary tradecraft across web applications, network perimeters, and cloud environments to uncover vulnerabilities and demonstrate exploit paths.",
+        "provenance": "GrowthLens Curated Industry Benchmark v2026.1 (synthesized from verified Offensive Security openings)",
+        "source_type": "curated_model",
+        "competencies": [
+            {
+                "skill_id": "skill-penetration-testing",
+                "canonical_name": "Web & Network Penetration Testing",
+                "category": "Offensive Security",
+                "requirement_type": "core_required",
+                "importance": "critical",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Defensible penetration testing assessment reports, vulnerability validation write-ups, and remediations.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-exploit-development",
+                "canonical_name": "Vulnerability Research & PoC Exploits",
+                "category": "Offensive Security",
+                "requirement_type": "core_required",
+                "importance": "high",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Proof-of-concept exploit scripts, privilege escalation chains, and security advisory contributions.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-application-security",
+                "canonical_name": "Application Security & DevSecOps",
+                "category": "Security Engineering",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Practitioner",
+                "expected_level_numeric": 3,
+                "evidence_expectation": "Threat modeling documents, SAST/DAST automated pipeline checks, and authentication flaw analysis.",
+                "status": "mapped",
+            },
+            {
+                "skill_id": "skill-python",
+                "canonical_name": "Python Engineering",
+                "category": "Programming",
+                "requirement_type": "supporting",
+                "importance": "high",
+                "expected_level": "Working",
+                "expected_level_numeric": 2,
+                "evidence_expectation": "Custom offensive tooling, network protocol fuzzers, and scanner extensions.",
+                "status": "mapped",
+            },
+        ],
+    },
 ]
 
 _CURATED_ROLES_SEEDED = False
@@ -427,6 +689,8 @@ async def discover_jobs(
             location=effective_location,
             remote_only=payload.remote_only,
             limit=payload.limit,
+            selected_skill_ids=payload.selected_skill_ids,
+            selected_skills=payload.selected_skills,
         )
         return result
     except ProviderException as pe:
@@ -525,6 +789,12 @@ def extract_job_requirements(
         company=job.company_name,
         seniority=job.seniority,
         source_url=job.job_url,
+        location=job.location_text,
+        employment_type=job.employment_type,
+        salary_min=job.salary_min,
+        salary_max=job.salary_max,
+        salary_currency=job.salary_currency,
+        raw_metadata=job.raw_source_metadata,
     )
 
     # Persist extracted requirements back to job record
@@ -762,6 +1032,11 @@ def get_role_demand_model(
         )
     except Exception as e:
         logger.warning(f"Database query failed in get_role_demand_model ({e}), searching memory seed.")
+    if not role and get_settings().app_env in ("development", "test"):
+        try:
+            role = db.query(RoleDemandModelRecord).filter(RoleDemandModelRecord.role_id == role_id).first()
+        except Exception:
+            pass
 
     if not role:
         seed = next((r for r in CURATED_ROLES_SEED if r["role_id"] == role_id), None)
@@ -811,14 +1086,12 @@ def get_active_target_role(
         logger.warning(f"Database query failed in get_active_target_role ({e}), using default curated.")
     
     if not target:
-        # Default to first curated role
-        first_curated = CURATED_ROLES_SEED[0]
         return {
-            "has_target": True,
-            "target_role_id": first_curated["role_id"],
-            "target_role_version": first_curated["version"],
-            "role_title": first_curated["title"],
-            "is_default": True,
+            "has_target": False,
+            "target_role_id": None,
+            "target_role_version": None,
+            "role_title": None,
+            "is_default": False,
         }
 
     return {
@@ -865,6 +1138,42 @@ def set_active_target_role(
     logger.info(f"Updated active target role to {payload.target_role_id} for user {user.id}")
     return {"status": "success", "target_role_id": payload.target_role_id, "role_title": payload.role_title}
 
+@router.post("/target-role")
+def save_target_role(
+    payload: SetTargetRoleRequest,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Dedicated endpoint fulfilling CAREER_INTELLIGENCE_LEARN_GROW_INTEGRATION_HANDOFF Section 7.2.
+    Persists target role to user_target_roles table.
+    """
+    return set_active_target_role(payload=payload, db=db, user=user)
+
+
+@router.delete("/target")
+def clear_active_target_role(
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Clears the authenticated user's active target role.
+    """
+    user_uuid = uuid.UUID(user.id)
+    try:
+        db.query(UserTargetRoleRecord).filter(UserTargetRoleRecord.owner_user_id == user_uuid).delete()
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Could not delete active target role from DB ({e})")
+
+    logger.info(f"Cleared active target role for user {user.id}")
+    return {
+        "status": "cleared",
+        "has_target": False,
+        "target_role_id": None,
+        "role_title": None,
+    }
+
 
 # ==============================================================================
 # 4. MATCHING, GAPS, PRIORITIES, AND READINESS
@@ -894,6 +1203,11 @@ def get_role_match(
         )
     except Exception as e:
         logger.warning(f"Database unavailable for role match query ({e}), searching memory seed.")
+    if not role and get_settings().app_env in ("development", "test"):
+        try:
+            role = db.query(RoleDemandModelRecord).filter(RoleDemandModelRecord.role_id == role_id).first()
+        except Exception:
+            pass
 
     if not role:
         seed = next((r for r in CURATED_ROLES_SEED if r["role_id"] == role_id), None)
@@ -912,21 +1226,65 @@ def get_role_match(
 
     res = matching_engine.evaluate_role_match(db, user_uuid, role)
 
-    # Persist snapshot if DB is available
+    # Persist or update snapshot if DB is available
     try:
-        snapshot = RoleMatchSnapshotRecord(
-            owner_user_id=user_uuid,
-            role_id=role.role_id,
-            role_version=role.version,
-            overall_match_score=res["overall_match_score"],
-            required_coverage_score=res["required_coverage_score"],
-            supporting_coverage_score=res["supporting_coverage_score"],
-            readiness_index=res.get("readiness_index", 0.0),
-            match_summary=res,
+        # Build enriched match_summary ensuring Section 7.3 required fields
+        enriched_match_summary = {k: v for k, v in res.items() if k != "gap_explanations"}
+        enriched_match_summary["match_score"] = float(res.get("overall_match_score", 0.0))
+        enriched_match_summary["core_gaps"] = [g.get("canonical_name", g.get("skill_id")) for g in res.get("gaps", []) if g.get("requirement_type") == "core_required"]
+        enriched_match_summary["secondary_gaps"] = [g.get("canonical_name", g.get("skill_id")) for g in res.get("gaps", []) if g.get("requirement_type") != "core_required"]
+        enriched_match_summary["missing_competencies"] = [
+            {
+                "skill_id": g.get("skill_id"),
+                "canonical_skill_id": g.get("canonical_skill_id", g.get("skill_id")),
+                "skill_name": g.get("canonical_name", g.get("skill_id")),
+                "required_proficiency": g.get("expected_level", "Practitioner"),
+                "current_proficiency": g.get("current_supported_level", "Not Established"),
+                "is_core": g.get("requirement_type") == "core_required",
+            }
+            for g in res.get("gaps", [])
+        ]
+
+        snapshot = (
+            db.query(RoleMatchSnapshotRecord)
+            .filter(
+                RoleMatchSnapshotRecord.owner_user_id == user_uuid,
+                RoleMatchSnapshotRecord.role_id == role.role_id,
+            )
+            .order_by(RoleMatchSnapshotRecord.calculated_at.desc())
+            .first()
         )
-        db.add(snapshot)
+        if snapshot:
+            snapshot.overall_match_score = res["overall_match_score"]
+            snapshot.required_coverage_score = res["required_coverage_score"]
+            snapshot.supporting_coverage_score = res["supporting_coverage_score"]
+            snapshot.readiness_index = float(res.get("readiness_index") if res.get("readiness_index") is not None else 0.0)
+            snapshot.match_summary = enriched_match_summary
+            snapshot.gaps_data = res.get("gaps", [])
+            snapshot.readiness_data = res.get("readiness", {})
+            snapshot.priorities_data = res.get("priorities", res.get("gaps", []))
+            snapshot.handoff_data = res.get("handoff", [])
+        else:
+            snapshot = RoleMatchSnapshotRecord(
+                owner_user_id=user_uuid,
+                role_id=role.role_id,
+                role_version=role.version,
+                overall_match_score=res["overall_match_score"],
+                required_coverage_score=res["required_coverage_score"],
+                supporting_coverage_score=res["supporting_coverage_score"],
+                readiness_index=float(res.get("readiness_index") if res.get("readiness_index") is not None else 0.0),
+                match_summary=enriched_match_summary,
+                gaps_data=res.get("gaps", []),
+                readiness_data=res.get("readiness", {}),
+                priorities_data=res.get("priorities", res.get("gaps", [])),
+                handoff_data=res.get("handoff", []),
+            )
+            db.add(snapshot)
         db.commit()
+        if snapshot and hasattr(snapshot, "id") and snapshot.id:
+            res["snapshot_id"] = str(snapshot.id)
     except Exception as e:
+        db.rollback()
         logger.warning(f"Could not persist match snapshot to DB ({e})")
 
     return res
@@ -962,50 +1320,47 @@ def get_skill_gaps(
     }
 
 
-@router.get("/roles/{role_id}/confidence-explanation/{skill_id}")
-def get_skill_confidence_explanation(
+@router.get("/gaps/{role_id}/explanations")
+async def get_gap_explanations(
     role_id: str,
-    skill_id: str,
-    enrich: bool = Query(False, description="Whether to request Ollama Qwen3 8B synthesis"),
+    force_refresh: bool = False,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     """
-    Returns an evidence-grounded confidence score rationale for a specific role requirement.
-    Answers: 'Why was this confidence score assigned?'
+    Evidence-grounded 'Why' explanation engine powered by local Ollama (qwen3:8b).
+    Explains exactly why each skill requirement did not achieve 100% proficiency coverage.
     """
+    user_uuid = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(str(user.id))
     role_match = get_role_match(role_id, db, user)
-    matches = role_match.get("competency_matches", [])
-    clean_sid = skill_id.strip().lower()
+    gaps = role_match.get("gaps", [])
 
-    comp_match = next(
-        (m for m in matches if m["skill_id"].lower() == clean_sid or m["canonical_name"].lower() == clean_sid),
-        None,
+    return await gap_explanation_service.explain_gaps(
+        db=db,
+        user_id=user_uuid,
+        role_id=role_id,
+        gaps=gaps,
+        role_title=role_match.get("role_title", role_id),
+        force_refresh=force_refresh,
     )
-    if not comp_match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Requirement '{skill_id}' not found in role '{role_id}'",
-        )
 
-    if not enrich and comp_match.get("confidence_rationale"):
-        return comp_match["confidence_rationale"]
 
-    req = {
-        "canonical_name": comp_match["canonical_name"],
-        "expected_level": comp_match["expected_level"],
-        "expected_level_numeric": comp_match["expected_level_numeric"],
-        "requirement_type": comp_match["requirement_type"],
-        "importance": comp_match["importance"],
-    }
-    rationale = confidence_explainer.generate_rationale(
-        requirement=req,
-        matched_user_skill=None,
-        evaluation=comp_match,
-        role_context={"role_id": role_id, "title": role_match.get("role_title")},
-        allow_ollama=enrich,
+@router.post("/gaps/{role_id}/explain")
+async def explain_role_gaps_post(
+    role_id: str,
+    force_refresh: bool = False,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    POST alias for explaining role gaps.
+    """
+    return await get_gap_explanations(
+        role_id=role_id,
+        force_refresh=force_refresh,
+        db=db,
+        user=user,
     )
-    return rationale
 
 
 @router.post("/priorities/{role_id}")
@@ -1163,6 +1518,216 @@ def parse_job_description(
     return parsed
 
 
+@router.post("/parse-jd/url")
+async def parse_job_description_from_url(
+    payload: ParseJobUrlRequest,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    SSRF-safe scraper and parser for public job posting URLs.
+    Validates against private/loopback/metadata addresses, detects authentication barriers honestly,
+    fetches HTML with strict timeout, strips markup, and feeds raw text to JobDescriptionParserService.
+    """
+    target_url = payload.url.strip() if payload.url else ""
+    if not target_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A valid public URL is required.",
+        )
+
+    # 1. Enforce strict SSRF validation
+    try:
+        validation = validate_url_safe(target_url)
+        cleaned_url = validation["cleaned_url"]
+    except SSRFSecurityError as e:
+        reason = e.details.get("reason", e.message)
+        logger.warning(f"Blocked SSRF attempt for URL {target_url}: {reason}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Security violation: Access to prohibited host or IP address blocked ({reason})",
+        )
+    except Exception as e:
+        logger.warning(f"URL validation failed for {target_url}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid URL structure: {str(e)}",
+        )
+
+    # 2. Domain-level auth wall detection (e.g. LinkedIn, Indeed login barriers)
+    domain_lower = urlparse(cleaned_url).netloc.lower()
+    if any(d in domain_lower for d in ["linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com"]):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"The job posting host ({domain_lower}) enforces an authentication wall or anti-scraping policy. "
+                "Automated ingestion cannot bypass login barriers. "
+                "Please copy the job posting text and use the 'Paste Text' tab to parse it."
+            ),
+        )
+
+    # 3. Asynchronously fetch public page with strict timeout and redirect restrictions
+    try:
+        headers = {
+            "User-Agent": "SkillPassport-JobScraper/1.0 (Mozilla/5.0; compatible; CareerIntelligence/2026.1)",
+            "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
+        }
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, max_redirects=3) as client:
+            resp = await client.get(cleaned_url, headers=headers)
+
+            final_url_lower = str(resp.url).lower()
+            if any(w in final_url_lower for w in ["authwall", "login", "checkpoint", "challenge", "signin"]):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="The URL redirected to an authentication wall or login challenge. Please copy the job description text and use the 'Paste Text' tab.",
+                )
+            if resp.status_code in (401, 403, 999):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Access blocked by the host (HTTP {resp.status_code}). Please copy the job description text and use the 'Paste Text' tab.",
+                )
+            if resp.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to fetch content from URL (HTTP status code {resp.status_code})",
+                )
+            html_content = resp.text
+
+            if any(w in html_content.lower() for w in ["authwall", "join linkedin to view", "sign in to view this job", "please enable javascript and cookies"]):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="The page returned an authentication wall or challenge. Please copy the job description text and use the 'Paste Text' tab.",
+                )
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Connection to target URL timed out after 10 seconds.",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"HTTP request failed for {cleaned_url}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Could not retrieve webpage content: {str(e)}",
+        )
+
+    # 4. Strip HTML markup, scripts, and navigation
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+        for tag in soup(["script", "style", "noscript", "header", "footer", "nav", "svg", "button", "iframe"]):
+            tag.decompose()
+
+        inferred_title = payload.job_title
+        inferred_company = payload.company_name
+
+        if not inferred_title:
+            og_title = soup.find("meta", property="og:title")
+            if og_title and og_title.get("content"):
+                cand = og_title.get("content").strip()
+                inferred_title = re.split(r"[-–|:]", cand)[0].strip()
+            elif soup.title and soup.title.string:
+                cand = soup.title.string.strip()
+                inferred_title = re.split(r"[-–|:]", cand)[0].strip()
+            elif soup.find("h1"):
+                inferred_title = soup.find("h1").get_text().strip()
+
+            if inferred_title and any(g in inferred_title.lower() for g in ["careers", "job search", "working at", "home", "welcome", "application"]):
+                inferred_title = None
+
+        if not inferred_company:
+            og_site = soup.find("meta", property="og:site_name")
+            if og_site and og_site.get("content"):
+                inferred_company = og_site.get("content").strip()
+            else:
+                parts = domain_lower.replace("www.", "").split(".")
+                if parts and len(parts[0]) > 2:
+                    inferred_company = parts[0].capitalize()
+
+        text = soup.get_text(separator="\n")
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        cleaned_text = "\n".join(lines)
+    except Exception as e:
+        logger.error(f"HTML parsing failed for {cleaned_url}: {e}")
+        cleaned_text = re.sub(r"<[^>]+>", " ", html_content)
+
+    if len(cleaned_text) < 40:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The target URL does not contain enough extractable job description text (minimum 40 characters required).",
+        )
+
+    # 5. Feed clean extracted text to parser_service
+    parsed = parser_service.parse_job_text(
+        db=db,
+        raw_text=cleaned_text,
+        title=inferred_title,
+        company=inferred_company,
+        seniority=payload.seniority,
+        context=payload.context or f"Discovered via URL ({domain_lower})",
+        source_url=cleaned_url,
+    )
+    return parsed
+
+
+@router.post("/parse-jd/batch")
+async def batch_parse_job_descriptions(
+    payload: BatchParseJobRequest,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Parses a batch of up to 50 jobs with bounded concurrency (5 concurrent workers).
+    Returns per-item results and aggregate success/failure statistics.
+    """
+    semaphore = asyncio.Semaphore(5)
+
+    async def process_item(item: BatchParseJobItem) -> Dict[str, Any]:
+        async with semaphore:
+            try:
+                if item.input_type == "url":
+                    if not item.url or not item.url.strip():
+                        return {"item_id": item.item_id, "status": "error", "error": "URL is missing"}
+                    sub_req = ParseJobUrlRequest(
+                        url=item.url.strip(),
+                        job_title=item.job_title,
+                        company_name=item.company_name,
+                        seniority=item.seniority or "Mid Level",
+                        context=item.context,
+                    )
+                    res = await parse_job_description_from_url(payload=sub_req, db=db, user=user)
+                    return {"item_id": item.item_id, "status": "success", "data": res}
+                else:
+                    if not item.raw_text or len(item.raw_text.strip()) < 40:
+                        return {"item_id": item.item_id, "status": "error", "error": "Text too short (< 40 characters)"}
+                    res = parser_service.parse_job_text(
+                        db=db,
+                        raw_text=item.raw_text.strip(),
+                        title=item.job_title,
+                        company=item.company_name,
+                        seniority=item.seniority or "Mid Level",
+                        context=item.context,
+                    )
+                    return {"item_id": item.item_id, "status": "success", "data": res}
+            except HTTPException as he:
+                return {"item_id": item.item_id, "status": "error", "error": str(he.detail)}
+            except Exception as e:
+                return {"item_id": item.item_id, "status": "error", "error": str(e)}
+
+    tasks = [process_item(item) for item in payload.items]
+    results = await asyncio.gather(*tasks)
+
+    success_count = sum(1 for r in results if r["status"] == "success")
+    failed_count = sum(1 for r in results if r["status"] == "error")
+
+    return {
+        "total_requested": len(payload.items),
+        "successful_count": success_count,
+        "failed_count": failed_count,
+        "results": results,
+    }
+
+
 @router.post("/roles/custom")
 def save_custom_role(
     payload: SaveCustomRoleRequest,
@@ -1262,6 +1827,11 @@ def get_learn_grow_handoff(
         )
     except Exception as e:
         logger.warning(f"DB query failed in get_learn_grow_handoff ({e})")
+    if not role and get_settings().app_env in ("development", "test"):
+        try:
+            role = db.query(RoleDemandModelRecord).filter(RoleDemandModelRecord.role_id == role_id).first()
+        except Exception:
+            pass
 
     if not role:
         seed = next((r for r in CURATED_ROLES_SEED if r["role_id"] == role_id), None)
@@ -1312,38 +1882,79 @@ def handoff_to_learn_and_grow(
     """
     Packages identified prioritized skill gaps and handoffs structured payload to
     Domain 5 (Learn & Grow) for automated diagnostic and roadmap generation.
+    Persists evaluation snapshot in RoleMatchSnapshotRecord and returns snapshot reference.
     """
     user_uuid = uuid.UUID(user.id)
-    gaps_response = get_skill_gaps(role_id=role_id, db=db, user=user)
-    prioritized = prioritization_service.prioritize_gaps(gaps_response["gaps"], focus_mode="default")
+    role_match = get_role_match(role_id=role_id, db=db, user=user)
+    gaps_data = role_match.get("gaps", [])
+    prioritized = prioritization_service.prioritize_gaps(gaps_data, focus_mode="default")
+    readiness_data = role_match.get("readiness", {})
+
+    role_title = role_match.get("role_title") or role_match.get("title") or "Target Role"
+    role_version = role_match.get("role_version") or role_match.get("version") or "v2026.1"
+
+    prioritized_gaps = [
+        {
+            "gap_id": g["gap_id"],
+            "skill_id": g["skill_id"],
+            "canonical_name": g["canonical_name"],
+            "gap_type": g["gap_type"],
+            "requirement_type": g["requirement_type"],
+            "importance": g["importance"],
+            "expected_level": g["expected_level"],
+            "current_supported_level": g["current_supported_level"],
+            "priority_score": g["priority_score"],
+            "recommended_action": g.get("recommended_action", ""),
+            "recommended_project_seed": g.get("recommended_project_seed", ""),
+        }
+        for g in prioritized
+    ]
+
+    snapshot_uuid = uuid.uuid4()
+    # Attempt to persist RoleMatchSnapshotRecord
+    try:
+        snapshot = RoleMatchSnapshotRecord(
+            id=snapshot_uuid,
+            owner_user_id=user_uuid,
+            role_id=role_id,
+            role_version=role_version,
+            overall_match_score=float(role_match.get("overall_match_score", 0.0)),
+            required_coverage_score=float(role_match.get("required_coverage_score", 0.0)),
+            supporting_coverage_score=float(role_match.get("supporting_coverage_score", 0.0)),
+            readiness_index=float(role_match.get("readiness_index") or 0.0),
+            match_summary=role_match,
+            gaps_data=gaps_data,
+            readiness_data=readiness_data,
+            priorities_data=prioritized_gaps,
+            handoff_data=prioritized_gaps,
+        )
+        db.add(snapshot)
+        db.commit()
+        db.refresh(snapshot)
+        snapshot_id_str = str(snapshot.id)
+        snapshot_version = snapshot.role_version
+    except Exception as e:
+        logger.warning(f"Could not persist handoff snapshot to DB ({e}), using generated UUID.")
+        snapshot_id_str = str(snapshot_uuid)
+        snapshot_version = role_version
 
     handoff_payload = {
         "user_id": str(user_uuid),
         "target_role_id": role_id,
-        "target_role_title": gaps_response["role_title"],
+        "target_role_title": role_title,
+        "target_role_version": snapshot_version,
+        "snapshot_id": snapshot_id_str,
+        "snapshot_version": snapshot_version,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "total_gaps": len(prioritized),
-        "prioritized_gaps": [
-            {
-                "gap_id": g["gap_id"],
-                "skill_id": g["skill_id"],
-                "canonical_name": g["canonical_name"],
-                "gap_type": g["gap_type"],
-                "requirement_type": g["requirement_type"],
-                "importance": g["importance"],
-                "expected_level": g["expected_level"],
-                "current_supported_level": g["current_supported_level"],
-                "priority_score": g["priority_score"],
-                "recommended_action": g["recommended_action"],
-                "recommended_project_seed": g["recommended_project_seed"],
-            }
-            for g in prioritized
-        ],
+        "total_gaps": len(prioritized_gaps),
+        "prioritized_gaps": prioritized_gaps,
     }
 
-    logger.info(f"Handed off {len(prioritized)} prioritized gaps for role {role_id} to Domain 5")
+    logger.info(f"Handed off {len(prioritized)} prioritized gaps for role {role_id} to Domain 5 (snapshot {snapshot_id_str})")
     return {
         "status": "ready_for_curriculum_generation",
-        "target_route": f"/app/learning/blueprints?role_id={role_id}",
+        "target_route": f"/app/learning/blueprints?role_id={role_id}&snapshot_id={snapshot_id_str}",
+        "snapshot_id": snapshot_id_str,
+        "snapshot_version": snapshot_version,
         "handoff_payload": handoff_payload,
     }

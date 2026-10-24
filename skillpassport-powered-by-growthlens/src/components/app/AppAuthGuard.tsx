@@ -37,8 +37,8 @@ export default function AppAuthGuard({
     }
   }, [isLoading, isAuthenticated, isEmailVerified, user, profile, pathname, router]);
 
-  // Loading state while verifying Supabase session
-  if (isLoading) {
+  // Loading state while verifying Supabase session and user profile
+  if (isLoading || (isAuthenticated && isEmailVerified && profile === null)) {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]"
@@ -51,7 +51,7 @@ export default function AppAuthGuard({
           <div className="relative p-8 rounded-3xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full overflow-hidden">
             <LoadingAnimation size="md" className="relative z-10" />
             <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
-              VERIFYING SUPABASE SESSION ···
+              VERIFYING WORKSPACE SESSION ···
             </p>
           </div>
         </div>

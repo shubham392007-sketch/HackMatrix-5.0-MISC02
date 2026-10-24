@@ -159,11 +159,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
-          setIsLoading(false);
           if (initialSession) {
-            fetchProfile(initialSession).catch((err) =>
-              console.warn("Background profile fetch:", err)
-            );
+            try {
+              await fetchProfile(initialSession);
+            } catch (err) {
+              console.warn("Background profile fetch:", err);
+            }
+          }
+          if (mounted) {
+            setIsLoading(false);
           }
         }
       } catch (err) {
@@ -179,16 +183,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        setIsLoading(false);
         if (newSession) {
-          fetchProfile(newSession).catch((err) =>
-            console.warn("Background profile fetch:", err)
-          );
+          try {
+            await fetchProfile(newSession);
+          } catch (err) {
+            console.warn("Background profile fetch:", err);
+          }
         } else {
           setProfile(null);
           if (typeof window !== "undefined") {
             sessionStorage.removeItem("sp_user_profile");
           }
+        }
+        if (mounted) {
+          setIsLoading(false);
         }
       }
     );

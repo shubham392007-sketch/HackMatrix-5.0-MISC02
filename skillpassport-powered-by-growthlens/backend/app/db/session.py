@@ -1,8 +1,12 @@
 import os
+import json
+import urllib.request
 from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from typing import Generator
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
@@ -11,146 +15,151 @@ from backend.app.db.reliability import circuit_breaker
 logger = get_logger("db.session")
 settings = get_settings()
 
-try:
-    from backend.app.models.base import Base
-except Exception:
-    Base = declarative_base()
+# Register SQLite type compiler overrides so PostgreSQL types (JSONB, UUID) work natively
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
 
-# Local SQLite fallback path for uninterrupted local development
-data_dir = Path(__file__).resolve().parent.parent.parent / "data"
-data_dir.mkdir(parents=True, exist_ok=True)
-sqlite_fallback_path = data_dir / "skillpassport_local.db"
-fallback_db_url = f"sqlite:///{sqlite_fallback_path.as_posix()}"
+@compiles(UUID, "sqlite")
+def compile_uuid_sqlite(type_, compiler, **kw):
+    return "VARCHAR(36)"
 
-fallback_engine = create_engine(
-    fallback_db_url,
-    connect_args={"check_same_thread": False},
-)
-SessionFallback = sessionmaker(autocommit=False, autoflush=False, bind=fallback_engine)
+Base = declarative_base()
 
-# State flag tracking whether we are currently using fallback
-_use_fallback = False
 
-def _init_fallback():
-    global _use_fallback
-    _use_fallback = True
+def sync_cloud_supabase_to_local_sqlite(target_engine):
+    """
+    Pulls cloud Supabase tables over HTTPS port 443 into the local SQLite database.
+    Bypasses blocked PostgreSQL direct TCP ports (5432/6543) so users have real data.
+    """
+    supabase_key = settings.supabase_service_role_key or settings.supabase_anon_key
+    supabase_url = settings.supabase_url
+    if not supabase_key or not supabase_url:
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+    }
+    tables = [
+        "user_profiles",
+        "connected_sources",
+        "evidence_items",
+        "competency_taxonomy",
+        "user_target_roles",
+        "job_postings",
+        "ingestion_runs",
+    ]
+
     try:
-        circuit_breaker.reset()
-    except Exception:
-        pass
-    try:
-        import backend.app.models  # ensure all models registered
-        Base.metadata.create_all(bind=fallback_engine)
-        logger.info(f"Local SQLite database ready at {sqlite_fallback_path}")
-    except Exception as e:
-        logger.error(f"Error initializing local SQLite tables: {e}")
+        with target_engine.begin() as conn:
+            for tbl in tables:
+                try:
+                    url = f"{supabase_url.rstrip('/')}/rest/v1/{tbl}?select=*"
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=4) as res:
+                        rows = json.loads(res.read().decode())
+                        if not rows:
+                            continue
+                        cols_res = conn.execute(text(f"PRAGMA table_info({tbl})")).fetchall()
+                        valid_cols = {c[1] for c in cols_res}
+                        for r in rows:
+                            filtered = {}
+                            for col, val in r.items():
+                                if col in valid_cols:
+                                    if isinstance(val, (dict, list)):
+                                        filtered[col] = json.dumps(val)
+                                    else:
+                                        filtered[col] = val
+                            col_names = list(filtered.keys())
+                            if not col_names:
+                                continue
+                            placeholders = [f":{c}" for c in col_names]
+                            sql = f"INSERT OR REPLACE INTO {tbl} ({', '.join(col_names)}) VALUES ({', '.join(placeholders)})"
+                            conn.execute(text(sql), filtered)
+                except Exception as tbl_err:
+                    logger.debug(f"Sync skipped for {tbl}: {tbl_err}")
+        logger.info("Successfully synced cloud Supabase records into resilient local database over HTTPS.")
+    except Exception as sync_err:
+        logger.warning(f"Initial cloud sync notice: {sync_err}")
 
-# Primary Engine creation
-try:
-    if settings.database_url.startswith("sqlite"):
-        engine = create_engine(
-            settings.database_url,
-            connect_args={"check_same_thread": False},
-        )
-    else:
-        engine = create_engine(
-            settings.database_url,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=settings.db_pool_size,
-            max_overflow=settings.db_max_overflow,
-            pool_timeout=settings.db_pool_timeout,
-            pool_reset_on_return="rollback",
-            connect_args={
-                "connect_timeout": 5,
-                "keepalives": 1,
-                "keepalives_idle": 15,
-                "keepalives_interval": 5,
-                "keepalives_count": 3,
-            },
-        )
-except Exception as e:
-    logger.warning(f"Could not initialize primary database engine: {e}. Falling back to SQLite.")
-    engine = fallback_engine
-    _init_fallback()
 
-_PrimarySessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+def _init_resilient_engine():
+    """
+    Initializes PostgreSQL if reachable; seamlessly activates a cloud-synced local
+    database if direct port 5432/IPv6 is unreachable on the current network.
+    """
+    is_postgres = settings.database_url.startswith("postgresql") or settings.database_url.startswith("postgres")
 
-class _ResilientSessionMaker:
-    """Dynamic session factory that transparently routes to SQLite fallback when primary is unavailable."""
-    def __call__(self, *args, **kwargs):
-        global _use_fallback
-        if _use_fallback:
-            return SessionFallback(*args, **kwargs)
+    if is_postgres:
         try:
-            return _PrimarySessionLocal(*args, **kwargs)
-        except Exception as e:
-            logger.warning(f"Failed to create primary database session ({e}). Activating SQLite fallback.")
-            _init_fallback()
-            return SessionFallback(*args, **kwargs)
+            logger.info("Verifying direct PostgreSQL connection...")
+            pg_engine = create_engine(
+                settings.database_url,
+                pool_pre_ping=settings.db_pool_pre_ping,
+                pool_recycle=60,
+                pool_size=min(settings.db_pool_size, 8),
+                max_overflow=settings.db_max_overflow,
+                pool_timeout=settings.db_pool_timeout,
+                pool_reset_on_return=None,
+                connect_args={
+                    "connect_timeout": 5,
+                    "keepalives": 1,
+                    "keepalives_idle": 15,
+                    "keepalives_interval": 5,
+                    "keepalives_count": 3,
+                },
+            )
+            with pg_engine.connect() as conn:
+                conn.execute(text("SELECT 1;"))
+            logger.info("Direct PostgreSQL connection established successfully.")
+            return pg_engine
+        except Exception as pg_err:
+            logger.warning(
+                f"Direct PostgreSQL port 5432 / IPv6 unreachable ({pg_err}). "
+                "Activating high-availability local database layer with cloud PostgREST synchronization."
+            )
 
-    def __getattr__(self, name):
-        if _use_fallback:
-            return getattr(SessionFallback, name)
-        return getattr(_PrimarySessionLocal, name)
+    # Resilient local SQLite database
+    from backend.app.models.base import Base as ModelsBase
+    import backend.app.models  # ensure models are loaded into Base metadata
 
-SessionLocal = _ResilientSessionMaker()
+    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+    os.makedirs(data_dir, exist_ok=True)
+    sqlite_path = os.path.join(data_dir, "skillpassport.db")
+    sqlite_engine = create_engine(
+        f"sqlite:///{sqlite_path}",
+        connect_args={"check_same_thread": False},
+    )
 
-# Auto-test connection on module load
-if not _use_fallback and not settings.database_url.startswith("sqlite"):
+    # Create all schema tables
+    ModelsBase.metadata.create_all(bind=sqlite_engine)
+
+    # Sync real cloud Supabase data over HTTPS port 443
+    sync_cloud_supabase_to_local_sqlite(sqlite_engine)
+
+    # Seed taxonomy if empty
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1;"))
-        logger.info("Primary PostgreSQL database connected successfully.")
-    except Exception as e:
-        logger.warning(
-            f"Primary PostgreSQL connection unavailable ({type(e).__name__}: {str(e)[:120]}). "
-            f"Activating resilient local SQLite fallback engine."
-        )
-        _init_fallback()
+        from backend.app.db.seeds import seed_canonical_taxonomy
+        TempSession = sessionmaker(bind=sqlite_engine)
+        with TempSession() as s:
+            seed_canonical_taxonomy(s)
+    except Exception as seed_err:
+        logger.debug(f"Taxonomy seeding notice: {seed_err}")
+
+    circuit_breaker.reset()
+    return sqlite_engine
+
+
+engine = _init_resilient_engine()
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency for thread-safe database sessions with automatic resilience."""
-    global _use_fallback
-    if _use_fallback:
-        db = SessionFallback()
-        try:
-            yield db
-        except HTTPException:
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            raise
-        except Exception as exc:
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            raise
-        finally:
-            try:
-                db.close()
-            except Exception:
-                pass
-        return
-
-    # Primary PostgreSQL path
-    try:
+    """FastAPI dependency for thread-safe database sessions with circuit breaker and cleanup."""
+    if engine.dialect.name != "sqlite":
         circuit_breaker.check_availability()
-        db = SessionLocal()
-    except Exception as exc:
-        logger.warning(f"PostgreSQL unavailable on get_db: {exc}. Seamlessly switching to local SQLite fallback.")
-        _init_fallback()
-        circuit_breaker.reset()
-        db = SessionFallback()
-        try:
-            yield db
-        finally:
-            db.close()
-        return
-
+    db = SessionLocal()
     try:
         yield db
         circuit_breaker.record_success()
@@ -165,30 +174,20 @@ def get_db() -> Generator[Session, None, None]:
             db.rollback()
         except Exception as rb_err:
             logger.warning(f"Error during rollback on exception: {rb_err}")
-        circuit_breaker.record_failure(exc)
-        if circuit_breaker.get_metrics()["state"] == "OPEN":
-            logger.warning("Circuit breaker tripped on PostgreSQL. Activating local SQLite fallback.")
-            _init_fallback()
+        if engine.dialect.name != "sqlite":
+            circuit_breaker.record_failure(exc)
         raise
     finally:
         try:
             db.close()
         except Exception as close_err:
-            logger.debug(f'Safely ignored stale connection close exception: {close_err}')
+            logger.debug(f"Safely ignored stale connection close exception: {close_err}")
 
 
 def check_database_connection() -> dict:
-    """Verifies live database connection with automatic fallback awareness."""
-    if _use_fallback:
-        return {
-            "status": "healthy",
-            "connected": True,
-            "mode": "local_sqlite_resilient",
-            "database": "sqlite",
-            "message": "Local SQLite database operational. Supabase PostgreSQL is standing by.",
-        }
+    """Verifies live database connection via SELECT 1 with circuit breaker awareness."""
     circuit_metrics = circuit_breaker.get_metrics()
-    if circuit_metrics["state"] == "OPEN":
+    if engine.dialect.name != "sqlite" and circuit_metrics["state"] == "OPEN":
         return {
             "status": "unhealthy",
             "connected": False,
@@ -204,13 +203,14 @@ def check_database_connection() -> dict:
                 return {
                     "status": "healthy",
                     "connected": True,
-                    "mode": "postgresql",
+                    "engine": engine.dialect.name,
                     "circuit_breaker": circuit_metrics,
                 }
         return {"status": "unhealthy", "connected": False, "error": "Query returned no rows"}
     except Exception as e:
-        circuit_breaker.record_failure(e)
-        logger.error(f"PostgreSQL health check failed: {type(e).__name__}")
+        if engine.dialect.name != "sqlite":
+            circuit_breaker.record_failure(e)
+        logger.error(f"Database health check failed: {e}")
         return {
             "status": "unhealthy",
             "connected": False,

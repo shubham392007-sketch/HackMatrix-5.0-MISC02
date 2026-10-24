@@ -101,23 +101,6 @@ export default function CareerGapsPage() {
       {/* Target Role Selector */}
       <TargetRoleSelectorBar />
 
-      {/* Philosophy Banner */}
-      <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-amber-200/80 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-xl bg-amber-200/60 border border-amber-400/50 flex items-center justify-center shrink-0 mt-0.5">
-          <Info className="w-4 h-4 text-amber-900" />
-        </div>
-        <div className="text-xs text-ink/80 space-y-1">
-          <span className="font-bold text-ink block">
-            Evidence-Aware Gap Principle
-          </span>
-          <p>
-            Traditional platforms assume lack of self-reported keywords equals complete absence of skill.
-            GrowthLens differentiates between a <strong>Skill Gap</strong> (unestablished ability),
-            a <strong>Depth Gap</strong> (working knowledge needing practitioner mastery), and an <strong>Evidence Gap</strong> (work has been done, but formal verification artifacts are insufficient).
-          </p>
-        </div>
-      </div>
-
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="gl-card p-4 space-y-1">
@@ -206,13 +189,14 @@ export default function CareerGapsPage() {
         {/* Search & Requirement Filter */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search gaps..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pill-input text-xs py-1.5 pl-8 pr-3 w-40 md:w-52 bg-white"
+              className="pill-input text-xs !py-1.5 !pl-9 pr-3 w-40 md:w-52 bg-white"
+              style={{ paddingLeft: "2.5rem" }}
             />
           </div>
 

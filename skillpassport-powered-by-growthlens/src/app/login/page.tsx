@@ -108,7 +108,8 @@ function LoginForm() {
         }
       }
 
-      router.push(redirectTarget || "/app/evidence");
+      const finalTarget = redirectTarget === "/app/onboarding" ? "/app/evidence" : (redirectTarget || "/app/evidence");
+      router.push(finalTarget);
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
       setLoading(false);

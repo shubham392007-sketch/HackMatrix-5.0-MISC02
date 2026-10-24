@@ -245,9 +245,15 @@ export default function UnifiedOnboardingPage() {
         setJiraSkipped(Boolean(p.jira_skipped));
 
         // Resume from persisted step
-        if (p.onboarding_status === "completed") {
+        const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const isExplicitReview = search?.get("mode") === "review" || search?.get("review") === "true" || search?.has("step");
+
+        if (p.onboarding_status === "completed" && !isExplicitReview) {
           router.replace("/app/evidence");
           return;
+        } else if (p.onboarding_status === "completed" && isExplicitReview) {
+          const requestedStep = search?.get("step") ? parseInt(search.get("step")!, 10) : 5;
+          setCurrentStep(requestedStep >= 1 && requestedStep <= 5 ? requestedStep : 5);
         } else if (p.onboarding_current_step && p.onboarding_current_step >= 1 && p.onboarding_current_step <= 5) {
           setCurrentStep(p.onboarding_current_step);
         }
@@ -673,6 +679,21 @@ export default function UnifiedOnboardingPage() {
 
   return (
     <div className="min-h-screen text-[#1A1918] flex flex-col font-sans bg-transparent">
+      {profile?.onboarding_status === "completed" && (
+        <div className="bg-[#DFE968]/50 border-b-[1.5px] border-[#1A1918] px-6 py-2.5 text-xs font-bold text-[#1A1918] flex flex-col sm:flex-row items-center justify-between gap-2 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#1A1918] shrink-0" />
+            <span>Setup Complete · You are reviewing your existing configuration in Review Mode.</span>
+          </div>
+          <Link
+            href="/app/evidence"
+            className="pill-btn pill-btn-primary text-[10px] py-1 px-3 inline-flex items-center gap-1 shadow-none"
+          >
+            <span>Return to Workspace</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      )}
       {/* Top Header / Wizard Navigation Bar */}
       <header className="border-b-[1.5px] border-[#1A1918] bg-[#FFFFFF]/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

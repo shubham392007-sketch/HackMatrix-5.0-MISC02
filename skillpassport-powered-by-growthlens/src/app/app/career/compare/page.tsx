@@ -15,6 +15,7 @@ import {
   RequirementTypeBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import { RoleDemandModel } from "@/types/career";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
   GitCompare,
@@ -32,24 +33,42 @@ import {
 } from "lucide-react";
 
 export default function CompareRolesPage() {
-  const { targetRoles, skills, selectedRoleId, setSelectedRoleId } =
-    useEvidence();
+  const {
+    targetRoles,
+    catalogueRoles,
+    savedTargetRoles,
+    customRoles,
+    skills,
+    initialLoading,
+    selectedRoleId,
+    setSelectedRoleId,
+  } = useEvidence();
+
+  // Combine all database roles so user can compare ANY industry role or custom target
+  const availableRoles = useMemo(() => {
+    const map = new Map<string, RoleDemandModel>();
+    (savedTargetRoles || []).forEach((r) => r?.role_id && map.set(r.role_id, r));
+    (catalogueRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    (targetRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    (customRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    return Array.from(map.values());
+  }, [savedTargetRoles, catalogueRoles, targetRoles, customRoles]);
 
   // Role selections for side-by-side comparison
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
 
   // Initialize selection with first 2 available database roles once loaded
   React.useEffect(() => {
-    if (targetRoles && targetRoles.length >= 2) {
+    if (availableRoles.length >= 2) {
       setSelectedRoleIds((prev) => {
-        const valid = prev.filter((id) => targetRoles.some((r) => r.role_id === id));
+        const valid = prev.filter((id) => availableRoles.some((r) => r.role_id === id));
         if (valid.length >= 2) return valid;
-        return [targetRoles[0].role_id, targetRoles[1].role_id];
+        return [availableRoles[0].role_id, availableRoles[1].role_id];
       });
-    } else if (targetRoles && targetRoles.length === 1) {
-      setSelectedRoleIds([targetRoles[0].role_id]);
+    } else if (availableRoles.length === 1) {
+      setSelectedRoleIds([availableRoles[0].role_id]);
     }
-  }, [targetRoles]);
+  }, [availableRoles]);
 
   const [filterMode, setFilterMode] = useState<
     "all" | "gaps_only" | "differences"
@@ -60,7 +79,7 @@ export default function CompareRolesPage() {
   const evaluatedRoles = useMemo(() => {
     return selectedRoleIds
       .map((id) => {
-        const role = targetRoles.find((r) => r.role_id === id);
+        const role = availableRoles.find((r) => r.role_id === id);
         if (!role || !role.competencies) return null;
         const match = evaluateRoleMatch(role, skills);
         const gaps = extractGapRecords(match, role);
@@ -68,7 +87,7 @@ export default function CompareRolesPage() {
         return { role, match, gaps, readiness };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [selectedRoleIds, targetRoles, skills]);
+  }, [selectedRoleIds, availableRoles, skills]);
 
   // Aggregate union of all competency skill_ids across selected roles
   const allSkillIds = useMemo(() => {
@@ -160,161 +179,196 @@ export default function CompareRolesPage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap pt-1">
-            {targetRoles.map((role) => {
-              const isSelected = selectedRoleIds.includes(role.role_id);
-              return (
-                <button
-                  key={role.role_id}
-                  onClick={() => handleRoleToggle(role.role_id)}
-                  className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
-                    isSelected
-                      ? "bg-[#1A1918] text-[#FAF8F5] border-2 border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] -translate-y-0.5"
-                      : "bg-[#FAF8F5] text-[#1A1918] hover:bg-white border border-[#1A1918]/20 hover:border-[#1A1918]"
-                  }`}
-                >
-                  <span>{role.title}</span>
-                  <span className={`text-[10px] font-mono ${isSelected ? "text-[#FAF8F5]/80" : "text-[#1A1918]/60"}`}>
-                    ({role.seniority})
-                  </span>
-                  {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-[#DFE968]" />
-                  )}
-                </button>
-              );
-            })}
+            {availableRoles.length === 0 ? (
+              <div className="text-xs text-[#1A1918]/60 py-2 flex items-center gap-2">
+                <span className="w-3 h-3 border-2 border-[#1A1918] border-t-transparent rounded-full animate-spin" />
+                Loading database roles...
+              </div>
+            ) : (
+              availableRoles.map((role) => {
+                const isSelected = selectedRoleIds.includes(role.role_id);
+                return (
+                  <button
+                    key={role.role_id}
+                    onClick={() => handleRoleToggle(role.role_id)}
+                    className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                      isSelected
+                        ? "bg-[#1A1918] text-[#FAF8F5] border-2 border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] -translate-y-0.5"
+                        : "bg-[#FAF8F5] text-[#1A1918] hover:bg-white border border-[#1A1918]/20 hover:border-[#1A1918]"
+                    }`}
+                  >
+                    <span>{role.title}</span>
+                    <span className={`text-[10px] font-mono ${isSelected ? "text-[#FAF8F5]/80" : "text-[#1A1918]/60"}`}>
+                      ({role.seniority})
+                    </span>
+                    {isSelected && (
+                      <span className="w-2 h-2 rounded-full bg-[#DFE968]" />
+                    )}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* Side-by-Side Summary Comparison Cards */}
-        <div
-          className={`grid grid-cols-1 ${
-            evaluatedRoles.length === 2
-              ? "md:grid-cols-2"
-              : evaluatedRoles.length === 3
-              ? "md:grid-cols-3"
-              : "md:grid-cols-1"
-          } gap-5`}
-        >
-          {evaluatedRoles.map(({ role, match, gaps, readiness }) => {
-            const isActive = selectedRoleId === role.role_id;
-
-            return (
-              <div
-                key={role.role_id}
-                className={`p-6 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] flex flex-col justify-between transition-all ${
-                  isActive ? "ring-2 ring-[#1A1918]" : ""
-                }`}
-              >
-                <div className="space-y-5">
-                  <div className="flex items-start justify-between gap-2 border-b border-[#1A1918]/15 pb-4">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
-                        {role.seniority} &bull; {role.version}
-                      </span>
-                      <h3 className="text-lg font-extrabold text-[#1A1918] leading-snug">
-                        {role.title}
-                      </h3>
-                      <span className="text-xs text-[#1A1918]/70 font-medium block mt-0.5">
-                        {role.context}
-                      </span>
-                    </div>
-
-                    {isActive ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#DFE968] text-[#1A1918] border border-[#1A1918] shadow-sm shrink-0">
-                        Active Target
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setSelectedRoleId(role.role_id)}
-                        className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#FAF8F5] hover:bg-[#1A1918] text-[#1A1918] hover:text-[#FAF8F5] border border-[#1A1918]/30 transition-all shrink-0"
-                      >
-                        Set Active
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Match Metrics Grid */}
-                  <div className="grid grid-cols-3 gap-2 p-3.5 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/15 text-center text-xs">
-                    <div className="p-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
-                        Match
-                      </span>
-                      <strong className="text-xl font-black text-[#1A1918]">
-                        {match.overall_match_score}%
-                      </strong>
-                    </div>
-                    <div className="p-1 border-x border-[#1A1918]/15">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
-                        Readiness
-                      </span>
-                      <strong className="text-xl font-black text-[#1A1918]">
-                        {readiness.readiness_index}%
-                      </strong>
-                    </div>
-                    <div className="p-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
-                        Blockers
-                      </span>
-                      <strong className={`text-xl font-black ${readiness.critical_blockers.length > 0 ? "text-[#C25450]" : "text-[#4A7A4E]"}`}>
-                        {readiness.critical_blockers.length}
-                      </strong>
-                    </div>
-                  </div>
-
-                  {/* Progress Breakdown Bars */}
-                  <div className="space-y-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex justify-between font-medium text-[#1A1918]">
-                        <span className="text-[#1A1918]/80 text-[11.5px]">Core Required Coverage:</span>
-                        <strong className="font-mono font-bold text-[#1A1918]">{match.required_coverage_score}%</strong>
-                      </div>
-                      <div className="h-2 w-full bg-[#1A1918]/10 rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${match.required_coverage_score}%` }}
-                          className="bg-[#1A1918] h-full rounded-full transition-all duration-300"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between font-medium text-[#1A1918]">
-                        <span className="text-[#1A1918]/80 text-[11.5px]">Supporting Coverage:</span>
-                        <strong className="font-mono font-bold text-[#1A1918]">{match.supporting_coverage_score}%</strong>
-                      </div>
-                      <div className="h-2 w-full bg-[#1A1918]/10 rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${match.supporting_coverage_score}%` }}
-                          className="bg-[#1A1918]/70 h-full rounded-full transition-all duration-300"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1 text-xs">
-                      <span className="text-[#1A1918]/80 font-medium">Identified Gaps:</span>
-                      <span className={`font-mono font-bold px-2 py-0.5 rounded-md border text-[11px] ${
-                        gaps.length > 0
-                          ? "bg-[#C4A446]/15 border-[#C4A446]/30 text-[#9E822B]"
-                          : "bg-[#4A7A4E]/15 border-[#4A7A4E]/30 text-[#4A7A4E]"
-                      }`}>
-                        {gaps.length} {gaps.length === 1 ? "Gap" : "Gaps"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-[#1A1918]/15 mt-5">
-                  <Link
-                    href={`/app/career/roles/${role.role_id}`}
-                    className="font-bold text-[#1A1918] hover:underline flex items-center justify-between text-xs group"
-                  >
-                    <span>View Role Demand Model</span>
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </div>
+        {initialLoading || (availableRoles.length > 0 && evaluatedRoles.length === 0) ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="p-6 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] animate-pulse space-y-4">
+              <div className="h-4 bg-[#1A1918]/10 rounded w-1/4"></div>
+              <div className="h-6 bg-[#1A1918]/15 rounded w-1/2"></div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <div className="p-6 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] animate-pulse space-y-4">
+              <div className="h-4 bg-[#1A1918]/10 rounded w-1/4"></div>
+              <div className="h-6 bg-[#1A1918]/15 rounded w-1/2"></div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
+                <div className="h-16 bg-[#1A1918]/5 rounded-xl"></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`grid grid-cols-1 ${
+              evaluatedRoles.length === 2
+                ? "md:grid-cols-2"
+                : evaluatedRoles.length === 3
+                ? "md:grid-cols-3"
+                : "md:grid-cols-1"
+            } gap-5`}
+          >
+            {evaluatedRoles.map(({ role, match, gaps, readiness }) => {
+              const isActive = selectedRoleId === role.role_id;
+
+              return (
+                <div
+                  key={role.role_id}
+                  className={`p-6 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] flex flex-col justify-between transition-all ${
+                    isActive ? "ring-2 ring-[#1A1918]" : ""
+                  }`}
+                >
+                  <div className="space-y-5">
+                    <div className="flex items-start justify-between gap-2 border-b border-[#1A1918]/15 pb-4">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1A1918]/60">
+                            {role.seniority} &bull; {role.version}
+                          </span>
+                          <span className="text-[9px] font-mono font-bold text-[#4A7A4E] bg-[#4A7A4E]/10 border border-[#4A7A4E]/25 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5" /> Live
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-extrabold text-[#1A1918] leading-snug">
+                          {role.title}
+                        </h3>
+                        <span className="text-xs text-[#1A1918]/70 font-medium block mt-0.5">
+                          {role.context}
+                        </span>
+                      </div>
+
+                      {isActive ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#DFE968] text-[#1A1918] border border-[#1A1918] shadow-sm shrink-0">
+                          Active Target
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedRoleId(role.role_id)}
+                          className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#FAF8F5] hover:bg-[#1A1918] text-[#1A1918] hover:text-[#FAF8F5] border border-[#1A1918]/30 transition-all shrink-0"
+                        >
+                          Set Active
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Match Metrics Grid */}
+                    <div className="grid grid-cols-3 gap-2 p-3.5 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/15 text-center text-xs">
+                      <div className="p-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
+                          Match
+                        </span>
+                        <strong className="text-xl font-black text-[#1A1918]">
+                          {match.overall_match_score}%
+                        </strong>
+                      </div>
+                      <div className="p-1 border-x border-[#1A1918]/15">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
+                          Readiness
+                        </span>
+                        <strong className="text-xl font-black text-[#1A1918]">
+                          {readiness.readiness_index}%
+                        </strong>
+                      </div>
+                      <div className="p-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A1918]/60 block mb-1">
+                          Blockers
+                        </span>
+                        <strong className={`text-xl font-black ${readiness.critical_blockers.length > 0 ? "text-[#C25450]" : "text-[#4A7A4E]"}`}>
+                          {readiness.critical_blockers.length}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Progress Breakdown Bars */}
+                    <div className="space-y-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-medium text-[#1A1918]">
+                          <span className="text-[#1A1918]/80 text-[11.5px]">Core Required Coverage:</span>
+                          <strong className="font-mono font-bold text-[#1A1918]">{match.required_coverage_score}%</strong>
+                        </div>
+                        <div className="h-2 w-full bg-[#1A1918]/10 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${match.required_coverage_score}%` }}
+                            className="bg-[#1A1918] h-full rounded-full transition-all duration-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-medium text-[#1A1918]">
+                          <span className="text-[#1A1918]/80 text-[11.5px]">Supporting Coverage:</span>
+                          <strong className="font-mono font-bold text-[#1A1918]">{match.supporting_coverage_score}%</strong>
+                        </div>
+                        <div className="h-2 w-full bg-[#1A1918]/10 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${match.supporting_coverage_score}%` }}
+                            className="bg-[#1A1918]/70 h-full rounded-full transition-all duration-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 text-xs">
+                        <span className="text-[#1A1918]/80 font-medium">Identified Gaps:</span>
+                        <span className={`font-mono font-bold px-2 py-0.5 rounded-md border text-[11px] ${
+                          gaps.length > 0
+                            ? "bg-[#C4A446]/15 border-[#C4A446]/30 text-[#9E822B]"
+                            : "bg-[#4A7A4E]/15 border-[#4A7A4E]/30 text-[#4A7A4E]"
+                        }`}>
+                          {gaps.length} {gaps.length === 1 ? "Gap" : "Gaps"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#1A1918]/15 mt-5">
+                    <Link
+                      href={`/app/career/roles/${role.role_id}`}
+                      className="font-bold text-[#1A1918] hover:underline flex items-center justify-between text-xs group"
+                    >
+                      <span>View Role Demand Model</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Comparison Filter Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">

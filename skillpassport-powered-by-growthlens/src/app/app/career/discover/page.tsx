@@ -486,26 +486,36 @@ export default function DiscoverJobsPage() {
                             key={skill.id}
                             type="button"
                             onClick={() => toggleSkillSelection(skill.id)}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all border ${
+                            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs transition-all border ${
                               isSelected
-                                ? isVerified
-                                  ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-medium shadow-sm"
-                                  : "bg-amber-50 border-amber-400 text-amber-950 font-medium shadow-sm"
-                                : "bg-sand/15 border-ink/15 text-ink-muted/80 opacity-60 hover:opacity-100"
+                                ? "bg-ink text-white border-ink shadow-sm ring-1 ring-ink/20 font-medium"
+                                : "bg-sand/20 hover:bg-sand/40 border-ink/15 text-ink-muted hover:text-ink"
                             }`}
                             title={isSelected ? "Click to exclude from this search" : "Click to include in search query"}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isVerified ? "bg-emerald-600" : "bg-amber-500"
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isSelected
+                                  ? isVerified ? "bg-lime shadow-[0_0_6px_rgba(202,240,43,0.8)]" : "bg-amber-300"
+                                  : isVerified ? "bg-emerald-600" : "bg-amber-500"
                               }`}
                             />
                             <span>{skillName}</span>
-                            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-white/60 border border-ink/10 text-ink-muted">
+                            <span
+                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                                isSelected
+                                  ? "bg-white/15 text-white/90 border-white/20"
+                                  : "bg-white/70 text-ink-muted border-ink/10"
+                              }`}
+                            >
                               {profLevel}
                             </span>
                             {skill.confidence && (
-                              <span className="text-[10px] font-mono text-ink-muted font-bold">
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  isSelected ? "text-amber-200" : "text-ink-muted"
+                                }`}
+                              >
                                 {skill.confidence}%
                               </span>
                             )}
