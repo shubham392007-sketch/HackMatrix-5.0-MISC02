@@ -142,6 +142,46 @@ export default function JiraSourceFlow() {
     );
   };
 
+  const [syncingProjectKey, setSyncingProjectKey] = useState<string | null>(null);
+
+  const handleSyncSingleProject = async (e: React.MouseEvent, projectKey: string) => {
+    e.stopPropagation();
+    setSyncingProjectKey(projectKey);
+    setStatusMessage(null);
+    setConnectError(null);
+
+    try {
+      await triggerJiraSync(projectKey);
+      setStatusMessage(`Sync triggered for Jira project ${projectKey}! Ingestion job queued.`);
+      addNotification({
+        title: "Project sync triggered",
+        description: `Synchronization triggered specifically for Jira project ${projectKey}. Pipeline ingestion enqueued.`,
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/runs",
+        actionLabel: "View Ingestion Runs",
+        dedupKey: `jira_sync_${projectKey}_${Date.now()}`,
+      });
+      await refreshEvidenceData();
+    } catch (err: any) {
+      const errMsg = err.message || `Failed to sync project ${projectKey}.`;
+      setConnectError(errMsg);
+      addNotification({
+        title: "Synchronization failed",
+        description: `Jira synchronization for ${projectKey} failed: ${errMsg}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/jira",
+        actionLabel: "Retry Sync",
+        dedupKey: `jira_sync_fail_${projectKey}_${Date.now()}`,
+      });
+    } finally {
+      setSyncingProjectKey(null);
+    }
+  };
+
   const handleSaveAndSync = async () => {
     setSyncing(true);
     setStatusMessage(null);
@@ -158,11 +198,11 @@ export default function JiraSourceFlow() {
       await updateSelectedJiraProjects(payload);
       await triggerJiraSync();
 
-      const selectedCount = projects.filter((p) => p.selected).length;
-      setStatusMessage(`Sync triggered for ${selectedCount} Jira projects! Ingestion jobs queued.`);
+      const count = projects.filter((p) => p.selected).length;
+      setStatusMessage(`Sync triggered for ${count} selected Jira projects! Ingestion jobs queued.`);
       addNotification({
         title: "Repository sync completed",
-        description: `Synchronization triggered for ${selectedCount} Jira project${selectedCount === 1 ? "" : "s"}. Pipeline ingestion enqueued.`,
+        description: `Synchronization triggered for ${count} Jira project${count === 1 ? "" : "s"}. Pipeline ingestion enqueued.`,
         category: "evidence",
         severity: "success",
         relatedDomain: "Evidence Workspace",
@@ -427,11 +467,35 @@ export default function JiraSourceFlow() {
                           </div>
                         </div>
 
-                        {proj.projectTypeKey && (
-                          <div className="text-right text-xs font-mono font-bold text-[#1C1C1C]/60 shrink-0 ml-3">
-                            {proj.projectTypeKey}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          {proj.url && (
+                            <a
+                              href={proj.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] font-bold text-[#1C1C1C]/60 hover:text-[#1C1C1C] flex items-center gap-0.5 p-1"
+                              title="Open in Jira"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => handleSyncSingleProject(e, proj.key)}
+                            disabled={syncing || syncingProjectKey === proj.key}
+                            className="pill-btn pill-btn-secondary text-[10px] py-1 px-2.5 flex items-center gap-1 font-bold"
+                            title={`Sync ${proj.key} only`}
+                          >
+                            <RefreshCw className={`w-3 h-3 ${syncingProjectKey === proj.key ? "animate-spin" : ""}`} />
+                            <span>{syncingProjectKey === proj.key ? "SYNCING..." : "SYNC PROJECT"}</span>
+                          </button>
+                          {proj.projectTypeKey && (
+                            <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/50 uppercase hidden sm:inline">
+                              {proj.projectTypeKey}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

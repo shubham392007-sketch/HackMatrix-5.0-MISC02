@@ -2469,10 +2469,10 @@ async def test_jira_connection(payload: JiraTestRequest):
 async def connect_jira(
     payload: JiraConnectRequest,
     user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """
     Validates, encrypts, and stores Jira credentials for the user.
+    Validates credentials with Jira Cloud API before opening any database session.
     """
     client = JiraCloudClient(payload.site_url, payload.email, payload.api_token)
     validation = await client.test_connection()
@@ -2490,76 +2490,78 @@ async def connect_jira(
     })
     encrypted_creds = encrypt_credential(cred_bundle)
 
-    # Check for existing connection
-    existing = db.query(ConnectedSource).filter(
-        ConnectedSource.owner_user_id == user.id,
-        ConnectedSource.provider == "jira",
-        ConnectedSource.account_identity == payload.email,
-    ).first()
+    with SessionLocal() as db:
+        # Check for existing connection
+        existing = db.query(ConnectedSource).filter(
+            ConnectedSource.owner_user_id == user.id,
+            ConnectedSource.provider == "jira",
+            ConnectedSource.account_identity == payload.email,
+        ).first()
 
-    now = datetime.now(timezone.utc)
-    if existing:
-        existing.encrypted_credentials = encrypted_creds
-        existing.connection_status = "connected"
-        existing.disconnected_at = None
-        existing.connection_metadata = validation
-        connection = existing
-    else:
-        connection = ConnectedSource(
+        now = datetime.now(timezone.utc)
+        if existing:
+            existing.encrypted_credentials = encrypted_creds
+            existing.connection_status = "connected"
+            existing.disconnected_at = None
+            existing.connection_metadata = validation
+            connection = existing
+        else:
+            connection = ConnectedSource(
+                id=uuid.uuid4(),
+                owner_user_id=user.id,
+                provider="jira",
+                account_identity=payload.email,
+                connection_status="connected",
+                encrypted_credentials=encrypted_creds,
+                credential_key_version="v1",
+                requested_scopes=["read:jira-work", "read:jira-user"],
+                granted_scopes=["read:jira-work", "read:jira-user"],
+                connection_metadata=validation,
+            )
+            db.add(connection)
+
+        # Persist initially selected projects if provided
+        if payload.selected_projects:
+            for proj_key in payload.selected_projects:
+                if not proj_key:
+                    continue
+                existing_res = db.query(SelectedResource).filter(
+                    SelectedResource.connection_id == connection.id,
+                    SelectedResource.external_resource_id == proj_key,
+                ).first()
+                if existing_res:
+                    existing_res.is_selected = True
+                else:
+                    res = SelectedResource(
+                        id=uuid.uuid4(),
+                        connection_id=connection.id,
+                        external_resource_id=proj_key,
+                        name=proj_key,
+                        is_selected=True,
+                        content_categories=["issues", "tasks"],
+                    )
+                    db.add(res)
+
+        db.commit()
+        db.refresh(connection)
+
+        # Audit event
+        audit = ReviewAuditEvent(
             id=uuid.uuid4(),
-            owner_user_id=user.id,
-            provider="jira",
-            account_identity=payload.email,
-            connection_status="connected",
-            encrypted_credentials=encrypted_creds,
-            credential_key_version="v1",
-            requested_scopes=["read:jira-work", "read:jira-user"],
-            granted_scopes=["read:jira-work", "read:jira-user"],
-            connection_metadata=validation,
+            actor_user_id=user.id,
+            target_record_id=connection.id,
+            target_record_type="connected_source",
+            event_type="source_connected",
+            new_state="connected",
+            reason_note=f"Jira account {payload.email} connected to {client.site_url}",
         )
-        db.add(connection)
-
-    # Persist initially selected projects if provided
-    if payload.selected_projects:
-        for proj_key in payload.selected_projects:
-            if not proj_key:
-                continue
-            existing_res = db.query(SelectedResource).filter(
-                SelectedResource.connection_id == connection.id,
-                SelectedResource.external_resource_id == proj_key,
-            ).first()
-            if existing_res:
-                existing_res.is_selected = True
-            else:
-                res = SelectedResource(
-                    id=uuid.uuid4(),
-                    connection_id=connection.id,
-                    external_resource_id=proj_key,
-                    name=proj_key,
-                    is_selected=True,
-                    content_categories=["issues", "tasks"],
-                )
-                db.add(res)
-
-    db.commit()
-    db.refresh(connection)
-
-    # Audit event
-    audit = ReviewAuditEvent(
-        id=uuid.uuid4(),
-        actor_user_id=user.id,
-        target_record_id=connection.id,
-        target_record_type="connected_source",
-        event_type="source_connected",
-        new_state="connected",
-        reason_note=f"Jira account {payload.email} connected to {client.site_url}",
-    )
-    db.add(audit)
-    db.commit()
+        db.add(audit)
+        db.commit()
+        conn_id = str(connection.id)
 
     return {
         "status": "connected",
-        "connection_id": str(connection.id),
+        "connection_id": conn_id,
         "email": payload.email,
         "display_name": validation.get("display_name"),
         "site_url": client.site_url,
@@ -2570,7 +2572,7 @@ async def connect_jira(
 async def list_jira_projects(
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Lists projects from the connected Jira instance."""
+    """Lists projects from the connected Jira instance without holding a DB connection during external API calls."""
     with SessionLocal() as db:
         connection = (
             db.query(ConnectedSource)
@@ -2668,135 +2670,214 @@ def update_selected_jira_projects(
 async def trigger_jira_sync(
     payload: Optional[JiraSyncRequest] = None,
     user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """
     Synchronizes issues from selected Jira projects.
     Extracts structured issues into EvidenceItem, enqueues IngestionJob.
+    Releases database connection during external Jira network operations.
+    Updates existing records idempotently without duplicating evidence.
     """
-    connection = db.query(ConnectedSource).filter(
-        ConnectedSource.owner_user_id == user.id,
-        ConnectedSource.provider == "jira",
-        ConnectedSource.connection_status == "connected",
-    ).first()
+    # Phase 1: Retrieve connection & selected resources in short DB session
+    with SessionLocal() as db:
+        connection = db.query(ConnectedSource).options(
+            joinedload(ConnectedSource.selected_resources)
+        ).filter(
+            ConnectedSource.owner_user_id == user.id,
+            ConnectedSource.provider == "jira",
+            ConnectedSource.connection_status == "connected",
+        ).first()
 
-    if not connection:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active Jira connection to synchronize",
+        if not connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active Jira connection to synchronize",
+            )
+
+        creds = json.loads(decrypt_credential(connection.encrypted_credentials))
+        connection_id = connection.id
+        connection_account = connection.account_identity
+        last_sync_time = connection.last_sync_at
+
+        target_projects = [
+            r.external_resource_id for r in (connection.selected_resources or []) if r.is_selected
+        ]
+        if payload and payload.project_key:
+            target_projects = [payload.project_key]
+
+        # Start a sync run record
+        now = datetime.now(timezone.utc)
+        sync_run = SourceSyncRun(
+            id=uuid.uuid4(),
+            owner_user_id=user.id,
+            connection_id=connection_id,
+            provider="jira",
+            trigger_type="manual",
+            status="running",
+            started_at=now,
+            selected_resources_snapshot=[{"project": p} for p in target_projects],
         )
+        db.add(sync_run)
+        db.commit()
+        sync_run_id = sync_run.id
 
-    creds = json.loads(decrypt_credential(connection.encrypted_credentials))
+    # Phase 2: External Jira API queries (ZERO database connections held!)
     client = JiraCloudClient(creds["site_url"], creds["email"], creds["api_token"])
 
-    target_projects = [r.external_resource_id for r in connection.selected_resources if r.is_selected]
-    if payload and payload.project_key:
-        target_projects = [payload.project_key]
-
     if not target_projects:
-        # Fallback to first project
-        projects = await client.list_projects()
-        if projects:
-            target_projects = [projects[0]["key"]]
+        try:
+            projs = await client.list_projects()
+            if projs:
+                target_projects = [projs[0]["key"]]
+        except Exception as e:
+            logger.warning(f"Could not auto-discover projects for empty sync: {e}")
 
-    now = datetime.now(timezone.utc)
-    sync_run = SourceSyncRun(
-        id=uuid.uuid4(),
-        owner_user_id=user.id,
-        connection_id=connection.id,
-        provider="jira",
-        trigger_type="manual",
-        status="running",
-        started_at=now,
-        selected_resources_snapshot=[{"project": p} for p in target_projects],
-    )
-    db.add(sync_run)
-    db.commit()
-    db.refresh(sync_run)
+    project_issues_map: Dict[str, List[Dict[str, Any]]] = {}
+    for proj_key in target_projects:
+        try:
+            issues = await client.search_issues(proj_key, since_timestamp=last_sync_time, limit=50)
+            project_issues_map[proj_key] = issues
+        except Exception as e:
+            logger.error(f"Error querying Jira issues for project {proj_key}: {e}")
+            project_issues_map[proj_key] = []
 
+    # Phase 3: Atomically persist raw records and normalized EvidenceItems
     discovered = 0
     imported = 0
-    for proj_key in target_projects:
-        issues = await client.search_issues(proj_key, limit=10)
-        for issue in issues:
-            discovered += 1
-            content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"jira:issue:{issue['key']}").hex
+    updated = 0
+    now_persist = datetime.now(timezone.utc)
 
-            existing_raw = db.query(RawSourceRecord).filter(
-                RawSourceRecord.owner_user_id == user.id,
-                RawSourceRecord.provider == "jira",
-                RawSourceRecord.record_type == "issue",
-                RawSourceRecord.external_record_id == str(issue["key"]),
-            ).first()
+    with SessionLocal() as db:
+        run_record = db.query(SourceSyncRun).filter(SourceSyncRun.id == sync_run_id).first()
+        conn_record = db.query(ConnectedSource).filter(ConnectedSource.id == connection_id).first()
 
-            if not existing_raw:
-                raw_rec = RawSourceRecord(
-                    id=uuid.uuid4(),
-                    owner_user_id=user.id,
-                    sync_run_id=sync_run.id,
-                    provider="jira",
-                    record_type="issue",
-                    external_record_id=str(issue["key"]),
-                    source_url=issue.get("url"),
-                    observed_at=now,
-                    content_hash=content_hash,
-                    raw_payload=issue,
-                )
-                db.add(raw_rec)
+        for proj_key, issues in project_issues_map.items():
+            for issue in issues:
+                discovered += 1
+                issue_key = str(issue["key"])
+                content_hash = uuid.uuid5(uuid.NAMESPACE_URL, f"jira:issue:{issue_key}").hex
 
-                # Normalized EvidenceItem
-                evidence = EvidenceItem(
-                    id=uuid.uuid4(),
-                    owner_user_id=user.id,
-                    source_provider="jira",
-                    source_type="jira_issue",
-                    external_record_id=str(issue["key"]),
-                    source_url=issue.get("url"),
-                    source_name=f"Jira {proj_key}",
-                    evidence_category="delivery",
-                    title=f"[{issue['key']}] {issue.get('summary', 'Jira Issue')}",
-                    description=issue.get("description") or f"Issue {issue['key']} in project {proj_key}",
-                    extracted_excerpt=f"{issue.get('summary', '')}\n{issue.get('description', '')}"[:300],
-                    observed_timestamp=now,
-                    contributor_identity=issue.get("assignee_email") or connection.account_identity,
-                    attribution_status="assignee" if issue.get("assignee_email") == connection.account_identity else "participant",
-                    project_name=proj_key,
-                    evidence_strength="high" if issue.get("status_category") == "done" else "medium",
-                    extraction_confidence=0.85,
-                    verification_status="unreviewed",
-                    processing_status="ready_for_review",
-                    provenance={"project": proj_key, "issue_key": issue["key"], "status": issue.get("status_name")},
-                    normalized_metadata={"status": issue.get("status_name"), "issue_type": issue.get("issue_type")},
-                    content_hash=content_hash,
-                )
-                db.add(evidence)
-                imported += 1
+                existing_raw = db.query(RawSourceRecord).filter(
+                    RawSourceRecord.owner_user_id == user.id,
+                    RawSourceRecord.provider == "jira",
+                    RawSourceRecord.record_type == "issue",
+                    RawSourceRecord.external_record_id == issue_key,
+                ).first()
 
-    sync_run.records_discovered = discovered
-    sync_run.records_imported = imported
-    sync_run.status = "completed"
-    sync_run.completed_at = datetime.now(timezone.utc)
-    connection.last_sync_at = datetime.now(timezone.utc)
-    db.commit()
+                if existing_raw:
+                    existing_raw.raw_payload = issue
+                    existing_raw.observed_at = now_persist
+                    existing_raw.content_hash = content_hash
 
-    job = IngestionJob(
-        id=uuid.uuid4(),
-        owner_user_id=user.id,
-        sync_run_id=sync_run.id,
-        job_type="jira_sync",
-        status="QUEUED",
-        current_stage="QUEUED",
-        progress_percentage=0,
-        idempotency_key=f"sync-{sync_run.id}",
-    )
-    db.add(job)
-    db.commit()
-    queue_manager.enqueue_job(job.id)
+                    # Update corresponding EvidenceItem idempotently
+                    existing_ev = db.query(EvidenceItem).filter(
+                        EvidenceItem.owner_user_id == user.id,
+                        EvidenceItem.source_provider == "jira",
+                        EvidenceItem.external_record_id == issue_key,
+                    ).first()
+                    if existing_ev:
+                        existing_ev.title = f"[{issue_key}] {issue.get('summary', 'Jira Issue')}"
+                        existing_ev.description = issue.get("description") or existing_ev.description
+                        existing_ev.extracted_excerpt = f"{issue.get('summary', '')}\n{issue.get('description', '')}"[:300]
+                        existing_ev.observed_timestamp = now_persist
+                        existing_ev.evidence_strength = "high" if issue.get("status_category") == "done" else "medium"
+                        existing_ev.provenance = {
+                            "project": proj_key,
+                            "issue_key": issue_key,
+                            "status": issue.get("status_name"),
+                            "issue_type": issue.get("issue_type"),
+                        }
+                        existing_ev.normalized_metadata = {
+                            "status": issue.get("status_name"),
+                            "issue_type": issue.get("issue_type"),
+                            "components": issue.get("components", []),
+                            "labels": issue.get("labels", []),
+                        }
+                        existing_ev.content_hash = content_hash
+                        # NOTE: Verification status is preserved (never auto-verify skills on Jira status)
+                    updated += 1
+                else:
+                    raw_rec = RawSourceRecord(
+                        id=uuid.uuid4(),
+                        owner_user_id=user.id,
+                        sync_run_id=sync_run_id,
+                        provider="jira",
+                        record_type="issue",
+                        external_record_id=issue_key,
+                        source_url=issue.get("url"),
+                        observed_at=now_persist,
+                        content_hash=content_hash,
+                        raw_payload=issue,
+                    )
+                    db.add(raw_rec)
+
+                    evidence = EvidenceItem(
+                        id=uuid.uuid4(),
+                        owner_user_id=user.id,
+                        source_provider="jira",
+                        source_type="jira_issue",
+                        external_record_id=issue_key,
+                        source_url=issue.get("url"),
+                        source_name=f"Jira {proj_key}",
+                        evidence_category="delivery",
+                        title=f"[{issue_key}] {issue.get('summary', 'Jira Issue')}",
+                        description=issue.get("description") or f"Issue {issue_key} in project {proj_key}",
+                        extracted_excerpt=f"{issue.get('summary', '')}\n{issue.get('description', '')}"[:300],
+                        observed_timestamp=now_persist,
+                        contributor_identity=issue.get("assignee_email") or connection_account,
+                        attribution_status="assignee" if issue.get("assignee_email") == connection_account else "participant",
+                        project_name=proj_key,
+                        evidence_strength="high" if issue.get("status_category") == "done" else "medium",
+                        extraction_confidence=0.85,
+                        verification_status="unreviewed",
+                        processing_status="ready_for_review",
+                        provenance={
+                            "project": proj_key,
+                            "issue_key": issue_key,
+                            "status": issue.get("status_name"),
+                            "issue_type": issue.get("issue_type"),
+                        },
+                        normalized_metadata={
+                            "status": issue.get("status_name"),
+                            "issue_type": issue.get("issue_type"),
+                            "components": issue.get("components", []),
+                            "labels": issue.get("labels", []),
+                        },
+                        content_hash=content_hash,
+                    )
+                    db.add(evidence)
+                    imported += 1
+
+        if run_record:
+            run_record.records_discovered = discovered
+            run_record.records_imported = imported
+            run_record.status = "completed"
+            run_record.completed_at = datetime.now(timezone.utc)
+
+        if conn_record:
+            conn_record.last_sync_at = datetime.now(timezone.utc)
+
+        job = IngestionJob(
+            id=uuid.uuid4(),
+            owner_user_id=user.id,
+            sync_run_id=sync_run_id,
+            job_type="jira_sync",
+            status="QUEUED",
+            current_stage="QUEUED",
+            progress_percentage=0,
+            idempotency_key=f"sync-{sync_run_id}",
+        )
+        db.add(job)
+        db.commit()
+        job_id = str(job.id)
+
+    queue_manager.enqueue_job(uuid.UUID(job_id))
 
     return {
         "status": "completed",
-        "sync_run_id": str(sync_run.id),
-        "job_id": str(job.id),
+        "sync_run_id": str(sync_run_id),
+        "job_id": job_id,
         "records_discovered": discovered,
         "records_imported": imported,
+        "records_updated": updated,
+        "target_projects": target_projects,
     }

@@ -2887,17 +2887,17 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Toast handlers
-  const addToast = (title: string, message: string, type: "success" | "error" | "info" = "info") => {
+  const addToast = useCallback((title: string, message: string, type: "success" | "error" | "info" = "info") => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setToasts((prev) => [...prev, { id, title, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   // Demo Authentication Handlers
   const loginDemo = (role: DemoRole = "employee", userOverrides?: Partial<UserProfile>) => {
@@ -3165,7 +3165,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     // Sync authoritative state from database upon auth activation
     syncPersistentNotifications(currentUserId);
 
-    const channelName = `rt-user-${currentUserId}-${Date.now()}`;
+    const channelName = `rt-user-${currentUserId}`;
     const channel = supabase
       .channel(channelName)
       .on(

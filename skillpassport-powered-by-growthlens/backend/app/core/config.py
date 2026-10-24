@@ -161,9 +161,21 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        if not self.frontend_origins or self.app_env == "development":
-            return ["*"]
-        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+        raw = self.frontend_origins or ""
+        parsed = [origin.strip() for origin in raw.split(",") if origin.strip()]
+        defaults = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+        ]
+        seen = set()
+        result = []
+        for o in parsed + defaults:
+            if o not in seen:
+                seen.add(o)
+                result.append(o)
+        return result
 
 
 @lru_cache()
