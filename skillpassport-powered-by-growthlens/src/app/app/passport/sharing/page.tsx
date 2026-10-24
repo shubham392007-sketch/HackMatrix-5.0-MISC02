@@ -31,6 +31,7 @@ import {
   FolderSync,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
+import RecruiterEngagementSparkline from "@/components/passport/RecruiterEngagementSparkline";
 import { useEvidence } from "@/context/EvidenceContext";
 import { sharingApi } from "@/lib/sharingApi";
 import { SharingOverviewData } from "@/types/sharing";
@@ -198,6 +199,12 @@ export default function PassportSharingOverviewPage() {
                 </Link>
               </div>
             </div>
+
+            {/* Recruiter Engagement Telemetry Sparkline & Permission Auditing */}
+            <RecruiterEngagementSparkline
+              links={overview?.links?.recent_links || []}
+              totalAccessCount={overview?.links?.total_access_count || 0}
+            />
 
             {/* Grid: Readiness & Share Links */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

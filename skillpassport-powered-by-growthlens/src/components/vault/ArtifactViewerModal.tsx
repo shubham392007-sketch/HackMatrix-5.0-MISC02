@@ -163,7 +163,7 @@ export default function ArtifactViewerModal({
         <div className="p-5 sm:p-6 border-b-[2px] border-[#1A1918] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           <div className="space-y-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-[#1A1918] bg-[#1E3A5F]">
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5]">
                 {artifactType.replace(/_/g, " ")}
               </span>
               {artifact?.category && (
@@ -764,7 +764,7 @@ export default function ArtifactViewerModal({
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-[#1A1918]">{skill.name}</span>
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]">
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#000000] border border-[#1A1918] text-[#FAF8F5]">
                                   {skill.category}
                                 </span>
                               </div>

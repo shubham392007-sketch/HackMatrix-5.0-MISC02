@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
+import CompetencyRadarChart from "@/components/passport/CompetencyRadarChart";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   SkillVerificationBadge,
@@ -154,6 +155,9 @@ export default function PassportOverviewPage() {
             </span>
           </Link>
         </section>
+
+        {/* 8.25 Visual Competency Topology Radar */}
+        <CompetencyRadarChart skills={skills} />
 
         {/* 8.3 Competency Groups Section */}
         <section className="space-y-6">

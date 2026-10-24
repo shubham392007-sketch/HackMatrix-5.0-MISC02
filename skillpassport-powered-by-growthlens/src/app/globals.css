@@ -17,11 +17,11 @@
   --color-cream: #F5F2EB;
   --color-blush: #EAE5D9;
   --color-peach: #D8CEBC;
-  --color-cta: #1E3A5F;
+  --color-cta: #000000;
   --color-cta-text: #FAF8F5;
   --color-ink: #1A1918;
   --color-card: #FAF8F5;
-  --color-navy: #1E3A5F;
+  --color-navy: #000000;
 
   /* Semantic Trends */
   --color-improving: #2D5A43;
@@ -45,9 +45,9 @@
   --bg-canvas: #F5F2EB;
   --color-ink: #1A1918;
   --color-card: #FAF8F5;
-  --color-cta: #1E3A5F;
+  --color-cta: #000000;
   --color-cta-text: #FAF8F5;
-  --color-navy: #1E3A5F;
+  --color-navy: #000000;
   background-color: #F5F2EB;
 }
 
@@ -128,14 +128,43 @@ body {
   border: 1.5px solid var(--color-ink);
   border-radius: var(--radius-card);
   box-shadow: 3px 3px 0px var(--color-ink);
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   isolation: isolate;
 }
 
 .gl-card:hover {
   transform: translateY(-2px);
-  box-shadow: 5px 5px 0px var(--color-ink);
+  box-shadow: 4px 4px 0px var(--color-ink);
+}
+
+/* ── Two-Tier Surface & Border Helpers ──────────────────── */
+.border-ink-subtle {
+  border-color: rgba(26, 25, 24, 0.12) !important;
+}
+
+.bg-well {
+  background-color: #EAE5D9 !important;
+}
+
+.bg-ivory {
+  background-color: #FAF8F5 !important;
+}
+
+.bg-linen {
+  background-color: #F5F2EB !important;
+}
+
+.shadow-press {
+  box-shadow: 2px 2px 0px var(--color-ink);
+}
+
+.shadow-press-sm {
+  box-shadow: 1.5px 1.5px 0px var(--color-ink);
+}
+
+.shadow-press-lg {
+  box-shadow: 3px 3px 0px var(--color-ink);
 }
 
 /* ── Spacing Utilities & Margin Preservation (Tailwind v4 compatibility) ── */
@@ -197,27 +226,27 @@ main > div > div > [class*="space-y-"]:first-child {
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 2px 2px 0px var(--color-ink);
-  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 120ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms ease-out;
 }
 
 .pill-btn:hover {
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
   box-shadow: 3px 3px 0px var(--color-ink);
 }
 
 .pill-btn:active {
-  transform: translateY(1px);
-  box-shadow: 1px 1px 0px var(--color-ink);
+  transform: translate(1.5px, 1.5px);
+  box-shadow: 0.5px 0.5px 0px var(--color-ink);
 }
 
 .pill-btn-primary {
-  background: #1E3A5F !important;
+  background: #000000 !important;
   color: #FAF8F5 !important;
   border-color: #1A1918 !important;
 }
 
 .pill-btn-primary:hover {
-  background: #162c48 !important;
+  background: #1A1918 !important;
 }
 
 .pill-btn-secondary {
@@ -779,21 +808,21 @@ header nav a:hover {
 
 /* ── Executive Press Compatibility Overrides for Legacy Arbitrary Hex Classes ── */
 .bg-\[\#DFE968\] {
-  background-color: #1E3A5F !important;
+  background-color: #000000 !important;
   color: #FAF8F5 !important;
 }
 .bg-\[\#DFE968\] svg {
   color: #FAF8F5 !important;
 }
 .hover\:bg-\[\#DFE968\]:hover {
-  background-color: #162c48 !important;
+  background-color: #1A1918 !important;
   color: #FAF8F5 !important;
 }
 .bg-\[\#DFE968\]\/30,
 .bg-\[\#DFE968\]\/40,
 .bg-\[\#DFE968\]\/50 {
-  background-color: rgba(30, 58, 95, 0.12) !important;
-  color: #1E3A5F !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #000000 !important;
 }
 .bg-\[\#FBF1CF\] {
   background-color: #F5F2EB !important;
@@ -815,25 +844,58 @@ header nav a:hover {
   border-color: #1A1918 !important;
 }
 .text-\[\#1C1C1C\] {
-  color: #1A1918 !important;
+  color: #1A1918;
 }
 [class*="shadow-"][class*="#1C1C1C"] {
   --tw-shadow-color: #1A1918 !important;
 }
 
-/* ── Oxford Navy Utility Helpers ── */
+/* ── Compound Dark Contrast Protection ── */
+.bg-\[\#000000\],
+.bg-black,
+.bg-\[\#1A1918\],
+.bg-navy,
+.bg-\[\#DFE968\],
+.bg-\[\#000000\].text-\[\#1C1C1C\],
+.bg-black.text-\[\#1C1C1C\],
+.bg-\[\#1A1918\].text-\[\#1C1C1C\],
+.bg-navy.text-\[\#1C1C1C\],
+.bg-\[\#DFE968\].text-\[\#1C1C1C\],
+.bg-\[\#000000\].text-\[\#1A1918\],
+.bg-black.text-\[\#1A1918\],
+.bg-\[\#1A1918\].text-\[\#1A1918\],
+.bg-navy.text-\[\#1A1918\],
+.bg-\[\#DFE968\].text-\[\#1A1918\],
+.bg-\[\#000000\].text-black,
+.bg-black.text-black,
+.bg-\[\#1A1918\].text-black,
+.bg-navy.text-black,
+.bg-\[\#DFE968\].text-black {
+  color: #FAF8F5 !important;
+}
+
+.bg-\[\#000000\] svg,
+.bg-black svg,
+.bg-\[\#1A1918\] svg,
+.bg-navy svg,
+.bg-\[\#DFE968\] svg {
+  color: #FAF8F5 !important;
+  stroke: #FAF8F5 !important;
+}
+
+/* ── Pitch Black Utility Helpers (formerly Navy) ── */
 .bg-navy {
-  background-color: #1E3A5F !important;
+  background-color: #000000 !important;
   color: #FAF8F5 !important;
 }
 .text-navy {
-  color: #1E3A5F !important;
+  color: #000000 !important;
 }
 .border-navy {
-  border-color: #1E3A5F !important;
+  border-color: #000000 !important;
 }
 .badge-navy {
-  background-color: #1E3A5F !important;
+  background-color: #000000 !important;
   color: #FAF8F5 !important;
   border: 1px solid #1A1918 !important;
 }

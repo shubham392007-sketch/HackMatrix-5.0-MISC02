@@ -229,7 +229,7 @@ export default function SettingsHelpDrawer({
         className="relative z-10 w-full max-w-2xl bg-[#FAF8F5] text-[#1A1918] h-full shadow-2xl border-l-2 border-[#1A1918] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
       >
         {/* Drawer Header */}
-        <div className="p-5 sm:p-6 bg-[#1E3A5F]/30 border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
+        <div className="p-5 sm:p-6 bg-[#FAF8F5] border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1918] text-white font-mono text-[10px] font-bold uppercase tracking-wider">
@@ -342,7 +342,7 @@ export default function SettingsHelpDrawer({
                           setActiveTopic(t.id);
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-black text-sm text-[#1A1918]">
@@ -375,7 +375,7 @@ export default function SettingsHelpDrawer({
                           setActiveTopic("workflows");
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
                         <span className="font-black text-sm text-[#1A1918] flex items-center gap-1.5">
                           <Compass className="w-4 h-4 text-emerald-700" />
@@ -404,7 +404,7 @@ export default function SettingsHelpDrawer({
                           setActiveTopic("glossary");
                           setSearchQuery("");
                         }}
-                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
+                        className="p-3.5 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 cursor-pointer shadow-[2px_2px_0_0_#1A1918] transition-all space-y-1"
                       >
                         <span className="font-black text-xs text-[#1A1918]">
                           {g.term}
@@ -435,7 +435,7 @@ export default function SettingsHelpDrawer({
           ) : activeTopic === "workflows" ? (
             /* ──────────────── GUIDED WORKFLOWS VIEW ──────────────── */
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
+              <div className="p-5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
                 <div className="flex items-center gap-2">
                   <Compass className="w-5 h-5 text-[#1A1918]" />
                   <h3 className="text-lg font-black text-[#1A1918]">
@@ -500,7 +500,7 @@ export default function SettingsHelpDrawer({
           ) : activeTopic === "glossary" ? (
             /* ──────────────── SETTINGS GLOSSARY VIEW ──────────────── */
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
+              <div className="p-5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-2">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-[#1A1918]" />
                   <h3 className="text-lg font-black text-[#1A1918]">
@@ -647,7 +647,7 @@ export default function SettingsHelpDrawer({
                 </button>
                 {expandedSections.whoCanUse && (
                   <div className="p-5 border-t border-[#1A1918]/15 space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-[#1E3A5F]/20 border border-[#1A1918]/20">
+                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/20">
                       <strong className="text-[#1A1918] font-bold">Authorized Personas:</strong>{" "}
                       <span className="text-[#1A1918]/85 font-medium">{currentTopicData.whoCanUse}</span>
                     </div>

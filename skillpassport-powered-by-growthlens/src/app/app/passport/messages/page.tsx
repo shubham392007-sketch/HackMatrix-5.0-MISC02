@@ -160,7 +160,7 @@ export default function RecruiterMessagesPage() {
         {/* Status Banner */}
         <div className="p-4 rounded-2xl bg-white border border-[#1C1C1C]/15 flex items-center justify-between shadow-[2px_2px_0_0_#1C1C1C]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center text-[#1C1C1C]">
+            <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] flex items-center justify-center text-[#FAF8F5]">
               <Mail className="w-5 h-5" />
             </div>
             <div>
@@ -176,12 +176,12 @@ export default function RecruiterMessagesPage() {
             <button
               onClick={() => fetchMessages(true)}
               disabled={refreshing}
-              className="p-1.5 rounded-full border border-[#1C1C1C]/20 hover:bg-[#1C1C1C]/5 text-[#1C1C1C] text-xs transition-colors"
+              className="p-1.5 rounded-full border border-[#1A1918]/20 hover:bg-[#1A1918]/5 text-[#1A1918] text-xs transition-colors"
               title="Refresh messages"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <span className="text-xs font-black px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C]">
+            <span className="text-xs font-black px-3 py-1 rounded-full bg-[#000000] text-[#FAF8F5] border border-[#1A1918]">
               {unreadCount} Unread Inquiry{unreadCount === 1 ? "" : "ies"}
             </span>
           </div>
@@ -205,7 +205,7 @@ export default function RecruiterMessagesPage() {
             </div>
             <Link
               href="/app/passport/share"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#000000] hover:bg-[#1A1918] border border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918]"
             >
               <span>Create a Recruiter Share Link &rarr;</span>
             </Link>
@@ -318,7 +318,7 @@ export default function RecruiterMessagesPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleReadStatus(selectedMessage)}
-                        className="px-3.5 py-2 rounded-full border border-[#1C1C1C] text-xs font-bold text-[#1C1C1C] hover:bg-[#1C1C1C]/5 flex items-center gap-1"
+                        className="px-3.5 py-2 rounded-full border border-[#1A1918] text-xs font-bold text-[#1A1918] hover:bg-[#1A1918]/5 flex items-center gap-1"
                       >
                         {selectedMessage.isRead ? (
                           <>
@@ -335,7 +335,7 @@ export default function RecruiterMessagesPage() {
 
                       <a
                         href={`mailto:${selectedMessage.senderEmail}?subject=${encodeURIComponent(`Re: ${selectedMessage.subject || "Skill Passport Inquiry"}`)}`}
-                        className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-1.5"
+                        className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5"
                       >
                         <Mail className="w-3.5 h-3.5" />
                         <span>Reply via Email</span>

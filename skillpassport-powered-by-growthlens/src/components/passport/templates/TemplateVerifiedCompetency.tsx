@@ -139,7 +139,7 @@ export default function TemplateVerifiedCompetency({
                     }
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-xs font-bold text-[#1C1C1C] hover:bg-[#DFE968] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1C1C1C] text-xs font-bold text-[#1C1C1C] hover:bg-[#000000] hover:text-[#FAF8F5] transition-colors"
                   >
                     <LinkedinIcon className="w-3.5 h-3.5 text-[#0077b5]" />
                     <span>LinkedIn</span>
@@ -152,7 +152,7 @@ export default function TemplateVerifiedCompetency({
           {projection.allowRecruiterMessaging && onOpenContact && (
             <button
               onClick={onOpenContact}
-              className="px-6 py-3 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[2px] border-[#1C1C1C] text-xs font-black tracking-wider uppercase text-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] flex items-center gap-2 shrink-0 cursor-pointer transition-all self-start"
+              className="px-6 py-3 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[2px] border-[#1A1918] text-xs font-black tracking-wider uppercase text-[#FAF8F5] shadow-[3px_3px_0_0_#1C1C1C] flex items-center gap-2 shrink-0 cursor-pointer transition-all self-start"
             >
               <Mail className="w-4 h-4" />
               <span>Contact Candidate</span>
@@ -299,7 +299,7 @@ export default function TemplateVerifiedCompetency({
                   <div className="pt-2 text-center">
                     <button
                       onClick={() => setShowAllSkills(!showAllSkills)}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] text-xs font-black text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] hover:bg-[#DFE968] transition-all cursor-pointer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] text-xs font-black text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] hover:bg-[#000000] hover:text-[#FAF8F5] transition-all cursor-pointer"
                     >
                       {showAllSkills ? (
                         <>

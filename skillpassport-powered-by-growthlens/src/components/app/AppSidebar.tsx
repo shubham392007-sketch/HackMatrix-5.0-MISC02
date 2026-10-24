@@ -358,7 +358,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full border border-[#1A1918] bg-[#FAF8F5] hover:bg-[#1E3A5F] transition-colors lg:hidden"
+            className="p-1.5 rounded-full border border-[#1A1918] bg-[#FAF8F5] hover:bg-[#000000] hover:text-[#FAF8F5] transition-colors lg:hidden"
             aria-label="Close navigation"
           >
             <X className="w-4 h-4 text-[#1A1918]" />
@@ -374,12 +374,12 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
       >
         {WORKSPACE_NAV.map((section, idx) => (
           <div key={section.category}>
-            <p
-              className="text-[17px] text-[#1A1918] px-2 mb-1 leading-tight select-none font-normal"
-              style={{ fontFamily: "'Yellowtail', cursive" }}
-            >
-              {section.category}
-            </p>
+            <div className="flex items-center gap-2 px-2.5 py-1 mb-2 rounded-full bg-[#FAF8F5] border border-[#1A1918] shadow-[1.5px_1.5px_0_#1A1918] select-none w-fit">
+              <span className="w-2 h-2 rounded-full bg-[#E0A96D] border border-[#1A1918]" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#1A1918]">
+                {section.category}
+              </span>
+            </div>
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
@@ -405,10 +405,10 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                     }}
                     className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
-                        ? "bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] shadow-[1.5px_1.5px_0_0_#1A1918]"
+                        ? "bg-[#000000] border border-[#1A1918] text-[#FAF8F5] shadow-[1.5px_1.5px_0_0_#1A1918]"
                         : isNavigatingThis
                         ? "bg-[#FAF8F5] border border-[#1A1918]/40 text-[#1A1918]"
-                        : "text-[#1A1918]/75 hover:bg-[#FAF8F5] hover:text-[#1A1918]"
+                        : "text-[#1A1918]/80 hover:bg-[#EAE5D9]/60 hover:text-[#1A1918]"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate pr-1">
@@ -433,8 +433,8 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
 
             {/* Dividing Line after each domain (except the last section) */}
             {idx < WORKSPACE_NAV.length - 1 && (
-              <div className="pt-3.5 pb-0.5 px-2">
-                <hr className="border-t border-[#1A1918]/15" />
+              <div className="pt-3 pb-0.5 px-2">
+                <hr className="border-t border-[#1A1918]/12" />
               </div>
             )}
           </div>
@@ -449,7 +449,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
           onClick={onLinkClick}
           className="flex items-center gap-2.5 group hover:opacity-85 transition-opacity"
         >
-          <div className="w-8 h-8 rounded-full bg-[#1E3A5F] border border-[#1A1918] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1A1918]">
+          <div className="w-8 h-8 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center font-black text-xs shadow-[1px_1px_0_0_#1A1918]">
             {realInitials}
           </div>
           <div className="min-w-0 flex-1">

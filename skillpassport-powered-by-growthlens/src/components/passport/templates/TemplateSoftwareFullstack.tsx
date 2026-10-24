@@ -43,7 +43,7 @@ export default function TemplateSoftwareFullstack({
       <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF6DF] border-[2px] border-[#1C1C1C] shadow-[4px_4px_0_0_#1C1C1C] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#1C1C1C]/15">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#000000] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#FAF8F5]">
               <Server className="w-3 h-3 text-[#1C1C1C]" />
               Software & Full-Stack Systems Architecture
             </span>
@@ -91,7 +91,7 @@ export default function TemplateSoftwareFullstack({
                 }
                 target="_blank"
                 rel="noreferrer"
-                className="px-2.5 py-1 rounded-full bg-white hover:bg-[#DFE968] border border-[#1C1C1C] text-[11px] font-bold text-[#1C1C1C] inline-flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1 rounded-full bg-white hover:bg-[#000000] hover:text-[#FAF8F5] border border-[#1C1C1C] text-[11px] font-bold text-[#1C1C1C] inline-flex items-center gap-1 transition-colors"
               >
                 <span>LinkedIn</span>
                 <ExternalLink className="w-2.5 h-2.5" />

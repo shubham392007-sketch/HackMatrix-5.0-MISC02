@@ -400,13 +400,13 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
   return (
     <div className="space-y-6">
       {/* Header Actions & Notifications */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-[#1C1C1C]/15 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] shadow-[2.5px_2.5px_0_#1A1918]">
         <div>
-          <h2 className="text-sm font-extrabold text-[#1C1C1C] flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
+          <h2 className="text-sm font-extrabold text-[#1A1918] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#E0A96D]" />
             Passport Content Builder & Customizer
           </h2>
-          <p className="text-xs text-[#1C1C1C]/70">
+          <p className="text-xs text-[#1A1918]/70">
             Control optional sections, add professional experiences, and organize your passport story.
           </p>
         </div>
@@ -439,16 +439,16 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
           <button
             onClick={handleConfirmAndFinalize}
             disabled={saving || finalizing}
-            className={`pill-btn text-xs py-1.5 px-3.5 flex items-center gap-1.5 border border-[#1C1C1C] transition-all cursor-pointer font-extrabold ${
+            className={`pill-btn text-xs py-1.5 px-3.5 flex items-center gap-1.5 border border-[#1A1918] transition-all cursor-pointer font-extrabold ${
               finalized
                 ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-800 shadow-[1px_1px_0_0_#065f46]"
-                : "bg-[#DFE968] hover:bg-[#d4de58] text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] active:translate-x-[1px] active:translate-y-[1px]"
+                : "bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] active:translate-x-[1px] active:translate-y-[1px]"
             }`}
           >
             {finalizing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <CheckCircle className={`w-3.5 h-3.5 ${finalized ? "text-emerald-700" : "text-[#1C1C1C]"}`} />
+              <CheckCircle className={`w-3.5 h-3.5 ${finalized ? "text-emerald-700" : "text-[#FAF8F5]"}`} />
             )}
             <span>{finalized ? "Flow Finalized ✓" : "Finalize & Confirm Content Flow"}</span>
           </button>
@@ -490,7 +490,7 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
       )}
 
       {/* Tabs Row */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-[#1C1C1C]/15 scrollbar-none">
+      <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 rounded-2xl bg-[#EAE5D9]/50 border border-[#1A1918]/15 scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -500,14 +500,16 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
               onClick={() => setActiveTab(tab.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 isActive
-                  ? "bg-[#DFE968] text-[#1C1C1C] border border-[#1C1C1C] shadow-[1px_1px_0_0_#1C1C1C]"
-                  : "bg-white/80 hover:bg-stone-100 text-[#1C1C1C]/70 hover:text-[#1C1C1C] border border-transparent"
+                  ? "bg-[#000000] text-[#FAF8F5] border border-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
+                  : "bg-[#FAF8F5] hover:bg-white text-[#1A1918]/80 hover:text-[#1A1918] border border-[#1A1918]/20 shadow-[1px_1px_0_0_#1A1918]"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
               {tab.count !== undefined && tab.count > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#1C1C1C]/10 font-mono font-bold">
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                  isActive ? "bg-[#FAF8F5]/20 text-[#FAF8F5]" : "bg-[#1A1918]/10 text-[#1A1918]"
+                }`}>
                   {tab.count}
                 </span>
               )}
@@ -612,7 +614,7 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
                 <button
                   onClick={handleConfirmAndFinalize}
                   disabled={saving || finalizing}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#DFE968] hover:bg-[#d4de58] text-[#1C1C1C] border-2 border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all active:translate-x-[1px] active:translate-y-[1px]"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] border-2 border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all active:translate-x-[1px] active:translate-y-[1px]"
                 >
                   {finalizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 stroke-[3]" />}
                   <span>{finalized ? "Flow Finalized ✓" : "Finalize & Confirm Content"}</span>

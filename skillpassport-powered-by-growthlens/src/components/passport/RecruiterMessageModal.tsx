@@ -126,7 +126,7 @@ export default function RecruiterMessageModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1 pr-6">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black uppercase tracking-wider mb-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black uppercase tracking-wider mb-1">
                 <Mail className="w-3 h-3 text-[#1A1918]" />
                 Direct Candidate Outreach
               </div>
@@ -263,7 +263,7 @@ export default function RecruiterMessageModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2.5 rounded-full bg-[#1E3A5F] hover:bg-[#d4df55] border-[1.5px] border-[#1A1918] text-xs font-black tracking-wider uppercase text-[#1A1918] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-xs font-black tracking-wider uppercase text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
                 >
                   {loading ? (
                     <>

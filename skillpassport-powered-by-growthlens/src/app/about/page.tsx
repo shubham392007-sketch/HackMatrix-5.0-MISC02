@@ -26,7 +26,7 @@ export default function AboutPage() {
         {/* ── HERO SECTION ────────────────────────────────────────────── */}
         <section className="relative max-w-[1400px] mx-auto px-5 md:px-10 pt-10 pb-16 lg:pt-16 lg:pb-24">
           <div className="text-center max-w-4xl mx-auto space-y-6">
-            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
               THE SKILLPASSPORT MANIFESTO
             </span>
 
@@ -49,7 +49,7 @@ export default function AboutPage() {
         {/* ── MANIFESTO QUOTE BLOCK ───────────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-12 border-t border-[#1A1918]/15">
           <ScrollReveal>
-            <div className="bg-[#1E3A5F]/30 rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[4px_4px_0_0_#1A1918]">
+            <div className="bg-[#FAF8F5] rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[4px_4px_0_0_#1A1918]">
               <blockquote
                 className="text-3xl sm:text-4xl md:text-5xl text-[#1A1918] leading-snug font-normal select-none"
                 style={{ fontFamily: "'Yellowtail', cursive" }}
@@ -113,7 +113,7 @@ export default function AboutPage() {
 
             {/* The SkillPassport Paradigm */}
             <ScrollReveal delayMs={100}>
-              <div className="bg-[#1E3A5F]/50 border-[1.5px] border-[#1A1918] rounded-[32px] p-8 h-full shadow-[3px_3px_0_0_#1A1918] space-y-6">
+              <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[32px] p-8 h-full shadow-[3px_3px_0_0_#1A1918] space-y-6">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#4A7A4E] block mb-2">
                     SKILLPASSPORT METHODOLOGY
@@ -148,7 +148,7 @@ export default function AboutPage() {
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-16 border-t border-[#1A1918]/15">
           <ScrollReveal>
             <div className="text-center mb-12">
-              <span className="inline-block px-4 py-1 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-extrabold tracking-[0.14em] uppercase mb-3 shadow-[2px_2px_0_0_#1A1918]">
+              <span className="inline-block px-4 py-1 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-extrabold tracking-[0.14em] uppercase mb-3 shadow-[2px_2px_0_0_#1A1918]">
                 GUIDING TENETS
               </span>
               <ScriptHeading

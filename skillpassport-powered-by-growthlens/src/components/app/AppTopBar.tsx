@@ -243,12 +243,12 @@ export default function AppTopBar({
   }, [breadcrumbs, pathname, title]);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FBF1CF] border-b-[1.5px] border-[#1C1C1C] px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden shadow-xs">
+    <header className="sticky top-0 z-40 bg-[#FAF8F5] border-b-[1.5px] border-[#1A1918] px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden shadow-xs">
       {/* Left side: Breadcrumbs, Back, Title */}
       <div className="min-w-0 flex-1">
         {/* Breadcrumb Navigation */}
         {resolvedBreadcrumbs && resolvedBreadcrumbs.length > 0 ? (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[10.5px] font-bold text-ink/70 mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#1A1918]/70 mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
             {resolvedBreadcrumbs.map((crumb, idx) => {
               const isLast = idx === resolvedBreadcrumbs.length - 1;
               return (
@@ -256,16 +256,16 @@ export default function AppTopBar({
                   {crumb.href && !isLast ? (
                     <Link
                       href={crumb.href}
-                      className="hover:text-ink hover:underline transition-colors shrink-0"
+                      className="hover:text-[#1A1918] hover:underline transition-colors shrink-0"
                     >
                       {crumb.label}
                     </Link>
                   ) : (
-                    <span className={`truncate ${isLast ? "text-ink font-extrabold" : "shrink-0"}`}>
+                    <span className={`truncate ${isLast ? "text-[#1A1918] font-extrabold" : "shrink-0"}`}>
                       {crumb.label}
                     </span>
                   )}
-                  {!isLast && <ChevronRight className="w-3 h-3 text-ink/40 shrink-0" />}
+                  {!isLast && <ChevronRight className="w-3 h-3 text-[#1A1918]/40 shrink-0" />}
                 </React.Fragment>
               );
             })}
@@ -273,7 +273,7 @@ export default function AppTopBar({
         ) : backHref ? (
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 hover:text-[#1C1C1C] mb-0.5 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#1A1918]/60 hover:text-[#1A1918] mb-0.5 transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             <span>{backLabel || "Back"}</span>
@@ -281,14 +281,11 @@ export default function AppTopBar({
         ) : null}
 
         <div className="flex items-center gap-2.5 min-w-0">
-          <h1
-            className="text-xl sm:text-2xl text-[#1C1C1C] leading-none font-normal whitespace-nowrap truncate"
-            style={{ fontFamily: "'Yellowtail', cursive" }}
-          >
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1A1918] tracking-tight leading-tight whitespace-nowrap truncate">
             {title}
           </h1>
           {Boolean(badge) && badge !== "DEMO DATA" && (
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border border-[#1C1C1C] uppercase shadow-[1px_1px_0_0_#1C1C1C] shrink-0 whitespace-nowrap ${badgeColor || "bg-[#DFE968]"}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border border-[#1A1918] uppercase shadow-[1px_1px_0_0_#1A1918] shrink-0 whitespace-nowrap ${badgeColor || "bg-[#E0A96D] text-[#1A1918]"}`}>
               {badge}
             </span>
           )}
@@ -296,7 +293,7 @@ export default function AppTopBar({
 
         {description && (
           <p
-            className="text-[11px] sm:text-xs font-medium text-[#1C1C1C]/75 mt-0.5 max-w-2xl line-clamp-1"
+            className="text-[11px] sm:text-xs font-medium text-[#1A1918]/75 mt-0.5 max-w-2xl line-clamp-1"
             title={description}
           >
             {description}
@@ -314,7 +311,7 @@ export default function AppTopBar({
           onClick={() => setIsHelpOpen(true)}
           title="Product Help & Conceptual Guidance"
           aria-label="Product Help & Conceptual Guidance"
-          className="w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C] cursor-pointer"
+          className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#1A1918] flex items-center justify-center text-[#1A1918]/80 hover:text-[#1A1918] hover:bg-[#EAE5D9]/50 transition-all shadow-[1.5px_1.5px_0_0_#1A1918] cursor-pointer active:translate-x-[0.5px] active:translate-y-[0.5px]"
         >
           <HelpCircle className="w-4 h-4" />
         </button>
@@ -325,7 +322,7 @@ export default function AppTopBar({
             type="button"
             onClick={() => setIsNotifOpen((prev) => !prev)}
             title="Notifications"
-            className="relative w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
+            className="relative w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#1A1918] flex items-center justify-center text-[#1A1918]/80 hover:text-[#1A1918] hover:bg-[#EAE5D9]/50 transition-all shadow-[1.5px_1.5px_0_0_#1A1918] cursor-pointer active:translate-x-[0.5px] active:translate-y-[0.5px]"
           >
             <Bell className="w-4 h-4" />
             {activeUnreadCount > 0 && (
@@ -536,7 +533,7 @@ export default function AppTopBar({
                       : "/app/notifications"
                   }
                   onClick={() => setIsNotifOpen(false)}
-                  className="inline-flex items-center justify-center w-full py-1.5 rounded-xl bg-ink text-[#FBF1CF] text-xs font-semibold hover:bg-ink/90 transition-all"
+                  className="inline-flex items-center justify-center w-full py-1.5 rounded-xl bg-[#000000] text-[#FAF8F5] border border-[#1A1918] text-xs font-bold hover:bg-[#1A1918] transition-all shadow-[1px_1px_0_0_#1A1918]"
                 >
                   Open Notification Center
                 </Link>
@@ -550,23 +547,23 @@ export default function AppTopBar({
           <button
             type="button"
             onClick={() => setIsProfileOpen((prev) => !prev)}
-            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/80 border border-ink/20 hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
+            className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-[#FAF8F5] border border-[#1A1918] hover:bg-[#EAE5D9]/50 transition-all shadow-[1.5px_1.5px_0_0_#1A1918] cursor-pointer"
           >
-            <div className="w-6 h-6 rounded-full bg-[#DFE968] border border-ink font-black text-[10px] flex items-center justify-center text-ink">
+            <div className="w-6 h-6 rounded-full bg-[#E0A96D] border border-[#1A1918] font-black text-[10px] flex items-center justify-center text-[#1A1918]">
               {realInitials}
             </div>
-            <span className="text-xs font-bold text-ink hidden sm:inline max-w-[120px] truncate">
+            <span className="text-xs font-bold text-[#1A1918] hidden sm:inline max-w-[120px] truncate">
               {realDisplayName}
             </span>
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border-2 border-ink shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
-              <div className="p-2.5 border-b border-ink/10 space-y-0.5">
-                <div className="font-bold text-ink truncate">
+            <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] shadow-[4px_4px_0_0_#1A1918] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
+              <div className="p-2.5 border-b border-[#1A1918]/10 space-y-0.5">
+                <div className="font-bold text-[#1A1918] truncate">
                   {realDisplayName}
                 </div>
-                <div className="text-[10px] text-ink/60 truncate">
+                <div className="text-[10px] text-[#1A1918]/60 truncate">
                   {realHeadline}
                 </div>
               </div>
@@ -575,38 +572,38 @@ export default function AppTopBar({
                 <Link
                   href="/app/settings/profile"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-ink hover:bg-[#FBF1CF] font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#1A1918] hover:bg-[#EAE5D9]/60 font-semibold transition-colors"
                 >
-                  <User className="w-3.5 h-3.5 text-ink/60" />
+                  <User className="w-3.5 h-3.5 text-[#1A1918]/60" />
                   <span>Profile Identity</span>
                 </Link>
                 <Link
                   href="/app/settings/connections"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-ink hover:bg-[#FBF1CF] font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#1A1918] hover:bg-[#EAE5D9]/60 font-semibold transition-colors"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-ink/60" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#1A1918]/60" />
                   <span>Connected Accounts</span>
                 </Link>
                 <Link
                   href="/app/settings/privacy"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-ink hover:bg-[#FBF1CF] font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#1A1918] hover:bg-[#EAE5D9]/60 font-semibold transition-colors"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-ink/60" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#1A1918]/60" />
                   <span>Privacy & Consent</span>
                 </Link>
                 <Link
                   href="/app/settings"
                   onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-ink hover:bg-[#FBF1CF] font-medium transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#1A1918] hover:bg-[#EAE5D9]/60 font-semibold transition-colors"
                 >
-                  <Settings className="w-3.5 h-3.5 text-ink/60" />
+                  <Settings className="w-3.5 h-3.5 text-[#1A1918]/60" />
                   <span>Preferences & Settings</span>
                 </Link>
               </div>
 
-              <div className="pt-1 border-t border-ink/10">
+              <div className="pt-1 border-t border-[#1A1918]/10">
                 <button
                   type="button"
                   onClick={async () => {

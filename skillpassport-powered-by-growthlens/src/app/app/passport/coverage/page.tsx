@@ -22,6 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
+import EvidenceHealthDonut from "@/components/passport/EvidenceHealthDonut";
 
 export default function EvidenceCoveragePage() {
   const { skills, evidenceItems } = useEvidence();
@@ -61,72 +62,15 @@ export default function EvidenceCoveragePage() {
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
-      {/* Coverage Health Scorecard */}
-      <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#8C827A]">
-              Passport Evidence Health
-            </span>
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl sm:text-5xl font-black text-[#1F1E1D]">
-                {coveragePercentage}%
-              </span>
-              <span className="text-sm font-bold text-[#2E6941]">
-                Sufficiently Corroborated
-              </span>
-            </div>
-            <p className="text-xs text-[#5A5550] max-w-md">
-              {sufficientSkills.length} of {totalSkills} recognized competencies meet organizational thresholds for comprehensive evidence backing.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
-            <div className="bg-white p-3.5 rounded-2xl border border-[#E0D9CD] text-center">
-              <div className="text-2xl font-bold text-[#2E6941]">{sufficientSkills.length}</div>
-              <div className="text-[10px] uppercase font-bold text-[#8C827A]">Sufficient</div>
-            </div>
-            <div className="bg-white p-3.5 rounded-2xl border border-[#E0D9CD] text-center">
-              <div className="text-2xl font-bold text-[#B07219]">{incompleteSkills.length}</div>
-              <div className="text-[10px] uppercase font-bold text-[#8C827A]">Incomplete</div>
-            </div>
-            <div className="bg-white p-3.5 rounded-2xl border border-[#E0D9CD] text-center">
-              <div className="text-2xl font-bold text-[#BA1A1A]">{insufficientSkills.length}</div>
-              <div className="text-[10px] uppercase font-bold text-[#8C827A]">Insufficient</div>
-            </div>
-            <div className="bg-white p-3.5 rounded-2xl border border-[#E0D9CD] text-center">
-              <div className="text-2xl font-bold text-[#8A38F5]">{conflictingSkills.length}</div>
-              <div className="text-[10px] uppercase font-bold text-[#8C827A]">Conflicting</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Multi-segment Progress Bar */}
-        <div className="mt-6 pt-4 border-t border-[#E8E1D5]">
-          <div className="h-3 w-full bg-[#E5DFD5] rounded-full overflow-hidden flex">
-            <div
-              style={{ width: `${totalSkills > 0 ? (sufficientSkills.length / totalSkills) * 100 : 0}%` }}
-              className="bg-[#2E6941] h-full"
-              title="Sufficient"
-            />
-            <div
-              style={{ width: `${totalSkills > 0 ? (incompleteSkills.length / totalSkills) * 100 : 0}%` }}
-              className="bg-[#B07219] h-full"
-              title="Incomplete"
-            />
-            <div
-              style={{ width: `${totalSkills > 0 ? (insufficientSkills.length / totalSkills) * 100 : 0}%` }}
-              className="bg-[#BA1A1A] h-full"
-              title="Insufficient"
-            />
-            <div
-              style={{ width: `${totalSkills > 0 ? (conflictingSkills.length / totalSkills) * 100 : 0}%` }}
-              className="bg-[#8A38F5] h-full"
-              title="Conflicting"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Interactive Evidence Health Donut & Scorecard */}
+      <EvidenceHealthDonut
+        sufficientCount={sufficientSkills.length}
+        incompleteCount={incompleteSkills.length}
+        insufficientCount={insufficientSkills.length}
+        conflictingCount={conflictingSkills.length}
+        activeFilter={filterState}
+        onSelectFilter={setFilterState}
+      />
 
 
       {/* Filter Tabs */}

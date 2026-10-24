@@ -195,7 +195,7 @@ export default function EvidenceCenterPage() {
                 <div
                   key={st.num}
                   className={`p-3.5 rounded-xl border border-[#1A1918] flex flex-col justify-between shadow-[1.5px_1.5px_0_0_#1A1918] ${
-                    isActive ? "bg-[#1E3A5F] text-[#FAF8F5]" : "bg-[#FAF8F5] text-[#1A1918]"
+                    isActive ? "bg-[#000000] text-[#FAF8F5]" : "bg-[#FAF8F5] text-[#1A1918]"
                   }`}
                 >
                   <div>
@@ -420,8 +420,8 @@ export default function EvidenceCenterPage() {
                         <ReviewStatusBadge status={ev.reviewStatus} />
 
                         {isOllamaAnalyzed ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
-                            <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1A1918] bg-[#000000] text-[#FAF8F5]">
+                            <Cpu className="w-3 h-3 text-[#FAF8F5]" />
                             {analysis.model_name || "qwen3:8b"}
                           </span>
                         ) : isRuleBased ? (

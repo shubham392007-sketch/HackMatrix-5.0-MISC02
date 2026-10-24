@@ -145,8 +145,8 @@ export default function SkillPassportBootScreen({
           <defs>
             {/* Subtle soft gradient definition for ambient glow */}
             <radialGradient id="sp-ambient-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#1E3A5F" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#1E3A5F" stopOpacity="0" />
+              <stop offset="0%" stopColor="#000000" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
             </radialGradient>
           </defs>
 

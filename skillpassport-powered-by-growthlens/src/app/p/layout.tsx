@@ -6,7 +6,7 @@ export default function RecruiterPublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-[#1A1918] font-sans antialiased selection:bg-[#1E3A5F] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-[#1A1918] font-sans antialiased selection:bg-[#000000] selection:text-[#FAF8F5]">
       {children}
     </div>
   );

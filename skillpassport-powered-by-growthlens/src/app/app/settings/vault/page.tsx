@@ -332,7 +332,7 @@ export default function EvidenceVaultPage() {
         ) : artifacts.length === 0 ? (
           /* Honest Empty States */
           <div className="p-12 sm:p-16 rounded-[28px] border-[2px] border-dashed border-[#1C1C1C]/30 bg-white text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#DFE968] border border-[#1C1C1C] mx-auto flex items-center justify-center text-[#1C1C1C]">
+            <div className="w-14 h-14 rounded-2xl bg-[#000000] border border-[#1A1918] mx-auto flex items-center justify-center text-[#FAF8F5]">
               <Archive className="w-7 h-7" />
             </div>
             <div className="space-y-1">

@@ -36,7 +36,7 @@ export default function GrowthLensPage() {
         {/* ── HERO SECTION ────────────────────────────────────────────── */}
         <section className="relative max-w-[1400px] mx-auto px-5 md:px-10 pt-12 pb-16 lg:pt-20 lg:pb-24">
           <div className="text-center max-w-4xl mx-auto space-y-6">
-            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
               FOUNDATION & ECOSYSTEM
             </span>
 
@@ -74,7 +74,7 @@ export default function GrowthLensPage() {
         {/* ── THE FOUNDING CREED ──────────────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-12 border-t border-[#1A1918]/15">
           <ScrollReveal>
-            <div className="bg-[#1E3A5F]/30 rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[4px_4px_0_0_#1A1918]">
+            <div className="bg-[#FAF8F5] rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[4px_4px_0_0_#1A1918]">
               <span className="text-[10px] font-black tracking-[0.16em] uppercase text-[#1A1918]/60 block mb-3">
                 THE CORE AXIOM
               </span>
@@ -171,10 +171,10 @@ export default function GrowthLensPage() {
 
             {/* Box 2: SkillPassport Extension */}
             <ScrollReveal delayMs={100}>
-              <div className="gl-card p-8 sm:p-10 h-full flex flex-col justify-between border-[1.5px] border-[#1A1918] shadow-[4px_4px_0_0_#1A1918] bg-[#1E3A5F]/20">
+              <div className="gl-card p-8 sm:p-10 h-full flex flex-col justify-between border-[1.5px] border-[#1A1918] shadow-[4px_4px_0_0_#1A1918] bg-[#FAF8F5]">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <span className="px-3 py-1 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[#1A1918] text-[10px] font-black uppercase tracking-wider shadow-[1.5px_1.5px_0_0_#1A1918]">
+                    <span className="px-3 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black uppercase tracking-wider shadow-[1.5px_1.5px_0_0_#1A1918]">
                       INDIVIDUAL EXTENSION
                     </span>
                     <span className="text-xs font-mono font-bold text-[#1A1918]/60">
@@ -264,7 +264,7 @@ export default function GrowthLensPage() {
             <ScrollReveal delayMs={50}>
               <div className="gl-card p-6 h-full flex flex-col justify-between border-[1.5px] border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] bg-[#FAF8F5]">
                 <div className="space-y-4">
-                  <div className="w-10 h-10 rounded-2xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1A1918]">
+                  <div className="w-10 h-10 rounded-2xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1A1918]">
                     <Layers className="w-5 h-5 text-[#1A1918]" />
                   </div>
                   <div>
@@ -339,7 +339,7 @@ export default function GrowthLensPage() {
             <ScrollReveal delayMs={200}>
               <div className="gl-card p-6 h-full flex flex-col justify-between border-[1.5px] border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] bg-[#FAF8F5]">
                 <div className="space-y-4">
-                  <div className="w-10 h-10 rounded-2xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1A1918]">
+                  <div className="w-10 h-10 rounded-2xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1A1918]">
                     <LineChart className="w-5 h-5 text-[#1A1918]" />
                   </div>
                   <div>
@@ -450,17 +450,17 @@ export default function GrowthLensPage() {
         {/* ── CALL TO ACTION ──────────────────────────────────────────── */}
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-16 border-t border-[#1A1918]/15">
           <ScrollReveal>
-            <div className="bg-[#1E3A5F] rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[5px_5px_0_0_#1A1918] space-y-6">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#1A1918]">
+            <div className="bg-[#000000] rounded-[36px] border-[1.5px] border-[#1A1918] p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-[5px_5px_0_0_#1A1918] space-y-6">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#FAF8F5]">
                 Ready to experience your{" "}
                 <span
-                  className="font-normal text-[#1A1918]"
+                  className="font-normal text-[#FAF8F5]"
                   style={{ fontFamily: "'Yellowtail', cursive" }}
                 >
                   SkillPassport?
                 </span>
               </h2>
-              <p className="text-sm font-semibold text-[#1A1918]/80 max-w-xl mx-auto leading-relaxed">
+              <p className="text-sm font-semibold text-[#FAF8F5]/80 max-w-xl mx-auto leading-relaxed">
                 Connect your first repository or explore the pre-loaded sandbox with 12 verified skills, live trajectory curves, and recruiter preview links.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">

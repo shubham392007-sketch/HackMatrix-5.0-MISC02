@@ -26,7 +26,7 @@ export default function DevelopersPage() {
           <div className="max-w-3xl mx-auto space-y-5">
             {/* Eyebrow Label */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#FAF8F5] text-[10px] sm:text-[11px] font-black tracking-[0.16em] uppercase shadow-[2px_2px_0px_#1A1918]">
-              <span className="w-2 h-2 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]" />
+              <span className="w-2 h-2 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5]" />
               <span>THE TEAM BEHIND SKILLPASSPORT &amp; GROWTHLENS</span>
             </div>
 
@@ -59,7 +59,7 @@ export default function DevelopersPage() {
 
         {/* ── EDITORIAL PHILOSOPHY QUOTE ──────────────────────────────── */}
         <section className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="p-8 sm:p-12 rounded-[36px] border-[1.5px] border-[#1A1918] bg-[#1E3A5F]/30 shadow-[4px_4px_0px_#1A1918] text-center space-y-4">
+          <div className="p-8 sm:p-12 rounded-[36px] border-[1.5px] border-[#1A1918] bg-[#FAF8F5] shadow-[4px_4px_0px_#1A1918] text-center space-y-4">
             <blockquote
               className="text-2xl sm:text-3xl md:text-4xl leading-snug font-normal text-[#1A1918]"
               style={{ fontFamily: "'Yellowtail', cursive" }}
@@ -88,8 +88,8 @@ export default function DevelopersPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="p-6 rounded-[28px] border-[1.5px] border-[#1A1918] bg-[#FAF8F5] shadow-[3px_3px_0px_#1A1918]">
-              <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-4 shadow-[1.5px_1.5px_0px_#1A1918]">
-                <Cpu className="w-5 h-5 text-[#1A1918]" />
+              <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-4 shadow-[1.5px_1.5px_0px_#1A1918]">
+                <Cpu className="w-5 h-5 text-[#FAF8F5]" />
               </div>
               <h3 className="text-lg font-black mb-2 text-[#1A1918]">
                 Local Qwen3 8B RAG Pipeline
@@ -137,7 +137,7 @@ export default function DevelopersPage() {
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
                 href="/app/evidence"
-                className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-[3px_3px_0px_#1A1918]"
+                className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1A1918] hover:translate-y-[-1px] transition-all shadow-[3px_3px_0px_#1A1918]"
               >
                 OPEN EVIDENCE CENTER
                 <ArrowRight className="w-4 h-4" />

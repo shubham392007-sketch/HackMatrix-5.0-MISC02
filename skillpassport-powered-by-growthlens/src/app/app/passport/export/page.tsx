@@ -149,7 +149,7 @@ export default function PassportExportPage() {
                   onClick={() => setSelectedTemplate(tmpl.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     isSelected
-                      ? "bg-[#DFE968] text-[#1C1C1C] border border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C]"
+                      ? "bg-[#000000] text-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918]"
                       : "bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200"
                   }`}
                 >

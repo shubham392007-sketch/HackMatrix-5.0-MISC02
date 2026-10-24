@@ -37,7 +37,7 @@ export default function MobileTopNav() {
         <button
           type="button"
           onClick={toggleMobileSidebar}
-          className="p-1.5 rounded-xl border border-[#1A1918] bg-[#1E3A5F] text-[#FAF8F5] shadow-[1.5px_1.5px_0_0_#1A1918] hover:bg-[#162c48] active:translate-x-0.5 active:translate-y-0.5 transition-all"
+          className="p-1.5 rounded-xl border border-[#1A1918] bg-[#000000] text-[#FAF8F5] shadow-[1.5px_1.5px_0_0_#1A1918] hover:bg-[#1A1918] active:translate-x-0.5 active:translate-y-0.5 transition-all"
           aria-label="Toggle navigation drawer"
         >
           <Menu className="w-4 h-4" />

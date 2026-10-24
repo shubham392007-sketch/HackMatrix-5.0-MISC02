@@ -640,7 +640,7 @@ export default function UnifiedOnboardingPage() {
     return (
       <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center text-[#1A1918]">
         <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
-          <div className="absolute -inset-2 bg-[#1E3A5F]/30 rounded-3xl blur-xl pointer-events-none" />
+          <div className="absolute -inset-2 bg-[#FAF8F5] rounded-3xl blur-xl pointer-events-none" />
           <div className="relative p-8 rounded-3xl bg-[#FAF8F5]/90 border-[1.5px] border-[#1A1918] shadow-[5px_5px_0_0_#1A1918] flex flex-col items-center justify-center w-full overflow-hidden">
             <LoadingAnimation size="md" className="relative z-10" />
             <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1A1918]/70">
@@ -677,7 +677,7 @@ export default function UnifiedOnboardingPage() {
       <header className="border-b-[1.5px] border-[#1A1918] bg-[#FFFFFF]/60 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[2px_2px_0px_#1A1918]">
+            <div className="w-9 h-9 rounded-xl bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-[2px_2px_0px_#1A1918]">
               <Sparkles className="w-5 h-5 text-[#1A1918]" />
             </div>
             <div>
@@ -711,7 +711,7 @@ export default function UnifiedOnboardingPage() {
                   onClick={() => setCurrentStep(step.num)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-[1.5px] transition-all cursor-pointer ${
                     isActive
-                      ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918] shadow-[2px_2px_0px_#1A1918]"
+                      ? "bg-[#000000] border-[#1A1918] text-[#FAF8F5] shadow-[2px_2px_0px_#1A1918]"
                       : isPast
                       ? "bg-[#FFFFFF] border-[#1A1918] text-[#1A1918] hover:bg-[#FAF8F5]"
                       : "bg-[#FFFFFF]/40 border-[#1A1918]/25 text-[#1A1918]/40 cursor-not-allowed"
@@ -748,18 +748,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 1 && (
           <div className="space-y-6">
-            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#1A1918]">
                 <User className="w-3 h-3 text-[#1A1918]" />
                 STEP 1 OF 4 · PROFILE CALIBRATION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#FAF8F5] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Role &amp; Profile Calibration
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 leading-relaxed max-w-2xl">
                 Tell us about your professional background so Skill Passport can organize your work evidence and tailor your skill profile.
               </p>
             </div>
@@ -808,7 +808,7 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setJobTitle(sug)}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
                         jobTitle === sug
-                          ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918]"
+                          ? "bg-[#000000] border-[#1A1918] text-[#FAF8F5]"
                           : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:border-[#1A1918]"
                       }`}
                     >
@@ -838,7 +838,7 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setDepartmentOrTeam(dept)}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
                         departmentOrTeam === dept
-                          ? "bg-[#1E3A5F] border-[#1A1918] text-[#1A1918]"
+                          ? "bg-[#000000] border-[#1A1918] text-[#FAF8F5]"
                           : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:border-[#1A1918]"
                       }`}
                     >
@@ -861,7 +861,7 @@ export default function UnifiedOnboardingPage() {
                       onClick={() => setExperienceLevel(lvl)}
                       className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border-[1.5px] transition-all text-left flex items-center justify-between ${
                         experienceLevel === lvl
-                          ? "bg-[#1E3A5F] border-[#1A1918] shadow-[2px_2px_0px_#1A1918]"
+                          ? "bg-[#000000] border-[#1A1918] text-[#FAF8F5] shadow-[2px_2px_0px_#1A1918]"
                           : "bg-[#FFFFFF] border-[#1A1918]/30 text-[#1A1918]/70 hover:bg-[#FAF8F5]"
                       }`}
                     >
@@ -929,18 +929,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#1A1918]">
                 <GitBranch className="w-3 h-3 text-[#1A1918]" />
                 STEP 2 OF 4 · CODE INTELLIGENCE
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#FAF8F5] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 GitHub Evidence Source
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 leading-relaxed max-w-2xl">
                 Connect GitHub to collect authorized repository activity and use it as source material for your Skill Passport.
               </p>
             </div>
@@ -964,7 +964,7 @@ export default function UnifiedOnboardingPage() {
             )}
 
             {githubSuccess && (
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <CheckCircle className="w-5 h-5 text-[#2E7D32] shrink-0 mt-0.5" />
                 <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{githubSuccess}</p>
               </div>
@@ -1038,7 +1038,7 @@ export default function UnifiedOnboardingPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-2xl bg-[#1E3A5F]/40 border-[1.5px] border-[#1A1918] flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2E7D32] text-white flex items-center justify-center font-black text-xs">
                         ✓
@@ -1080,7 +1080,7 @@ export default function UnifiedOnboardingPage() {
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#1E3A5F]/30 border border-[#1A1918] flex items-center gap-2.5 text-xs shadow-[1px_1px_0_0_#1A1918]">
+                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918] flex items-center gap-2.5 text-xs shadow-[1px_1px_0_0_#1A1918]">
                       <ShieldCheck className="w-4 h-4 text-[#4A7A4E] shrink-0" />
                       <span className="font-bold text-[#1A1918] leading-snug">
                         Select <strong>exactly 1 repository</strong> for your initial evidence import. You can discover and add additional repositories anytime from <strong>Connected Sources</strong> after completing onboarding.
@@ -1118,7 +1118,7 @@ export default function UnifiedOnboardingPage() {
                               onClick={() => handleToggleRepo(repo.full_name || repo.name)}
                               className={`p-3 rounded-xl border-[1.5px] cursor-pointer flex items-center justify-between transition-all ${
                                 isSel
-                                  ? "bg-[#1E3A5F]/40 border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
+                                  ? "bg-[#FAF8F5] border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
                                   : "bg-[#FFFFFF] border-[#1A1918]/20 hover:border-[#1A1918]"
                               }`}
                             >
@@ -1144,7 +1144,7 @@ export default function UnifiedOnboardingPage() {
                               </div>
                               <div
                                 className={`w-5 h-5 rounded-full border-[1.5px] border-[#1A1918] flex items-center justify-center shrink-0 ${
-                                  isSel ? "bg-[#1E3A5F]" : "bg-white"
+                                  isSel ? "bg-[#000000] text-[#FAF8F5]" : "bg-white"
                                 }`}
                               >
                                 {isSel && <div className="w-2.5 h-2.5 rounded-full bg-[#1A1918]" />}
@@ -1199,18 +1199,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 3 && (
           <div className="space-y-6">
-            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#1A1918]">
                 <Layers className="w-3 h-3 text-[#1A1918]" />
                 STEP 3 OF 4 · PROJECT MANAGEMENT
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#FAF8F5] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Jira Evidence Source
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 leading-relaxed max-w-2xl">
                 Connect your Jira Cloud workspace to collect authorized project and issue activity.
               </p>
             </div>
@@ -1234,7 +1234,7 @@ export default function UnifiedOnboardingPage() {
             )}
 
             {jiraSuccess && (
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/50 border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#2E7D32] flex items-start gap-3 shadow-[2px_2px_0px_#1A1918]">
                 <CheckCircle className="w-5 h-5 text-[#2E7D32] shrink-0 mt-0.5" />
                 <p className="text-xs font-bold text-[#1A1918] leading-relaxed">{jiraSuccess}</p>
               </div>
@@ -1334,7 +1334,7 @@ export default function UnifiedOnboardingPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-2xl bg-[#1E3A5F]/40 border-[1.5px] border-[#1A1918] flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2E7D32] text-white flex items-center justify-center font-black text-xs">
                         ✓
@@ -1402,7 +1402,7 @@ export default function UnifiedOnboardingPage() {
                               onClick={() => handleToggleProject(project.key)}
                               className={`p-3 rounded-xl border-[1.5px] cursor-pointer flex items-center justify-between transition-all ${
                                 isSel
-                                  ? "bg-[#1E3A5F]/40 border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
+                                  ? "bg-[#FAF8F5] border-[#1A1918] shadow-[1px_1px_0px_#1A1918]"
                                   : "bg-[#FFFFFF] border-[#1A1918]/20 hover:border-[#1A1918]"
                               }`}
                             >
@@ -1416,7 +1416,7 @@ export default function UnifiedOnboardingPage() {
                               </div>
                               <div
                                 className={`w-5 h-5 rounded-md border-[1.5px] border-[#1A1918] flex items-center justify-center ${
-                                  isSel ? "bg-[#1E3A5F]" : "bg-white"
+                                  isSel ? "bg-[#000000] text-[#FAF8F5]" : "bg-white"
                                 }`}
                               >
                                 {isSel && <Check className="w-3 h-3 stroke-[3]" />}
@@ -1470,18 +1470,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#1A1918]">
                 <FileText className="w-3 h-3 text-[#1A1918]" />
                 STEP 4 OF 4 · INITIAL WORK COLLECTION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#FAF8F5] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Add Your First Evidence
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 leading-relaxed max-w-2xl">
                 Start with one document or project link. Skill Passport will process it and show you what was extracted before you add another item.
               </p>
             </div>
@@ -1505,7 +1505,7 @@ export default function UnifiedOnboardingPage() {
                     }}
                     className={`p-3 rounded-2xl border-[1.5px] text-left transition-all relative flex flex-col justify-between ${
                       isCurrent
-                        ? "bg-[#1E3A5F] border-[#1A1918] shadow-[3px_3px_0px_#1A1918]"
+                        ? "bg-[#000000] border-[#1A1918] text-[#FAF8F5] shadow-[3px_3px_0px_#1A1918]"
                         : "bg-[#FFFFFF] border-[#1A1918]/30 hover:border-[#1A1918] hover:bg-[#FAF8F5]"
                     }`}
                   >
@@ -1555,14 +1555,14 @@ export default function UnifiedOnboardingPage() {
                     {latestExtracted ? (
                       <div className="space-y-5 animate-in fade-in duration-300">
                         {/* Submission Complete Header Card */}
-                        <div className="p-6 sm:p-7 rounded-3xl bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] shadow-[3px_3px_0px_#1A1918] space-y-3">
+                        <div className="p-6 sm:p-7 rounded-3xl bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] shadow-[3px_3px_0px_#1A1918] space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#2E7D32] shadow-[1px_1px_0px_#1A1918]">
                               <CheckCircle className="w-4 h-4 text-[#2E7D32]" />
                               <span>SUBMISSION COMPLETE · PROCESSED &amp; INDEXED</span>
                             </div>
                             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider">
-                              <span className="px-2.5 py-1 rounded-full bg-white/70 border border-[#1A1918]">
+                              <span className="px-2.5 py-1 rounded-full bg-white/70 border border-[#1A1918] text-[#1A1918]">
                                 STRENGTH: {(latestExtracted.strength || "HIGH").toUpperCase()}
                               </span>
                               <span className="px-2.5 py-1 rounded-full bg-[#1A1918] text-white">
@@ -1572,10 +1572,10 @@ export default function UnifiedOnboardingPage() {
                           </div>
 
                           <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-[#1A1918] tracking-tight">
+                            <h3 className="text-xl sm:text-2xl font-black text-[#FAF8F5] tracking-tight">
                               {latestExtracted.title || "Evidence Artifact"}
                             </h3>
-                            <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 mt-1 leading-relaxed">
+                            <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 mt-1 leading-relaxed">
                               {latestExtracted.description || "Parsed, text extracted, and indexed into the Domain 1 candidate skill engine."}
                             </p>
                           </div>
@@ -1604,7 +1604,7 @@ export default function UnifiedOnboardingPage() {
                                 First-pass competencies mapped to supporting excerpts. Final verification will be conducted in downstream domains.
                               </p>
                             </div>
-                            <span className="px-3 py-1 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black">
+                            <span className="px-3 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-black">
                               {Array.isArray(latestExtracted.candidateSkills) ? latestExtracted.candidateSkills.length : 0} Candidates
                             </span>
                           </div>
@@ -1771,7 +1771,7 @@ export default function UnifiedOnboardingPage() {
 
                         {/* Processing Stage Indicator */}
                         {submittingEvidence && (
-                          <div className="p-5 rounded-2xl bg-[#1E3A5F]/30 border-[1.5px] border-[#1A1918] space-y-3 flex flex-col items-center">
+                          <div className="p-5 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] space-y-3 flex flex-col items-center">
                             <LoadingAnimation size="sm" className="-my-3" />
                             <div className="w-full space-y-2">
                               <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider">
@@ -1857,18 +1857,18 @@ export default function UnifiedOnboardingPage() {
         {/* ========================================================================= */}
         {currentStep === 5 && (
           <div className="space-y-6">
-            <div className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider">
+            <div className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] rounded-3xl p-6 sm:p-8 shadow-[4px_4px_0px_#1A1918] space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFFFF] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#2E7D32]">
                 <CheckCircle className="w-3 h-3 text-[#2E7D32]" />
                 SETUP COMPLETE · READY FOR PRODUCTION
               </div>
               <h1
-                className="text-3xl sm:text-4xl text-[#1A1918] tracking-tight font-normal"
+                className="text-3xl sm:text-4xl text-[#FAF8F5] tracking-tight font-normal"
                 style={{ fontFamily: "'Dancing Script', cursive" }}
               >
                 Review Your Skill Passport
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-[#1A1918]/80 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm font-medium text-[#FAF8F5]/80 leading-relaxed max-w-2xl">
                 Your profile calibration, external connections, and initial work evidence have been securely configured.
               </p>
             </div>

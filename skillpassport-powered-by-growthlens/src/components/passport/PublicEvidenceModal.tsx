@@ -141,7 +141,7 @@ export default function PublicEvidenceModal({
                   Grounded Workplace Evidence
                 </span>
 
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C] text-xs font-bold uppercase">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-xs font-bold uppercase">
                   {data.sourceType || "Artifact"}
                 </span>
 
@@ -221,7 +221,7 @@ export default function PublicEvidenceModal({
                   href={data.sourceUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 px-5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[2px] border-[#1C1C1C] text-xs font-black tracking-wider uppercase text-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full py-3 px-5 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[2px] border-[#1A1918] text-xs font-black tracking-wider uppercase text-[#FAF8F5] shadow-[3px_3px_0_0_#1A1918] flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <span>Open Genuine Source Artifact</span>
                   <ExternalLink className="w-3.5 h-3.5" />

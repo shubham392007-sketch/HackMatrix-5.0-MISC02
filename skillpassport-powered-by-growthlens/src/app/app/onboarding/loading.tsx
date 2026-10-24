@@ -15,7 +15,7 @@ export default function OnboardingLoading() {
           <LoadingAnimation size="md" className="relative z-10" />
 
           <div className="mt-4 flex flex-col items-center gap-1.5 relative z-10 text-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1E3A5F] text-[#FAF8F5] border border-[#1A1918] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#000000] text-[#FAF8F5] border border-[#1A1918] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FAF8F5] animate-ping" />
               <span>SETUP WIZARD</span>
             </div>
