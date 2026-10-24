@@ -174,7 +174,8 @@ export const sharingApi = {
       res = await fetch(`/api/v1/sharing/links/${linkId}`, { headers: authHeaders });
     }
     if (!res.ok) {
-      throw new Error(`Failed to get share link: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to get share link: ${res.statusText}`);
     }
     return res.json();
   },
@@ -199,7 +200,8 @@ export const sharingApi = {
       });
     }
     if (!res.ok) {
-      throw new Error(`Failed to update share link: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to update share link: ${res.statusText}`);
     }
     return res.json();
   },
@@ -221,7 +223,8 @@ export const sharingApi = {
       });
     }
     if (!res.ok) {
-      throw new Error(`Failed to revoke share link: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to revoke share link: ${res.statusText}`);
     }
     return res.json();
   },
@@ -243,7 +246,8 @@ export const sharingApi = {
       });
     }
     if (!res.ok) {
-      throw new Error(`Failed to extend share link: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to extend share link: ${res.statusText}`);
     }
     return res.json();
   },

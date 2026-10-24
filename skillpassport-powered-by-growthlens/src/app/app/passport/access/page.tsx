@@ -65,7 +65,8 @@ export default function SharedAccessManagementPage() {
     if (!revokingRecord) return;
     setActionLoading(true);
     try {
-      await sharingApi.revokeLink(revokingRecord.shareId, revocationReason);
+      const targetId = revokingRecord.id || revokingRecord.shareId;
+      await sharingApi.revokeLink(targetId, revocationReason);
       await fetchLinks();
       setRevokingRecord(null);
     } catch (err: any) {
@@ -80,7 +81,8 @@ export default function SharedAccessManagementPage() {
     if (!extendingRecord) return;
     setActionLoading(true);
     try {
-      await sharingApi.extendLink(extendingRecord.shareId, extendingDays);
+      const targetId = extendingRecord.id || extendingRecord.shareId;
+      await sharingApi.extendLink(targetId, extendingDays);
       await fetchLinks();
       setExtendingRecord(null);
     } catch (err: any) {

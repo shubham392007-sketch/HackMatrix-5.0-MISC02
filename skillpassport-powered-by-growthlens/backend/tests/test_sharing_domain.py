@@ -353,3 +353,53 @@ def test_preview_mode_evidence_inspection_and_messaging():
     assert "messageId" in msg_data
     assert msg_data.get("notificationCreated") is True
 
+
+def test_share_link_revoke_and_extend_by_token_string():
+    """Verify share link operations (get, update, extend, revoke) accept token string as well as UUID."""
+    # 1. Create a share link
+    create_payload = {
+        "label": "Token Identifier Support Test Link",
+        "template_id": "standard",
+        "expiry_days": 7,
+        "permissions": {
+            "identity": {"showDisplayName": True},
+            "allowRecruiterMessaging": True,
+        },
+    }
+    create_res = client.post("/api/v1/sharing/links", json=create_payload, headers=AUTH_HEADER)
+    assert create_res.status_code in (200, 201)
+    link = create_res.json()
+    share_token = link["shareId"]
+    uuid_id = link["id"]
+
+    # 2. GET by token string
+    get_by_tok = client.get(f"/api/v1/sharing/links/{share_token}", headers=AUTH_HEADER)
+    assert get_by_tok.status_code == 200
+    assert get_by_tok.json()["link"]["id"] == uuid_id
+
+    # 3. PUT by token string
+    put_by_tok = client.put(f"/api/v1/sharing/links/{share_token}", json={"label": "Updated Via Token"}, headers=AUTH_HEADER)
+    assert put_by_tok.status_code == 200
+    assert put_by_tok.json()["label"] == "Updated Via Token"
+
+    # 4. POST /extend by token string
+    ext_by_tok = client.post(f"/api/v1/sharing/links/{share_token}/extend", json={"additional_days": 14}, headers=AUTH_HEADER)
+    assert ext_by_tok.status_code == 200
+    assert ext_by_tok.json()["status"] == "active"
+
+    # 5. POST /revoke by token string (reproducing and verifying the user's exact issue)
+    rev_by_tok = client.post(
+        f"/api/v1/sharing/links/{share_token}/revoke",
+        json={"reason": "Revoked by user using token string in UI"},
+        headers=AUTH_HEADER,
+    )
+    assert rev_by_tok.status_code == 200
+    assert rev_by_tok.json()["status"] == "revoked"
+    assert rev_by_tok.json()["revocationReason"] == "Revoked by user using token string in UI"
+
+    # 6. Verify public access is revoked
+    pub_res = client.get(f"/api/v1/sharing/public/{share_token}")
+    assert pub_res.status_code == 200
+    assert pub_res.json()["isRevoked"] is True
+
+

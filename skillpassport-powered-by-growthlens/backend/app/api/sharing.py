@@ -974,19 +974,32 @@ def create_share_link(
         "permissions": link.permissions_json,
     }
 
+def _find_user_share_link(link_identifier: str, user_id: uuid.UUID, db: Session) -> Optional[ShareLinkRecord]:
+    clean_id = (link_identifier or "").strip()
+    if not clean_id:
+        return None
+    if _is_valid_uuid(clean_id):
+        link = db.query(ShareLinkRecord).filter(
+            ShareLinkRecord.id == uuid.UUID(clean_id),
+            ShareLinkRecord.owner_user_id == user_id,
+        ).first()
+        if link:
+            return link
+    # Fallback to searching by token string (e.g. 'sp_...' or 'sh-...')
+    return db.query(ShareLinkRecord).filter(
+        ShareLinkRecord.token == clean_id,
+        ShareLinkRecord.owner_user_id == user_id,
+    ).first()
+
+
 @router.get("/links/{link_id}")
 def get_share_link(
     link_id: str,
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve details and projection for a specific link owned by the user."""
-    if not _is_valid_uuid(link_id):
-        raise HTTPException(status_code=400, detail="Invalid link UUID format")
-    link = db.query(ShareLinkRecord).filter(
-        ShareLinkRecord.id == uuid.UUID(link_id),
-        ShareLinkRecord.owner_user_id == user.id,
-    ).first()
+    """Retrieve details and projection for a specific link owned by the user (by UUID or token)."""
+    link = _find_user_share_link(link_id, user.id, db)
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     projection = build_canonical_projection(
@@ -1013,6 +1026,7 @@ def get_share_link(
         "projection": projection,
     }
 
+
 @router.put("/links/{link_id}")
 def update_share_link(
     link_id: str,
@@ -1020,13 +1034,8 @@ def update_share_link(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update permissions or presentation preferences of an active link."""
-    if not _is_valid_uuid(link_id):
-        raise HTTPException(status_code=400, detail="Invalid link UUID format")
-    link = db.query(ShareLinkRecord).filter(
-        ShareLinkRecord.id == uuid.UUID(link_id),
-        ShareLinkRecord.owner_user_id == user.id,
-    ).first()
+    """Update permissions or presentation preferences of an active link (by UUID or token)."""
+    link = _find_user_share_link(link_id, user.id, db)
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     if payload.label is not None:
@@ -1059,6 +1068,7 @@ def update_share_link(
         "permissions": link.permissions_json,
     }
 
+
 @router.post("/links/{link_id}/revoke")
 def revoke_share_link(
     link_id: str,
@@ -1066,13 +1076,8 @@ def revoke_share_link(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Instantly revokes public access to a share link with reason."""
-    if not _is_valid_uuid(link_id):
-        raise HTTPException(status_code=400, detail="Invalid link UUID format")
-    link = db.query(ShareLinkRecord).filter(
-        ShareLinkRecord.id == uuid.UUID(link_id),
-        ShareLinkRecord.owner_user_id == user.id,
-    ).first()
+    """Instantly revokes public access to a share link with reason (accepts UUID or token)."""
+    link = _find_user_share_link(link_id, user.id, db)
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     link.status = "revoked"
@@ -1095,6 +1100,7 @@ def revoke_share_link(
         "revocationReason": link.revocation_reason,
     }
 
+
 @router.post("/links/{link_id}/extend")
 def extend_share_link(
     link_id: str,
@@ -1102,13 +1108,8 @@ def extend_share_link(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Extends the expiry date of a share link."""
-    if not _is_valid_uuid(link_id):
-        raise HTTPException(status_code=400, detail="Invalid link UUID format")
-    link = db.query(ShareLinkRecord).filter(
-        ShareLinkRecord.id == uuid.UUID(link_id),
-        ShareLinkRecord.owner_user_id == user.id,
-    ).first()
+    """Extends the expiry date of a share link (accepts UUID or token)."""
+    link = _find_user_share_link(link_id, user.id, db)
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     now_utc = datetime.now(timezone.utc)
