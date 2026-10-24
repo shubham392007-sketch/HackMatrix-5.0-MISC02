@@ -296,7 +296,8 @@ export function evaluateAssessmentAttempt(
  */
 export function createCandidateEvidenceFromProject(
   project: MiniProject,
-  attempt: MiniProjectAttempt
+  attempt: MiniProjectAttempt,
+  authorName: string = "Learner"
 ): { candidateEvidence: CandidateLearningEvidence; evidenceItem: EvidenceItem } {
   const artifactId = `art-${Date.now()}`;
   const evidenceId = `ev-learning-${Date.now()}`;
@@ -307,14 +308,14 @@ export function createCandidateEvidenceFromProject(
     title: `${project.title} — Applied Demonstration`,
     source_type: "LEARNING_PROJECT",
     domain_id: project.domain_id,
-    topic_id: "topic-outlier-winsorization",
-    related_skill_id: "skill-python",
+    topic_id: project.id,
+    related_skill_id: `skill-${project.domain_id}`,
     project_id: project.id,
     submitted_at: attempt.submitted_at,
-    provenance: `Submitted via SkillPassport Learning Mini-Project (${project.title}). Evaluated against rubric: ${attempt.total_score}%.`,
+    provenance: `Submitted via SkillPassport Learning Mini-Project (${project.title}). Deliverable: ${attempt.github_repo_url}. Status: ${attempt.status}.`,
     evidence_state: "Candidate Evidence Created",
     verification_notes:
-      "Awaiting peer or supervisor review in Verification Center. High learning rubric score demonstrates candidate capability but has not yet received professional verification.",
+      "Awaiting peer or supervisor review in Verification Center. Deliverable repository recorded as candidate capability evidence.",
   };
 
   const evidenceItem: EvidenceItem = {
@@ -326,37 +327,28 @@ export function createCandidateEvidenceFromProject(
     project: project.title,
     evidenceType: "Learning Mini-Project Deliverable",
     date: attempt.submitted_at,
-    claimedContribution: "Authored end-to-end outlier detection and Winsorization pipeline in Python with pytest coverage.",
-    author: "Alex Rivera",
+    claimedContribution: attempt.summary_notes || `Authored ${project.title} deliverable.`,
+    author: authorName,
     isCollaborative: false,
     evidenceStrength: "medium",
-    extractionConfidence: 88,
+    extractionConfidence: 85,
     processingStatus: "ready_for_review",
     reviewStatus: "pending_review",
-    extractedSummary: "Self-contained outlier treatment and Winsorization Python transformer package with unit tests.",
+    extractedSummary: attempt.summary_notes || project.problem_statement || `${project.title} implementation deliverable.`,
     normalizedMetadata: {
-      format: "GitHub Repository / Python Package",
-      authorIdentified: "Alex Rivera",
-      commitCount: 4,
+      format: "GitHub Repository / Code Package",
+      authorIdentified: authorName,
+      commitCount: 1,
     },
     candidateSkills: [
       {
-        id: "skill-python",
-        name: "Python",
-        category: "Languages",
-        excerpt: "Applied Python scripts implementing Pandas IQR and scipy winsorize routines.",
+        id: `skill-${project.domain_id}`,
+        name: project.title,
+        category: "Engineering Deliverables",
+        excerpt: attempt.summary_notes || `Applied implementation of ${project.title}.`,
         associationReason: "Direct code authoring in mini-project submission",
         status: "candidate",
         proficiencyLevel: "Practitioner",
-      },
-      {
-        id: "skill-machine-learning",
-        name: "Machine Learning Foundations",
-        category: "AI & Machine Learning",
-        excerpt: "Data preprocessing pipeline isolating outliers before model training.",
-        associationReason: "Structured preprocessing and telemetry evaluation",
-        status: "candidate",
-        proficiencyLevel: "Working",
       },
     ],
     processingHistory: [
@@ -370,7 +362,7 @@ export function createCandidateEvidenceFromProject(
         stage: "Candidate Extraction",
         status: "completed",
         timestamp: "Just now",
-        detail: "Extracted candidate Python and Machine Learning competencies.",
+        detail: "Detected candidate skill from engineering code deliverable.",
       },
       {
         stage: "Verification Gate",

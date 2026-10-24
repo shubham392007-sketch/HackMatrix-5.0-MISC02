@@ -20,6 +20,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
+    url = config.get_main_option("sqlalchemy.url")
+    if url:
+        return url
     settings = get_settings()
     return settings.database_url
 
@@ -39,6 +42,8 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section)
+    if configuration is None:
+        configuration = {}
     configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
         configuration,

@@ -144,7 +144,7 @@ export function ConfidenceScoreExplainer({
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Supporting Evidence & Capabilities
               </span>
               <ul className="space-y-1">
-                {rationale.supporting_factors.map((factor, idx) => (
+                {rationale.supporting_factors.map((factor: string, idx: number) => (
                   <li
                     key={idx}
                     className="text-[11px] text-ink/80 bg-emerald-50/60 p-2 rounded-md border border-emerald-200/50 flex items-start gap-1.5"
@@ -164,7 +164,7 @@ export function ConfidenceScoreExplainer({
                 <AlertTriangle className="w-3 h-3 text-amber-600" /> Evidence Limitations & Shortfalls
               </span>
               <ul className="space-y-1">
-                {rationale.evidence_limitations.map((limitation, idx) => (
+                {rationale.evidence_limitations.map((limitation: string, idx: number) => (
                   <li
                     key={idx}
                     className="text-[11px] text-ink/80 bg-amber-50/60 p-2 rounded-md border border-amber-200/50 flex items-start gap-1.5"

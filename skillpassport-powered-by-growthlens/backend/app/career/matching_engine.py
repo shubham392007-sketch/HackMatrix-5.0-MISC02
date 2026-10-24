@@ -8,29 +8,19 @@ from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMa
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.ai_governance import VerificationDecision, EvidenceConflictRecord
 from backend.app.models.career import RoleDemandModelRecord, RoleMatchSnapshotRecord
-from backend.app.career.confidence_explainer import confidence_explainer
+from backend.app.taxonomy.canonical import (
+    PROFICIENCY_SCALE as CANONICAL_PROFICIENCY_SCALE,
+    NUMERIC_TO_PROFICIENCY as CANONICAL_NUMERIC_TO_PROFICIENCY,
+    VERIFICATION_FACTORS,
+    CANONICAL_PREREQUISITES,
+    resolve_verification_factor,
+)
 
 logger = get_logger("career.matching_engine")
 
 # Canonical 6-level ordinal proficiency scale (0 to 5)
-PROFICIENCY_SCALE: Dict[str, int] = {
-    "Not Established": 0,
-    "Foundation": 1,
-    "Working": 2,
-    "Practitioner": 3,
-    "Intermediate": 3,  # Intermediate maps to Practitioner tier
-    "Advanced": 4,
-    "Expert": 5,
-}
-
-NUMERIC_TO_PROFICIENCY: Dict[int, str] = {
-    0: "Not Established",
-    1: "Foundation",
-    2: "Working",
-    3: "Practitioner",
-    4: "Advanced",
-    5: "Expert",
-}
+PROFICIENCY_SCALE: Dict[str, int] = CANONICAL_PROFICIENCY_SCALE
+NUMERIC_TO_PROFICIENCY: Dict[int, str] = CANONICAL_NUMERIC_TO_PROFICIENCY
 
 REQUIREMENT_WEIGHTS: Dict[str, float] = {
     "core_required": 1.0,
@@ -119,11 +109,13 @@ class MatchingEngine:
             if c.candidate_skill_id:
                 conflicted_comp_ids.add(c.candidate_skill_id)
 
-        decision_by_comp_id = {}
+        decision_by_comp_id: Dict[uuid.UUID, VerificationDecision] = {}
+        decision_by_mapping_id: Dict[uuid.UUID, VerificationDecision] = {}
         for d in decisions:
-            comp_id = getattr(d, "competency_id", None)
-            if comp_id:
-                decision_by_comp_id[comp_id] = d
+            if d.competency_id and d.competency_id not in decision_by_comp_id:
+                decision_by_comp_id[d.competency_id] = d
+            if d.candidate_mapping_id and d.candidate_mapping_id not in decision_by_mapping_id:
+                decision_by_mapping_id[d.candidate_mapping_id] = d
 
         user_skills_by_comp: Dict[uuid.UUID, Dict[str, Any]] = {}
 
@@ -132,14 +124,14 @@ class MatchingEngine:
             c_name = comp.canonical_name.strip()
             aliases = [a.lower().strip() for a in (comp.aliases or [])]
 
+            dec = decision_by_mapping_id.get(mapping.id) or decision_by_comp_id.get(cid)
+            v_status = dec.verification_state if dec else (mapping.status or "candidate")
+            is_conflicting = cid in conflicted_comp_ids or c_name in conflicted_comp_ids
+
+            prof_level = mapping.proficiency_level or "Foundation"
+            prof_numeric = self.level_to_numeric(prof_level)
+
             if cid not in user_skills_by_comp:
-                dec = decision_by_comp_id.get(cid)
-                v_status = dec.verification_state if dec else (mapping.status or "candidate")
-                is_conflicting = cid in conflicted_comp_ids or c_name in conflicted_comp_ids
-
-                prof_level = mapping.proficiency_level or "Foundation"
-                prof_numeric = self.level_to_numeric(prof_level)
-
                 user_skills_by_comp[cid] = {
                     "competency_id": str(cid),
                     "canonical_name": c_name,
@@ -152,6 +144,15 @@ class MatchingEngine:
                     "evidence_items": [],
                     "evidence_ids": [],
                 }
+            else:
+                existing = user_skills_by_comp[cid]
+                if prof_numeric > existing["proficiency_numeric"]:
+                    existing["proficiency_level"] = prof_level
+                    existing["proficiency_numeric"] = prof_numeric
+                if v_status == "verified" and existing["verification_status"] != "verified":
+                    existing["verification_status"] = "verified"
+                if mapping.relevance_score and float(mapping.relevance_score) > existing["confidence"]:
+                    existing["confidence"] = float(mapping.relevance_score)
 
             if ev and ev.id:
                 eid_str = str(ev.id)
@@ -319,116 +320,137 @@ class MatchingEngine:
         # Base requirement weight
         req_weight = REQUIREMENT_WEIGHTS.get(req_type, 0.6)
 
+        prereqs = (
+            req.get("prerequisite_skill_ids")
+            or req.get("prerequisites")
+            or CANONICAL_PREREQUISITES.get(req.get("skill_id", f"skill-{c_name.lower().replace(' ', '-')}"), [])
+        )
+
         if not matched_user_skill:
-            eval_unmatched = {
+            return {
                 "skill_id": req.get("skill_id", f"skill-{c_name.lower().replace(' ', '-')}"),
                 "canonical_name": c_name,
                 "requirement_type": req_type,
                 "importance": importance,
                 "expected_level": expected_level_str,
                 "expected_level_numeric": expected_numeric,
+                "expected_proficiency": expected_level_str,
+                "expected_numeric": expected_numeric,
                 "current_proficiency": "Not Established",
                 "current_proficiency_numeric": 0,
+                "assessed_proficiency": "Not Established",
+                "assessed_numeric": 0,
                 "verification_status": "not_established",
                 "confidence": 0.0,
+                "model_confidence": 0.0,
                 "evidence_strength": "none",
                 "evidence_ids": [],
                 "proficiency_coverage": 0.0,
                 "raw_coverage": 0.0,
                 "effective_coverage": 0.0,
+                "effective_coverage_pct": 0.0,
                 "eligible_credit": 0.0,
                 "requirement_weight": req_weight,
                 "gap_type": "differentiation_opportunity" if req_type == "differentiating" else "skill_gap",
                 "gap_explanation": "Not yet demonstrated in current Skill Passport evidence.",
                 "match_status": "missing_weak",
+                "match_classification": "not_found",
                 "reason_codes": ["NO_EVIDENCE_RECORDED"],
                 "source_span": req.get("source_span"),
+                "prerequisite_skill_ids": prereqs,
+                "prerequisites": prereqs,
             }
-            rationale = confidence_explainer.generate_rationale(
-                requirement=req,
-                matched_user_skill=None,
-                evaluation=eval_unmatched,
-                allow_ollama=False,
-            )
-            eval_unmatched["confidence_explanation"] = rationale["summary"]
-            eval_unmatched["confidence_rationale"] = rationale
-            return eval_unmatched
 
         curr_num = matched_user_skill.get("proficiency_numeric") or matched_user_skill.get("current_numeric", 0)
         curr_level = matched_user_skill.get("proficiency_level") or matched_user_skill.get("current_level", "Not Established")
         v_status = matched_user_skill.get("verification_status") or matched_user_skill.get("verification_state", "unverified")
         evidence_ids = matched_user_skill.get("evidence_ids") or [e["id"] for e in matched_user_skill.get("evidence_items", []) if "id" in e]
-        confidence = matched_user_skill.get("confidence", 0.85)
+        raw_conf = matched_user_skill.get("confidence", 0.85)
+        model_conf = round(raw_conf if raw_conf <= 1.0 else raw_conf / 100.0, 3)
 
-        # Canonical formula: P = min(1.0, L_u / L_r)
+        # Canonical formula: EffectiveCoverage = min(1.0, L_u / max(1, L_r)) * V_i
         raw_cov = min(1.0, curr_num / max(1, expected_numeric))
         proficiency_coverage = round(raw_cov * 100.0, 1)
 
-        # Effective coverage accounting for verification state
-        if v_status == "verified":
-            effective_cov = raw_cov
-        elif v_status == "candidate":
-            effective_cov = raw_cov * max(0.5, confidence)
-        elif v_status == "conflicting":
-            effective_cov = raw_cov * 0.35
-        elif v_status == "insufficient_evidence":
-            effective_cov = raw_cov * 0.50
-        else:
-            effective_cov = 0.0
-
+        # Verification factor V_i: 1.0 for verified, 0.60 for candidate, 0.50 for insufficient_evidence, 0.35 for conflicting, 0.0 for rejected/absent
+        v_factor = resolve_verification_factor(v_status, model_conf)
+        effective_cov = min(1.0, round(raw_cov * v_factor, 4))
         effective_coverage_pct = round(effective_cov * 100.0, 1)
         eligible_credit = round(effective_cov * req_weight, 3)
 
-        # Gap classification
+        # Disentangled 4-dimension evaluation & explicit standardized match classifications
         gap_type = None
         gap_explanation = ""
-        match_status = "partial_match"
         reason_codes = []
 
         if v_status == "conflicting":
+            match_classification = "conflicting"
             match_status = "conflicting"
             gap_type = "evidence_gap"
             gap_explanation = "Open attribution conflict between source artifacts flagged in Trust Center."
             reason_codes.append("UNRESOLVED_CONFLICT")
         elif v_status == "rejected":
+            match_classification = "not_found"
             match_status = "missing_weak"
             gap_type = "evidence_gap"
-            gap_explanation = "Capability claim was rejected during verification."
+            gap_explanation = f"Capability claim at {curr_level} was rejected during verification."
             reason_codes.append("REJECTED_CLAIM")
+        elif curr_num == 0 or curr_level == "Not Established":
+            match_classification = "not_found"
+            match_status = "missing_weak"
+            gap_type = "differentiation_opportunity" if req_type == "differentiating" else "skill_gap"
+            gap_explanation = "Not yet demonstrated in current Skill Passport evidence."
+            reason_codes.append("NO_EVIDENCE_RECORDED")
         elif curr_num >= expected_numeric and v_status == "verified" and len(evidence_ids) > 0:
+            match_classification = "meets"
             match_status = "strong_match"
             gap_type = None
-            gap_explanation = f"Requirement fully satisfied at {curr_level} with verified production evidence."
+            if curr_num > expected_numeric:
+                surplus = curr_num - expected_numeric
+                gap_explanation = f"Requirement exceeded at {curr_level} (+{surplus} level surplus above {expected_level_str}) with verified production evidence."
+            else:
+                gap_explanation = f"Requirement fully satisfied at {curr_level} with verified production evidence."
             reason_codes.append("VERIFIED_SUPPORT")
         elif curr_num < expected_numeric:
+            dist = expected_numeric - curr_num
+            match_classification = "below" if dist > 1 else "partial"
             match_status = "partial_match"
             gap_type = "depth_gap"
-            dist = expected_numeric - curr_num
-            gap_explanation = f"Demonstrated at {curr_level} ({v_status}); target requires {expected_level_str} (-{dist} level shortfall)."
+            v_desc = f" ({v_status})" if v_status != "verified" else ""
+            gap_explanation = f"Demonstrated at {curr_level}{v_desc}; target requires {expected_level_str} (-{dist} level shortfall)."
             reason_codes.append("PROFICIENCY_BELOW_TARGET")
-        elif len(evidence_ids) == 0 or v_status in ("candidate", "insufficient_evidence"):
+        elif len(evidence_ids) == 0 or v_status in ("candidate", "insufficient_evidence", "insufficient", "unverified"):
+            match_classification = "unverified"
             match_status = "evidence_gap"
             gap_type = "evidence_gap"
-            gap_explanation = f"Demonstrated at {curr_level}, but marked as {v_status}; corroborating evidence or verification review needed."
+            gap_explanation = f"Demonstrated at {curr_level} (provisional claim); corroborating evidence or verification review required to confirm."
             reason_codes.append("INSUFFICIENT_VERIFIED_EVIDENCE")
         else:
+            match_classification = "meets"
             match_status = "strong_match"
             gap_type = None
             gap_explanation = f"Requirement met at {curr_level}."
             reason_codes.append("REQUIREMENT_MET")
 
-        eval_matched = {
+        evidence_strength = "high" if len(evidence_ids) >= 2 else ("medium" if len(evidence_ids) == 1 else "none")
+
+        return {
             "skill_id": req.get("skill_id", f"skill-{c_name.lower().replace(' ', '-')}"),
             "canonical_name": c_name,
             "requirement_type": req_type,
             "importance": importance,
             "expected_level": expected_level_str,
             "expected_level_numeric": expected_numeric,
+            "expected_proficiency": expected_level_str,
+            "expected_numeric": expected_numeric,
             "current_proficiency": curr_level,
             "current_proficiency_numeric": curr_num,
+            "assessed_proficiency": curr_level,
+            "assessed_numeric": curr_num,
             "verification_status": v_status,
-            "confidence": confidence,
-            "evidence_strength": "high" if len(evidence_ids) >= 2 else ("medium" if len(evidence_ids) == 1 else "none"),
+            "confidence": model_conf,
+            "model_confidence": model_conf,
+            "evidence_strength": evidence_strength,
             "evidence_ids": evidence_ids,
             "proficiency_coverage": proficiency_coverage,
             "raw_coverage": round(raw_cov, 3),
@@ -439,18 +461,13 @@ class MatchingEngine:
             "gap_type": gap_type,
             "gap_explanation": gap_explanation,
             "match_status": match_status,
+            "match_classification": match_classification,
             "reason_codes": reason_codes,
             "source_span": req.get("source_span"),
+            "prerequisite_skill_ids": prereqs,
+            "prerequisites": prereqs,
+            "exceeds_by": max(0, curr_num - expected_numeric) if curr_num > expected_numeric else 0,
         }
-        rationale = confidence_explainer.generate_rationale(
-            requirement=req,
-            matched_user_skill=matched_user_skill,
-            evaluation=eval_matched,
-            allow_ollama=False,
-        )
-        eval_matched["confidence_explanation"] = rationale["summary"]
-        eval_matched["confidence_rationale"] = rationale
-        return eval_matched
 
     def evaluate_role_match(
         self,
@@ -477,9 +494,15 @@ class MatchingEngine:
 
         # Core required calculations
         core_matches = [m for m in evaluated_matches if m["requirement_type"] == "core_required"]
-        core_weight = sum(m["requirement_weight"] for m in core_matches) or 1.0
-        core_credit = sum(m["eligible_credit"] for m in core_matches)
-        required_coverage_score = round(min(100.0, max(0.0, (core_credit / core_weight) * 100)), 1)
+        has_core = len(core_matches) > 0
+
+        if has_core:
+            core_weight = sum(m["requirement_weight"] for m in core_matches) or 1.0
+            core_credit = sum(m["eligible_credit"] for m in core_matches)
+            required_coverage_score = round(min(100.0, max(0.0, (core_credit / core_weight) * 100)), 1)
+        else:
+            # If role does not designate specific core vs supporting requirements, baseline equals overall match
+            required_coverage_score = overall_match_score
 
         # Supporting calculations
         sup_matches = [m for m in evaluated_matches if m["requirement_type"] in ("supporting", "preferred", "differentiating")]
@@ -502,6 +525,7 @@ class MatchingEngine:
         for idx, m in enumerate(evaluated_matches):
             if m["gap_type"] is not None:
                 dist = max(0, m["expected_level_numeric"] - m["current_proficiency_numeric"])
+                prereqs = m.get("prerequisite_skill_ids") or []
                 gaps.append({
                     "gap_id": f"gap-{role_model.role_id}-{m['skill_id']}",
                     "skill_id": m["skill_id"],
@@ -524,39 +548,81 @@ class MatchingEngine:
                     "diagnosis": m["gap_explanation"],
                     "next_step_direction": f"Produce attributable evidence demonstrating {m['canonical_name']} at {m['expected_level']} level.",
                     "relevant_evidence_ids": m["evidence_ids"],
-                    "confidence": m.get("confidence", 0.0),
-                    "confidence_explanation": m.get("confidence_explanation"),
-                    "confidence_rationale": m.get("confidence_rationale"),
+                    "prerequisite_skill_ids": prereqs,
+                    "prerequisites": prereqs,
                 })
 
-        # Unified Career Readiness Assessment
-        # Formula: 50% core coverage + 35% overall proficiency alignment + 15% evidence completeness
+        # Resilient Career Readiness Tri-State Assessment (INSUFFICIENT_DATA, PROVISIONAL, COMPLETED)
+        # Prevents false 0% and false "Early Stage" penalties when requirements or evidence are missing/unmapped
         evidence_quality_pct = round(
             100.0 * (sum(1 for m in evaluated_matches if len(m["evidence_ids"]) > 0) / max(1, len(evaluated_matches))),
             1,
         )
-        readiness_index = round(
-            0.50 * required_coverage_score + 0.35 * overall_match_score + 0.15 * evidence_quality_pct,
-            1,
+
+        has_demonstration = any(
+            m["match_classification"] not in ("not_found", "conflicting") and m["current_proficiency_numeric"] > 0
+            for m in (core_matches if has_core else evaluated_matches)
         )
 
-        tier = "Early Stage"
-        if readiness_index >= 80:
-            tier = "High Readiness"
-        elif readiness_index >= 60:
-            tier = "Moderate Alignment"
-        elif readiness_index >= 40:
-            tier = "Developing Foundations"
+        pending_items = [
+            m for m in evaluated_matches
+            if m["verification_status"] in ("candidate", "conflicting", "insufficient_evidence", "insufficient")
+        ]
+
+        if not competencies or not has_demonstration:
+            readiness_status = "INSUFFICIENT_DATA"
+            is_provisional = False
+            readiness_index = None
+            readiness_tier = "Insufficient Data"
+            major_uncertainties = [
+                "Role requirements have not been demonstrated in submitted evidence. Additional evidence items or assessments are required."
+            ]
+        else:
+            if has_core:
+                calc_index = round(
+                    0.50 * required_coverage_score + 0.35 * overall_match_score + 0.15 * evidence_quality_pct,
+                    1,
+                )
+            else:
+                calc_index = round(
+                    0.85 * overall_match_score + 0.15 * evidence_quality_pct,
+                    1,
+                )
+            readiness_index = calc_index
+
+            tier = "Early Stage"
+            if calc_index >= 80:
+                tier = "High Readiness"
+            elif calc_index >= 60:
+                tier = "Moderate Alignment"
+            elif calc_index >= 40:
+                tier = "Developing Foundations"
+
+            readiness_tier = tier
+
+            if pending_items:
+                readiness_status = "PROVISIONAL"
+                is_provisional = True
+                major_uncertainties = [
+                    f"{m['canonical_name']} is currently pending verification ({m['verification_status']})"
+                    for m in pending_items
+                ]
+            else:
+                readiness_status = "COMPLETED"
+                is_provisional = False
+                major_uncertainties = []
 
         readiness_data = {
             "role_id": role_model.role_id,
             "role_title": role_model.title,
             "seniority": role_model.seniority,
+            "readiness_status": readiness_status,
+            "is_provisional": is_provisional,
             "readiness_index": readiness_index,
-            "readiness_tier": tier,
-            "required_supported_pct": required_coverage_score,
-            "proficiency_alignment_pct": overall_match_score,
-            "evidence_quality_pct": evidence_quality_pct,
+            "readiness_tier": readiness_tier,
+            "required_supported_pct": required_coverage_score if readiness_status != "INSUFFICIENT_DATA" else None,
+            "proficiency_alignment_pct": overall_match_score if readiness_status != "INSUFFICIENT_DATA" else None,
+            "evidence_quality_pct": evidence_quality_pct if readiness_status != "INSUFFICIENT_DATA" else None,
             "critical_blockers": [
                 {
                     "skill_id": b["skill_id"],
@@ -568,10 +634,7 @@ class MatchingEngine:
                 }
                 for b in critical_blockers
             ],
-            "major_uncertainties": [
-                f"{m['canonical_name']} is currently in {m['verification_status']} state"
-                for m in evaluated_matches if m["verification_status"] in ("candidate", "conflicting")
-            ],
+            "major_uncertainties": major_uncertainties,
             "disclaimer": "This readiness assessment is an internal capability diagnostic and not an employment decision or hiring guarantee. It reflects verified evidence alignment for capability development.",
         }
 
@@ -594,6 +657,7 @@ class MatchingEngine:
                 "reason_codes": [g["gap_type"].upper()],
                 "evidence_ids": g["relevant_evidence_ids"],
                 "suggested_outcome": g["next_step_direction"],
+                "prerequisite_skill_ids": g.get("prerequisite_skill_ids", []),
             }
             for g in gaps
         ]
@@ -608,6 +672,10 @@ class MatchingEngine:
             "overall_match_score": overall_match_score,
             "required_coverage_score": required_coverage_score,
             "supporting_coverage_score": supporting_coverage_score,
+            "readiness_status": readiness_status,
+            "is_provisional": is_provisional,
+            "readiness_index": readiness_index,
+            "readiness_tier": readiness_tier,
             "total_competencies": len(evaluated_matches),
             "strong_matches_count": strong_count,
             "partial_matches_count": partial_count,

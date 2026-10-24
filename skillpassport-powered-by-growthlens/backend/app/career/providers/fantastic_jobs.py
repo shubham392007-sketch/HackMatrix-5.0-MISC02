@@ -37,7 +37,7 @@ class FantasticJobsAdapter(BaseJobSearchAdapter):
             "is_configured": configured,
             "required_env_vars": ["FANTASTIC_JOBS_API_KEY"],
             "status_message": "Ready" if configured else "Not configured: set FANTASTIC_JOBS_API_KEY in backend/.env",
-            "cost_profile": "Request quota and job credits — strictly bounded to max 10 jobs",
+            "cost_profile": "Request quota and job credits — bounded to max 50 jobs",
         }
 
     async def search_jobs(
@@ -45,13 +45,13 @@ class FantasticJobsAdapter(BaseJobSearchAdapter):
         query: str,
         location: Optional[str] = None,
         remote_only: bool = False,
-        limit: int = 10,
+        limit: int = 50,
     ) -> List[JobSearchResult]:
         if not self.is_configured():
             logger.warning("Fantastic.jobs API called but FANTASTIC_JOBS_API_KEY is not configured.")
             return []
 
-        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 10)
+        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
 
         # Support RapidAPI active-jobs-db or direct Fantastic Jobs
         is_rapidapi = "rapidapi" in getattr(self.settings, "fantastic_jobs_api_host", "").lower() or len(self.settings.fantastic_jobs_api_key.strip()) == 50

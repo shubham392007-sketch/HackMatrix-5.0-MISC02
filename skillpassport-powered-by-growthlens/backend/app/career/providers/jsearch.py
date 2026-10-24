@@ -47,7 +47,7 @@ class JSearchAdapter(BaseJobSearchAdapter):
         query: str,
         location: Optional[str] = None,
         remote_only: bool = False,
-        limit: int = 10,
+        limit: int = 50,
     ) -> List[JobSearchResult]:
         if not self.is_configured():
             logger.warning("JSearch API called but JSEARCH_API_KEY is not configured.")
@@ -62,11 +62,12 @@ class JSearchAdapter(BaseJobSearchAdapter):
             "X-RapidAPI-Host": self.settings.jsearch_api_host.strip(),
         }
 
-        # Strict credit conservation: exactly 1 page
+        bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
+        num_pages_to_fetch = min(5, max(1, (bounded_limit + 9) // 10))
         params = {
             "query": search_query,
             "page": "1",
-            "num_pages": "1",
+            "num_pages": str(num_pages_to_fetch),
             "date_posted": "month",
         }
         if remote_only:
@@ -152,7 +153,7 @@ class JSearchAdapter(BaseJobSearchAdapter):
         results: List[JobSearchResult] = []
         retrieved_at = datetime.now(timezone.utc).isoformat()
 
-        for item in raw_items[:limit]:
+        for item in raw_items[:bounded_limit]:
             if not isinstance(item, dict):
                 continue
             
