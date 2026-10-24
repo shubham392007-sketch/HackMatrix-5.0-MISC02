@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -148,10 +148,24 @@ const EXPERIENCE_LEVELS = [
   "Other / Prefer to specify",
 ];
 
-export default function UnifiedOnboardingPage() {
+function OnboardingWizardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile, refreshProfile, isAuthenticated, isEmailVerified, isLoading: authLoading } = useAuth();
   const { refreshEvidenceData, sources } = useEvidence();
+
+  const modeParam = searchParams?.get("mode");
+  const reviewParam = searchParams?.get("review");
+  const stepParam = searchParams?.get("step");
+
+  const isExplicitReview =
+    modeParam === "review" || reviewParam === "true" || searchParams?.has("step");
+
+  const parsedStep = stepParam ? parseInt(stepParam, 10) : null;
+  const validRequestedStep =
+    parsedStep !== null && !isNaN(parsedStep)
+      ? Math.min(Math.max(parsedStep, 1), 5)
+      : null;
 
   // Wizard Step: 1 = Profile, 2 = GitHub, 3 = Jira, 4 = First Evidence, 5 = Review Summary
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -244,16 +258,14 @@ export default function UnifiedOnboardingPage() {
         setGithubSkipped(Boolean(p.github_skipped));
         setJiraSkipped(Boolean(p.jira_skipped));
 
-        // Resume from persisted step
-        const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-        const isExplicitReview = search?.get("mode") === "review" || search?.get("review") === "true" || search?.has("step");
-
+        // Resume or review routing
         if (p.onboarding_status === "completed" && !isExplicitReview) {
           router.replace("/app/evidence");
           return;
         } else if (p.onboarding_status === "completed" && isExplicitReview) {
-          const requestedStep = search?.get("step") ? parseInt(search.get("step")!, 10) : 5;
-          setCurrentStep(requestedStep >= 1 && requestedStep <= 5 ? requestedStep : 5);
+          setCurrentStep(validRequestedStep ?? 5);
+        } else if (validRequestedStep !== null) {
+          setCurrentStep(validRequestedStep);
         } else if (p.onboarding_current_step && p.onboarding_current_step >= 1 && p.onboarding_current_step <= 5) {
           setCurrentStep(p.onboarding_current_step);
         }
@@ -298,6 +310,20 @@ export default function UnifiedOnboardingPage() {
       }
     }
   }, [authLoading, isAuthenticated, isEmailVerified, loadState, router, user?.email]);
+
+  // Reactively respond to search parameter changes without full page reload
+  useEffect(() => {
+    if (loadingInitialState) return;
+
+    if (profile?.onboarding_status === "completed" && !isExplicitReview) {
+      router.replace("/app/evidence");
+      return;
+    }
+
+    if (validRequestedStep !== null && validRequestedStep !== currentStep) {
+      setCurrentStep(validRequestedStep);
+    }
+  }, [validRequestedStep, isExplicitReview, profile?.onboarding_status, loadingInitialState, currentStep, router]);
 
   // Load GitHub Repositories
   const loadRepositories = async () => {
@@ -364,6 +390,8 @@ export default function UnifiedOnboardingPage() {
     setSavingProfile(true);
     setProfileError(null);
 
+    const isCompleted = profile?.onboarding_status === "completed";
+
     try {
       await updateMyProfile({
         display_name: fullName.trim(),
@@ -373,8 +401,8 @@ export default function UnifiedOnboardingPage() {
         experience_level: experienceLevel,
         professional_goal: professionalGoal.trim() || undefined,
         professional_summary: professionalSummary.trim() || undefined,
-        onboarding_status: "in_progress",
-        onboarding_current_step: 2,
+        onboarding_status: isCompleted ? "completed" : "in_progress",
+        onboarding_current_step: isCompleted ? (profile?.onboarding_current_step || 5) : 2,
       });
 
       await refreshProfile();
@@ -1967,5 +1995,27 @@ export default function UnifiedOnboardingPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function UnifiedOnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center text-[#1A1918]">
+          <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
+            <div className="absolute -inset-2 bg-[#FAF8F5] rounded-3xl blur-xl pointer-events-none" />
+            <div className="relative p-8 rounded-3xl bg-[#FAF8F5]/90 border-[1.5px] border-[#1A1918] shadow-[5px_5px_0_0_#1A1918] flex flex-col items-center justify-center w-full overflow-hidden">
+              <LoadingAnimation size="md" className="relative z-10" />
+              <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1A1918]/70">
+                LOADING ONBOARDING WIZARD ···
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <OnboardingWizardContent />
+    </Suspense>
   );
 }

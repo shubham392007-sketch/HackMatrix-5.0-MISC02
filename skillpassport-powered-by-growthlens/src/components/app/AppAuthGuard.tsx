@@ -31,7 +31,7 @@ export default function AppAuthGuard({
       } else {
         // If user is authenticated, verified, and profile is loaded with incomplete onboarding, guide to onboarding wizard
         const isOnboardingRoute = pathname === "/app/onboarding" || pathname === "/app/evidence/onboarding";
-        if (profile && profile.onboarding_status && profile.onboarding_status !== "completed" && !isOnboardingRoute) {
+        if (profile && profile.onboarding_status !== "completed" && !isOnboardingRoute) {
           router.replace("/app/onboarding");
         }
       }

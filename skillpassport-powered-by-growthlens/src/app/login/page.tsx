@@ -25,9 +25,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawRedirect = searchParams?.get("redirect");
-  const redirectTarget = sanitizeRedirectUrl(rawRedirect, "/app/evidence", {
-    redirectOnboardingToEvidence: true,
-  });
+  const redirectTarget = sanitizeRedirectUrl(rawRedirect, "/app/evidence");
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -102,7 +100,7 @@ function LoginForm() {
             if (typeof window !== "undefined") {
               sessionStorage.setItem("sp_user_profile", JSON.stringify(profileData));
             }
-            if (profileData.onboarding_status && profileData.onboarding_status !== "completed") {
+            if (profileData.onboarding_status !== "completed") {
               router.push("/app/onboarding");
               return;
             }
@@ -112,7 +110,12 @@ function LoginForm() {
         }
       }
 
-      router.push(redirectTarget);
+      // If user has completed onboarding, redirect bare onboarding requests to workspace
+      const finalTarget =
+        redirectTarget === "/app/onboarding" || redirectTarget === "/app/onboarding/"
+          ? "/app/evidence"
+          : redirectTarget;
+      router.push(finalTarget);
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
       setLoading(false);
