@@ -249,6 +249,16 @@ def invalidate_draft_cache(user_id: Any = None):
         _DRAFT_CACHE = {k: v for k, v in _DRAFT_CACHE.items() if not k.startswith(uid_str)}
     else:
         _DRAFT_CACHE.clear()
+def _is_expired(expires_at, now=None) -> bool:
+    if not expires_at:
+        return False
+    if now is None:
+        now = datetime.now(timezone.utc)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at < now
+
+
 def build_canonical_projection(
     owner_user_id: uuid.UUID,
     permissions: Dict[str, Any],
@@ -278,8 +288,7 @@ def build_canonical_projection(
     if share_record:
         is_revoked = share_record.status == "revoked"
         is_expired = share_record.status == "expired"
-        if not is_expired and share_record.expires_at:
-            if share_record.expires_at < now_utc:
+        if not is_expired and _is_expired(share_record.expires_at, now_utc):
                 is_expired = True
                 share_record.status = "expired"
                 db.commit()
@@ -856,7 +865,7 @@ def get_sharing_overview(
     total_access_count = 0
     for link in all_links:
         # Check dynamic expiration
-        if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+        if link.status == "active" and _is_expired(link.expires_at, now_utc):
             link.status = "expired"
             db.commit()
         if link.status == "active":
@@ -940,7 +949,7 @@ def list_share_links(
     ).order_by(desc(ShareLinkRecord.created_at)).all()
     items = []
     for link in links:
-        if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+        if link.status == "active" and _is_expired(link.expires_at, now_utc):
             link.status = "expired"
             db.commit()
         items.append({
@@ -1266,7 +1275,7 @@ def extend_share_link(
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     now_utc = datetime.now(timezone.utc)
-    base_time = link.expires_at if (link.expires_at and link.expires_at > now_utc) else now_utc
+    base_time = link.expires_at if (link.expires_at and not _is_expired(link.expires_at, now_utc)) else now_utc
     link.expires_at = base_time + timedelta(days=payload.additional_days)
     if link.status == "expired":
         link.status = "active"
@@ -2197,7 +2206,7 @@ def get_public_share_projection(
             raise HTTPException(status_code=404, detail="Shared passport link not found or invalid.")
     now_utc = datetime.now(timezone.utc)
     # Dynamic Expiration Check
-    if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+    if link.status == "active" and _is_expired(link.expires_at, now_utc):
         link.status = "expired"
         db.commit()
     # If active, track access count and event
@@ -2247,7 +2256,7 @@ def get_public_evidence_detail(
         ).first()
         if not link:
             raise HTTPException(status_code=404, detail="Active share link not found.")
-        if link.expires_at and link.expires_at < datetime.now(timezone.utc):
+        if _is_expired(link.expires_at):
             raise HTTPException(status_code=410, detail="This share link has expired.")
         owner_user_id = link.owner_user_id
         perms = link.permissions_json or {}
@@ -2350,7 +2359,7 @@ def send_recruiter_message(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="This shared passport link is not active."
             )
-        if link.expires_at and link.expires_at < datetime.now(timezone.utc):
+        if _is_expired(link.expires_at):
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
                 detail="This share link has expired."
