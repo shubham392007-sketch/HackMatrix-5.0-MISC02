@@ -10,20 +10,22 @@
        url('https://fonts.gstatic.com/s/yellowtail/v25/OZpGg_pnoDtINPfRIlLotlw.ttf') format('truetype');
 }
 
-/* ── GrowthLens Moonwood Design Tokens ──────────────────── */
+/* ── Executive Press Design Tokens ──────────────────────── */
 @theme inline {
-  /* Brand & Surface */
-  --color-lime: #DFE968;
-  --color-cream: #FBF1CF;
-  --color-blush: #F6C8D6;
-  --color-peach: #F3A878;
-  --color-cta: #F6BB84;
-  --color-ink: #1C1C1C;
-  --color-card: #FBF6DF;
+  /* Brand & Surface - Executive Press */
+  --color-lime: #E0A96D;
+  --color-cream: #F5F2EB;
+  --color-blush: #EAE5D9;
+  --color-peach: #D8CEBC;
+  --color-cta: #1E3A5F;
+  --color-cta-text: #FAF8F5;
+  --color-ink: #1A1918;
+  --color-card: #FAF8F5;
+  --color-navy: #1E3A5F;
 
   /* Semantic Trends */
-  --color-improving: #4A7A4E;
-  --color-stagnating: #1C1C1C;
+  --color-improving: #2D5A43;
+  --color-stagnating: #1A1918;
   --color-declining: #C85A54;
   --color-insufficient: #767676;
 
@@ -40,8 +42,13 @@
 
 /* ── Global Styles ─────────────────────────────────────── */
 :root {
-  --bg-gradient: linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%);
-  background-color: #FBF1CF;
+  --bg-canvas: #F5F2EB;
+  --color-ink: #1A1918;
+  --color-card: #FAF8F5;
+  --color-cta: #1E3A5F;
+  --color-cta-text: #FAF8F5;
+  --color-navy: #1E3A5F;
+  background-color: #F5F2EB;
 }
 
 *,
@@ -55,21 +62,13 @@ html {
   overflow-y: auto;
   overflow-x: clip;
   overscroll-behavior-x: none;
-  background: var(--bg-gradient);
-  background-color: #FBF1CF;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #F5F2EB !important;
   width: 100%;
   min-height: 100%;
 }
 
 body {
-  background: var(--bg-gradient);
-  background-color: #FBF1CF;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #F5F2EB !important;
   color: var(--color-ink);
   font-family: var(--font-primary);
   font-weight: 500;
@@ -82,6 +81,16 @@ body {
   padding: 0;
   position: relative;
 }
+
+/* ── Absolute Ban on Gradients Across Every Page ────────── */
+[class*="bg-gradient-"],
+[class*="from-"],
+[class*="to-"],
+[class*="via-"] {
+  background-image: none !important;
+}
+
+
 
 /* ── Organic Shape Utility ──────────────────────────────── */
 .organic-shape {
@@ -202,23 +211,30 @@ main > div > div > [class*="space-y-"]:first-child {
 }
 
 .pill-btn-primary {
-  background: var(--color-cta);
-  color: var(--color-ink);
+  background: #1E3A5F !important;
+  color: #FAF8F5 !important;
+  border-color: #1A1918 !important;
+}
+
+.pill-btn-primary:hover {
+  background: #162c48 !important;
 }
 
 .pill-btn-secondary {
-  background: #FBF1CF;
-  color: var(--color-ink);
+  background: #FAF8F5 !important;
+  color: #1A1918 !important;
+  border-color: #1A1918 !important;
 }
 
 .pill-btn-lime {
-  background: var(--color-lime);
-  color: var(--color-ink);
+  background: #E0A96D !important;
+  color: #1A1918 !important;
+  border-color: #1A1918 !important;
 }
 
 .pill-btn-dark {
-  background: var(--color-ink);
-  color: #FBF1CF;
+  background: #1A1918 !important;
+  color: #FAF8F5 !important;
 }
 
 /* ── Pill Input ─────────────────────────────────────────── */
@@ -298,7 +314,7 @@ main > div > div > [class*="space-y-"]:first-child {
   min-height: 490px;
   height: auto;
   border-radius: 36px;
-  background: linear-gradient(135deg, #F6C8D6 0%, #F6BB84 55%, #F3A878 100%);
+  background: #FAF8F5;
   border: 1.5px solid var(--color-ink);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   transform-style: preserve-3d;
@@ -312,7 +328,7 @@ main > div > div > [class*="space-y-"]:first-child {
   inset: 6px;
   border-radius: 32px;
   border-top-right-radius: 70px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(251, 246, 223, 0.22) 100%);
+  background: #FAF8F5;
   transform: translate3d(0px, 0px, 12px);
   border-left: 1.5px solid rgba(255, 255, 255, 0.9);
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.9);
@@ -759,4 +775,70 @@ header nav a:hover {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(28, 28, 28, 0.45);
+}
+
+/* ── Executive Press Compatibility Overrides for Legacy Arbitrary Hex Classes ── */
+.bg-\[\#DFE968\] {
+  background-color: #1E3A5F !important;
+  color: #FAF8F5 !important;
+}
+.bg-\[\#DFE968\] svg {
+  color: #FAF8F5 !important;
+}
+.hover\:bg-\[\#DFE968\]:hover {
+  background-color: #162c48 !important;
+  color: #FAF8F5 !important;
+}
+.bg-\[\#DFE968\]\/30,
+.bg-\[\#DFE968\]\/40,
+.bg-\[\#DFE968\]\/50 {
+  background-color: rgba(30, 58, 95, 0.12) !important;
+  color: #1E3A5F !important;
+}
+.bg-\[\#FBF1CF\] {
+  background-color: #F5F2EB !important;
+}
+.bg-\[\#FBF6DF\] {
+  background-color: #FAF8F5 !important;
+}
+.bg-\[\#F6C8D6\] {
+  background-color: #EAE5D9 !important;
+}
+.bg-\[\#F3A878\] {
+  background-color: #D8CEBC !important;
+}
+.bg-\[\#F6BB84\] {
+  background-color: #E0A96D !important;
+  color: #1A1918 !important;
+}
+.border-\[\#1C1C1C\] {
+  border-color: #1A1918 !important;
+}
+.text-\[\#1C1C1C\] {
+  color: #1A1918 !important;
+}
+[class*="shadow-"][class*="#1C1C1C"] {
+  --tw-shadow-color: #1A1918 !important;
+}
+
+/* ── Oxford Navy Utility Helpers ── */
+.bg-navy {
+  background-color: #1E3A5F !important;
+  color: #FAF8F5 !important;
+}
+.text-navy {
+  color: #1E3A5F !important;
+}
+.border-navy {
+  border-color: #1E3A5F !important;
+}
+.badge-navy {
+  background-color: #1E3A5F !important;
+  color: #FAF8F5 !important;
+  border: 1px solid #1A1918 !important;
+}
+.hero-3d-card {
+  background: #FAF8F5 !important;
+  border-color: #1A1918 !important;
+  box-shadow: 4px 4px 0px #1A1918 !important;
 }

@@ -8,7 +8,11 @@ const Agentation = dynamic(
 );
 
 export default function AgentationProvider() {
-  if (process.env.NODE_ENV !== "development") {
+  // Only connect to Agentation toolbar server if explicitly enabled
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.NEXT_PUBLIC_ENABLE_AGENTATION !== "true"
+  ) {
     return null;
   }
 

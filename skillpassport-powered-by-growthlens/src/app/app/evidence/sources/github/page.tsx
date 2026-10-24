@@ -17,6 +17,7 @@ import {
   selectSingleGitHubRepository,
   removeSelectedGitHubRepository,
   syncSingleGitHubRepository,
+  getGitHubRepositorySyncStatus,
   analyzeGitHubRepository,
   getGitHubDiagnostic,
   LanguageBreakdownItem,
@@ -82,7 +83,7 @@ interface GitHubRepoItem {
 }
 
 export default function GitHubSourceFlow() {
-  const { sources, refreshEvidenceData } = useEvidence();
+  const { sources, refreshEvidenceData, addNotification } = useEvidence();
   const currentSource = sources.find((s) => s.type === "github" && s.status === "connected");
 
   const [tokenInput, setTokenInput] = useState("");
@@ -201,6 +202,59 @@ export default function GitHubSourceFlow() {
         candidateSkills: outcome.candidate_skills || [],
       });
 
+      // Notification 1: Repository sync completed (or partial)
+      if ((outcome.lang_errors && outcome.lang_errors > 0) || outcome.languages_status === "failed") {
+        addNotification({
+          title: "Partial synchronization",
+          description: `Repository '${repoName}' synchronized with warnings: language analysis failed (${outcome.lang_errors || 1} error), but README and commits were processed.`,
+          category: "evidence",
+          severity: "warning",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Inspect Ingestion Status",
+          dedupKey: `repo_partial_${repoName}`,
+        });
+      } else {
+        addNotification({
+          title: "Repository sync completed",
+          description: `Successfully synchronized '${repoName}': ${commitsCount} commits, ${outcome.prs_imported ?? outcome.prs_considered ?? 0} PRs, and ${skillsCount} candidate skills extracted.`,
+          category: "evidence",
+          severity: "success",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Inspect Ingested Data",
+          dedupKey: `repo_sync_${repoName}_${Date.now()}`,
+        });
+      }
+
+      // Notification 2: If README was missing/not found
+      if (!isReadmeOk) {
+        addNotification({
+          title: "README extraction needs attention",
+          description: `Repository '${repoName}' has no readable README file. Repository skills were derived from commit history and code composition only.`,
+          category: "evidence",
+          severity: "warning",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Inspect Source",
+          dedupKey: `repo_readme_${repoName}`,
+        });
+      }
+
+      // Notification 3: Evidence extraction completed
+      if (skillsCount > 0) {
+        addNotification({
+          title: "Evidence extraction completed",
+          description: `Extracted ${skillsCount} candidate skill${skillsCount === 1 ? "" : "s"} from repository '${repoName}'.`,
+          category: "evidence",
+          severity: "success",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/passport/candidates",
+          actionLabel: "Review Candidate Skills",
+          dedupKey: `repo_skills_${repoName}_${skillsCount}`,
+        });
+      }
+
       // Immediately reflect active sync status and details in local state
       setRepositories((prev) =>
         prev.map((r) => {
@@ -222,7 +276,99 @@ export default function GitHubSourceFlow() {
       await loadLanguagesSummary();
       await refreshEvidenceData();
     } catch (err: any) {
-      setConnectError(`Failed to sync ${repoName}: ${err.message}`);
+      // Check if backend actually completed or persisted the sync outcome
+      let recoveredOutcome: any = null;
+      try {
+        const statusOutcome = await getGitHubRepositorySyncStatus(repoName);
+        if (
+          statusOutcome &&
+          (statusOutcome.status === "completed" ||
+            (statusOutcome.candidate_skills_count && statusOutcome.candidate_skills_count > 0))
+        ) {
+          recoveredOutcome = statusOutcome;
+        }
+      } catch (checkErr) {
+        // Recovery check failed
+      }
+
+      if (recoveredOutcome) {
+        const isReadmeOk = Boolean(recoveredOutcome.readme_retrieved ?? recoveredOutcome.has_readme);
+        const commitsCount = recoveredOutcome.commits_imported ?? recoveredOutcome.commits_considered ?? 0;
+        const skillsCount =
+          recoveredOutcome.candidate_skills_count ?? recoveredOutcome.candidate_skills?.length ?? 0;
+
+        setStatusMessage(
+          `Synchronized ${repoName}: README ${isReadmeOk ? "indexed" : "not found"}, ${commitsCount} commits consolidated, ${skillsCount} candidate skills extracted.`
+        );
+
+        setSyncSuccessOutcome({
+          repoName,
+          readmeRetrieved: isReadmeOk,
+          readmePath: recoveredOutcome.readme_path || "README.md",
+          readmeChars: recoveredOutcome.readme_chars || 0,
+          commitsConsidered: commitsCount,
+          prsConsidered: recoveredOutcome.prs_imported ?? recoveredOutcome.prs_considered ?? 0,
+          languagesCount: recoveredOutcome.detected_languages ?? 0,
+          topLanguage: recoveredOutcome.top_language || null,
+          candidateSkills: recoveredOutcome.candidate_skills || [],
+        });
+
+        addNotification({
+          title: "Repository sync completed",
+          description: `Successfully synchronized '${repoName}': ${commitsCount} commits, ${recoveredOutcome.prs_imported ?? 0} PRs, and ${skillsCount} candidate skills extracted.`,
+          category: "evidence",
+          severity: "success",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Inspect Ingested Data",
+          dedupKey: `repo_sync_${repoName}_${Date.now()}`,
+        });
+
+        if (skillsCount > 0) {
+          addNotification({
+            title: "Evidence extraction completed",
+            description: `Extracted ${skillsCount} candidate skill${skillsCount === 1 ? "" : "s"} from repository '${repoName}'.`,
+            category: "evidence",
+            severity: "success",
+            relatedDomain: "Evidence Workspace",
+            actionRoute: "/app/passport/candidates",
+            actionLabel: "Review Candidate Skills",
+            dedupKey: `repo_skills_${repoName}_${skillsCount}`,
+          });
+        }
+
+        setRepositories((prev) =>
+          prev.map((r) => {
+            if (r.full_name === repoName) {
+              return {
+                ...r,
+                selected: true,
+                languages_status: recoveredOutcome.languages_status || "success",
+                detected_languages_count: recoveredOutcome.detected_languages ?? r.detected_languages_count,
+                total_language_bytes: recoveredOutcome.total_bytes ?? r.total_language_bytes,
+                readme_status: recoveredOutcome.readme_status || (recoveredOutcome.has_readme ? "success" : "not_found"),
+                has_readme: Boolean(recoveredOutcome.has_readme),
+                readme_sections_count: recoveredOutcome.readme_sections_count ?? r.readme_sections_count,
+              };
+            }
+            return r;
+          })
+        );
+        await loadLanguagesSummary();
+        await refreshEvidenceData();
+      } else {
+        setConnectError(`Failed to sync ${repoName}: ${err.message}`);
+        addNotification({
+          title: "Synchronization failed",
+          description: `Failed to synchronize repository '${repoName}': ${err.message || "Network or authorization error"}.`,
+          category: "evidence",
+          severity: "error",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Retry Sync",
+          dedupKey: `repo_fail_${repoName}_${Date.now()}`,
+        });
+      }
     } finally {
       setSyncingSingleRepo(null);
     }
@@ -239,9 +385,29 @@ export default function GitHubSourceFlow() {
         message: res.message || `Analysis complete (${res.analyzed_count || 0} items)`,
         model,
       });
+      addNotification({
+        title: "Evidence extraction completed",
+        description: `AI work analysis completed for '${repoName}' (${res.analyzed_count || 1} items evaluated with ${model}).`,
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "AI Intelligence",
+        actionRoute: "/app/ai",
+        actionLabel: "View AI Analysis",
+        dedupKey: `analyze_${repoName}_${Date.now()}`,
+      });
       await refreshEvidenceData();
     } catch (err: any) {
       setConnectError(`Analysis failed for ${repoName}: ${err.message}`);
+      addNotification({
+        title: "Extraction requires attention",
+        description: `AI work analysis failed for '${repoName}': ${err.message || "Model execution failed"}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "AI Intelligence",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "Retry Analysis",
+        dedupKey: `analyze_fail_${repoName}_${Date.now()}`,
+      });
     } finally {
       setAnalyzingRepo(null);
     }
@@ -283,6 +449,19 @@ export default function GitHubSourceFlow() {
       }
     } catch (err: any) {
       console.warn("Could not load GitHub repositories:", err);
+      const isAuthError = err?.status === 401 || err?.message?.toLowerCase().includes("unauthorized") || err?.message?.toLowerCase().includes("bad credentials");
+      if (isAuthError) {
+        addNotification({
+          title: "Reconnect your GitHub account",
+          description: "GitHub authorization has expired or is invalid. Please update your Personal Access Token in Connected Sources.",
+          category: "evidence",
+          severity: "error",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/sources/github",
+          actionLabel: "Reconnect GitHub",
+          dedupKey: "github_auth_needs_attention",
+        });
+      }
       setConnectError("Could not retrieve repositories. Check network connectivity or PAT validity.");
     } finally {
       setLoadingRepos(false);
@@ -316,11 +495,32 @@ export default function GitHubSourceFlow() {
       await connectGitHub(tokenInput.trim());
       setTokenInput("");
       setStatusMessage("GitHub connected successfully! Discovered repositories loaded below.");
+      addNotification({
+        title: "Evidence added successfully",
+        description: "GitHub account connected successfully. Accessible repositories discovered and ready for sync.",
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "View Repositories",
+        dedupKey: `gh_connect_${Date.now()}`,
+      });
       await refreshEvidenceData();
       await loadRepositories();
       await loadLanguagesSummary();
     } catch (err: any) {
-      setConnectError(err.message || "Failed to validate or connect GitHub token.");
+      const errMsg = err.message || "Failed to validate or connect GitHub token.";
+      setConnectError(errMsg);
+      addNotification({
+        title: "Reconnect your GitHub account",
+        description: `GitHub connection failed: ${errMsg}. Please verify your Personal Access Token and try again.`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "Retry Connection",
+        dedupKey: `gh_auth_fail_${Date.now()}`,
+      });
     } finally {
       setConnecting(false);
     }
@@ -356,13 +556,34 @@ export default function GitHubSourceFlow() {
       setStatusMessage(
         `Sequential ingestion completed for ${stagedToAdd.length} added repositories! Real languages and README context indexed.`
       );
+      addNotification({
+        title: "Repository sync completed",
+        description: `Sequential ingestion completed for ${stagedToAdd.length} added repositories. Languages and README context indexed.`,
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "View Repositories",
+        dedupKey: `gh_batch_add_${Date.now()}`,
+      });
       setStagedToAdd([]);
       await refreshEvidenceData();
       await loadRepositories();
       await loadLanguagesSummary();
       setActiveTab("selected");
     } catch (err: any) {
-      setConnectError(err.message || "Failed to add repositories and start sync.");
+      const errMsg = err.message || "Failed to add repositories and start sync.";
+      setConnectError(errMsg);
+      addNotification({
+        title: "Synchronization failed",
+        description: `Failed to add and sync staged repositories: ${errMsg}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "Retry Sync",
+        dedupKey: `gh_staged_fail_${Date.now()}`,
+      });
     } finally {
       setSyncing(false);
     }
@@ -516,11 +737,32 @@ export default function GitHubSourceFlow() {
     try {
       await triggerGitHubSync();
       setStatusMessage("Incremental synchronization completed. All language and README context updated.");
+      addNotification({
+        title: "Repository sync completed",
+        description: "Incremental synchronization completed across all selected repositories. Language and README context updated.",
+        category: "evidence",
+        severity: "success",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "View Repositories",
+        dedupKey: `gh_sync_all_${Date.now()}`,
+      });
       await refreshEvidenceData();
       await loadRepositories();
       await loadLanguagesSummary();
     } catch (err: any) {
-      setConnectError(err.message || "Sync failed.");
+      const errMsg = err.message || "Sync failed.";
+      setConnectError(errMsg);
+      addNotification({
+        title: "Synchronization failed",
+        description: `Incremental synchronization failed: ${errMsg}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/sources/github",
+        actionLabel: "Retry Sync",
+        dedupKey: `gh_sync_fail_${Date.now()}`,
+      });
     } finally {
       setSyncing(false);
     }
@@ -1109,7 +1351,7 @@ export default function GitHubSourceFlow() {
                                 </button>
 
                                 <Link
-                                  href={`/app/evidence?source=github`}
+                                  href={`/app/evidence/library?q=${encodeURIComponent(repo.name)}`}
                                   className="pill-btn bg-[#DFE968]/30 border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider py-1 px-2.5 flex items-center gap-1 hover:bg-[#DFE968]"
                                 >
                                   <span>VIEW EVIDENCE</span>
@@ -1510,14 +1752,26 @@ export default function GitHubSourceFlow() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-[#1C1C1C]/15 bg-[#FBF1CF] flex items-center justify-between">
-                <Link
-                  href={`/app/evidence?source=github`}
-                  className="pill-btn pill-btn-primary text-xs py-2 px-4 font-black uppercase flex items-center gap-1.5"
-                >
-                  <span>VIEW IN EVIDENCE INVENTORY</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
+              <div className="p-4 border-t border-[#1C1C1C]/15 bg-[#FBF1CF] flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/app/passport/candidates`}
+                    className="pill-btn pill-btn-primary text-xs py-2 px-3.5 font-black uppercase flex items-center gap-1.5 shadow-[1px_1px_0_0_#1C1C1C]"
+                  >
+                    <span>REVIEW CANDIDATE SKILLS</span>
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </Link>
+
+                  <Link
+                    href={`/app/evidence/library?q=${encodeURIComponent(
+                      syncSuccessOutcome.repoName.split("/").pop() || syncSuccessOutcome.repoName
+                    )}`}
+                    className="pill-btn bg-white border border-[#1C1C1C] text-xs py-2 px-3.5 font-bold uppercase flex items-center gap-1.5 hover:bg-[#DFE968]"
+                  >
+                    <span>VIEW EVIDENCE INVENTORY</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
 
                 <button
                   type="button"

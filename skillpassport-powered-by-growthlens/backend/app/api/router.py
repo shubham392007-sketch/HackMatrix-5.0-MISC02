@@ -10,11 +10,17 @@ from backend.app.api.ai import router as ai_router
 from backend.app.api.passport import router as passport_router
 from backend.app.api.career import router as career_router
 from backend.app.learning.router import router as learning_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.vault import router as vault_router
+from backend.app.api.sharing import router as sharing_router
 
 api_router = APIRouter()
 
 # Health endpoints
 api_router.include_router(health_router)
+
+# Authentication Provisioning & Rate Limit Fallback
+api_router.include_router(auth_router)
 
 # User Profile & Onboarding
 api_router.include_router(profile_router)
@@ -45,3 +51,9 @@ api_router.include_router(career_router)
 
 # Learn & Grow Engine (Domain 5)
 api_router.include_router(learning_router)
+
+# Evidence Vault & Persistent Archive (Domain 1 & Settings)
+api_router.include_router(vault_router)
+
+# Sharing & Recruiter Experience (Domain 6)
+api_router.include_router(sharing_router)

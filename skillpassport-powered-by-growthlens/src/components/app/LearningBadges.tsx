@@ -113,7 +113,7 @@ export function MasteryProgressBar({
       <div className="w-full bg-sand/30 rounded-full h-2.5 overflow-hidden p-0.5 border border-ink/10 relative">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isSatisfied ? "bg-emerald-500" : "bg-gradient-to-r from-amber-400 to-lime"
+            isSatisfied ? "bg-emerald-500" : "bg-[#FAF8F5]"
           }`}
           style={{ width: `${Math.min(100, current)}%` }}
         />

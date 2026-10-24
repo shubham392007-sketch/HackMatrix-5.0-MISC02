@@ -1,15 +1,21 @@
 export interface UserProfile {
   id: string;
   displayName: string;
+  preferredName?: string;
   headline: string;
   currentRole: string;
   summary: string;
   organization: string;
   location: string;
+  workPreference?: string;
+  experienceLevel?: string;
+  yearsOfExperience?: string;
+  careerStage?: string;
   avatarUrl?: string;
   avatarInitials: string;
   contactEmail: string;
   contactLinkedIn: string;
+  githubUrl?: string;
   portfolioUrl?: string;
   lastUpdated: string;
 }
@@ -56,6 +62,8 @@ export interface PrivacyPreferences {
 export type NotificationCategory =
   | "evidence"
   | "verification"
+  | "ai"
+  | "governance"
   | "learning"
   | "sharing"
   | "system";
@@ -73,6 +81,14 @@ export interface AppNotification {
   relatedDomain: string;
   actionRoute?: string;
   actionLabel?: string;
+  dedupKey?: string;
+  userId?: string;
+  entityType?: string;
+  entityId?: string;
+  modelName?: string;
+  runId?: string;
+  analysisId?: string;
+  targetRole?: string | string[];
 }
 
 export interface AppSettings {
@@ -85,6 +101,7 @@ export interface AppSettings {
     learningMilestones: boolean;
     passportSharingViews: boolean;
     governanceAlerts: boolean;
+    aiAnalysisAlerts: boolean;
     emailDigestWeekly: boolean;
   };
   prototypeVersion: string;

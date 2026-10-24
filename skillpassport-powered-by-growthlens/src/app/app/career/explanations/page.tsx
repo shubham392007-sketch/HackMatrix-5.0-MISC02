@@ -17,6 +17,7 @@ import {
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
 import AppTopBar from "@/components/app/AppTopBar";
+import { ConfidenceScoreExplainer } from "@/components/app/ConfidenceRationaleCard";
 import {
   HelpCircle,
   CheckCircle2,
@@ -303,6 +304,15 @@ export default function RoleExplanationExplorerPage() {
                       <div>Current Maturity: <strong>{compMatch.current_proficiency}</strong> (Numeric: {compMatch.current_proficiency_numeric}/5)</div>
                       <div>Verification State: <strong>{compMatch.verification_status}</strong></div>
                       <div>Confidence Score: <strong>{(compMatch.confidence * 100).toFixed(0)}%</strong></div>
+                    </div>
+                    <div className="pt-2 border-t border-ink/10">
+                      <ConfidenceScoreExplainer
+                        score={compMatch.confidence}
+                        explanation={compMatch.confidence_explanation}
+                        rationale={compMatch.confidence_rationale}
+                        skillName={compMatch.canonical_name}
+                        defaultExpanded={true}
+                      />
                     </div>
                   </div>
                 </div>

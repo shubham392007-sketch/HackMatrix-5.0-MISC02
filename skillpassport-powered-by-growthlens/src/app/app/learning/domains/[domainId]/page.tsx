@@ -72,7 +72,7 @@ export default function DomainBlueprintDetailPage() {
       <ActiveDomainSelectorBar />
 
       {/* Blueprint Header Stats */}
-      <div className="gl-card p-6 md:p-8 space-y-6 bg-gradient-to-r from-cream via-white to-sand/20 border-ink/15">
+      <div className="gl-card p-6 md:p-8 space-y-6 bg-[#FAF8F5] border-ink/15">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div className="p-3.5 rounded-xl bg-white border border-ink/10 space-y-1">
             <span className="text-[10px] font-mono uppercase text-ink-muted block">

@@ -1,0 +1,17 @@
+Skill Passport — Verify Your Email Address
+==========================================
+
+Hello,
+
+Thank you for creating an account on Skill Passport. You are one step away from connecting your work artifacts, discovering verified competencies, and launching your personal skill passport.
+
+Please visit the link below to confirm your email address and continue to your evidence onboarding setup:
+
+{{ .ConfirmationURL }}
+
+Security Notice:
+If you did not sign up for a Skill Passport account, you can safely ignore this email. No account will be activated or evidence ingested without email confirmation.
+
+--
+Skill Passport • Powered by GrowthLens
+Deterministic Skill Intelligence • Evidence Verification • Trust & Governance

@@ -19,6 +19,14 @@ async def lifespan(app: FastAPI):
     logger.info(
         f"Starting {settings.app_name} [v{settings.app_version}] in {settings.app_env} mode"
     )
+    try:
+        from backend.app.db.session import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1;"))
+        logger.info("Database connection pre-warmed successfully")
+    except Exception as e:
+        logger.warning(f"Could not pre-warm database connection on startup: {e}")
     yield
     logger.info(f"Shutting down {settings.app_name}")
     try:
@@ -46,6 +54,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -112,6 +121,55 @@ def create_app() -> FastAPI:
                     "code": "DATABASE_TEMPORARILY_UNAVAILABLE",
                     "message": msg,
                     "details": {"retry_after_seconds": 15},
+                }
+            },
+        )
+
+    # Centralized Exception Handler for Raw psycopg2 Driver Errors
+    import psycopg2
+    @app.exception_handler(psycopg2.Error)
+    async def psycopg2_error_handler(request: Request, exc: psycopg2.Error):
+        from backend.app.db.reliability import (
+            circuit_breaker,
+            is_transient_connection_error,
+            is_connection_exhaustion_error,
+        )
+        circuit_breaker.record_failure(exc)
+        logger.error(
+            f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}"
+        )
+        is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
+        msg = (
+            "The database is currently experiencing high load or connection limits. Please try again shortly."
+            if is_transient
+            else "A database operation could not be completed. Please try again later."
+        )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            headers={"Retry-After": "15"},
+            content={
+                "error": {
+                    "code": "DATABASE_TEMPORARILY_UNAVAILABLE",
+                    "message": msg,
+                    "details": {"retry_after_seconds": 15},
+                }
+            },
+        )
+
+    # Centralized Fallback Exception Handler for any unhandled Exception
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.error(
+            f"Unhandled server error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}",
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "An internal server error occurred while processing the request.",
+                    "details": {"type": type(exc).__name__, "message": str(exc)},
                 }
             },
         )

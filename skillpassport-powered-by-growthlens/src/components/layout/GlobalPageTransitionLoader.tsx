@@ -334,8 +334,8 @@ export default function GlobalPageTransitionLoader() {
           className="fixed top-0 left-0 right-0 z-[99999] h-[3.5px] pointer-events-none transition-all duration-200 ease-out"
           style={{
             width: `${progress}%`,
-            background: "linear-gradient(90deg, #1C1C1C 0%, #F3A878 50%, #DFE968 100%)",
-            boxShadow: "0 0 14px rgba(223, 233, 104, 0.95), 0 0 4px #1C1C1C",
+            background: "#1E3A5F",
+            boxShadow: "0 0 14px rgba(30, 58, 95, 0.6), 0 0 4px #1C1C1C",
           }}
         />
       )}
@@ -347,33 +347,36 @@ export default function GlobalPageTransitionLoader() {
             active ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           style={{
-            background: "rgba(251, 241, 207, 0.72)",
+            background: "rgba(245, 242, 235, 0.85)",
           }}
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="relative p-7 sm:p-9 rounded-3xl bg-[#FBF6DF]/95 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center max-w-sm w-full mx-4 animate-scaleUp">
+          <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
             {/* Ambient glow behind card */}
             <div className="absolute -inset-2 bg-[#DFE968]/35 rounded-3xl blur-xl pointer-events-none" />
 
-            {/* Cursive Brand Lottie Animation */}
-            <LoadingAnimation size="md" className="relative z-10" />
+            {/* Centered Cream Card Strictly Containing Everything Inside */}
+            <div className="relative p-7 sm:p-9 rounded-3xl bg-[#FBF6DF]/95 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full animate-scaleUp overflow-hidden">
+              {/* Cursive Brand Animation */}
+              <LoadingAnimation size="md" className="relative z-10" />
 
-            {/* Label and loading indicator */}
-            <div className="mt-3 flex flex-col items-center gap-1.5 relative z-10 text-center">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-black uppercase tracking-wider mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] animate-ping" />
-                <span>NAVIGATING</span>
+              {/* Label and loading indicator */}
+              <div className="mt-3 flex flex-col items-center gap-1.5 relative z-10 text-center">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-black uppercase tracking-wider mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] animate-ping" />
+                  <span>NAVIGATING</span>
+                </div>
+                <p
+                  className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]"
+                  style={{ letterSpacing: "0.2em" }}
+                >
+                  {targetContext.title}
+                </p>
+                <span className="text-[11px] font-medium text-[#1C1C1C]/75 tracking-normal max-w-[260px] leading-snug">
+                  {targetContext.subtitle}
+                </span>
               </div>
-              <p
-                className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]"
-                style={{ letterSpacing: "0.2em" }}
-              >
-                {targetContext.title}
-              </p>
-              <span className="text-[11px] font-medium text-[#1C1C1C]/75 tracking-normal max-w-[260px] leading-snug">
-                {targetContext.subtitle}
-              </span>
             </div>
           </div>
         </div>

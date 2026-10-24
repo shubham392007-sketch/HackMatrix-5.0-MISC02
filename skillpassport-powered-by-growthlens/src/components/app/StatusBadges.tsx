@@ -21,8 +21,8 @@ export function SourceStatusBadge({ status }: { status: ConnectionStatus }) {
     case "connected":
     case "demo_connected":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
           {status === "connected" ? "CONNECTED" : "DEMO CONNECTED"}
         </span>
       );
@@ -100,8 +100,8 @@ export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   switch (status) {
     case "verified":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
-          <ShieldCheck className="w-3 h-3 text-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]">
+          <ShieldCheck className="w-3 h-3 text-[#FAF8F5]" />
           VERIFIED
         </span>
       );

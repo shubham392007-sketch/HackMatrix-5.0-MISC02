@@ -91,6 +91,15 @@ async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Pr
     response = await promise;
   }
 
+  if (response.status === 401) {
+    invalidateAuthTokenCache();
+    if (typeof window !== "undefined") {
+      try {
+        supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      } catch {}
+    }
+  }
+
   if (response.status === 503) {
     const retryAfterHeader = response.headers.get("Retry-After");
     const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 15;
@@ -128,14 +137,22 @@ export async function getMyProfile() {
 
 export async function updateMyProfile(updates: {
   display_name?: string;
+  preferred_name?: string;
   headline?: string;
   current_role?: string;
   job_title?: string;
   specialization?: string;
   department_or_team?: string;
+  location?: string;
+  work_preference?: string;
   experience_level?: string;
   professional_goal?: string;
   professional_summary?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  privacy_preferences?: Record<string, any>;
+  app_settings?: Record<string, any>;
   onboarding_status?: string;
   onboarding_current_step?: number;
   onboarding_current_category?: string;
@@ -423,17 +440,51 @@ export interface GitHubDiagnosticResponse {
   checks: DiagnosticCheckItem[];
 }
 
-export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+export async function getGitHubRepositorySyncStatus(repositoryIdOrFullName: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/sync`, {
-    method: "POST",
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync-status`, {
     headers,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
-    throw new Error(err.detail || "Repository sync failed");
+    const err = await res.json().catch(() => ({ detail: "Failed to get repository sync status" }));
+    throw new Error(err.detail || "Failed to get repository sync status");
   }
   return res.json();
+}
+
+export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync`, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
+      throw new Error(err.detail || "Repository sync failed");
+    }
+    return await res.json();
+  } catch (err: any) {
+    // If the network or browser interrupted the fetch (e.g. Failed to fetch or connection dropped),
+    // check if the backend has finished or is processing the sync!
+    try {
+      await new Promise((r) => setTimeout(r, 1200));
+      const statusOutcome = await getGitHubRepositorySyncStatus(repositoryIdOrFullName);
+      if (statusOutcome && (statusOutcome.status === "completed" || (statusOutcome.candidate_skills_count && statusOutcome.candidate_skills_count > 0))) {
+        return statusOutcome;
+      }
+    } catch (statusErr) {
+      // Ignore status query error and rethrow original error
+    }
+    throw err;
+  }
 }
 
 export async function analyzeGitHubRepository(repositoryIdOrFullName: string, limit: number = 5) {
@@ -462,39 +513,75 @@ export async function getGitHubDiagnostic(): Promise<GitHubDiagnosticResponse> {
 // Jira Connector APIs
 export async function testJiraCredentials(site_url: string, email: string, api_token: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/test`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ site_url, email, api_token }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Jira validation failed" }));
-    throw new Error(err.detail || "Invalid Jira credentials");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/test`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ site_url, email, api_token }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Jira validation failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function connectJira(site_url: string, email: string, api_token: string, selected_projects: string[] = []) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ site_url, email, api_token, selected_projects }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to connect Jira" }));
-    throw new Error(err.detail || "Jira connection failed");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ site_url, email, api_token, selected_projects }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Failed to connect Jira (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function listJiraProjects() {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/projects`, {
-    headers,
-  });
-  if (!res.ok) throw new Error("Failed to load Jira projects");
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/projects`, {
+      headers,
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Failed to load Jira projects (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
+  }
 }
 
 export async function updateSelectedJiraProjects(projects: any[]) {
@@ -502,26 +589,52 @@ export async function updateSelectedJiraProjects(projects: any[]) {
   const formatted = projects.map((p) =>
     typeof p === "string" ? { key: p, name: p, selected: true } : p
   );
-  const res = await fetch(`${API_BASE}/connections/jira/projects`, {
-    method: "PUT",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ projects: formatted }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to update projects" }));
-    throw new Error(err.detail || "Project update failed");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/projects`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ projects: formatted }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Project update failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function triggerJiraSync(project_key?: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/sync`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify(project_key ? { project_key } : {}),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/sync`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(project_key ? { project_key } : {}),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Jira synchronization failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
+  }
 }
 
 // Connected Sources Listing & Disconnect
@@ -1031,16 +1144,25 @@ export async function listPassportCandidates(): Promise<{
   return res.json();
 }
 
+export interface CandidateReviewResponse {
+  decision_id: string;
+  mapping_id: string;
+  previous_state: string;
+  verification_state: string;
+  rationale: string;
+  created_at?: string | null;
+  skill_name?: string | null;
+  category?: string | null;
+  proficiency_level?: string | null;
+  confidence_score?: number | null;
+  evidence_id?: string | null;
+}
+
 export async function reviewPassportCandidate(
   mappingId: string,
   action: "verify" | "reject" | "flag_insufficient",
   rationale: string
-): Promise<{
-  success: boolean;
-  decision_id: string;
-  status: string;
-  message: string;
-}> {
+): Promise<CandidateReviewResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/passport/candidates/${mappingId}/review`, {
     method: "POST",

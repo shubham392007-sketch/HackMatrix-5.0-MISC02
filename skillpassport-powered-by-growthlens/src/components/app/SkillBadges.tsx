@@ -6,8 +6,8 @@ export function SkillVerificationBadge({ state }: { state: SkillVerificationStat
   switch (state) {
     case "verified":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#FAF8F5]" />
           VERIFIED SKILL
         </span>
       );

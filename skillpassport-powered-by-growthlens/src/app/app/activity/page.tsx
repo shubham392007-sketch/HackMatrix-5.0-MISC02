@@ -173,8 +173,8 @@ export default function ActivityHistoryPage() {
           {filteredActivities.length === 0 ? (
             <EmptyState
               icon={Clock}
-              title="No Activity Events Found"
-              description="No timeline events match the search query or category filter."
+              title="No Activity Events Recorded"
+              description="No activity has been recorded for this period. As you update your profile, connect repositories, or undergo skill verification reviews, events will appear here."
               actionLabel="Show All Activity"
               onAction={() => {
                 setSearchQuery("");

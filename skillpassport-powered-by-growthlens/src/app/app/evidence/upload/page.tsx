@@ -30,7 +30,7 @@ import Link from "next/link";
 import LoadingAnimation from "@/components/ui/LoadingAnimation";
 
 export default function UploadEvidencePage() {
-  const { refreshEvidenceData } = useEvidence();
+  const { refreshEvidenceData, addNotification } = useEvidence();
 
   const [category, setCategory] = useState<
     "document" | "certificate" | "resume" | "portfolio" | "research" | "other"
@@ -99,8 +99,9 @@ export default function UploadEvidencePage() {
         if (!urlOrRef.trim()) {
           throw new Error("Please enter a valid website or portfolio URL.");
         }
+        const targetUrl = urlOrRef.trim();
         result = await scrapePortfolio({
-          url: urlOrRef.trim(),
+          url: targetUrl,
           title: title.trim() || undefined,
           related_project: project.trim() || undefined,
           claimed_contribution: contribution.trim() || undefined,
@@ -108,21 +109,121 @@ export default function UploadEvidencePage() {
           max_depth: 2,
           max_pages: 10,
         });
+
+        const pagesCount = result?.pages_scraped || result?.pages?.length || 1;
+        const skillsCount = result?.candidate_skills?.length || result?.candidateSkills?.length || 0;
+
+        addNotification({
+          title: "Evidence added successfully",
+          description: `Portfolio URL '${targetUrl}' was successfully scraped (${pagesCount} pages indexed).`,
+          category: "evidence",
+          severity: "success",
+          relatedDomain: "Evidence Workspace",
+          actionRoute: "/app/evidence/library",
+          actionLabel: "View Evidence Library",
+          dedupKey: `scrape_${targetUrl}_${Date.now()}`,
+        });
+
+        if (skillsCount > 0) {
+          addNotification({
+            title: "Evidence extraction completed",
+            description: `Extracted ${skillsCount} candidate skill${skillsCount === 1 ? "" : "s"} from '${targetUrl}'.`,
+            category: "evidence",
+            severity: "success",
+            relatedDomain: "Evidence Workspace",
+            actionRoute: "/app/passport/candidates",
+            actionLabel: "Review Candidate Skills",
+            dedupKey: `scrape_skills_${targetUrl}_${skillsCount}`,
+          });
+        }
       } else {
         if (!selectedFile) {
           throw new Error("Please select a file to upload.");
         }
+        const fileName = selectedFile.name;
         result = await uploadEvidenceDocument(
           selectedFile,
           category,
           title.trim() || selectedFile.name
         );
+
+        if (result?.status === "already_exists") {
+          addNotification({
+            title: "Duplicate evidence skipped",
+            description: `Document '${result.filename || fileName}' matches an existing file with identical SHA-256 hash. Duplicate skipped to preserve data integrity.`,
+            category: "evidence",
+            severity: "info",
+            relatedDomain: "Evidence Workspace",
+            actionRoute: result.evidence_id ? `/app/evidence/${result.evidence_id}` : "/app/evidence/library",
+            actionLabel: "View Existing Evidence",
+            dedupKey: `dup_${result.document_id || fileName}`,
+          });
+        } else {
+          const docTitle = result.title || title.trim() || fileName;
+          const wordCount = result.word_count || 0;
+          const chunksCount = result.chunks_extracted || 0;
+          const skillsCount = result.candidateSkills?.length || 0;
+
+          const isInsufficient =
+            result.extraction_quality === "insufficient_content" ||
+            result.extraction_quality === "failed" ||
+            result.status === "insufficient_content" ||
+            (typeof result.word_count === "number" && result.word_count < 15);
+
+          if (isInsufficient) {
+            addNotification({
+              title: "Extraction requires attention",
+              description: `Document '${docTitle}' was uploaded, but text extraction was incomplete: ${result.quality_reason || "insufficient content detected"}.`,
+              category: "evidence",
+              severity: "warning",
+              relatedDomain: "Evidence Workspace",
+              actionRoute: "/app/evidence/runs",
+              actionLabel: "Inspect Ingestion Run",
+              dedupKey: `doc_insufficient_${result.document_id || fileName}`,
+            });
+          } else {
+            addNotification({
+              title: "Evidence added successfully",
+              description: `Document '${docTitle}' (${wordCount} words, ${chunksCount} chunks) was successfully indexed into your Evidence Workspace.`,
+              category: "evidence",
+              severity: "success",
+              relatedDomain: "Evidence Workspace",
+              actionRoute: result.evidence_id ? `/app/evidence/${result.evidence_id}` : "/app/evidence/library",
+              actionLabel: "View Evidence Item",
+              dedupKey: `doc_add_${result.document_id || fileName}`,
+            });
+
+            if (skillsCount > 0) {
+              addNotification({
+                title: "Evidence extraction completed",
+                description: `Extracted ${skillsCount} candidate skill${skillsCount === 1 ? "" : "s"} from '${docTitle}'.`,
+                category: "evidence",
+                severity: "success",
+                relatedDomain: "Evidence Workspace",
+                actionRoute: "/app/passport/candidates",
+                actionLabel: "Review Candidate Skills",
+                dedupKey: `doc_skills_${result.document_id || fileName}`,
+              });
+            }
+          }
+        }
       }
 
       setSuccessResult(result);
       await refreshEvidenceData();
     } catch (err: any) {
-      setUploadError(err.message || "Failed to upload and process evidence.");
+      const errMsg = err.message || "Failed to upload and process evidence.";
+      setUploadError(errMsg);
+      addNotification({
+        title: "Document processing failed",
+        description: `Failed to process '${category === "portfolio" ? urlOrRef : (selectedFile?.name || "document")}': ${errMsg}`,
+        category: "evidence",
+        severity: "error",
+        relatedDomain: "Evidence Workspace",
+        actionRoute: "/app/evidence/upload",
+        actionLabel: "Retry Upload",
+        dedupKey: `doc_err_${Date.now()}`,
+      });
     } finally {
       setUploading(false);
     }
@@ -494,7 +595,7 @@ export default function UploadEvidencePage() {
             </div>
 
             {uploading && (
-              <div className="p-6 rounded-3xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center space-y-2">
+              <div className="p-6 rounded-3xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center space-y-2 overflow-hidden">
                 <LoadingAnimation size="sm" className="-my-2" />
                 <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
                   {category === "portfolio"

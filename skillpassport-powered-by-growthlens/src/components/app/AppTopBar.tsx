@@ -5,6 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import { useAuth } from "@/context/AuthContext";
+import EvidenceHelpDrawer from "@/components/app/EvidenceHelpDrawer";
+import AIHelpDrawer from "@/components/app/AIHelpDrawer";
+import GovernanceHelpDrawer from "@/components/app/GovernanceHelpDrawer";
+import SkillHelpDrawer from "@/components/app/SkillHelpDrawer";
+import SettingsHelpDrawer from "@/components/app/SettingsHelpDrawer";
 import {
   ArrowLeft,
   Bell,
@@ -51,10 +56,16 @@ export default function AppTopBar({
   const pathname = usePathname();
   const router = useRouter();
   const {
-    currentRole,
-    setDemoRole,
     userProfile,
     unreadNotificationsCount,
+    evidenceUnreadCount,
+    evidenceNotifications,
+    verificationUnreadCount,
+    verificationNotifications,
+    aiUnreadCount,
+    aiNotifications,
+    governanceUnreadCount,
+    governanceNotifications,
     notifications,
     markNotificationRead,
     toasts,
@@ -88,9 +99,45 @@ export default function AppTopBar({
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  const isEvidenceWorkspace = pathname?.startsWith("/app/evidence") ?? false;
+  const isSkillPassport = pathname?.startsWith("/app/passport") ?? false;
+  const isGovernanceWorkspace =
+    pathname?.startsWith("/app/ai/guard") ||
+    pathname?.startsWith("/app/ai/validation") ||
+    pathname?.startsWith("/app/ai/review-queue") ||
+    pathname?.startsWith("/app/ai/conflicts") ||
+    pathname?.startsWith("/app/ai/prompt-injection") ||
+    pathname?.startsWith("/app/ai/evaluation") ||
+    pathname?.startsWith("/app/ai/audit") ||
+    pathname?.startsWith("/app/ai/confidence") ||
+    pathname?.startsWith("/app/governance");
+  const isAIIntelligence = !isGovernanceWorkspace && (pathname?.startsWith("/app/ai") ?? false);
+  const isSettingsWorkspace =
+    (pathname?.startsWith("/app/settings") ||
+      pathname?.startsWith("/app/notifications") ||
+      pathname?.startsWith("/app/activity") ||
+      pathname?.startsWith("/app/help")) ??
+    false;
+  const [feedMode, setFeedMode] = useState<"evidence" | "verification" | "ai" | "governance" | "all">("all");
+
+  useEffect(() => {
+    if (isGovernanceWorkspace) {
+      setFeedMode("governance");
+    } else if (isAIIntelligence) {
+      setFeedMode("ai");
+    } else if (isEvidenceWorkspace) {
+      setFeedMode("evidence");
+    } else if (isSkillPassport) {
+      setFeedMode("verification");
+    } else {
+      setFeedMode("all");
+    }
+  }, [isEvidenceWorkspace, isSkillPassport, isAIIntelligence, isGovernanceWorkspace]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -106,7 +153,31 @@ export default function AppTopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const latestUnread = notifications.filter((n) => !n.read).slice(0, 3);
+  const activeUnreadCount = isGovernanceWorkspace
+    ? governanceUnreadCount
+    : isAIIntelligence
+    ? aiUnreadCount
+    : isEvidenceWorkspace
+    ? evidenceUnreadCount
+    : isSkillPassport
+    ? verificationUnreadCount
+    : unreadNotificationsCount;
+
+  const displayList = useMemo(() => {
+    const pool =
+      feedMode === "governance"
+        ? governanceNotifications
+        : feedMode === "ai"
+        ? aiNotifications
+        : feedMode === "evidence"
+        ? evidenceNotifications
+        : feedMode === "verification"
+        ? verificationNotifications
+        : notifications;
+    const unread = pool.filter((n) => !n.read);
+    const read = pool.filter((n) => n.read);
+    return [...unread, ...read].slice(0, 4);
+  }, [feedMode, evidenceNotifications, verificationNotifications, aiNotifications, governanceNotifications, notifications]);
 
   // Auto-resolve breadcrumbs if not explicitly passed
   const resolvedBreadcrumbs = useMemo(() => {
@@ -133,10 +204,12 @@ export default function AppTopBar({
       crumbs.push({ label: "AI Intelligence", href: "/app/ai" });
     } else if (
       pathname.startsWith("/app/passport/sharing") ||
+      pathname.startsWith("/app/passport/builder") ||
       pathname.startsWith("/app/passport/preview") ||
       pathname.startsWith("/app/passport/share") ||
       pathname.startsWith("/app/passport/permissions") ||
       pathname.startsWith("/app/passport/access") ||
+      pathname.startsWith("/app/passport/messages") ||
       pathname.startsWith("/app/passport/export")
     ) {
       crumbs.push({ label: "Sharing & Recruiter", href: "/app/passport/sharing" });
@@ -233,35 +306,18 @@ export default function AppTopBar({
 
       {/* Right side: Global Actions & Controls */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-nowrap">
-        {/* Interactive Demo Role Switcher in Header */}
-        <div className="hidden sm:inline-flex items-center gap-1 p-1 bg-white/90 rounded-full border border-ink/20 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
-          <span className="text-[9px] font-black uppercase text-ink/60 px-2">ROLE:</span>
-          {(["employee", "reviewer", "admin"] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setDemoRole(r)}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize transition-all ${
-                currentRole === r
-                  ? "bg-[#1C1C1C] text-white shadow-sm"
-                  : "text-ink/70 hover:text-ink"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-
         {children}
 
         {/* Contextual Help Icon */}
-        <Link
-          href="/app/help"
+        <button
+          type="button"
+          onClick={() => setIsHelpOpen(true)}
           title="Product Help & Conceptual Guidance"
-          className="w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
+          aria-label="Product Help & Conceptual Guidance"
+          className="w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C] cursor-pointer"
         >
           <HelpCircle className="w-4 h-4" />
-        </Link>
+        </button>
 
         {/* Notifications Bell Dropdown */}
         <div className="relative" ref={notifRef}>
@@ -272,9 +328,9 @@ export default function AppTopBar({
             className="relative w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
           >
             <Bell className="w-4 h-4" />
-            {unreadNotificationsCount > 0 && (
+            {activeUnreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white font-mono font-bold text-[9px] flex items-center justify-center border border-white">
-                {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
+                {activeUnreadCount > 9 ? "9+" : activeUnreadCount}
               </span>
             )}
           </button>
@@ -284,14 +340,22 @@ export default function AppTopBar({
               <div className="flex items-center justify-between pb-3 border-b border-ink/10">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-ink">Notifications</span>
-                  {unreadNotificationsCount > 0 && (
+                  {activeUnreadCount > 0 && (
                     <span className="px-2 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
-                      {unreadNotificationsCount} unread
+                      {activeUnreadCount} unread
                     </span>
                   )}
                 </div>
                 <Link
-                  href="/app/notifications"
+                  href={
+                    feedMode === "evidence"
+                      ? "/app/notifications?category=evidence"
+                      : feedMode === "verification"
+                      ? "/app/notifications?category=verification"
+                      : feedMode === "ai"
+                      ? "/app/notifications?category=ai"
+                      : "/app/notifications"
+                  }
                   onClick={() => setIsNotifOpen(false)}
                   className="text-[11px] font-semibold text-ink/70 hover:text-ink underline"
                 >
@@ -299,33 +363,178 @@ export default function AppTopBar({
                 </Link>
               </div>
 
-              <div className="py-2 space-y-2 max-h-64 overflow-y-auto">
-                {latestUnread.length === 0 ? (
+              {/* Feed Switcher Tabs */}
+              <div className="mt-2.5 flex items-center gap-1 p-1 bg-ink/5 rounded-xl text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("governance")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "governance"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Governance</span>
+                  {governanceUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {governanceUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("verification")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "verification"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Passport</span>
+                  {verificationUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {verificationUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("ai")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "ai"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>AI</span>
+                  {aiUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {aiUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("evidence")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "evidence"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Evidence</span>
+                  {evidenceUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {evidenceUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("all")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "all"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>All</span>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-ink/10 text-ink text-[9px] font-mono font-bold">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Notification Items List */}
+              <div className="py-2.5 space-y-2 max-h-72 overflow-y-auto">
+                {displayList.length === 0 ? (
                   <div className="py-6 text-center text-xs text-ink/60">
-                    No unread notifications.
+                    {feedMode === "governance"
+                      ? "No Trust & Governance notifications."
+                      : feedMode === "evidence"
+                      ? "No Evidence Workspace notifications."
+                      : feedMode === "verification"
+                      ? "No Skill Intelligence notifications."
+                      : feedMode === "ai"
+                      ? "No AI Intelligence notifications."
+                      : "No notifications recorded."}
                   </div>
                 ) : (
-                  latestUnread.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => markNotificationRead(notif.id)}
-                      className="p-2.5 rounded-xl bg-ink/5 hover:bg-[#DFE968]/20 border border-ink/10 text-xs space-y-1 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-ink">{notif.title}</span>
-                        <span className="text-[10px] text-ink/50">{notif.timestamp}</span>
+                  displayList.map((notif) => {
+                    const isError = notif.severity === "error";
+                    const isWarning = notif.severity === "warning";
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`p-2.5 rounded-xl border text-xs space-y-1.5 transition-colors ${
+                          notif.read
+                            ? "bg-ink/5 hover:bg-[#DFE968]/20 border-ink/10"
+                            : isError
+                            ? "bg-rose-50/60 border-rose-300"
+                            : isWarning
+                            ? "bg-amber-50/60 border-amber-300"
+                            : "bg-white border-ink/30 border-l-4 border-l-ink"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-ink truncate flex-1">{notif.title}</span>
+                          <span className="text-[10px] text-ink/50 shrink-0">{notif.timestamp}</span>
+                        </div>
+                        <p className="text-[11px] text-ink/75 leading-relaxed line-clamp-2">
+                          {notif.description}
+                        </p>
+                        <div className="flex items-center justify-between pt-1 border-t border-ink/5">
+                          {notif.actionRoute ? (
+                            <Link
+                              href={notif.actionRoute}
+                              onClick={() => {
+                                markNotificationRead(notif.id);
+                                setIsNotifOpen(false);
+                              }}
+                              className={`inline-flex items-center gap-1 font-semibold text-[10px] underline ${
+                                isError ? "text-rose-700 hover:text-rose-900" : "text-ink hover:text-ink/80"
+                              }`}
+                            >
+                              <span>{notif.actionLabel || (isError ? "Retry / Inspect" : "View Details")}</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          ) : (
+                            <span className="text-[10px] text-ink/40 font-mono">{notif.relatedDomain}</span>
+                          )}
+                          {!notif.read && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markNotificationRead(notif.id);
+                              }}
+                              className="text-[10px] text-ink/50 hover:text-ink font-semibold"
+                            >
+                              Mark read
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[11px] text-ink/70 leading-relaxed line-clamp-2">
-                        {notif.description}
-                      </p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
               <div className="pt-2 border-t border-ink/10 text-center">
                 <Link
-                  href="/app/notifications"
+                  href={
+                    feedMode === "governance"
+                      ? "/app/notifications?category=governance"
+                      : feedMode === "evidence"
+                      ? "/app/notifications?category=evidence"
+                      : feedMode === "verification"
+                      ? "/app/notifications?category=verification"
+                      : feedMode === "ai"
+                      ? "/app/notifications?category=ai"
+                      : "/app/notifications"
+                  }
                   onClick={() => setIsNotifOpen(false)}
                   className="inline-flex items-center justify-center w-full py-1.5 rounded-xl bg-ink text-[#FBF1CF] text-xs font-semibold hover:bg-ink/90 transition-all"
                 >
@@ -455,6 +664,50 @@ export default function AppTopBar({
             </div>
           ))}
         </div>
+      )}
+      {/* Evidence Workspace Product Help & Conceptual Guidance Drawer */}
+      {isEvidenceWorkspace && (
+        <EvidenceHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Trust & Governance Product Help & Conceptual Guidance Drawer */}
+      {isGovernanceWorkspace && (
+        <GovernanceHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Skill Intelligence Product Help & Conceptual Guidance Drawer */}
+      {isSkillPassport && (
+        <SkillHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Settings & Access Product Help & Conceptual Guidance Drawer */}
+      {isSettingsWorkspace && (
+        <SettingsHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* AI Intelligence Product Help & Conceptual Guidance Drawer */}
+      {!isEvidenceWorkspace && !isGovernanceWorkspace && !isSkillPassport && !isSettingsWorkspace && (
+        <AIHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
       )}
     </header>
   );

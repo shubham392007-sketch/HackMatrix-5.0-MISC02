@@ -162,7 +162,7 @@ export default function SkillTaxonomyPage() {
         {/* Right Column: Category Details & Skills */}
         <div className="lg:col-span-3 space-y-6">
           {!search.trim() && activeCategory && (
-            <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
+            <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
               <div className="flex items-center gap-2 mb-1">
                 <FolderTree className="w-4 h-4 text-[#2E6941]" />
                 <span className="text-xs font-bold text-[#8C827A] uppercase tracking-wider">

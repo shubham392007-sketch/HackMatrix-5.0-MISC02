@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
@@ -26,7 +27,11 @@ import {
 } from "lucide-react";
 import { runWorkAnalysis, runSkillExtraction } from "@/lib/evidenceApi";
 
-export default function EvidenceLibraryPage() {
+function EvidenceLibraryContent() {
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get("q");
+  const sourceParam = searchParams.get("source");
+
   const {
     evidenceItems,
     deleteEvidenceItem,
@@ -34,16 +39,22 @@ export default function EvidenceLibraryPage() {
     isLoadingEvidence,
     workAnalyses,
     refreshEvidenceData,
+    addNotification,
   } = useEvidence();
 
   const isDataLoading = initialLoading || (isLoadingEvidence && evidenceItems.length === 0);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState(qParam || "");
+  const [sourceFilter, setSourceFilter] = useState(sourceParam || "all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (qParam !== null) setSearchTerm(qParam);
+    if (sourceParam !== null) setSourceFilter(sourceParam);
+  }, [qParam, sourceParam]);
 
   const filteredItems = evidenceItems.filter((item) => {
     const matchesSearch =
@@ -52,7 +63,10 @@ export default function EvidenceLibraryPage() {
       item.description.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesSource =
-      sourceFilter === "all" || item.sourceType === sourceFilter;
+      sourceFilter === "all" ||
+      item.sourceType === sourceFilter ||
+      (sourceFilter === "jira" && (item.sourceType === "jira" || (item.sourceType as string) === "jira_issue" || (item as any).provider === "jira")) ||
+      (sourceFilter === "github" && (item.sourceType === "github" || (item.sourceType as string).startsWith("github") || (item as any).provider === "github"));
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -64,18 +78,20 @@ export default function EvidenceLibraryPage() {
   });
 
   const getSourceIcon = (type: string) => {
-    switch (type) {
-      case "github":
-        return <GitBranch className="w-4 h-4 text-[#1C1C1C]" />;
-      case "jira":
-        return <Layers className="w-4 h-4 text-[#1C1C1C]" />;
-      case "certificate":
-        return <Award className="w-4 h-4 text-[#1C1C1C]" />;
-      case "research":
-        return <BookOpen className="w-4 h-4 text-[#1C1C1C]" />;
-      default:
-        return <FileCode className="w-4 h-4 text-[#1C1C1C]" />;
+    const t = (type || "").toLowerCase();
+    if (t === "github" || t.startsWith("github")) {
+      return <GitBranch className="w-4 h-4 text-[#1C1C1C]" />;
     }
+    if (t === "jira" || t.startsWith("jira")) {
+      return <Layers className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "certificate") {
+      return <Award className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "research") {
+      return <BookOpen className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    return <FileCode className="w-4 h-4 text-[#1C1C1C]" />;
   };
 
   return (
@@ -311,9 +327,30 @@ export default function EvidenceLibraryPage() {
                                 runWorkAnalysis([item.id]),
                                 runSkillExtraction([item.id]),
                               ]);
+                              addNotification({
+                                title: "Evidence extraction completed",
+                                description: `Work analysis and candidate skill extraction completed for '${item.title}'.`,
+                                category: "evidence",
+                                severity: "success",
+                                relatedDomain: "Evidence Workspace",
+                                actionRoute: `/app/evidence/${item.id}`,
+                                actionLabel: "View Evidence Item",
+                                dedupKey: `lib_extract_${item.id}_${Date.now()}`,
+                              });
                               await refreshEvidenceData();
                             } catch (err: any) {
-                              setActionError(err?.message || "Failed to analyze evidence with Ollama");
+                              const errMsg = err?.message || "Failed to analyze evidence with Ollama";
+                              setActionError(errMsg);
+                              addNotification({
+                                title: "Extraction requires attention",
+                                description: `Failed to analyze '${item.title}': ${errMsg}`,
+                                category: "evidence",
+                                severity: "error",
+                                relatedDomain: "Evidence Workspace",
+                                actionRoute: `/app/evidence/${item.id}`,
+                                actionLabel: "Inspect Evidence Item",
+                                dedupKey: `lib_extract_fail_${item.id}_${Date.now()}`,
+                              });
                             } finally {
                               setAnalyzingId(null);
                             }
@@ -374,5 +411,13 @@ export default function EvidenceLibraryPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function EvidenceLibraryPage() {
+  return (
+    <Suspense fallback={null}>
+      <EvidenceLibraryContent />
+    </Suspense>
   );
 }

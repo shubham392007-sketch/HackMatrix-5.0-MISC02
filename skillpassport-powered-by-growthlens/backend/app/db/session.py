@@ -96,13 +96,13 @@ def _init_resilient_engine():
             pg_engine = create_engine(
                 settings.database_url,
                 pool_pre_ping=settings.db_pool_pre_ping,
-                pool_recycle=settings.db_pool_recycle,
-                pool_size=min(settings.db_pool_size, 5),
+                pool_recycle=60,
+                pool_size=min(settings.db_pool_size, 8),
                 max_overflow=settings.db_max_overflow,
                 pool_timeout=settings.db_pool_timeout,
-                pool_reset_on_return="rollback",
+                pool_reset_on_return=None,
                 connect_args={
-                    "connect_timeout": 2,
+                    "connect_timeout": 30,
                     "keepalives": 1,
                     "keepalives_idle": 15,
                     "keepalives_interval": 5,
@@ -163,7 +163,11 @@ def get_db() -> Generator[Session, None, None]:
         yield db
         circuit_breaker.record_success()
     except HTTPException:
-        # Do NOT count application-level HTTP exceptions (401, 404, etc.) as database failures
+        # Do NOT count application-level HTTP exceptions (401, 404, etc.) as database failures, but rollback cleanly
+        try:
+            db.rollback()
+        except Exception as rb_err:
+            logger.warning(f"Error during rollback on HTTPException: {rb_err}")
         raise
     except Exception as exc:
         try:
@@ -174,7 +178,10 @@ def get_db() -> Generator[Session, None, None]:
             circuit_breaker.record_failure(exc)
         raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_err:
+            logger.debug(f'Safely ignored stale connection close exception: {close_err}')
 
 
 def check_database_connection() -> dict:
@@ -207,6 +214,6 @@ def check_database_connection() -> dict:
         return {
             "status": "unhealthy",
             "connected": False,
-            "error": str(e),
+            "error": f"Database connection error: {type(e).__name__}",
             "circuit_breaker": circuit_breaker.get_metrics(),
         }

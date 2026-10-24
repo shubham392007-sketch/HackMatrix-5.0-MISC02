@@ -93,6 +93,17 @@ class StorageManager:
                 with open(file, "rb") as f:
                     return f.read()
 
+        # Try Supabase Storage download if credentials available
+        try:
+            from supabase import create_client
+            if self.settings.supabase_url and self.settings.supabase_service_role_key:
+                supabase = create_client(self.settings.supabase_url, self.settings.supabase_service_role_key)
+                file_bytes = supabase.storage.from_(self.bucket_name).download(storage_key)
+                if file_bytes:
+                    return file_bytes
+        except Exception as e:
+            logger.debug(f"Supabase Storage download fallback skipped/failed for {storage_key}: {e}")
+
         return None
 
     def delete_file(self, storage_key: str) -> bool:

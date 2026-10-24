@@ -32,10 +32,7 @@ export default function WorkspaceLayout({
       {isOnboarding ? (
         <main
           className="min-h-screen w-full flex flex-col text-[#1C1C1C] overflow-y-auto"
-          style={{
-            background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
-            backgroundAttachment: "fixed",
-          }}
+          style={{ background: "transparent" }}
         >
           {children}
         </main>
@@ -48,10 +45,7 @@ export default function WorkspaceLayout({
           <main
             ref={mainScrollRef}
             className="flex-1 flex flex-col min-w-0 h-screen max-h-screen overflow-y-auto custom-scrollbar"
-            style={{
-              background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
-              backgroundAttachment: "fixed",
-            }}
+            style={{ background: "transparent" }}
           >
             {/* Mobile / Tablet Top Navigation Bar (Hidden on lg and wider) */}
             <MobileTopNav />

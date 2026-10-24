@@ -90,7 +90,7 @@ export function LoadingState({
 }: LoadingStateProps) {
   return (
     <div
-      className={`p-8 text-center rounded-2xl bg-white/60 border border-ink/15 space-y-2 flex flex-col items-center justify-center ${className}`}
+      className={`p-8 text-center rounded-2xl bg-white/60 border border-ink/15 space-y-2 flex flex-col items-center justify-center overflow-hidden ${className}`}
     >
       <LoadingAnimation size="md" className="-my-2" />
       <div className="space-y-1">

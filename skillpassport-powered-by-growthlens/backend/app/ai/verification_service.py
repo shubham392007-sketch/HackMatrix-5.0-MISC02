@@ -114,6 +114,17 @@ class VerificationService:
         db.commit()
         logger.info(f"Candidate mapping {mapping.id} transitioned from {prev_state} to {new_state} (decision: {decision.id})")
 
+        comp_name = None
+        comp_category = None
+        if mapping.competency:
+            comp_name = mapping.competency.canonical_name
+            comp_category = mapping.competency.category
+        elif mapping.competency_id:
+            comp = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id == mapping.competency_id).first()
+            if comp:
+                comp_name = comp.canonical_name
+                comp_category = comp.category
+
         return {
             "decision_id": str(decision.id),
             "mapping_id": str(mapping.id),
@@ -121,6 +132,11 @@ class VerificationService:
             "verification_state": new_state,
             "rationale": rationale,
             "created_at": decision.created_at.isoformat() if decision.created_at else None,
+            "skill_name": comp_name,
+            "category": comp_category,
+            "proficiency_level": mapping.proficiency_level,
+            "confidence_score": mapping.relevance_score,
+            "evidence_id": str(mapping.evidence_id) if mapping.evidence_id else None,
         }
 
     def create_review_task(
