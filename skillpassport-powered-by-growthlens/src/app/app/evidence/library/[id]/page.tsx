@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Cpu,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
 import {
@@ -103,7 +104,13 @@ export default function EvidenceDetailPage({
         externalRecordId: detailItem.externalRecordId || detailItem.external_record_id,
         title: detailItem.title || "Untitled Evidence",
         description: detailItem.description || "",
-        sourceType: (detailItem.sourceType || detailItem.provider || "document") as SourceType,
+        sourceType: (() => {
+          const p = (detailItem.provider || "").toLowerCase();
+          const st = (detailItem.sourceType || "").toLowerCase();
+          if (p === "jira" || st.startsWith("jira")) return "jira";
+          if (p === "github" || st.startsWith("github")) return "github";
+          return (detailItem.sourceType || detailItem.provider || "document") as SourceType;
+        })(),
         sourceReference: detailItem.sourceName || detailItem.sourceUrl || "Uploaded Document",
         sourceUrl: detailItem.sourceUrl,
         project: detailItem.projectName || detailItem.sourceName || "General",
@@ -467,6 +474,78 @@ export default function EvidenceDetailPage({
                 >
                   INSPECT REPO
                 </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Jira Work Item Contextual Panel (when evidence originates from Jira) */}
+        {item.sourceType === "jira" && (
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1C1C1C]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  Jira Work Item Details • Tracked Project Artifact
+                </h3>
+              </div>
+              {item.sourceUrl && (
+                <a
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-bold underline text-[#1C1C1C] hover:opacity-75 inline-flex items-center gap-1"
+                >
+                  <span>Open in Jira Cloud</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+
+            <p className="text-xs text-[#1C1C1C]/75">
+              Verified work item synchronized from Jira project <span className="font-mono font-bold text-[#1C1C1C]">{item.project || "Jira"}</span>.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs">
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Project Key</span>
+                <span className="font-mono font-black text-[#1C1C1C] text-sm">
+                  {item.project || (item.normalizedMetadata as any)?.project || "—"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Issue Key</span>
+                <span className="font-mono font-black text-[#1C1C1C] text-sm">
+                  {item.externalRecordId || (item.normalizedMetadata as any)?.issue_key || "—"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Issue Type</span>
+                <span className="font-bold text-[#1C1C1C]">
+                  {(item.normalizedMetadata as any)?.issue_type || "Task"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Workflow Status</span>
+                <span className="font-bold text-[#4A7A4E]">
+                  {(item.normalizedMetadata as any)?.status || "Completed"}
+                </span>
+              </div>
+            </div>
+
+            {((item.normalizedMetadata as any)?.components?.length > 0 || (item.normalizedMetadata as any)?.labels?.length > 0) && (
+              <div className="pt-2 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[11px] font-bold text-[#1C1C1C]/70 mr-1">Tags & Components:</span>
+                {((item.normalizedMetadata as any)?.components || []).map((c: string) => (
+                  <span key={c} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#DFE968] border border-[#1C1C1C]">
+                    Component: {c}
+                  </span>
+                ))}
+                {((item.normalizedMetadata as any)?.labels || []).map((lbl: string) => (
+                  <span key={lbl} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-[#1C1C1C]/40">
+                    #{lbl}
+                  </span>
+                ))}
               </div>
             )}
           </div>

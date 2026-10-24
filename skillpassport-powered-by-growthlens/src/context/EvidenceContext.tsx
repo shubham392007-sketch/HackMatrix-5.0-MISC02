@@ -643,12 +643,34 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (evRes.status === "fulfilled" && evRes.value?.items && Array.isArray(evRes.value.items)) {
-        const mappedItems: EvidenceItem[] = evRes.value.items.map((raw: any) => ({
-          id: raw.id,
-          externalRecordId: raw.externalRecordId || raw.external_record_id,
-          title: raw.title || "Untitled Evidence",
-          description: raw.description || "",
-          sourceType: (raw.sourceType || raw.provider || "document") as SourceType,
+        const mappedItems: EvidenceItem[] = evRes.value.items.map((raw: any) => {
+          const rawP = (raw.provider || raw.source_provider || "").toLowerCase();
+          const rawSt = (raw.sourceType || raw.source_type || "").toLowerCase();
+          let resolvedSourceType: SourceType = "document";
+          if (rawP === "jira" || rawSt.startsWith("jira")) {
+            resolvedSourceType = "jira";
+          } else if (rawP === "github" || rawSt.startsWith("github")) {
+            resolvedSourceType = "github";
+          } else if (rawP === "certificate" || rawSt === "certificate") {
+            resolvedSourceType = "certificate";
+          } else if (rawP === "research" || rawSt === "research") {
+            resolvedSourceType = "research";
+          } else if (rawP === "resume" || rawSt === "resume") {
+            resolvedSourceType = "resume";
+          } else if (rawP === "portfolio" || rawSt === "portfolio") {
+            resolvedSourceType = "portfolio";
+          } else if (rawSt === "document" || rawP === "document") {
+            resolvedSourceType = "document";
+          } else {
+            resolvedSourceType = (raw.sourceType || raw.provider || "document") as SourceType;
+          }
+
+          return {
+            id: raw.id,
+            externalRecordId: raw.externalRecordId || raw.external_record_id,
+            title: raw.title || "Untitled Evidence",
+            description: raw.description || "",
+            sourceType: resolvedSourceType,
           sourceReference: raw.sourceName || raw.sourceUrl || "Uploaded Document",
           sourceUrl: raw.sourceUrl,
           project: raw.projectName || raw.project_name || raw.sourceName || "General",
@@ -674,7 +696,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
             { stage: "Ingestion", status: "completed", timestamp: raw.observedAt || "Recently", detail: "Processed & normalized" },
             { stage: "Skill Mapping", status: "completed", timestamp: raw.observedAt || "Recently", detail: `${(raw.candidateSkills || []).length} candidate skills detected` },
           ],
-        }));
+        };
+      });
         setEvidenceItems(mappedItems);
         if (typeof window !== "undefined") {
           sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(mappedItems));
