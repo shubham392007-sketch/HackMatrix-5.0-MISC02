@@ -353,8 +353,4 @@ def get_remote_postgres_status() -> dict:
     return dict(_remote_postgres_status)
 
 
-def check_database_connection() -> dict:
-    """Verifies live database connection via SELECT 1 with circuit breaker awareness (backward compatibility)."""
-    return get_local_database_status()
-
 get_local_database_status = check_database_connection
