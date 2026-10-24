@@ -41,12 +41,12 @@ export default function LandingPage() {
               <Hero3DCard initialRotate={-3}>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">-3°</span>
-                  <div className="w-8 h-8 rounded-lg bg-[#1E3A5F] border border-[#1A1918] flex items-center justify-center shadow-[1px_1px_0px_#1A1918]">
+                  <div className="w-8 h-8 rounded-lg bg-[#000000] border border-[#1A1918] flex items-center justify-center shadow-[1px_1px_0px_#1A1918]">
                     <FileCode className="w-4.5 h-4.5 text-[#FAF8F5]" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] uppercase tracking-wider hero-3d-pop">
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-[#000000] border border-[#1A1918] text-[#FAF8F5] uppercase tracking-wider hero-3d-pop">
                     EVIDENCE
                   </span>
                   <span className="text-sm font-extrabold truncate">PR #204: redis_pubsub.py</span>
@@ -63,7 +63,7 @@ export default function LandingPage() {
               <Hero3DCard initialRotate={-2}>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">-2°</span>
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
                     <Search className="w-3.5 h-3.5" />
                     PASSPORT PIPELINE
                   </div>
@@ -76,7 +76,7 @@ export default function LandingPage() {
                   <span className="px-2.5 py-1.5 rounded border border-[#1A1918] bg-white/80 hero-3d-pop">TAXONOMY</span>
                 </div>
                 <div className="flex items-center justify-between gap-1.5 text-[11px] font-black">
-                  <span className="px-2.5 py-1.5 rounded border border-[#1A1918] bg-[#1E3A5F] text-[#FAF8F5] hero-3d-pop">ROLE GAP</span>
+                  <span className="px-2.5 py-1.5 rounded border border-[#1A1918] bg-[#000000] text-[#FAF8F5] hero-3d-pop">ROLE GAP</span>
                   <span>→</span>
                   <span className="px-2.5 py-1.5 rounded border border-[#1A1918] bg-white/80 hero-3d-pop">GROWTH</span>
                 </div>
@@ -122,7 +122,7 @@ export default function LandingPage() {
                 <Link
                   href={isAuthenticated ? "/app/evidence" : "/login?redirect=/app/onboarding"}
                   onClick={() => setNavigatingTarget("primary-cta")}
-                  className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#162c48] transition-all shadow-[3px_3px_0px_#1A1918] hover:translate-y-[-1px]"
+                  className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs md:text-sm font-bold tracking-[0.08em] uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1A1918] transition-all shadow-[3px_3px_0px_#1A1918] hover:translate-y-[-1px]"
                 >
                   {navigatingTarget === "primary-cta" ? (
                     <>
@@ -174,7 +174,7 @@ export default function LandingPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] hero-3d-pop shadow-[1px_1px_0px_#1A1918]">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#000000] border border-[#1A1918] text-[#FAF8F5] hero-3d-pop shadow-[1px_1px_0px_#1A1918]">
                       PROVEN
                     </span>
                     <span className="text-[11px] font-mono font-bold text-[#1A1918]/50">+2°</span>
@@ -199,7 +199,7 @@ export default function LandingPage() {
               {/* Card 4: Bottom Right (+4° tilt) */}
               <Hero3DCard initialRotate={4}>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] text-[10px] font-extrabold tracking-wider uppercase shadow-[1px_1px_0px_#1A1918] hero-3d-pop">
                     <ShieldCheck className="w-4 h-4 text-[#FAF8F5]" />
                     VERIFIED PASSPORT
                   </div>
@@ -252,7 +252,7 @@ export default function LandingPage() {
                       <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
                         01 COLLECT
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
                         <GitBranch className="w-4 h-4 text-[#1A1918]" />
                       </div>
                     </div>
@@ -286,7 +286,7 @@ export default function LandingPage() {
                       <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
                         03 VERIFY
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
                         <Activity className="w-4 h-4 text-[#1A1918]" />
                       </div>
                     </div>
@@ -297,7 +297,7 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#1E3A5F] text-[#FAF8F5]/70 border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
+                <div className="bg-[#000000] text-[#FAF8F5]/70 border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
@@ -322,7 +322,7 @@ export default function LandingPage() {
         <section className="max-w-[1400px] mx-auto px-5 md:px-10 py-20 border-t border-[#1A1918]/15">
           <ScrollReveal direction="up">
             <div className="text-center mb-14">
-              <span className="inline-block px-4 py-1 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[#FAF8F5] text-[10px] font-extrabold tracking-[0.15em] uppercase mb-4 shadow-[2px_2px_0px_#1A1918]">
+              <span className="inline-block px-4 py-1 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-extrabold tracking-[0.15em] uppercase mb-4 shadow-[2px_2px_0px_#1A1918]">
                 FULL SUITE
               </span>
               <h2 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight">
@@ -344,7 +344,7 @@ export default function LandingPage() {
             <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[28px] p-7 shadow-[4px_4px_0px_#1A1918] flex flex-col justify-between hover:-translate-y-1 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
                     <FileCode className="w-5 h-5 text-[#1A1918]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
@@ -395,7 +395,7 @@ export default function LandingPage() {
             <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[28px] p-7 shadow-[4px_4px_0px_#1A1918] flex flex-col justify-between hover:-translate-y-1 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
                     <Compass className="w-5 h-5 text-[#1A1918]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
@@ -429,7 +429,7 @@ export default function LandingPage() {
             <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[28px] p-7 shadow-[4px_4px_0px_#1A1918] flex flex-col justify-between hover:-translate-y-1 transition-all">
               <div>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
                     <Brain className="w-5 h-5 text-[#1A1918]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
@@ -448,7 +448,7 @@ export default function LandingPage() {
             <Link
               href="/features"
               onClick={() => setNavigatingTarget("/features")}
-              className="bg-[#1E3A5F] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#162c48] transition-all shadow-[3px_3px_0px_#1A1918]"
+              className="bg-[#000000] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-xs sm:text-sm font-black tracking-wider uppercase px-8 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-[#1A1918] transition-all shadow-[3px_3px_0px_#1A1918]"
             >
               {navigatingTarget === "/features" ? (
                 <>

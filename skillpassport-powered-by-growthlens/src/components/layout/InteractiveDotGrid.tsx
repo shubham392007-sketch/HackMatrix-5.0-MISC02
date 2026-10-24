@@ -101,14 +101,14 @@ export default function InteractiveDotGrid() {
 
       const sidebarW = getSidebarWidth();
 
-      // Permanent Executive Press Palette: base ink #1A1918, hover highlight Oxford Navy #1E3A5F
+      // Permanent Executive Press Palette: base ink #1A1918, hover highlight Pitch Black #000000
       const baseR = 26;
       const baseG = 25;
       const baseB = 24;
 
-      const highlightR = 30;
-      const highlightG = 58;
-      const highlightB = 95;
+      const highlightR = 0;
+      const highlightG = 0;
+      const highlightB = 0;
 
       let animatingDotsCount = 0;
 

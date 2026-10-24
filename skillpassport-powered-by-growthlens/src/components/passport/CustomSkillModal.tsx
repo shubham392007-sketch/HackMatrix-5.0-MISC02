@@ -229,7 +229,7 @@ export default function CustomSkillModal({
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-bold text-[#1C1C1C]"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#000000] border border-[#1A1918] text-[10px] font-bold text-[#FAF8F5]"
                   >
                     #{t}
                     <button
@@ -299,7 +299,7 @@ export default function CustomSkillModal({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             >
               {loading ? (
                 <>

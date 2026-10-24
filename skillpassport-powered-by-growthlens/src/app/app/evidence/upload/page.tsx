@@ -388,7 +388,7 @@ export default function UploadEvidencePage() {
                       >
                         <span>{cs.name || cs}</span>
                         {cs.proficiencyLevel && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#DFE968] text-[#1C1C1C] font-black">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#000000] text-[#FAF8F5] font-black">
                             {cs.proficiencyLevel}
                           </span>
                         )}
@@ -495,7 +495,7 @@ export default function UploadEvidencePage() {
                           URL VALIDATED &amp; PREVIEW READY
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C]">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#000000] border border-[#1A1918] text-[#FAF8F5]">
                         HTTP {previewData.http_status}
                       </span>
                     </div>

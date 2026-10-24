@@ -225,7 +225,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
           {/* Brand & Verification Badge */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#1E3A5F] border border-[#1A1918]/20 flex items-center justify-center font-black text-xs text-white shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-[#000000] border border-[#1A1918]/20 flex items-center justify-center font-black text-xs text-white shadow-sm">
               SP
             </div>
             <div>
@@ -279,7 +279,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
             {projection.allowRecruiterMessaging && (
               <button
                 onClick={() => setContactOpen(true)}
-                className="px-4 py-1.5 rounded-full bg-[#1E3A5F] hover:bg-[#2a4d7a] border border-[#1A1918] text-xs font-bold text-white shadow-[2px_2px_0_0_#1A1918] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#1A1918] transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-1.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border border-[#1A1918] text-xs font-bold text-white shadow-[2px_2px_0_0_#1A1918] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#1A1918] transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
                 <span>Contact Candidate</span>

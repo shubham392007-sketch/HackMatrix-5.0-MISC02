@@ -232,7 +232,7 @@ export default function JiraSourceFlow() {
         </div>
 
         {statusMessage && (
-          <div className="p-4 rounded-xl bg-[#DFE968] border border-[#1C1C1C] text-xs font-black text-[#1C1C1C] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-[#000000] border border-[#1A1918] text-xs font-black text-[#FAF8F5] flex items-center justify-between">
             <span>{statusMessage}</span>
           </div>
         )}

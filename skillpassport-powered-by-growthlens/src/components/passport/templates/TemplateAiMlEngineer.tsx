@@ -61,7 +61,7 @@ export default function TemplateAiMlEngineer({
           {projection.allowRecruiterMessaging && onOpenContact && (
             <button
               onClick={onOpenContact}
-              className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] text-[#1C1C1C] text-xs font-black uppercase tracking-wider flex items-center gap-2 self-start cursor-pointer shadow-sm transition-all"
+              className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] text-xs font-black uppercase tracking-wider flex items-center gap-2 self-start cursor-pointer shadow-sm transition-all"
             >
               <Mail className="w-4 h-4" />
               <span>Contact Candidate</span>

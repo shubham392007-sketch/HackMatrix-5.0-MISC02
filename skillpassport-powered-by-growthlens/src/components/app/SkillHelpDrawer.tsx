@@ -225,7 +225,7 @@ export default function SkillHelpDrawer({
         className="relative z-10 w-full max-w-2xl bg-[#FAF8F5] text-[#1A1918] h-full shadow-2xl border-l-2 border-[#1A1918] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
       >
         {/* Drawer Header */}
-        <div className="p-5 sm:p-6 bg-[#1E3A5F]/30 border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
+        <div className="p-5 sm:p-6 bg-[#FAF8F5] border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1918] text-white font-mono text-[10px] font-bold uppercase tracking-wider">
@@ -351,14 +351,14 @@ export default function SkillHelpDrawer({
                             setActiveTopic(t.id);
                             setSearchQuery("");
                           }}
-                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
+                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#1A1918] flex items-center gap-1.5">
                               <ShieldCheck className="w-3.5 h-3.5 text-[#1A1918]" />
                               {t.title}
                             </span>
-                            <span className="text-[10px] font-mono font-bold bg-[#1E3A5F] text-[#FAF8F5] px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-mono font-bold bg-[#000000] text-[#FAF8F5] px-2 py-0.5 rounded">
                               View Guide →
                             </span>
                           </div>
@@ -381,7 +381,7 @@ export default function SkillHelpDrawer({
                             setActiveTopic("workflows");
                             setSearchQuery("");
                           }}
-                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
+                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
                         >
                           <span className="text-xs font-bold text-[#1A1918] flex items-center gap-1.5">
                             <Compass className="w-3.5 h-3.5 text-[#1A1918]" />
@@ -418,7 +418,7 @@ export default function SkillHelpDrawer({
             /* GUIDED WORKFLOWS TAB */
             /* ───────────────────────────────────────────────────────────── */
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/20 border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
                 <h3 className="text-sm font-black text-[#1A1918] flex items-center gap-2">
                   <Compass className="w-4 h-4 text-[#1A1918]" />
                   4 Core Skill Intelligence Workflows
@@ -475,7 +475,7 @@ export default function SkillHelpDrawer({
                       ))}
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#1E3A5F]/30 border border-[#1A1918]/20 text-xs">
+                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/20 text-xs">
                       <strong className="font-black text-[#1A1918]">Key Architectural Takeaway:</strong>{" "}
                       <span className="text-[#1A1918]/85">{wf.keyTakeaway}</span>
                     </div>
@@ -488,7 +488,7 @@ export default function SkillHelpDrawer({
             /* GLOSSARY TAB */
             /* ───────────────────────────────────────────────────────────── */
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/20 border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
                 <h3 className="text-sm font-black text-[#1A1918] flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-[#1A1918]" />
                   Skill Intelligence Conceptual Glossary (14 Core Terms)
@@ -510,7 +510,7 @@ export default function SkillHelpDrawer({
                         <button
                           type="button"
                           onClick={() => handleNavigate(item.relatedRoute!)}
-                          className="text-[10px] font-bold text-[#1A1918] bg-[#1E3A5F] px-2 py-0.5 rounded border border-[#1A1918]/30 hover:opacity-80 flex items-center gap-1"
+                          className="text-[10px] font-bold text-[#FAF8F5] bg-[#000000] px-2 py-0.5 rounded border border-[#1A1918]/30 hover:opacity-80 flex items-center gap-1"
                         >
                           <span>{item.relatedRouteLabel || "View"}</span>
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -536,7 +536,7 @@ export default function SkillHelpDrawer({
               <div className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#1E3A5F] text-[#FAF8F5] border border-[#1A1918] uppercase shadow-[1px_1px_0_0_#1A1918]">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#000000] text-[#FAF8F5] border border-[#1A1918] uppercase shadow-[1px_1px_0_0_#1A1918]">
                       {currentTopicData.badgeLabel}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border uppercase bg-emerald-50 text-emerald-800 border-emerald-300">
@@ -710,7 +710,7 @@ export default function SkillHelpDrawer({
                         </div>
                         <p className="text-xs text-[#1A1918] font-semibold pl-7">{step.action}</p>
                         <div className="pl-7 flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold bg-[#1E3A5F] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]/30">
+                          <span className="text-[10px] font-mono font-bold bg-[#000000] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]/30">
                             {step.buttonOrPath}
                           </span>
                         </div>
@@ -722,7 +722,7 @@ export default function SkillHelpDrawer({
               </div>
 
               {/* ── 6. Practical Example (Illustrative) ── */}
-              <div className="rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] p-5 space-y-3">
+              <div className="rounded-2xl bg-[#FAF8F5] border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#1A1918] text-[#DFE968] px-2 py-0.5 rounded">
                     Practical Example

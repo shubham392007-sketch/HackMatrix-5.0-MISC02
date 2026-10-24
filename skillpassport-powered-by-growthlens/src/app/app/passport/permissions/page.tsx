@@ -303,7 +303,7 @@ export default function SharingPermissionsPage() {
           <button
             onClick={() => finalizePermissions(true)}
             disabled={isFinalizing}
-            className="pill-btn bg-[#DFE968] hover:bg-[#d6e05d] text-[#1C1C1C] border border-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C] font-extrabold text-[11px] py-1.5 px-3.5 flex items-center gap-1.5 shrink-0 transition-transform active:translate-y-0.5"
+            className="pill-btn bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] border border-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918] font-extrabold text-[11px] py-1.5 px-3.5 flex items-center gap-1.5 shrink-0 transition-transform active:translate-y-0.5"
             title="Finalize these permissions and content to be displayed on your passport and view in Live Preview"
           >
             {isFinalizing ? (
@@ -803,12 +803,12 @@ export default function SharingPermissionsPage() {
                   type="button"
                   onClick={() => finalizePermissions(true)}
                   disabled={isFinalizing}
-                  className="pill-btn bg-[#DFE968] hover:bg-[#d4df57] text-[#1C1C1C] border border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] font-black text-xs py-2 px-5 flex items-center gap-2 transition-transform active:translate-y-0.5"
+                  className="pill-btn bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] font-black text-xs py-2 px-5 flex items-center gap-2 transition-transform active:translate-y-0.5"
                 >
                   {isFinalizing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Eye className="w-4 h-4 text-[#1C1C1C]" />
+                    <Eye className="w-4 h-4 text-[#FAF8F5]" />
                   )}
                   <span>Finalize & View Live Passport Preview &rarr;</span>
                 </button>

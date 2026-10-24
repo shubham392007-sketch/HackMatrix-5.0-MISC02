@@ -38,7 +38,7 @@ export default function TemplateProjectsImpact({
       <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF6DF] border-[2px] border-[#1C1C1C] shadow-[4px_4px_0_0_#1C1C1C] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#1C1C1C]/15">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#000000] border border-[#1A1918] text-[10px] font-black uppercase tracking-wider text-[#FAF8F5]">
               <TrendingUp className="w-3 h-3 text-[#1C1C1C]" />
               Projects & Measurable Business Impact
             </span>
@@ -109,7 +109,7 @@ export default function TemplateProjectsImpact({
                         href={proj.repoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1 rounded-full bg-stone-100 hover:bg-[#DFE968] border border-[#1C1C1C] text-xs font-bold flex items-center gap-1.5 transition-colors"
+                        className="px-3 py-1 rounded-full bg-stone-100 hover:bg-[#000000] hover:text-[#FAF8F5] border border-[#1C1C1C] text-xs font-bold flex items-center gap-1.5 transition-colors"
                       >
                         <GitBranch className="w-3 h-3" />
                         <span>Source Code</span>

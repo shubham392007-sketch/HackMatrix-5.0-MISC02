@@ -314,8 +314,8 @@ export default function EvidenceDetailPage({
           <div
             className={`p-4 rounded-xl border text-xs font-bold flex items-center gap-2 ${
               reprocessMsg.error
-                ? "bg-[#F6C8D6] border-[#1C1C1C] text-[#C85A54]"
-                : "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C]"
+                ? "bg-[#EAE5D9] border-[#1A1918] text-[#C85A54]"
+                : "bg-[#000000] border-[#1A1918] text-[#FAF8F5]"
             }`}
           >
             {reprocessMsg.error ? (
@@ -344,8 +344,8 @@ export default function EvidenceDetailPage({
                   <ProcessingStatusBadge status={item.processingStatus} />
                   <EvidenceStrengthBadge strength={item.evidenceStrength} />
                   {isOllamaAnalyzed ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
-                      <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1A1918] bg-[#000000] text-[#FAF8F5]">
+                      <Cpu className="w-3 h-3 text-[#FAF8F5]" />
                       {analysis.model_name || "qwen3:8b"}
                     </span>
                   ) : isRuleBased ? (
@@ -501,7 +501,7 @@ export default function EvidenceDetailPage({
               Extracted Candidate Skills ({resolvedCandidateSkills.length})
             </h3>
             {resolvedCandidateSkills.length > 0 && (
-              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#000000] text-[#FAF8F5] border-[#1A1918]">
                 {resolvedCandidateSkills.length} Evidence-Grounded
               </span>
             )}
@@ -548,7 +548,7 @@ export default function EvidenceDetailPage({
                   >
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#000000] text-[#FAF8F5] border border-[#1A1918]">
                           {sk.category || "Competency"}
                         </span>
                         <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>

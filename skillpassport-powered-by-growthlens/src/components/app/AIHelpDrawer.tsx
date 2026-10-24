@@ -220,7 +220,7 @@ export default function AIHelpDrawer({
         className="relative z-10 w-full max-w-2xl bg-[#FAF8F5] text-[#1A1918] h-full shadow-2xl border-l-2 border-[#1A1918] flex flex-col overflow-hidden animate-in slide-in-from-right duration-200"
       >
         {/* Drawer Header */}
-        <div className="p-5 sm:p-6 bg-[#1E3A5F]/30 border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
+        <div className="p-5 sm:p-6 bg-[#FAF8F5] border-b-2 border-[#1A1918] flex items-start justify-between gap-4 shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1918] text-white font-mono text-[10px] font-bold uppercase tracking-wider">
@@ -346,14 +346,14 @@ export default function AIHelpDrawer({
                             setActiveTopic(t.id);
                             setSearchQuery("");
                           }}
-                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
+                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#1A1918] flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-[#1A1918]" />
                               {t.title}
                             </span>
-                            <span className="text-[10px] font-mono font-bold bg-[#1E3A5F] text-[#FAF8F5] px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-mono font-bold bg-[#000000] text-[#FAF8F5] px-2 py-0.5 rounded">
                               View Guide →
                             </span>
                           </div>
@@ -376,7 +376,7 @@ export default function AIHelpDrawer({
                             setActiveTopic("workflows");
                             setSearchQuery("");
                           }}
-                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#1E3A5F]/20 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
+                          className="p-4 rounded-xl bg-white border border-[#1A1918] hover:bg-[#000000]/5 transition-all cursor-pointer shadow-[2px_2px_0_0_#1A1918] space-y-1.5"
                         >
                           <span className="text-xs font-bold text-[#1A1918] flex items-center gap-1.5">
                             <Compass className="w-3.5 h-3.5 text-[#1A1918]" />
@@ -413,7 +413,7 @@ export default function AIHelpDrawer({
             /* GUIDED WORKFLOWS TAB */
             /* ───────────────────────────────────────────────────────────── */
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/20 border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
                 <h3 className="text-sm font-black text-[#1A1918] flex items-center gap-2">
                   <Compass className="w-4 h-4 text-[#1A1918]" />
                   4 Core AI Intelligence Workflows
@@ -473,7 +473,7 @@ export default function AIHelpDrawer({
                     </div>
 
                     {/* Key takeaway */}
-                    <div className="p-3 rounded-xl bg-[#1E3A5F]/30 border border-[#1A1918]/20 flex items-start gap-2">
+                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#1A1918]/20 flex items-start gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5" />
                       <p className="text-xs font-medium text-[#1A1918] leading-relaxed">
                         <strong className="font-bold">Key Architectural Takeaway:</strong> {wf.keyTakeaway}
@@ -488,7 +488,7 @@ export default function AIHelpDrawer({
             /* TRUST GLOSSARY TAB */
             /* ───────────────────────────────────────────────────────────── */
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-[#1E3A5F]/20 border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] space-y-1">
                 <h3 className="text-sm font-black text-[#1A1918] flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-[#1A1918]" />
                   Trust Glossary &amp; Conceptual Distinctions ({AI_CONCEPTUAL_GLOSSARY.length} Terms)
@@ -510,7 +510,7 @@ export default function AIHelpDrawer({
                         <button
                           type="button"
                           onClick={() => handleNavigate(item.relatedRoute!)}
-                          className="text-[10px] font-bold text-[#1A1918] bg-[#1E3A5F] px-2 py-0.5 rounded border border-[#1A1918] hover:opacity-85 flex items-center gap-1 shrink-0"
+                          className="text-[10px] font-bold text-[#FAF8F5] bg-[#000000] px-2 py-0.5 rounded border border-[#1A1918] hover:opacity-85 flex items-center gap-1 shrink-0"
                         >
                           <span>{item.relatedRouteLabel || "Open"}</span>
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -537,7 +537,7 @@ export default function AIHelpDrawer({
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#1E3A5F] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#000000] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]">
                         {currentTopicData.badgeLabel}
                       </span>
                       <span className="text-[11px] font-mono text-[#1A1918]/50">
@@ -681,7 +681,7 @@ export default function AIHelpDrawer({
                         </div>
                         <p className="text-xs text-[#1A1918] font-semibold pl-7">{step.action}</p>
                         <div className="pl-7 flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold bg-[#1E3A5F] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]/30">
+                          <span className="text-[10px] font-mono font-bold bg-[#000000] text-[#FAF8F5] px-2 py-0.5 rounded border border-[#1A1918]/30">
                             {step.buttonOrPath}
                           </span>
                         </div>
@@ -693,7 +693,7 @@ export default function AIHelpDrawer({
               </div>
 
               {/* ── 5. Practical Example (Illustrative) ── */}
-              <div className="rounded-2xl bg-[#1E3A5F]/20 border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] p-5 space-y-3">
+              <div className="rounded-2xl bg-[#FAF8F5] border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#1A1918] text-[#DFE968] px-2 py-0.5 rounded">
                     Practical Example

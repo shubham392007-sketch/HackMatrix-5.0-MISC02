@@ -202,7 +202,7 @@ export default function MarkdownViewer({
                   )}
                 </button>
               </div>
-              <pre className="p-3.5 text-xs font-mono overflow-x-auto leading-relaxed text-stone-100 selection:bg-[#DFE968] selection:text-[#1C1C1C]">
+              <pre className="p-3.5 text-xs font-mono overflow-x-auto leading-relaxed text-stone-100 selection:bg-[#000000] selection:text-[#FAF8F5]">
                 <code>{blockText}</code>
               </pre>
             </div>
@@ -360,7 +360,7 @@ export default function MarkdownViewer({
               onClick={() => setActiveTab("preview")}
               className={`px-3 py-1 rounded-full flex items-center gap-1 transition-all ${
                 activeTab === "preview"
-                  ? "bg-[#DFE968] text-[#1C1C1C] font-black shadow-[1px_1px_0_0_#1C1C1C]"
+                  ? "bg-[#000000] text-[#FAF8F5] font-black shadow-[1px_1px_0_0_#1A1918]"
                   : "text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
               }`}
             >
@@ -372,7 +372,7 @@ export default function MarkdownViewer({
               onClick={() => setActiveTab("raw")}
               className={`px-3 py-1 rounded-full flex items-center gap-1 transition-all ${
                 activeTab === "raw"
-                  ? "bg-[#DFE968] text-[#1C1C1C] font-black shadow-[1px_1px_0_0_#1C1C1C]"
+                  ? "bg-[#000000] text-[#FAF8F5] font-black shadow-[1px_1px_0_0_#1A1918]"
                   : "text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
               }`}
             >
@@ -421,7 +421,7 @@ export default function MarkdownViewer({
       )}
 
       {/* Content Area */}
-      <div className="p-5 max-h-[60vh] overflow-y-auto selection:bg-[#DFE968] selection:text-[#1C1C1C]">
+      <div className="p-5 max-h-[60vh] overflow-y-auto selection:bg-[#000000] selection:text-[#FAF8F5]">
         {activeTab === "preview" ? (
           <div className="space-y-1">{renderedElements}</div>
         ) : (

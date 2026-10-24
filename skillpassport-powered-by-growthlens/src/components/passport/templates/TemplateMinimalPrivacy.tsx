@@ -51,7 +51,7 @@ export default function TemplateMinimalPrivacy({
           {projection.allowRecruiterMessaging && onOpenContact && (
             <button
               onClick={onOpenContact}
-              className="px-4 py-2 rounded-full bg-[#DFE968] hover:bg-[#d4df55] text-[#1C1C1C] text-xs font-black uppercase tracking-wider flex items-center gap-1.5 self-start cursor-pointer transition-all shadow-sm"
+              className="px-4 py-2 rounded-full bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] text-xs font-black uppercase tracking-wider flex items-center gap-1.5 self-start cursor-pointer transition-all shadow-sm"
             >
               <Mail className="w-3.5 h-3.5" />
               <span>Relay Message</span>
