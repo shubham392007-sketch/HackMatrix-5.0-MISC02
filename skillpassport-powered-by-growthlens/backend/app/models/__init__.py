@@ -22,6 +22,14 @@ from backend.app.models.ai_governance import (
     HumanReviewTask,
     AIEvaluationSuiteRun,
 )
+from backend.app.models.sharing import (
+    ShareLinkRecord,
+    ShareAccessEvent,
+    RecruiterMessage,
+    UserCustomSkill,
+    UserNotification,
+    UserPassportConfigRecord,
+)
 from backend.app.models.career import (
     JobPostingRecord,
     RoleDemandModelRecord,
@@ -66,4 +74,10 @@ __all__ = [
     "UserTargetRoleRecord",
     "RoleMatchSnapshotRecord",
     "JobSearchCacheRecord",
+    "ShareLinkRecord",
+    "ShareAccessEvent",
+    "RecruiterMessage",
+    "UserCustomSkill",
+    "UserNotification",
+    "UserPassportConfigRecord",
 ]

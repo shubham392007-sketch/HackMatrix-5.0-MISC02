@@ -123,7 +123,7 @@ export default function SharePassportWizardPage() {
   };
 
   // Only verified skills
-  const verifiedSkills = skills.filter((s) => s.verificationStatus === "verified");
+  const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
     draftPermissions.selectedSkillIds.length > 0
       ? draftPermissions.selectedSkillIds
