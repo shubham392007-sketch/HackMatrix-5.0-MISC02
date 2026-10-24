@@ -248,28 +248,45 @@ class JiraCloudClient:
         """
         Searches recent completed/updated issues in project.
         Supports incremental sync using since_timestamp.
+        Uses /rest/api/3/search/jql (with fallback to /rest/api/2/search) to support modern Jira Cloud.
         """
-        jql = f"project = '{project_key}'"
+        jql = f'project = "{project_key}"'
         if since_timestamp:
             since_str = since_timestamp.strftime("%Y-%m-%d %H:%M")
             jql += f" AND updated >= '{since_str}'"
         jql += " ORDER BY updated DESC"
 
         results: List[Dict[str, Any]] = []
-        start_at = 0
         batch_size = min(limit, 50)
+        next_page_token = None
+        start_at = 0
+        use_v2_fallback = False
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=25.0) as client:
             while len(results) < limit:
-                params = {
-                    "jql": jql,
-                    "startAt": start_at,
-                    "maxResults": min(batch_size, limit - len(results)),
-                    "fields": "summary,description,status,issuetype,assignee,reporter,created,updated,resolutiondate,components,labels",
-                }
+                if not use_v2_fallback:
+                    search_url = f"{self.site_url}/rest/api/3/search/jql"
+                    params = {
+                        "jql": jql,
+                        "maxResults": min(batch_size, limit - len(results)),
+                        "fields": "summary,description,status,issuetype,assignee,reporter,created,updated,resolutiondate,components,labels",
+                    }
+                    if next_page_token:
+                        params["nextPageToken"] = next_page_token
+                    elif start_at > 0:
+                        params["startAt"] = start_at
+                else:
+                    search_url = f"{self.site_url}/rest/api/2/search"
+                    params = {
+                        "jql": jql,
+                        "startAt": start_at,
+                        "maxResults": min(batch_size, limit - len(results)),
+                        "fields": "summary,description,status,issuetype,assignee,reporter,created,updated,resolutiondate,components,labels",
+                    }
+
                 try:
                     response = await client.get(
-                        f"{self.site_url}/rest/api/3/search",
+                        search_url,
                         headers=self.headers,
                         params=params,
                     )
@@ -283,8 +300,13 @@ class JiraCloudClient:
                     await asyncio.sleep(min(retry_after, 5))
                     continue
 
+                if response.status_code in (404, 410) and not use_v2_fallback:
+                    logger.info(f"Jira endpoint {search_url} returned {response.status_code}; trying /rest/api/2/search")
+                    use_v2_fallback = True
+                    continue
+
                 if response.status_code != 200:
-                    logger.warning(f"Could not search issues for project {project_key}: HTTP {response.status_code}")
+                    logger.warning(f"Could not search issues for project {project_key} on {search_url}: HTTP {response.status_code}")
                     break
 
                 try:
@@ -326,9 +348,16 @@ class JiraCloudClient:
                         "project_key": project_key,
                     })
 
+                is_last = data.get("isLast")
+                next_token = data.get("nextPageToken")
                 total = data.get("total", 0)
                 start_at += len(issues)
-                if start_at >= total or len(issues) < batch_size:
+
+                if is_last is True:
+                    break
+                if next_token:
+                    next_page_token = next_token
+                elif (total and start_at >= total) or len(issues) < batch_size:
                     break
 
         return results

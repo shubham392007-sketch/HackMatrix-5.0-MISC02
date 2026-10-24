@@ -17,11 +17,11 @@ settings = get_settings()
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    pool_recycle=60,
+    pool_recycle=300,
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
     pool_timeout=settings.db_pool_timeout,
-    pool_reset_on_return=None,
+    pool_reset_on_return="rollback",
     connect_args={
         "connect_timeout": 30,
         "keepalives": 1,
