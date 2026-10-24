@@ -160,16 +160,8 @@ export function getStoredRecruiterUser(): any | null {
   }
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const customToken = getRecruiterToken();
-  if (customToken) {
-    return {
-      Authorization: `Bearer ${customToken}`,
-      "Content-Type": "application/json",
-    };
-  }
-
-  // Fallback to Supabase session token
+export async function getAuthHeaders(): Promise<HeadersInit> {
+  // 1. Primary: Use authoritative Supabase session access token
   try {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -181,6 +173,15 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     }
   } catch (e) {
     console.warn("Could not retrieve Supabase session for recruiter:", e);
+  }
+
+  // 2. Fallback: Development/test synthetic token if present
+  const customToken = getRecruiterToken();
+  if (customToken) {
+    return {
+      Authorization: `Bearer ${customToken}`,
+      "Content-Type": "application/json",
+    };
   }
 
   return {
@@ -203,6 +204,7 @@ export async function registerRecruiter(data: {
   industry?: string;
   company_size?: string;
 }): Promise<RecruiterAuthResponse> {
+  // 1. Provision account, organization, and membership in database
   const res = await fetch(`${API_BASE}/recruiter/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -214,33 +216,83 @@ export async function registerRecruiter(data: {
     throw new Error(body.detail || body.message || "Recruiter registration failed.");
   }
 
-  if (body.token) {
-    setRecruiterAuthSession(body.token, body);
+  // 2. Sign in directly via Supabase Auth GoTrue using the confirmed credentials
+  try {
+    return await loginRecruiter({
+      email: data.work_email,
+      password: data.password,
+    });
+  } catch (err: any) {
+    // If client-side GoTrue signin fails (e.g. mock/test environment), fall back to registration response
+    if (body.token) {
+      setRecruiterAuthSession(body.token, body);
+    }
+    return body;
   }
-
-  return body;
 }
 
 export async function loginRecruiter(data: {
   email: string;
   password: string;
 }): Promise<RecruiterAuthResponse> {
-  const res = await fetch(`${API_BASE}/recruiter/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+  const normalizedEmail = data.email.trim().toLowerCase();
+
+  // 1. Authenticate with Supabase Auth GoTrue directly
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password: data.password,
   });
 
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(body.detail || body.message || "Recruiter authentication failed.");
+  if (authError || !authData.session) {
+    // Fallback: If GoTrue client fails or is offline in local dev, try backend endpoint fallback
+    const res = await fetch(`${API_BASE}/recruiter/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normalizedEmail, password: data.password }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(authError?.message || body.detail || "Invalid work email or password.");
+    }
+    if (body.token) {
+      setRecruiterAuthSession(body.token, body);
+    }
+    return body;
   }
 
-  if (body.token) {
-    setRecruiterAuthSession(body.token, body);
+  // 2. Verify server-side that this account has active recruiter authorization
+  try {
+    const profile = await getCurrentRecruiterProfile();
+    setRecruiterAuthSession(authData.session.access_token, profile);
+    return {
+      success: true,
+      user_id: profile.user_id,
+      email: profile.email,
+      full_name: profile.full_name,
+      role: profile.role,
+      status: profile.status,
+      organization: profile.organization,
+      token: authData.session.access_token,
+      message: "Sign in successful.",
+    };
+  } catch (err: any) {
+    // Authenticated in GoTrue, but not an authorized employer
+    await supabase.auth.signOut();
+    clearRecruiterAuthSession();
+    throw new Error(
+      err.message ||
+        "This account does not have active recruiter privileges. Please register as an employer or sign in via the candidate portal."
+    );
   }
+}
 
-  return body;
+export async function logoutRecruiter(): Promise<void> {
+  clearRecruiterAuthSession();
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.warn("Could not sign out of Supabase Auth:", err);
+  }
 }
 
 export async function getCurrentRecruiterProfile(): Promise<RecruiterProfile> {

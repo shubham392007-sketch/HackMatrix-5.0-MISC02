@@ -118,14 +118,14 @@ export interface NormalizedJob {
   retrieved_at?: string;
   is_stale?: boolean;
   extracted_competencies?: any[];
-local_relevance_score?: number | null;
-  relevance_reasons?: string[] | null;
   extracted_requirements?: any[];
   organization_id?: string | null;
   recruiter_user_id?: string | null;
   public_recruiter_name?: string | null;
   public_recruiter_email?: string | null;
   status?: string | null;
+  local_relevance_score?: number | null;
+  relevance_reasons?: string[] | null;
   match_summary?: {
     score: number;
     aligned_skills: string[];

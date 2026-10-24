@@ -565,14 +565,10 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
         - Exactly 1 Ollama inference call per uncached Mode A search
         - Exactly 1 provider request per search
         - Strict local ranking of returned listings
+        - Direct retrieval of verified recruiter postings for Mode C
         """
-        overall_start = asyncio.get_event_loop().time()
+        influencing_skills: List[str] = []
         bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
-        skills_data: List[Dict[str, Any]] = []
-        intent: Optional[ModeASearchIntent] = None
-        ollama_latency_ms = 0.0
-        used_fallback = False
-        skill_snapshot: Optional[str] = None
         now = datetime.now(timezone.utc)
 
         # ----------------------------------------------------------------------
@@ -657,6 +653,14 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
         # ----------------------------------------------------------------------
         # MODE A & B: Query Determination & Discovery Pipeline
         # ----------------------------------------------------------------------
+        overall_start = asyncio.get_event_loop().time()
+        skills_data: List[Dict[str, Any]] = []
+        intent: Optional[ModeASearchIntent] = None
+        ollama_latency_ms = 0.0
+        used_fallback = False
+        skill_snapshot: Optional[str] = None
+
+        # 1. Mode A: Resolve skills and synthesize structured search intent
         if mode == "mode_a_skills":
             if selected_skills and isinstance(selected_skills, list) and len(selected_skills) > 0:
                 skills_data = selected_skills
@@ -859,7 +863,7 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
         provider_latency_sec = asyncio.get_event_loop().time() - provider_start
 
         if not executed_successfully and last_error:
-# Check if database has any existing postings to serve gracefully
+            # Check if database has any existing postings to serve gracefully
             first_term = search_query.split()[0] if search_query else ""
             persisted_fallback = (
                 db.query(JobPostingRecord)
@@ -925,7 +929,7 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
                     "jobs": [j.model_dump() for j in job_results],
                 }
 
-            logger.error(f"Configured job provider failed. Error: {last_error}")
+            logger.error(f"All configured job providers in cascade failed. Last error: {last_error}")
             if isinstance(last_error, ProviderException):
                 raise last_error
             raise RuntimeError(f"Job search failed: {last_error}")
@@ -978,7 +982,7 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
                     apply_url=res.apply_url,
                     posted_at=datetime.fromisoformat(res.posted_at) if res.posted_at else None,
                     retrieved_at=datetime.fromisoformat(res.retrieved_at),
-organization_id=uuid.UUID(res.organization_id) if getattr(res, "organization_id", None) else None,
+                    organization_id=uuid.UUID(res.organization_id) if getattr(res, "organization_id", None) else None,
                     recruiter_user_id=uuid.UUID(res.recruiter_user_id) if getattr(res, "recruiter_user_id", None) else None,
                     public_recruiter_name=getattr(res, "public_recruiter_name", None),
                     public_recruiter_email=getattr(res, "public_recruiter_email", None),

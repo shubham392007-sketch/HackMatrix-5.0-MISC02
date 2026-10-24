@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   SourceStatusBadge,
   ReviewStatusBadge,
@@ -31,6 +32,7 @@ import {
 import { runWorkAnalysis } from "@/lib/evidenceApi";
 
 export default function EvidenceCenterPage() {
+  const { profile } = useAuth();
   const { evidenceItems, sources, ingestionRuns, initialLoading, isLoadingEvidence, workAnalyses, refreshEvidenceData } = useEvidence();
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [analysisStatusMsg, setAnalysisStatusMsg] = useState<{ id: string; text: string; error?: boolean } | null>(null);
@@ -70,6 +72,28 @@ export default function EvidenceCenterPage() {
       </AppTopBar>
 
       <main className="p-6 lg:p-10 space-y-10 w-full max-w-[1400px] mx-auto">
+        {profile?.onboarding_status && profile.onboarding_status !== "completed" && (
+          <div className="p-4 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center shrink-0 shadow-[1px_1px_0_0_#1C1C1C]">
+                <Sparkles className="w-5 h-5 text-[#1C1C1C]" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-[#1C1C1C]">Onboarding Setup Incomplete</h4>
+                <p className="text-xs text-[#1C1C1C]/75">
+                  Step {profile.onboarding_current_step || 1} of 5 is pending. Finish your setup to unlock complete talent intelligence and skill tracking.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/app/onboarding"
+              className="pill-btn pill-btn-primary text-xs py-2 px-4 whitespace-nowrap self-start sm:self-auto inline-flex items-center gap-1.5"
+            >
+              <span>RESUME ONBOARDING</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
         {/* ── 6.2 EDITORIAL METRICS ROW ─────────────────────────────────── */}
         <section>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -386,10 +410,10 @@ export default function EvidenceCenterPage() {
                 </p>
                 <div className="pt-2 flex flex-wrap justify-center gap-3">
                   <Link
-                    href="/app/onboarding"
+                    href={profile?.onboarding_status === "completed" ? "/app/onboarding?mode=review" : "/app/onboarding"}
                     className="pill-btn pill-btn-primary text-xs py-2 px-5 inline-flex items-center gap-1.5"
                   >
-                    <span>START ONBOARDING WIZARD</span>
+                    <span>{profile?.onboarding_status === "completed" ? "REVIEW ONBOARDING SETUP" : "START ONBOARDING WIZARD"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                   <Link

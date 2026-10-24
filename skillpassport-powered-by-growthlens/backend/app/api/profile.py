@@ -269,11 +269,25 @@ def update_my_profile(
         if body.app_settings is not None:
             profile.app_settings = body.app_settings
         if body.onboarding_status is not None:
-            profile.onboarding_status = body.onboarding_status
-            if body.onboarding_status == "completed" and not profile.onboarding_completed_at:
-                profile.onboarding_completed_at = datetime.now(timezone.utc)
+            # Preserve completed onboarding status: do not allow regression to in_progress or not_started
+            if profile.onboarding_status == "completed" and body.onboarding_status != "completed":
+                logger.info(
+                    f"Preserving completed onboarding status for user {current_user.id} "
+                    f"(attempted update: {body.onboarding_status})"
+                )
+            else:
+                profile.onboarding_status = body.onboarding_status
+                if body.onboarding_status == "completed" and not profile.onboarding_completed_at:
+                    profile.onboarding_completed_at = datetime.now(timezone.utc)
         if body.onboarding_current_step is not None:
-            profile.onboarding_current_step = body.onboarding_current_step
+            # If already completed, do not regress current step below completed baseline
+            if profile.onboarding_status == "completed" and body.onboarding_current_step < (profile.onboarding_current_step or 5):
+                logger.info(
+                    f"Preserving completed onboarding step for user {current_user.id} "
+                    f"(attempted step update: {body.onboarding_current_step})"
+                )
+            else:
+                profile.onboarding_current_step = body.onboarding_current_step
         if body.onboarding_current_category is not None:
             profile.onboarding_current_category = body.onboarding_current_category
         if body.github_skipped is not None:
@@ -292,7 +306,7 @@ def update_my_profile(
         display_name=profile.display_name,
         preferred_name=profile.preferred_name,
         headline=profile.headline,
-        current_role=profile.current_role,
+        current_role=profile.current_role or "employee",
         job_title=profile.job_title,
         specialization=profile.specialization,
         department_or_team=profile.department_or_team,
@@ -306,9 +320,9 @@ def update_my_profile(
         github_url=profile.github_url,
         privacy_preferences=profile.privacy_preferences,
         app_settings=profile.app_settings,
-        onboarding_status=profile.onboarding_status,
+        onboarding_status=profile.onboarding_status or "not_started",
         onboarding_current_step=profile.onboarding_current_step or 1,
-        onboarding_current_category=profile.onboarding_current_category,
+        onboarding_current_category=profile.onboarding_current_category or "resume",
         github_skipped=bool(profile.github_skipped),
         jira_skipped=bool(profile.jira_skipped),
         onboarding_completed_at=profile.onboarding_completed_at,

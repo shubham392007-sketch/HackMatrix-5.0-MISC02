@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeRedirectUrl } from "@/lib/urlUtils";
 
 function sanitizeNextUrl(rawNext: string | null): string {
-  if (!rawNext) return "/app/onboarding";
-  // Enforce relative path, prevent protocol-relative (//) and javascript: URLs
-  if (rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.includes("\\")) {
-    return rawNext;
-  }
-  return "/app/onboarding";
+  return sanitizeRedirectUrl(rawNext, "/app/onboarding");
 }
 
 export async function GET(request: Request) {

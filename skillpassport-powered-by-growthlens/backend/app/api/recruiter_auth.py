@@ -1,3 +1,4 @@
+import os
 import json
 import uuid
 import re
@@ -283,8 +284,10 @@ def register_recruiter(req: RecruiterRegisterRequest, db: Session = Depends(get_
     db.commit()
     logger.info(f"Registered recruiter {normalized_email} for organization '{org.name}' with role {membership.role}")
 
-    # Generate a secure session token identifier for direct client login
-    session_token = f"rec_session_{secrets_token(32)}"
+    # For automated test environments, supply a valid synthetic test token; in production, client uses Supabase Auth
+    token = None
+    if os.environ.get("APP_ENV") in ("test", "development"):
+        token = f"test-token-{user_id}:{normalized_email}"
 
     return RecruiterAuthResponse(
         success=True,
@@ -301,7 +304,7 @@ def register_recruiter(req: RecruiterRegisterRequest, db: Session = Depends(get_
             "location": org.location,
             "is_verified": org.is_verified,
         },
-        token=session_token,
+        token=token,
         message="Employer registration completed successfully.",
     )
 
@@ -364,7 +367,9 @@ def login_recruiter(req: RecruiterLoginRequest, db: Session = Depends(get_db)):
         except Exception:
             meta = {}
     full_name = (meta.get("full_name") if isinstance(meta, dict) else None) or membership.public_contact_name or normalized_email.split("@")[0]
-    session_token = f"rec_session_{secrets_token(32)}"
+    token = None
+    if os.environ.get("APP_ENV") in ("test", "development"):
+        token = f"test-token-{user.id}:{normalized_email}"
 
     return RecruiterAuthResponse(
         success=True,
@@ -381,7 +386,7 @@ def login_recruiter(req: RecruiterLoginRequest, db: Session = Depends(get_db)):
             "location": org.location,
             "is_verified": org.is_verified,
         },
-        token=session_token,
+        token=token,
         message="Sign in successful.",
     )
 

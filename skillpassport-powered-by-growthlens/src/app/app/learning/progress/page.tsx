@@ -34,8 +34,8 @@ export default function LearningProgressPage() {
   const { activeBlueprint, activeRoadmap, activeDiagnosticResult } = useEvidence();
 
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
-const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m) => m.topics || []) : [];
-  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
+  const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m) => m.topics || []) : [];
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("topic-outlier-winsorization");
   const [viewMode, setViewMode] = useState<"visual" | "table">("visual");
 
   const selectedTopic = (selectedTopicId ? allTopics.find((t) => t.id === selectedTopicId) : null) || allTopics[0] || null;
@@ -84,7 +84,7 @@ const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m)
       <AppTopBar
         title="Progress & Topic Mastery"
         description={`Inspect your verified progress across ${activeBlueprint.title}. Unlike opaque AI estimations, our mastery model uses an exact deterministic formula: 0.30 K + 0.25 P + 0.20 A + 0.25 Prj.`}
-        badge="Domain 5 · Mastery Analytics"
+        badge="Domain 5 Â· Mastery Analytics"
         badgeColor="border-peach/40 text-ink bg-peach/20"
       >
         <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m)
                             className="text-xs font-bold text-ink hover:underline inline-flex items-center gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Learn →
+                            Learn â†’
                           </Link>
                         );
                       })()}
@@ -337,7 +337,7 @@ const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m)
             </div>
             <div className="text-[11px] font-bold mt-1">
               {simulatedMastery >= selectedTopic.target_mastery ? (
-                <span className="text-emerald-700">✓ Meets Target ({selectedTopic.target_mastery}%)</span>
+                <span className="text-emerald-700">âœ“ Meets Target ({selectedTopic.target_mastery}%)</span>
               ) : (
                 <span className="text-amber-700">Needs +{selectedTopic.target_mastery - simulatedMastery}% to Pass</span>
               )}

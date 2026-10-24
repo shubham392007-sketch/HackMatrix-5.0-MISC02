@@ -37,6 +37,11 @@ from backend.app.models.career import (
     RoleMatchSnapshotRecord,
     JobSearchCacheRecord,
 )
+from backend.app.models.recruiter import (
+    EmployerOrganization,
+    OrganizationMembership,
+    CandidateShareInvitation,
+)
 from backend.app.models.learning import (
     LearningRoadmap,
     LearningStep,
@@ -56,11 +61,6 @@ from backend.app.models.learning import (
     LearningMiniProjectModel,
     LearningActivityRecord,
     LearningActivityModel,
-)
-from backend.app.models.recruiter import (
-    EmployerOrganization,
-    OrganizationMembership,
-    CandidateShareInvitation,
 )
 
 __all__ = [
@@ -99,7 +99,16 @@ __all__ = [
     "UserTargetRoleRecord",
     "RoleMatchSnapshotRecord",
     "JobSearchCacheRecord",
-"LearningRoadmap",
+    "ShareLinkRecord",
+    "ShareAccessEvent",
+    "RecruiterMessage",
+    "UserCustomSkill",
+    "UserNotification",
+    "UserPassportConfigRecord",
+    "EmployerOrganization",
+    "OrganizationMembership",
+    "CandidateShareInvitation",
+    "LearningRoadmap",
     "LearningStep",
     "LearningResourceItem",
     "LearningAttempt",
@@ -117,7 +126,4 @@ __all__ = [
     "LearningMiniProjectModel",
     "LearningActivityRecord",
     "LearningActivityModel",
-    "EmployerOrganization",
-    "OrganizationMembership",
-    "CandidateShareInvitation",
 ]

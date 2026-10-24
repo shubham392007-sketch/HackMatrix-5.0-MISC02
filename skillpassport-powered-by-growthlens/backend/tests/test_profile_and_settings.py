@@ -127,3 +127,90 @@ def test_integrity_boundary_invariant():
     # without passing through ingestion -> extraction -> human review/verification
     assert not hasattr(profile, "verified_skills") or profile.__dict__.get("verified_skills") is None
     assert profile.headline == "World-Leading AI Scientist & Core Kernel Hacker"
+
+
+def test_completed_onboarding_status_preserved_on_review_edit():
+    """
+    CRITICAL INVARIANT (Fix B):
+    A user whose onboarding_status is already 'completed' must not have their status
+    downgraded to 'in_progress' or 'not_started' when saving profile calibrations in review mode.
+    """
+    from backend.app.api.profile import update_my_profile
+    from backend.app.api.dependencies import AuthenticatedUser
+    from unittest.mock import MagicMock
+
+    user_id = uuid.uuid4()
+    completed_profile = UserProfile(
+        id=user_id,
+        email="verified.engineer@example.com",
+        display_name="Verified Engineer",
+        onboarding_status="completed",
+        onboarding_current_step=5,
+    )
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.first.return_value = completed_profile
+
+    auth_user = AuthenticatedUser(
+        user_id=str(user_id),
+        email="verified.engineer@example.com",
+        metadata={},
+    )
+
+    # Simulate review-mode edit submitting step 1 with in_progress status
+    update_req = ProfileUpdateRequest(
+        display_name="Verified Senior Engineer",
+        job_title="Principal Architect",
+        onboarding_status="in_progress",
+        onboarding_current_step=2,
+    )
+
+    res = update_my_profile(body=update_req, current_user=auth_user, db=mock_db)
+
+    # The returned profile and model MUST preserve 'completed' and step 5
+    assert completed_profile.onboarding_status == "completed"
+    assert completed_profile.onboarding_current_step == 5
+    assert res.onboarding_status == "completed"
+    assert res.display_name == "Verified Senior Engineer"
+    assert res.job_title == "Principal Architect"
+
+
+def test_incomplete_onboarding_status_advances_normally():
+    """
+    Verify that an incomplete user's progress advances normally to 'in_progress'.
+    """
+    from backend.app.api.profile import update_my_profile
+    from backend.app.api.dependencies import AuthenticatedUser
+    from unittest.mock import MagicMock
+
+    user_id = uuid.uuid4()
+    new_profile = UserProfile(
+        id=user_id,
+        email="new.user@example.com",
+        display_name="New User",
+        onboarding_status="not_started",
+        onboarding_current_step=1,
+    )
+
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.first.return_value = new_profile
+
+    auth_user = AuthenticatedUser(
+        user_id=str(user_id),
+        email="new.user@example.com",
+        metadata={},
+    )
+
+    update_req = ProfileUpdateRequest(
+        display_name="New User Calibrated",
+        job_title="Software Developer",
+        onboarding_status="in_progress",
+        onboarding_current_step=2,
+    )
+
+    res = update_my_profile(body=update_req, current_user=auth_user, db=mock_db)
+
+    assert new_profile.onboarding_status == "in_progress"
+    assert new_profile.onboarding_current_step == 2
+    assert res.onboarding_status == "in_progress"
+

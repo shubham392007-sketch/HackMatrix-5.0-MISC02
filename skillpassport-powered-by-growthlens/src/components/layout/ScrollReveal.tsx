@@ -22,6 +22,16 @@ export default function ScrollReveal({
     const el = ref.current;
     if (!el) return;
 
+    // Check reduced motion or missing IntersectionObserver
+    if (
+      typeof window !== "undefined" &&
+      (typeof IntersectionObserver === "undefined" ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    ) {
+      setRevealed(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -33,11 +43,20 @@ export default function ScrollReveal({
           observer.unobserve(el);
         }
       },
-      { threshold: 0.1, rootMargin: "-40px" }
+      { threshold: 0.05, rootMargin: "80px" }
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+
+    // Guaranteed visibility safety fallback: ensure content is always visible
+    const fallbackTimer = setTimeout(() => {
+      setRevealed(true);
+    }, 450 + delayMs);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(fallbackTimer);
+    };
   }, [delayMs]);
 
   const dirClass =

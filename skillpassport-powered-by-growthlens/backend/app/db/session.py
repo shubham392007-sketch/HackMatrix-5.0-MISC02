@@ -3,6 +3,7 @@ import json
 import re
 import uuid
 import urllib.request
+from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
@@ -173,7 +174,7 @@ def _init_resilient_engine():
                 pool_timeout=settings.db_pool_timeout,
                 pool_reset_on_return="rollback",
                 connect_args={
-                    "connect_timeout": 1,
+                    "connect_timeout": 5,
                     "keepalives": 1,
                     "keepalives_idle": 15,
                     "keepalives_interval": 5,
@@ -286,11 +287,14 @@ def get_db() -> Generator[Session, None, None]:
             circuit_breaker.record_failure(exc)
         raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_err:
+            logger.debug(f"Safely ignored stale connection close exception: {close_err}")
 
 
-def get_local_database_status() -> dict:
-    """Verifies live application database connection via SELECT 1 with circuit breaker awareness."""
+def check_database_connection() -> dict:
+    """Verifies live database connection via SELECT 1 with circuit breaker awareness."""
     circuit_metrics = circuit_breaker.get_metrics()
     if engine.dialect.name != "sqlite" and circuit_metrics["state"] == "OPEN":
         return {
@@ -352,3 +356,5 @@ def get_remote_postgres_status() -> dict:
 def check_database_connection() -> dict:
     """Verifies live database connection via SELECT 1 with circuit breaker awareness (backward compatibility)."""
     return get_local_database_status()
+
+get_local_database_status = check_database_connection

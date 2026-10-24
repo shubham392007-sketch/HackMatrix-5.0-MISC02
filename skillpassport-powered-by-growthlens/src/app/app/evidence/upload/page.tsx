@@ -147,7 +147,7 @@ async function extractZipArchive(
     };
   }
 
-  const entries = (Object.entries(zip.files) as [string, any][]).filter(([_, entry]) => !entry.dir);
+  const entries = Object.entries(zip.files).filter(([_, entry]) => !(entry as any).dir);
   if (entries.length === 0) {
     return {
       validFiles: [],
@@ -166,7 +166,8 @@ async function extractZipArchive(
 
   let totalDecompressed = 0;
 
-  for (const [relativePath, entry] of entries) {
+  for (const [relativePath, rawEntry] of entries) {
+    const entry = rawEntry as any;
     // 1. Path traversal guard & sanitize name
     const rawName = relativePath.split(/[/\\]/).pop()?.trim() || "";
     if (!rawName || rawName.startsWith(".") || relativePath.includes("__MACOSX")) {

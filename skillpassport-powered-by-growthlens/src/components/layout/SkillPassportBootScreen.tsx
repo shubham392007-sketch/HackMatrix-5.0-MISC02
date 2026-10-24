@@ -50,7 +50,7 @@ export default function SkillPassportBootScreen({
       typeof window !== "undefined" &&
       sessionStorage.getItem("skillpassport_boot_seen");
 
-    if (!isHomePage && hasSeenBoot === "true") {
+    if (hasSeenBoot === "true") {
       setPhase("done");
       onComplete?.();
       return;

@@ -1960,10 +1960,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         const userNotifs = loadUserNotifications(uid);
         setNotifications(userNotifs);
         refreshEvidenceData();
-refreshLearningState().catch(() => {});
         sharingApi.getSharingPermissions().then((perms) => {
           if (perms) setDraftPermissions(perms);
         }).catch(() => {});
+        refreshLearningState().catch(() => {});
       } else {
         setIsAuthenticated(false);
         setCurrentUserId(null);

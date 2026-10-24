@@ -69,6 +69,7 @@ import {
   Pin,
   PinOff,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 
 export interface NavItem {
@@ -96,6 +97,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Evidence Workspace",
     items: [
       { label: "Evidence Center", href: "/app/evidence", icon: Database },
+      { label: "Onboarding Wizard", href: "/app/onboarding?mode=review", icon: Sparkles },
       { label: "Connected Sources", href: "/app/evidence/sources", icon: GitBranch },
       { label: "Upload Work & Docs", href: "/app/evidence/upload", icon: UploadCloud },
       { label: "Evidence Library", href: "/app/evidence/library", icon: Library },
@@ -468,41 +470,91 @@ function SidebarContent({
         {WORKSPACE_NAV.map((section, idx) => {
           const sectionHasActive = section.items.some((item) => item.href === activeHref);
           const isCollapsed = collapsedSections[section.category] ?? false;
+          const domainCode = String(idx + 1).padStart(2, "0");
 
           return (
-            <div key={section.category}>
+            <div key={section.category} className="space-y-1">
+              {/* Subtle Ledger Hairline Divider between Domain Sections */}
+              {idx > 0 && (
+                <div
+                  className={`border-t border-[#1A1918]/10 mx-1 transition-all ${
+                    isExpanded ? "my-2 opacity-100" : "my-1.5 opacity-60"
+                  }`}
+                  aria-hidden="true"
+                />
+              )}
+
               {/* Category Header (Smooth unfold, delay-staggered fade) */}
               <div
                 className={`overflow-hidden transition-all ${
                   isExpanded
-                    ? "max-h-12 opacity-100 duration-350 delay-180 ease-out mb-1"
+                    ? "max-h-14 opacity-100 duration-350 delay-180 ease-out mb-1"
                     : "max-h-0 opacity-0 duration-140 delay-0 ease-in mb-0 pointer-events-none"
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => toggleSection(section.category)}
-                  className="w-full flex items-center justify-between px-2 py-1 rounded-lg text-left transition-colors duration-150 hover:bg-[#1A1918]/5 group select-none whitespace-nowrap"
+                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-left transition-all duration-150 group select-none whitespace-nowrap border ${
+                    sectionHasActive
+                      ? "bg-white border-[#1A1918]/25 shadow-[1px_1px_0_0_#1A1918]/15"
+                      : "bg-transparent border-transparent hover:bg-white/70 hover:border-[#1A1918]/15"
+                  }`}
                   aria-expanded={!isCollapsed}
+                  aria-label={`${section.category} domain section, ${section.items.length} items`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {/* Domain Index Code */}
                     <span
-                      className={`w-2 h-2 rounded-full border border-[#1A1918] shrink-0 ${
-                        sectionHasActive ? "bg-[#2D5A43]" : "bg-[#E6AC70]"
+                      className={`text-[8.5px] font-mono font-black px-1.5 py-0.5 rounded-md border tracking-tight shrink-0 transition-colors ${
+                        sectionHasActive
+                          ? "bg-[#000000] text-[#FAF8F5] border-[#000000] shadow-[0.5px_0.5px_0_0_#1A1918]"
+                          : "bg-[#1A1918]/5 text-[#1A1918]/65 border-[#1A1918]/12 group-hover:border-[#1A1918]/30 group-hover:text-[#1A1918] group-hover:bg-[#1A1918]/10"
                       }`}
+                    >
+                      {domainCode}
+                    </span>
+
+                    {/* Active Status Beacon */}
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
+                        sectionHasActive
+                          ? "bg-[#10B981] ring-2 ring-[#10B981]/25"
+                          : "bg-[#1A1918]/20 group-hover:bg-[#1A1918]/40"
+                      }`}
+                      aria-hidden="true"
                     />
-                    <span className="text-[10.5px] font-black uppercase tracking-wider text-[#1A1918]/80 group-hover:text-[#1A1918] truncate">
+
+                    {/* Domain Category Title */}
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-[0.12em] truncate transition-colors ${
+                        sectionHasActive
+                          ? "text-[#000000]"
+                          : "text-[#1A1918]/75 group-hover:text-[#000000]"
+                      }`}
+                    >
                       {section.category}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[9px] font-mono text-[#1A1918]/40">
+
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                    {/* Polished Micro Count Chip */}
+                    <span
+                      aria-hidden="true"
+                      className={`px-1.5 py-0.5 rounded-md text-[8.5px] font-mono font-bold border transition-colors ${
+                        sectionHasActive
+                          ? "bg-[#FAF8F5] text-[#1A1918] border-[#1A1918]/20 shadow-[0.5px_0.5px_0_0_#1A1918]/10"
+                          : "bg-white/80 text-[#1A1918]/50 border-[#1A1918]/12 group-hover:text-[#1A1918] group-hover:border-[#1A1918]/25"
+                      }`}
+                    >
                       {section.items.length}
                     </span>
+
                     <ChevronDown
-                      className={`w-3.5 h-3.5 text-[#1A1918]/50 group-hover:text-[#1A1918] transition-transform duration-200 ${
+                      className={`w-3.5 h-3.5 text-[#1A1918]/45 group-hover:text-[#1A1918] transition-transform duration-200 ${
                         isCollapsed ? "-rotate-90" : "rotate-0"
                       }`}
+                      aria-hidden="true"
                     />
                   </div>
                 </button>

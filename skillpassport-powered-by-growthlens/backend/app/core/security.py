@@ -119,15 +119,27 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 "user_metadata": {"full_name": "Alex Chen"},
             }
         if token.startswith("test-token-"):
-            test_uid = token.replace("test-token-", "")
+            test_raw = token.replace("test-token-", "")
+            if ":" in test_raw:
+                parts = test_raw.split(":", 1)
+                test_uid = parts[0]
+                test_email = parts[1]
+            else:
+                test_uid = test_raw
+                test_email = f"test-{test_uid[:8]}@example.com"
             if not test_uid or len(test_uid) != 36:
                 test_uid = "00000000-0000-0000-0000-000000000001"
             return {
                 "sub": test_uid,
-                "email": f"test-{test_uid[:8]}@example.com",
+                "email": test_email,
                 "role": "authenticated",
                 "user_metadata": {"full_name": "Test User"},
             }
+
+    # Explicit rejection of deprecated/fabricated legacy recruiter tokens
+    if token.startswith("rec_session_"):
+        logger.warning("Rejected unsupported legacy rec_session token")
+        return None
 
     # Check memory cache first
     now = time.time()
