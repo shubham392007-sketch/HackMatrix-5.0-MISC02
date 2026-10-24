@@ -33,6 +33,7 @@ export default function HallucinationGuardPage() {
     guardResults,
     updateGuardResult,
     addAIAuditEvent,
+    addNotification,
     currentRole,
     evidenceItems,
     extractionCandidates,
@@ -215,6 +216,93 @@ export default function HallucinationGuardPage() {
         actor: `${currentRole === "admin" ? "Admin" : "System"} Guard Policy Engine`,
         model_or_policy_version: "guard-v2026.1",
       });
+
+      const reasons: string[] = res.reason_codes || [];
+      if (reasons.includes("PROMPT_INJECTION_FLAGGED")) {
+        addNotification({
+          title: "Security or access event requires attention",
+          description: `Security guard detected prompt-injection attempt in claim "${simClaimTitle}": Content quarantined under security policy.`,
+          category: "governance",
+          severity: "error",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/prompt-injection",
+          actionLabel: "Inspect Security Finding",
+          dedupKey: `gov_sec_guard_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["admin"],
+        });
+      } else if (reasons.some((r: string) => ["INVENTED_EVIDENCE_ID", "EVIDENCE_ID_NOT_FOUND", "CITATION_MISSING", "EVIDENCE_REVOKED_OR_INVALIDATED"].includes(r))) {
+        addNotification({
+          title: "Evidence reference failed validation",
+          description: `Evidence reference for "${simClaimTitle}" failed validation: ${res.explanation || primaryReason}`,
+          category: "governance",
+          severity: "error",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/guard",
+          actionLabel: "Inspect Evidence Reference",
+          dedupKey: `gov_ev_ref_failed_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["employee", "reviewer", "admin"],
+        });
+      } else if (res.guard_outcome === "INSUFFICIENT_EVIDENCE" || reasons.some((r: string) => ["UNSUPPORTED_CLAIM", "ZERO_ATTRIBUTABLE_ARTIFACTS"].includes(r))) {
+        addNotification({
+          title: "Unsupported claim detected",
+          description: `Verification guard identified insufficient evidence for "${simClaimTitle}" (${simSkill}): Additional corroborating evidence required.`,
+          category: "governance",
+          severity: "warning",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/guard",
+          actionLabel: "Review Unsupported Claim",
+          dedupKey: `gov_unsupported_claim_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["employee", "reviewer", "admin"],
+        });
+      } else if (res.guard_outcome === "BLOCK") {
+        addNotification({
+          title: "Policy enforcement blocked an operation",
+          description: `Policy gate blocked claim "${simClaimTitle}" (${simSkill}): ${res.explanation || primaryReason}`,
+          category: "governance",
+          severity: "error",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/guard",
+          actionLabel: "Inspect Policy Block",
+          dedupKey: `gov_policy_blocked_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["employee", "reviewer", "admin"],
+        });
+      } else if (res.guard_outcome === "FLAG_FOR_REVIEW") {
+        addNotification({
+          title: "Review required",
+          description: `Claim "${simClaimTitle}" was flagged for human review: ${res.explanation || primaryReason}`,
+          category: "governance",
+          severity: "info",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/review-queue",
+          actionLabel: "Inspect Review Task",
+          dedupKey: `gov_review_task_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["reviewer", "admin"],
+        });
+      } else if (res.guard_outcome === "PASS") {
+        addNotification({
+          title: "Review decision completed",
+          description: `Deterministic guard verified claim "${simClaimTitle}" (${simSkill}): All 7 verification checks passed.`,
+          category: "governance",
+          severity: "success",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/guard",
+          actionLabel: "View Verified Claim",
+          dedupKey: `gov_review_pass_${guardId}`,
+          entityType: "guard_claim",
+          entityId: guardId,
+          targetRole: ["employee", "reviewer", "admin"],
+        });
+      }
 
       setSelectedClaimId(guardId);
       setSimClaimTitle("");

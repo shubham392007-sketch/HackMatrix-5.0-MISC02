@@ -5,6 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import { useAuth } from "@/context/AuthContext";
+import EvidenceHelpDrawer from "@/components/app/EvidenceHelpDrawer";
+import AIHelpDrawer from "@/components/app/AIHelpDrawer";
+import GovernanceHelpDrawer from "@/components/app/GovernanceHelpDrawer";
+import SkillHelpDrawer from "@/components/app/SkillHelpDrawer";
+import SettingsHelpDrawer from "@/components/app/SettingsHelpDrawer";
 import {
   ArrowLeft,
   Bell,
@@ -51,14 +56,16 @@ export default function AppTopBar({
   const pathname = usePathname();
   const router = useRouter();
   const {
-    currentRole,
-    setDemoRole,
     userProfile,
     unreadNotificationsCount,
     evidenceUnreadCount,
     evidenceNotifications,
     verificationUnreadCount,
     verificationNotifications,
+    aiUnreadCount,
+    aiNotifications,
+    governanceUnreadCount,
+    governanceNotifications,
     notifications,
     markNotificationRead,
     toasts,
@@ -92,23 +99,45 @@ export default function AppTopBar({
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isEvidenceWorkspace = pathname?.startsWith("/app/evidence") ?? false;
   const isSkillPassport = pathname?.startsWith("/app/passport") ?? false;
-  const [feedMode, setFeedMode] = useState<"evidence" | "verification" | "all">("all");
+  const isGovernanceWorkspace =
+    pathname?.startsWith("/app/ai/guard") ||
+    pathname?.startsWith("/app/ai/validation") ||
+    pathname?.startsWith("/app/ai/review-queue") ||
+    pathname?.startsWith("/app/ai/conflicts") ||
+    pathname?.startsWith("/app/ai/prompt-injection") ||
+    pathname?.startsWith("/app/ai/evaluation") ||
+    pathname?.startsWith("/app/ai/audit") ||
+    pathname?.startsWith("/app/ai/confidence") ||
+    pathname?.startsWith("/app/governance");
+  const isAIIntelligence = !isGovernanceWorkspace && (pathname?.startsWith("/app/ai") ?? false);
+  const isSettingsWorkspace =
+    (pathname?.startsWith("/app/settings") ||
+      pathname?.startsWith("/app/notifications") ||
+      pathname?.startsWith("/app/activity") ||
+      pathname?.startsWith("/app/help")) ??
+    false;
+  const [feedMode, setFeedMode] = useState<"evidence" | "verification" | "ai" | "governance" | "all">("all");
 
   useEffect(() => {
-    if (isEvidenceWorkspace) {
+    if (isGovernanceWorkspace) {
+      setFeedMode("governance");
+    } else if (isAIIntelligence) {
+      setFeedMode("ai");
+    } else if (isEvidenceWorkspace) {
       setFeedMode("evidence");
     } else if (isSkillPassport) {
       setFeedMode("verification");
     } else {
       setFeedMode("all");
     }
-  }, [isEvidenceWorkspace, isSkillPassport]);
+  }, [isEvidenceWorkspace, isSkillPassport, isAIIntelligence, isGovernanceWorkspace]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -124,7 +153,11 @@ export default function AppTopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const activeUnreadCount = isEvidenceWorkspace
+  const activeUnreadCount = isGovernanceWorkspace
+    ? governanceUnreadCount
+    : isAIIntelligence
+    ? aiUnreadCount
+    : isEvidenceWorkspace
     ? evidenceUnreadCount
     : isSkillPassport
     ? verificationUnreadCount
@@ -132,7 +165,11 @@ export default function AppTopBar({
 
   const displayList = useMemo(() => {
     const pool =
-      feedMode === "evidence"
+      feedMode === "governance"
+        ? governanceNotifications
+        : feedMode === "ai"
+        ? aiNotifications
+        : feedMode === "evidence"
         ? evidenceNotifications
         : feedMode === "verification"
         ? verificationNotifications
@@ -140,7 +177,7 @@ export default function AppTopBar({
     const unread = pool.filter((n) => !n.read);
     const read = pool.filter((n) => n.read);
     return [...unread, ...read].slice(0, 4);
-  }, [feedMode, evidenceNotifications, verificationNotifications, notifications]);
+  }, [feedMode, evidenceNotifications, verificationNotifications, aiNotifications, governanceNotifications, notifications]);
 
   // Auto-resolve breadcrumbs if not explicitly passed
   const resolvedBreadcrumbs = useMemo(() => {
@@ -167,10 +204,12 @@ export default function AppTopBar({
       crumbs.push({ label: "AI Intelligence", href: "/app/ai" });
     } else if (
       pathname.startsWith("/app/passport/sharing") ||
+      pathname.startsWith("/app/passport/builder") ||
       pathname.startsWith("/app/passport/preview") ||
       pathname.startsWith("/app/passport/share") ||
       pathname.startsWith("/app/passport/permissions") ||
       pathname.startsWith("/app/passport/access") ||
+      pathname.startsWith("/app/passport/messages") ||
       pathname.startsWith("/app/passport/export")
     ) {
       crumbs.push({ label: "Sharing & Recruiter", href: "/app/passport/sharing" });
@@ -267,35 +306,18 @@ export default function AppTopBar({
 
       {/* Right side: Global Actions & Controls */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-nowrap">
-        {/* Interactive Demo Role Switcher in Header */}
-        <div className="hidden sm:inline-flex items-center gap-1 p-1 bg-white/90 rounded-full border border-ink/20 text-xs shadow-[1px_1px_0_0_#1C1C1C]">
-          <span className="text-[9px] font-black uppercase text-ink/60 px-2">ROLE:</span>
-          {(["employee", "reviewer", "admin"] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setDemoRole(r)}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize transition-all ${
-                currentRole === r
-                  ? "bg-[#1C1C1C] text-white shadow-sm"
-                  : "text-ink/70 hover:text-ink"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-
         {children}
 
         {/* Contextual Help Icon */}
-        <Link
-          href="/app/help"
+        <button
+          type="button"
+          onClick={() => setIsHelpOpen(true)}
           title="Product Help & Conceptual Guidance"
-          className="w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C]"
+          aria-label="Product Help & Conceptual Guidance"
+          className="w-8 h-8 rounded-full bg-white/80 border border-ink/20 flex items-center justify-center text-ink/70 hover:text-ink hover:bg-white transition-all shadow-[1px_1px_0_0_#1C1C1C] cursor-pointer"
         >
           <HelpCircle className="w-4 h-4" />
-        </Link>
+        </button>
 
         {/* Notifications Bell Dropdown */}
         <div className="relative" ref={notifRef}>
@@ -330,6 +352,8 @@ export default function AppTopBar({
                       ? "/app/notifications?category=evidence"
                       : feedMode === "verification"
                       ? "/app/notifications?category=verification"
+                      : feedMode === "ai"
+                      ? "/app/notifications?category=ai"
                       : "/app/notifications"
                   }
                   onClick={() => setIsNotifOpen(false)}
@@ -343,6 +367,22 @@ export default function AppTopBar({
               <div className="mt-2.5 flex items-center gap-1 p-1 bg-ink/5 rounded-xl text-[10px] font-bold">
                 <button
                   type="button"
+                  onClick={() => setFeedMode("governance")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "governance"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>Governance</span>
+                  {governanceUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {governanceUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onClick={() => setFeedMode("verification")}
                   className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
                     feedMode === "verification"
@@ -350,10 +390,26 @@ export default function AppTopBar({
                       : "text-ink/60 hover:text-ink"
                   }`}
                 >
-                  <span>Skill Passport</span>
+                  <span>Passport</span>
                   {verificationUnreadCount > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
                       {verificationUnreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedMode("ai")}
+                  className={`flex-1 py-1 px-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    feedMode === "ai"
+                      ? "bg-white text-ink shadow-sm border border-ink/10"
+                      : "text-ink/60 hover:text-ink"
+                  }`}
+                >
+                  <span>AI</span>
+                  {aiUnreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-mono font-bold">
+                      {aiUnreadCount}
                     </span>
                   )}
                 </button>
@@ -395,10 +451,14 @@ export default function AppTopBar({
               <div className="py-2.5 space-y-2 max-h-72 overflow-y-auto">
                 {displayList.length === 0 ? (
                   <div className="py-6 text-center text-xs text-ink/60">
-                    {feedMode === "evidence"
+                    {feedMode === "governance"
+                      ? "No Trust & Governance notifications."
+                      : feedMode === "evidence"
                       ? "No Evidence Workspace notifications."
                       : feedMode === "verification"
                       ? "No Skill Intelligence notifications."
+                      : feedMode === "ai"
+                      ? "No AI Intelligence notifications."
                       : "No notifications recorded."}
                   </div>
                 ) : (
@@ -465,10 +525,14 @@ export default function AppTopBar({
               <div className="pt-2 border-t border-ink/10 text-center">
                 <Link
                   href={
-                    feedMode === "evidence"
+                    feedMode === "governance"
+                      ? "/app/notifications?category=governance"
+                      : feedMode === "evidence"
                       ? "/app/notifications?category=evidence"
                       : feedMode === "verification"
                       ? "/app/notifications?category=verification"
+                      : feedMode === "ai"
+                      ? "/app/notifications?category=ai"
                       : "/app/notifications"
                   }
                   onClick={() => setIsNotifOpen(false)}
@@ -600,6 +664,50 @@ export default function AppTopBar({
             </div>
           ))}
         </div>
+      )}
+      {/* Evidence Workspace Product Help & Conceptual Guidance Drawer */}
+      {isEvidenceWorkspace && (
+        <EvidenceHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Trust & Governance Product Help & Conceptual Guidance Drawer */}
+      {isGovernanceWorkspace && (
+        <GovernanceHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Skill Intelligence Product Help & Conceptual Guidance Drawer */}
+      {isSkillPassport && (
+        <SkillHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* Settings & Access Product Help & Conceptual Guidance Drawer */}
+      {isSettingsWorkspace && (
+        <SettingsHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {/* AI Intelligence Product Help & Conceptual Guidance Drawer */}
+      {!isEvidenceWorkspace && !isGovernanceWorkspace && !isSkillPassport && !isSettingsWorkspace && (
+        <AIHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
       )}
     </header>
   );

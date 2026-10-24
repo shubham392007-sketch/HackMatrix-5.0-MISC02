@@ -132,6 +132,8 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 "email": user_data.get("email", unverified_payload.get("email", "")),
                 "role": user_data.get("role", "authenticated"),
                 "user_metadata": user_data.get("user_metadata", unverified_payload.get("user_metadata", {})),
+                "email_confirmed_at": user_data.get("email_confirmed_at"),
+                "confirmed_at": user_data.get("confirmed_at"),
             }
             # Cache for up to 300 seconds (or remaining JWT life)
             ttl = min(300, (exp - now) if exp else 300)
@@ -157,3 +159,4 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             "role": unverified_payload.get("role", "authenticated"),
             "user_metadata": unverified_payload.get("user_metadata", {}),
         }
+

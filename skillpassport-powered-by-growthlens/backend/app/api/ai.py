@@ -207,6 +207,7 @@ async def run_work_analysis(
             )
 
             # Automatically extract and persist candidate competencies into evidence_competency_mappings
+            partial_failure = None
             try:
                 await skill_extractor.extract_candidate_skills(
                     db=db,
@@ -215,6 +216,11 @@ async def run_work_analysis(
                 )
             except Exception as se_err:
                 logger.warning(f"Skill extraction during work analysis for {ev_id_str}: {se_err}")
+                partial_failure = {
+                    "stage": "candidate_skill_extraction",
+                    "error": str(se_err),
+                    "message": "Work artifact decomposed successfully, but candidate skill extraction encountered an error.",
+                }
 
             # Populate demonstrated skills from evidence competency mappings for immediate response
             cand_skills = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(
@@ -236,11 +242,37 @@ async def run_work_analysis(
                 ]
 
             # Auto-detect conflicts on newly analyzed evidence
-            conflict_service.detect_conflicts_for_evidence(db=db, owner_user_id=owner_uuid, evidence_id=ev_uuid)
+            try:
+                conflict_service.detect_conflicts_for_evidence(db=db, owner_user_id=owner_uuid, evidence_id=ev_uuid)
+            except Exception as cf_err:
+                logger.warning(f"Conflict detection error during work analysis for {ev_id_str}: {cf_err}")
+                if not partial_failure:
+                    partial_failure = {
+                        "stage": "conflict_detection",
+                        "error": str(cf_err),
+                        "message": "Work artifact decomposed successfully, but automated conflict detection could not complete.",
+                    }
+
+            if partial_failure:
+                res["partial_failure"] = partial_failure
+
             results.append(res)
         except Exception as e:
             logger.warning(f"Analysis failed for evidence {ev_id_str}: {e}")
-            results.append({"evidence_id": ev_id_str, "status": "failed", "error": str(e)})
+            ev_title = "Evidence Artifact"
+            try:
+                ev_rec = db.query(EvidenceItem).filter(EvidenceItem.id == uuid.UUID(ev_id_str)).first()
+                if ev_rec and ev_rec.title:
+                    ev_title = ev_rec.title
+            except Exception:
+                pass
+            results.append({
+                "evidence_id": ev_id_str,
+                "title": ev_title,
+                "status": "failed",
+                "error": str(e),
+                "run_id": str(uuid.uuid4()),
+            })
 
     return {"analyses": results, "total": len(results)}
 

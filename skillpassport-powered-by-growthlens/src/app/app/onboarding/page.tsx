@@ -150,7 +150,7 @@ const EXPERIENCE_LEVELS = [
 
 export default function UnifiedOnboardingPage() {
   const router = useRouter();
-  const { user, profile, refreshProfile, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, profile, refreshProfile, isAuthenticated, isEmailVerified, isLoading: authLoading } = useAuth();
   const { refreshEvidenceData, sources } = useEvidence();
 
   // Wizard Step: 1 = Profile, 2 = GitHub, 3 = Jira, 4 = First Evidence, 5 = Review Summary
@@ -283,11 +283,15 @@ export default function UnifiedOnboardingPage() {
     if (!authLoading) {
       if (!isAuthenticated) {
         router.replace("/login?redirect=/app/onboarding");
+      } else if (!isEmailVerified) {
+        router.replace(
+          `/auth/verify-email?status=unverified${user?.email ? `&email=${encodeURIComponent(user.email)}` : ""}`
+        );
       } else {
         loadState();
       }
     }
-  }, [authLoading, isAuthenticated, loadState, router]);
+  }, [authLoading, isAuthenticated, isEmailVerified, loadState, router, user?.email]);
 
   // Load GitHub Repositories
   const loadRepositories = async () => {
@@ -635,10 +639,15 @@ export default function UnifiedOnboardingPage() {
   if (loadingInitialState || authLoading) {
     return (
       <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]">
-        <LoadingAnimation size="lg" className="mb-2" />
-        <p className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
-          INITIALIZING SKILL PASSPORT SETUP WIZARD ···
-        </p>
+        <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
+          <div className="absolute -inset-2 bg-[#DFE968]/30 rounded-3xl blur-xl pointer-events-none" />
+          <div className="relative p-8 rounded-3xl bg-[#FBF6DF]/90 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full overflow-hidden">
+            <LoadingAnimation size="md" className="relative z-10" />
+            <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
+              INITIALIZING SKILL PASSPORT SETUP WIZARD ···
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

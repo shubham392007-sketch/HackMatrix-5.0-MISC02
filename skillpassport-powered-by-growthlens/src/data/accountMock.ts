@@ -33,6 +33,7 @@ export const INITIAL_APP_SETTINGS: AppSettings = {
     learningMilestones: true,
     passportSharingViews: true,
     governanceAlerts: true,
+    aiAnalysisAlerts: true,
     emailDigestWeekly: false,
   },
   prototypeVersion: "v1.4.0 (Interactive Prototype — Domains 1-6 + Shared Layer)",
@@ -51,241 +52,11 @@ export const INITIAL_PRIVACY_PREFERENCES: PrivacyPreferences = {
   lastUpdated: "2026-03-22",
 };
 
-export const INITIAL_CONNECTED_SOURCE_DETAILS: ConnectedSourceDetails[] = [
-  {
-    id: "src-github-main",
-    name: "GitHub Organization",
-    type: "github",
-    status: "connected",
-    accountIdentity: "alexrivera-dev",
-    organization: "growthlens-ai",
-    authorizedPermissions: [
-      "read:user",
-      "repo:status",
-      "read:org",
-      "read:discussion",
-    ],
-    importedDataCategories: [
-      "Merged Pull Requests",
-      "Commit Metadata",
-      "Code Reviews",
-      "Repository Releases",
-    ],
-    lastSuccessfulSync: "Today, 09:30 AM",
-    lastSyncAttempt: "Today, 09:30 AM",
-    importedRecordsCount: 14,
-    isPrototypeSimulation: true,
-  },
-  {
-    id: "src-jira-prod",
-    name: "Jira Issue Tracker",
-    type: "jira",
-    status: "connected",
-    accountIdentity: "alex.rivera@growthlens.internal",
-    organization: "GL-INFRA",
-    authorizedPermissions: [
-      "read:jira-work",
-      "read:jira-user",
-      "read:project:jira",
-    ],
-    importedDataCategories: [
-      "Resolved Sprint Epics",
-      "Completed Technical Stories",
-      "Architecture RFC Submissions",
-    ],
-    lastSuccessfulSync: "Yesterday, 04:15 PM",
-    lastSyncAttempt: "Yesterday, 04:15 PM",
-    importedRecordsCount: 9,
-    isPrototypeSimulation: true,
-  },
-  {
-    id: "src-gitlab-secondary",
-    name: "GitLab Enterprise",
-    type: "gitlab",
-    status: "needs_attention",
-    accountIdentity: "alex-r-secondary",
-    organization: "Legacy Systems",
-    authorizedPermissions: ["read_api", "read_repository"],
-    importedDataCategories: ["Legacy Pipeline Commits"],
-    lastSuccessfulSync: "4 days ago",
-    lastSyncAttempt: "Today, 08:00 AM",
-    importedRecordsCount: 3,
-    syncWarning:
-      "Personal access token expires in 3 days. Reauthorization recommended to prevent automated sync interruptions.",
-    isPrototypeSimulation: true,
-  },
-  {
-    id: "src-manual-portfolio",
-    name: "Manual Deliverable Uploads",
-    type: "manual_upload",
-    status: "connected",
-    accountIdentity: "Candidate Self-Uploaded",
-    authorizedPermissions: ["Internal Provenance Parsing"],
-    importedDataCategories: [
-      "Technical Architecture RFCs",
-      "Data Pipeline Benchmark Reports",
-    ],
-    lastSuccessfulSync: "2 days ago",
-    lastSyncAttempt: "2 days ago",
-    importedRecordsCount: 4,
-    isPrototypeSimulation: true,
-  },
-];
+export const INITIAL_CONNECTED_SOURCE_DETAILS: ConnectedSourceDetails[] = [];
 
-export const INITIAL_APP_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "notif-01",
-    title: "Evidence Ingestion Completed",
-    description:
-      "Successfully ingested 4 new commits from repository 'growthlens-ai/telemetry-pipeline'. 2 candidate skills extracted.",
-    category: "evidence",
-    severity: "success",
-    timestamp: "10 minutes ago",
-    read: false,
-    relatedDomain: "Domain 1: Evidence Intelligence",
-    actionRoute: "/app/evidence/runs",
-    actionLabel: "Inspect Ingestion Run",
-  },
-  {
-    id: "notif-02",
-    title: "Verification Review Requested",
-    description:
-      "Candidate skill 'Distributed Stream Processing' has 3 corroborating evidence artifacts awaiting human review.",
-    category: "verification",
-    severity: "info",
-    timestamp: "1 hour ago",
-    read: false,
-    relatedDomain: "Domain 3: AI Verification",
-    actionRoute: "/app/ai/review-queue",
-    actionLabel: "Open Review Queue",
-  },
-  {
-    id: "notif-03",
-    title: "Mini-Project Evaluation Completed",
-    description:
-      "Automated evaluation completed for 'Stream Ingestion Pipeline' (Score: 88%). Generated candidate learning evidence.",
-    category: "learning",
-    severity: "success",
-    timestamp: "3 hours ago",
-    read: false,
-    relatedDomain: "Domain 5: Learning Intelligence",
-    actionRoute: "/app/learning/projects/project-data-preprocessing",
-    actionLabel: "View Evaluation",
-  },
-  {
-    id: "notif-04",
-    title: "Recruiter Passport Link Viewed",
-    description:
-      "Your shared passport link 'Stripe Senior Platform Engineer' was accessed by an external recruiter in San Francisco.",
-    category: "sharing",
-    severity: "info",
-    timestamp: "5 hours ago",
-    read: true,
-    relatedDomain: "Domain 6: Sharing & Recruiter Experience",
-    actionRoute: "/app/passport/access",
-    actionLabel: "Manage Access",
-  },
-  {
-    id: "notif-05",
-    title: "Connection Sync Warning",
-    description:
-      "GitLab Enterprise token expires in 3 days. Reauthorize to prevent sync disruptions for legacy evidence.",
-    category: "system",
-    severity: "warning",
-    timestamp: "Yesterday",
-    read: true,
-    relatedDomain: "Shared Settings",
-    actionRoute: "/app/settings/connections",
-    actionLabel: "Review Connections",
-  },
-];
+export const INITIAL_APP_NOTIFICATIONS: AppNotification[] = [];
 
-export const INITIAL_UNIFIED_ACTIVITIES: UnifiedActivityEvent[] = [
-  {
-    id: "act-u-01",
-    title: "Profile Information Updated",
-    description:
-      "Updated professional headline and summary in Account Settings. Changes propagated to passport preview.",
-    category: "profile",
-    sourceDomain: "Account Settings",
-    timestamp: "Today, 10:15 AM",
-    status: "completed",
-    actor: "Alex Rivera",
-    route: "/app/settings/profile",
-  },
-  {
-    id: "act-u-02",
-    title: "Created Selective Recruiter Link",
-    description:
-      "Generated link 'Stripe Senior Platform Engineer Recruiter' with 4 verified skills and 14-day expiry.",
-    category: "sharing",
-    sourceDomain: "Domain 6: Sharing & Recruiter",
-    timestamp: "Today, 09:45 AM",
-    status: "completed",
-    relatedRecordId: "share-recruiter-demo",
-    route: "/app/passport/access",
-  },
-  {
-    id: "act-u-03",
-    title: "Ingested GitHub Commits & PRs",
-    description:
-      "Imported 4 commits from repository 'growthlens-ai/telemetry-pipeline'. Processed and normalized.",
-    category: "evidence",
-    sourceDomain: "Domain 1: Ingestion",
-    timestamp: "Today, 09:30 AM",
-    status: "completed",
-    relatedRecordId: "run-ing-102",
-    route: "/app/evidence/runs",
-  },
-  {
-    id: "act-u-04",
-    title: "Mini-Project Evaluation Passed",
-    description:
-      "Mini-project 'Stream Ingestion Pipeline' evaluated by automated sandbox. Evaluated score: 88%.",
-    category: "learning",
-    sourceDomain: "Domain 5: Learning",
-    timestamp: "Today, 08:15 AM",
-    status: "completed",
-    relatedRecordId: "project-data-preprocessing",
-    route: "/app/learning/projects/project-data-preprocessing",
-  },
-  {
-    id: "act-u-05",
-    title: "Skill Verification Confirmed",
-    description:
-      "Human reviewer corroborated candidate claim 'Python Systems Programming' to Verified Advanced.",
-    category: "verification",
-    sourceDomain: "Domain 3: AI Verification",
-    timestamp: "Yesterday, 04:30 PM",
-    status: "completed",
-    relatedRecordId: "skill-python",
-    route: "/app/passport/skills/skill-python",
-  },
-  {
-    id: "act-u-06",
-    title: "Revoked Third-Party Agency Share Link",
-    description:
-      "Candidate revoked public URL 'Revoked Agency Screening Link'. Public link immediately returned 403 denied.",
-    category: "sharing",
-    sourceDomain: "Domain 6: Sharing & Recruiter",
-    timestamp: "Yesterday, 02:10 PM",
-    status: "revoked",
-    relatedRecordId: "share-revoked",
-    route: "/app/passport/access",
-  },
-  {
-    id: "act-u-07",
-    title: "Jira Sprint Deliverables Synchronized",
-    description:
-      "Imported 3 completed epics from project GL-INFRA. 2 candidate capabilities mapped to taxonomy.",
-    category: "connection",
-    sourceDomain: "Domain 1: Connected Sources",
-    timestamp: "Yesterday, 11:20 AM",
-    status: "completed",
-    relatedRecordId: "src-jira-prod",
-    route: "/app/evidence/sources",
-  },
-];
+export const INITIAL_UNIFIED_ACTIVITIES: UnifiedActivityEvent[] = [];
 
 export const HELP_TOPICS_CATALOG: HelpTopic[] = [
   {
@@ -444,7 +215,7 @@ export const HELP_TOPICS_CATALOG: HelpTopic[] = [
     keyRules: [
       "Source connections require only read permissions.",
       "Disconnecting a source stops sync without silently deleting earned evidence.",
-      "All credentials in this prototype are safely simulated in client-side state.",
+      "All credentials and access tokens are cryptographically encrypted with AES-GCM and securely stored.",
     ],
     relatedRoute: "/app/settings/privacy",
     relatedRouteLabel: "Open Privacy & Consent",

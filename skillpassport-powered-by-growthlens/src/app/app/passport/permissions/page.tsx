@@ -11,6 +11,7 @@ import {
   Eye,
   RotateCcw,
   Save,
+  Sparkles,
   CheckCircle,
   Lock,
   ShieldAlert,
@@ -22,6 +23,11 @@ import {
   Briefcase,
   FileCode,
   FileText,
+  GraduationCap,
+  FolderGit2,
+  Award,
+  BookOpen,
+  Trophy,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 import { SharePermissionsConfig } from "@/types/sharing";
@@ -87,6 +93,29 @@ export default function SharingPermissionsPage() {
     });
   };
 
+  const sectionsConfig = localConfig.sections || {
+    work_experience: true,
+    portfolio_projects: true,
+    education: true,
+    certifications: true,
+    publications: true,
+    achievements: true,
+    custom_sections: true,
+  };
+
+  const handleToggleSection = (secKey: string) => {
+    setLocalConfig((prev) => {
+      const currentMap = prev.sections || sectionsConfig;
+      return {
+        ...prev,
+        sections: {
+          ...currentMap,
+          [secKey]: currentMap[secKey] === false ? true : false,
+        },
+      };
+    });
+  };
+
   const handleSave = () => {
     setDraftPermissions(localConfig);
     setSavedSuccess(true);
@@ -118,6 +147,13 @@ export default function SharingPermissionsPage() {
             <RotateCcw className="w-3 h-3" />
             <span>Reset</span>
           </button>
+          <Link
+            href="/app/passport/builder"
+            className="pill-btn pill-btn-ghost text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
+          >
+            <Sparkles className="w-3 h-3 text-amber-500" />
+            <span>Content Builder</span>
+          </Link>
           <button
             onClick={handleSave}
             className="pill-btn pill-btn-primary text-[11px] py-1.5 px-3 flex items-center gap-1 shrink-0"
@@ -353,12 +389,72 @@ export default function SharingPermissionsPage() {
           </div>
         </div>
 
-        {/* Group D: Role Alignment */}
+        {/* Group D: Master Passport Sections Disclosure */}
+        <div className="gl-card p-6 md:p-8 space-y-4">
+          <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+            <div>
+              <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-peach" />
+                Group D: Master Passport Sections Disclosure
+              </h2>
+              <p className="text-xs text-ink/70 mt-0.5">
+                Decide which candidate-authored sections are disclosed on shared recruiter passports. Empty sections are omitted automatically.
+              </p>
+            </div>
+            <Link
+              href="/app/passport/builder"
+              className="pill-btn pill-btn-ghost text-[11px] py-1 px-3 border border-ink/20 flex items-center gap-1 text-ink"
+            >
+              <span>Edit Content in Builder &rarr;</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            {[
+              { id: "work_experience", label: "Work Experience", icon: Briefcase, desc: "Employment history & achievements" },
+              { id: "portfolio_projects", label: "Portfolio & Projects", icon: FolderGit2, desc: "Technical builds & repos" },
+              { id: "education", label: "Education & Academics", icon: GraduationCap, desc: "Degrees, institutions & courses" },
+              { id: "certifications", label: "Certifications", icon: Award, desc: "Credentials & issuing authorities" },
+              { id: "publications", label: "Publications & Writing", icon: BookOpen, desc: "Papers, venues & abstracts" },
+              { id: "achievements", label: "Honors & Achievements", icon: Trophy, desc: "Awards, competitions & recognitions" },
+              { id: "custom_sections", label: "Custom Candidate Sections", icon: FileText, desc: "User-defined custom content" },
+            ].map((sec) => {
+              const isEnabled = sectionsConfig[sec.id] !== false;
+              const Icon = sec.icon;
+              return (
+                <label
+                  key={sec.id}
+                  className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                    isEnabled
+                      ? "bg-peach/15 border-ink shadow-sm"
+                      : "bg-paper border-ink/10 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Icon className="w-4 h-4 text-ink/70 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-bold text-ink block">{sec.label}</span>
+                      <span className="text-[10px] text-ink/60">{sec.desc}</span>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isEnabled}
+                    onChange={() => handleToggleSection(sec.id)}
+                    className="w-4 h-4 accent-ink"
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Group E: Role Alignment */}
         <div className="gl-card p-6 md:p-8 space-y-4">
           <div className="border-b border-ink/10 pb-3">
             <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
               <Briefcase className="w-4 h-4 text-peach" />
-              Group D: Role Alignment Permissions
+              Group E: Role Alignment Permissions
             </h2>
             <p className="text-xs text-ink/70 mt-0.5">
               Allow recruiters to see how your verified capabilities map against a specific benchmark role from Domain 4.
@@ -419,7 +515,7 @@ export default function SharingPermissionsPage() {
           <div className="border-b border-rose-200 pb-3">
             <div className="flex items-center gap-2 text-rose-900 font-extrabold text-base">
               <ShieldAlert className="w-5 h-5 text-rose-600" />
-              Group E: Excluded Internal Information (Strictly Non-Shareable)
+              Group F: Excluded Internal Information (Strictly Non-Shareable)
             </div>
             <p className="text-xs text-rose-950/80 mt-0.5">
               These internal records are permanently excluded from all public projections and cannot be toggled on.

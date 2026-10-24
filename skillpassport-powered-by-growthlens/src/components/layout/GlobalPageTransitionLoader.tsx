@@ -352,28 +352,31 @@ export default function GlobalPageTransitionLoader() {
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="relative p-7 sm:p-9 rounded-3xl bg-[#FBF6DF]/95 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center max-w-sm w-full mx-4 animate-scaleUp">
+          <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
             {/* Ambient glow behind card */}
             <div className="absolute -inset-2 bg-[#DFE968]/35 rounded-3xl blur-xl pointer-events-none" />
 
-            {/* Cursive Brand Lottie Animation */}
-            <LoadingAnimation size="md" className="relative z-10" />
+            {/* Centered Cream Card Strictly Containing Everything Inside */}
+            <div className="relative p-7 sm:p-9 rounded-3xl bg-[#FBF6DF]/95 border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full animate-scaleUp overflow-hidden">
+              {/* Cursive Brand Animation */}
+              <LoadingAnimation size="md" className="relative z-10" />
 
-            {/* Label and loading indicator */}
-            <div className="mt-3 flex flex-col items-center gap-1.5 relative z-10 text-center">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-black uppercase tracking-wider mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] animate-ping" />
-                <span>NAVIGATING</span>
+              {/* Label and loading indicator */}
+              <div className="mt-3 flex flex-col items-center gap-1.5 relative z-10 text-center">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[9px] font-black uppercase tracking-wider mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1C1C1C] animate-ping" />
+                  <span>NAVIGATING</span>
+                </div>
+                <p
+                  className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]"
+                  style={{ letterSpacing: "0.2em" }}
+                >
+                  {targetContext.title}
+                </p>
+                <span className="text-[11px] font-medium text-[#1C1C1C]/75 tracking-normal max-w-[260px] leading-snug">
+                  {targetContext.subtitle}
+                </span>
               </div>
-              <p
-                className="text-xs font-black tracking-widest uppercase text-[#1C1C1C]"
-                style={{ letterSpacing: "0.2em" }}
-              >
-                {targetContext.title}
-              </p>
-              <span className="text-[11px] font-medium text-[#1C1C1C]/75 tracking-normal max-w-[260px] leading-snug">
-                {targetContext.subtitle}
-              </span>
             </div>
           </div>
         </div>

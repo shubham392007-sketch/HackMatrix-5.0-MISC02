@@ -595,7 +595,7 @@ export default function UploadEvidencePage() {
             </div>
 
             {uploading && (
-              <div className="p-6 rounded-3xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center space-y-2">
+              <div className="p-6 rounded-3xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center space-y-2 overflow-hidden">
                 <LoadingAnimation size="sm" className="-my-2" />
                 <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
                   {category === "portfolio"

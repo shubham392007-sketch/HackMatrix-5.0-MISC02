@@ -50,9 +50,11 @@ import {
   Link2,
   Download,
   SlidersHorizontal,
+  Archive,
   User,
   FolderGit2,
   Bell,
+  Mail,
   Settings as SettingsIcon,
   Clock,
   HelpCircle,
@@ -109,9 +111,9 @@ export const WORKSPACE_NAV: NavSection[] = [
     items: [
       { label: "Hallucination Guard", href: "/app/ai/guard", icon: ShieldAlert },
       { label: "Output Validation", href: "/app/ai/validation", icon: FileCode },
-      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList, restricted: "Reviewer" },
-      { label: "Prompt-Injection Protection", href: "/app/ai/prompt-injection", icon: Shield, restricted: "Reviewer" },
-      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3, restricted: "Admin" },
+      { label: "Human Review Queue", href: "/app/ai/review-queue", icon: ClipboardList },
+      { label: "Prompt-Injection Protection", href: "/app/ai/prompt-injection", icon: Shield },
+      { label: "AI Evaluation Suite", href: "/app/ai/evaluation", icon: BarChart3 },
       { label: "AI Audit Trail", href: "/app/ai/audit", icon: ScrollText },
     ],
   },
@@ -160,12 +162,14 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Sharing & Recruiter",
     items: [
       { label: "Sharing Overview", href: "/app/passport/sharing", icon: Share2 },
-      { label: "Live Passport Preview", href: "/app/passport/preview", icon: Eye },
-      { label: "Create Share Link", href: "/app/passport/share", icon: Link2 },
+      { label: "Passport Content Builder", href: "/app/passport/builder", icon: Sparkles },
       { label: "Sharing Permissions", href: "/app/passport/permissions", icon: SlidersHorizontal },
-      { label: "Manage Shared Access", href: "/app/passport/access", icon: Lock },
+      { label: "Live Passport Preview", href: "/app/passport/preview", icon: Eye },
       { label: "Passport Export", href: "/app/passport/export", icon: Download },
-      { label: "Recruiter View", href: "/p/share-recruiter-demo", icon: ExternalLink, external: true },
+      { label: "Create Share Link", href: "/app/passport/share", icon: Link2 },
+      { label: "Recruiter Preview", href: "/app/passport/preview?view=recruiter", icon: ExternalLink },
+      { label: "Recruiter Inquiries", href: "/app/passport/messages", icon: Mail },
+      { label: "Manage Shared Access", href: "/app/passport/access", icon: Lock },
     ],
   },
   {
@@ -173,6 +177,7 @@ export const WORKSPACE_NAV: NavSection[] = [
     items: [
       { label: "Profile", href: "/app/settings/profile", icon: User },
       { label: "Connected Accounts", href: "/app/settings/connections", icon: FolderGit2 },
+      { label: "Evidence Vault", href: "/app/settings/vault", icon: Archive },
       { label: "Privacy & Consent", href: "/app/settings/privacy", icon: ShieldCheck },
       { label: "Notifications", href: "/app/notifications", icon: Bell },
       { label: "Preferences & Settings", href: "/app/settings", icon: SettingsIcon },
@@ -195,6 +200,13 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
   const pathname = usePathname();
   const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
   const navScrollRef = useRef<HTMLDivElement>(null);
+  const [currentSearch, setCurrentSearch] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentSearch(window.location.search || "");
+    }
+  }, [pathname]);
 
   // Clear navigating state when pathname updates
   useEffect(() => {
@@ -232,7 +244,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
     }
   }, [pathname]);
 
-  const { currentRole, setDemoRole, userProfile } = useEvidence();
+  const { userProfile } = useEvidence();
   const { user: authUser, profile: authProfile } = useAuth();
 
   const realDisplayName =
@@ -315,15 +327,26 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  !item.external &&
-                  (item.href === "/app/passport"
-                    ? pathname === "/app/passport"
-                    : item.href === "/app/evidence"
-                    ? pathname === "/app/evidence"
-                    : item.href === "/app/ai"
-                    ? pathname === "/app/ai"
-                    : pathname === item.href || pathname.startsWith(item.href + "/"));
+                const isActive = (() => {
+                  if (item.external) return false;
+                  if (item.href.includes("?")) {
+                    const [itemBase, itemQuery] = item.href.split("?");
+                    if (pathname !== itemBase) return false;
+                    return currentSearch.includes(itemQuery);
+                  }
+                  if (item.href === "/app/passport/preview" && currentSearch.includes("view=recruiter")) {
+                    return false;
+                  }
+                  return (
+                    item.href === "/app/passport"
+                      ? pathname === "/app/passport"
+                      : item.href === "/app/evidence"
+                      ? pathname === "/app/evidence"
+                      : item.href === "/app/ai"
+                      ? pathname === "/app/ai"
+                      : pathname === item.href || pathname.startsWith(item.href + "/")
+                  );
+                })();
 
                 const isNavigatingThis = navigatingHref === item.href && !isActive;
 
@@ -335,6 +358,11 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
                     onClick={() => {
                       if (!item.external && item.href !== pathname) {
                         setNavigatingHref(item.href);
+                      }
+                      if (item.href.includes("?")) {
+                        setCurrentSearch("?" + item.href.split("?")[1]);
+                      } else {
+                        setCurrentSearch("");
                       }
                       onLinkClick?.();
                     }}
@@ -376,8 +404,8 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
         ))}
       </div>
 
-      {/* Simulated User Profile & Role Switcher at Bottom (Fixed Bottom) */}
-      <div className="p-3.5 border-t border-[#1C1C1C]/15 bg-[#FBF1CF]/70 space-y-2.5 shrink-0">
+      {/* User Profile at Bottom (Fixed Bottom) */}
+      <div className="p-3.5 border-t border-[#1C1C1C]/15 bg-[#FBF1CF]/70 shrink-0">
         <Link
           href="/app/settings/profile"
           scroll={false}
@@ -392,54 +420,10 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
               {realDisplayName}
             </p>
             <span className="text-[9px] font-bold text-[#1C1C1C]/60 uppercase tracking-wider block truncate">
-              {currentRole === "admin"
-                ? "Demo Administrator"
-                : currentRole === "reviewer"
-                ? "Authorized Reviewer"
-                : realRole}
+              {realRole}
             </span>
           </div>
         </Link>
-
-        {/* Quick Role Switcher Pill */}
-        <div className="flex items-center justify-between bg-white/80 p-1 rounded-xl border border-[#1C1C1C]/15 text-[10px]">
-          <span className="font-bold text-[#1C1C1C]/60 pl-1">Role:</span>
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setDemoRole("employee")}
-              className={`px-1.5 py-0.5 rounded-lg font-bold transition-all ${
-                currentRole === "employee"
-                  ? "bg-[#1C1C1C] text-white"
-                  : "text-[#1C1C1C]/60 hover:text-[#1C1C1C]"
-              }`}
-            >
-              Dev
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoRole("reviewer")}
-              className={`px-1.5 py-0.5 rounded-lg font-bold transition-all ${
-                currentRole === "reviewer"
-                  ? "bg-[#DFE968] text-[#1C1C1C] border border-[#1C1C1C]"
-                  : "text-[#1C1C1C]/60 hover:text-[#1C1C1C]"
-              }`}
-            >
-              Review
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoRole("admin")}
-              className={`px-1.5 py-0.5 rounded-lg font-bold transition-all ${
-                currentRole === "admin"
-                  ? "bg-[#1C1C1C] text-white"
-                  : "text-[#1C1C1C]/60 hover:text-[#1C1C1C]"
-              }`}
-            >
-              Admin
-            </button>
-          </div>
-        </div>
       </div>
     </>
   );

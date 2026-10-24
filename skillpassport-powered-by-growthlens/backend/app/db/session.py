@@ -23,7 +23,7 @@ engine = create_engine(
     pool_timeout=settings.db_pool_timeout,
     pool_reset_on_return="rollback",
     connect_args={
-        "connect_timeout": 3,
+        "connect_timeout": 30,
         "keepalives": 1,
         "keepalives_idle": 15,
         "keepalives_interval": 5,
@@ -44,7 +44,11 @@ def get_db() -> Generator[Session, None, None]:
         yield db
         circuit_breaker.record_success()
     except HTTPException:
-        # Do NOT count application-level HTTP exceptions (401, 404, etc.) as database failures
+        # Do NOT count application-level HTTP exceptions (401, 404, etc.) as database failures, but rollback cleanly
+        try:
+            db.rollback()
+        except Exception as rb_err:
+            logger.warning(f"Error during rollback on HTTPException: {rb_err}")
         raise
     except Exception as exc:
         try:
@@ -81,10 +85,10 @@ def check_database_connection() -> dict:
         return {"status": "unhealthy", "connected": False, "error": "Query returned no rows"}
     except Exception as e:
         circuit_breaker.record_failure(e)
-        logger.error(f"PostgreSQL health check failed: {e}")
+        logger.error(f"PostgreSQL health check failed: {type(e).__name__}")
         return {
             "status": "unhealthy",
             "connected": False,
-            "error": str(e),
+            "error": f"Database connection error: {type(e).__name__}",
             "circuit_breaker": circuit_breaker.get_metrics(),
         }

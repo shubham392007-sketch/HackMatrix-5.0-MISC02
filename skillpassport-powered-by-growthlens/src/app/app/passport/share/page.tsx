@@ -22,9 +22,16 @@ import {
   GitBranch,
   Briefcase,
   AlertTriangle,
+  GraduationCap,
+  FolderGit2,
+  Award,
+  BookOpen,
+  Trophy,
+  Mail,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
-import { SharePermissionsConfig } from "@/types/sharing";
+import TemplateSelector from "@/components/passport/TemplateSelector";
+import { SharePermissionsConfig, PassportTemplateId } from "@/types/sharing";
 
 export default function SharePassportWizardPage() {
   const router = useRouter();
@@ -56,6 +63,29 @@ export default function SharePassportWizardPage() {
   const [showContactInfo, setShowContactInfo] = useState<boolean>(
     draftPermissions.identity.showContactInfo
   );
+
+  const [templateId, setTemplateId] = useState<PassportTemplateId>(
+    draftPermissions.templateId || "classic"
+  );
+  const [allowRecruiterMessaging, setAllowRecruiterMessaging] = useState<boolean>(
+    draftPermissions.allowRecruiterMessaging ?? true
+  );
+  const [includedSections, setIncludedSections] = useState<Record<string, boolean>>({
+    work_experience: true,
+    portfolio_projects: true,
+    education: true,
+    certifications: true,
+    publications: true,
+    achievements: true,
+    custom_sections: true,
+  });
+
+  const toggleSection = (secKey: string) => {
+    setIncludedSections((prev) => ({
+      ...prev,
+      [secKey]: !prev[secKey],
+    }));
+  };
 
   const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
@@ -118,12 +148,16 @@ export default function SharePassportWizardPage() {
       },
       shareVerifiedSkillsOnly: true, // Non-negotiable
       selectedSkillIds: selectedSkills,
+      selectedCustomSkillIds: draftPermissions.selectedCustomSkillIds || [],
       evidenceAccessLevel: "detail_inspection",
       selectedEvidencePermissions: selectedEvidencePerms,
       includeRoleAlignment,
       targetRoleId,
       expiryDays,
       customLinkLabel: label,
+      templateId,
+      allowRecruiterMessaging,
+      sections: includedSections,
     };
 
     const newShare = createShareRecord(label, config);
@@ -265,6 +299,63 @@ export default function SharePassportWizardPage() {
                   className="w-4 h-4 accent-ink"
                 />
               </label>
+            </div>
+          </div>
+
+          {/* Master Passport Sections Selection */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ink/60 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-peach" />
+                  Select Master Sections to Include
+                </h3>
+                <p className="text-[11px] text-ink/70">
+                  Choose which candidate-authored sections to disclose on this share link.
+                </p>
+              </div>
+              <Link
+                href="/app/passport/builder"
+                className="text-[11px] font-bold text-ink hover:underline flex items-center gap-1"
+              >
+                Edit in Content Builder &rarr;
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              {[
+                { id: "work_experience", label: "Work Experience", icon: Briefcase },
+                { id: "portfolio_projects", label: "Portfolio & Projects", icon: FolderGit2 },
+                { id: "education", label: "Education & Academics", icon: GraduationCap },
+                { id: "certifications", label: "Certifications", icon: Award },
+                { id: "publications", label: "Publications & Writing", icon: BookOpen },
+                { id: "achievements", label: "Honors & Achievements", icon: Trophy },
+                { id: "custom_sections", label: "Custom Sections", icon: Sparkles },
+              ].map((sec) => {
+                const isEnabled = includedSections[sec.id] !== false;
+                const Icon = sec.icon;
+                return (
+                  <label
+                    key={sec.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                      isEnabled
+                        ? "bg-peach/15 border-ink shadow-sm"
+                        : "bg-paper border-ink/10 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-3.5 h-3.5 text-ink/70 shrink-0" />
+                      <span className="font-bold text-ink">{sec.label}</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={() => toggleSection(sec.id)}
+                      className="w-4 h-4 accent-ink"
+                    />
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -516,6 +607,8 @@ export default function SharePassportWizardPage() {
                   Included in Share
                 </span>
                 <ul className="space-y-1 text-ink/80 list-disc list-inside">
+                  <li>Template Archetype: <strong className="uppercase">{templateId}</strong></li>
+                  <li>Sections Disclosed: <strong>{Object.values(includedSections).filter(Boolean).length} of 7</strong></li>
                   <li>Display Name ({showDisplayName ? "Yes" : "Hidden"})</li>
                   <li>Professional Headline ({showHeadline ? "Yes" : "Hidden"})</li>
                   <li>Summary ({showSummary ? "Yes" : "Hidden"})</li>

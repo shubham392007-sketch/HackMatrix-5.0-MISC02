@@ -18,11 +18,13 @@ import {
   GraduationCap,
   Share2,
   ShieldAlert,
+  ShieldCheck,
   Info,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Filter,
+  Sparkles,
 } from "lucide-react";
 
 function NotificationsContent() {
@@ -40,14 +42,14 @@ function NotificationsContent() {
   const [selectedCategory, setSelectedCategory] = useState<
     "all" | NotificationCategory
   >(() => {
-    if (categoryParam && ["evidence", "verification", "learning", "sharing", "system"].includes(categoryParam)) {
+    if (categoryParam && ["evidence", "verification", "ai", "governance", "learning", "sharing", "system"].includes(categoryParam)) {
       return categoryParam as NotificationCategory;
     }
     return "all";
   });
 
   useEffect(() => {
-    if (categoryParam && ["evidence", "verification", "learning", "sharing", "system"].includes(categoryParam)) {
+    if (categoryParam && ["evidence", "verification", "ai", "governance", "learning", "sharing", "system"].includes(categoryParam)) {
       setSelectedCategory(categoryParam as NotificationCategory);
     }
   }, [categoryParam]);
@@ -71,6 +73,10 @@ function NotificationsContent() {
         return Layers;
       case "verification":
         return Scale;
+      case "ai":
+        return Sparkles;
+      case "governance":
+        return ShieldCheck;
       case "learning":
         return GraduationCap;
       case "sharing":
@@ -157,8 +163,10 @@ function NotificationsContent() {
               {(
                 [
                   { id: "all", label: "All Events" },
+                  { id: "governance", label: "Trust & Governance" },
                   { id: "evidence", label: "Evidence" },
                   { id: "verification", label: "Verification" },
+                  { id: "ai", label: "AI Intelligence" },
                   { id: "learning", label: "Learning" },
                   { id: "sharing", label: "Sharing" },
                   { id: "system", label: "System" },

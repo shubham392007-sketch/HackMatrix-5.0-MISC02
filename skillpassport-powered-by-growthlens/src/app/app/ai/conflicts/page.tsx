@@ -24,7 +24,7 @@ import { useEvidence } from "@/context/EvidenceContext";
 import { ConflictRecord } from "@/types/ai";
 
 export default function EvidenceConflictsPage() {
-  const { conflicts, updateConflict, addAIAuditEvent, currentRole } = useEvidence();
+  const { conflicts, updateConflict, addAIAuditEvent, addNotification, currentRole } = useEvidence();
   const [selectedConflictId, setSelectedConflictId] = useState<string>(
     conflicts[0]?.id || ""
   );
@@ -88,6 +88,20 @@ export default function EvidenceConflictsPage() {
       model_or_policy_version: "conflict-resolver-v2.1",
     });
 
+    addNotification({
+      title: "Review decision completed",
+      description: `Conflict '${conflict.title}' resolved by ${actorName}: ${decision}`,
+      category: "governance",
+      severity: "success",
+      relatedDomain: "Trust & Governance",
+      actionRoute: "/app/ai/conflicts",
+      actionLabel: "View Conflict Resolution",
+      dedupKey: `gov_conflict_resolved_${conflict.id}`,
+      entityType: "conflict_record",
+      entityId: conflict.id,
+      targetRole: ["employee", "reviewer", "admin"],
+    });
+
     showToast(`Conflict resolved: "${decision}". Logged to Audit History.`);
     setResolutionNote("");
   };
@@ -119,6 +133,20 @@ export default function EvidenceConflictsPage() {
       new_state: "Insufficient Evidence (Down-rated)",
       reason: "Contradiction cannot be reconciled without further source artifacts.",
       actor: actorName,
+    });
+
+    addNotification({
+      title: "Review decision completed",
+      description: `Evidence conflict '${conflict.title}' marked as insufficient evidence pending further corroborating artifacts.`,
+      category: "governance",
+      severity: "warning",
+      relatedDomain: "Trust & Governance",
+      actionRoute: "/app/ai/conflicts",
+      actionLabel: "View Conflict",
+      dedupKey: `gov_conflict_insufficient_${conflict.id}`,
+      entityType: "conflict_record",
+      entityId: conflict.id,
+      targetRole: ["employee", "reviewer", "admin"],
     });
 
     showToast(`Conflict marked as Insufficient Evidence.`);

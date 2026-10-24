@@ -28,17 +28,25 @@ export const DEFAULT_SHARE_PERMISSIONS: SharePermissionsConfig = {
     contactLinkedIn: DEFAULT_CANDIDATE_PROFILE.contactLinkedIn,
   },
   shareVerifiedSkillsOnly: true, // Non-negotiable security guard
-  selectedSkillIds: ["skill-python", "skill-api-integration", "skill-data-analysis", "skill-technical-writing"],
+  selectedSkillIds: [], // Default disclose all verified skills
   evidenceAccessLevel: "detail_inspection",
-  selectedEvidencePermissions: {
-    "ev-01": { shareSummary: true, allowDetail: true },
-    "ev-02": { shareSummary: true, allowDetail: true },
-    "ev-03": { shareSummary: true, allowDetail: false }, // Report summary only
-  },
+  selectedEvidencePermissions: {}, // Default allow all authorized evidence
   includeRoleAlignment: true,
   targetRoleId: "role-data-scientist",
   expiryDays: 14,
   customLinkLabel: "Standard Recruiter Share",
+  selectedCustomSkillIds: [],
+  allowRecruiterMessaging: true,
+  templateId: "classic",
+  sections: {
+    work_experience: true,
+    portfolio_projects: true,
+    education: true,
+    certifications: true,
+    publications: true,
+    achievements: true,
+    custom_sections: true,
+  },
 };
 
 /**
@@ -76,6 +84,9 @@ export function buildShareProjection(
       verifiedSkills: [],
       authorizedEvidence: [],
       roleAlignment: null,
+      templateId: shareRecord.templateId || "classic",
+      customSkills: [],
+      allowRecruiterMessaging: false,
       verificationGuaranteeNote:
         "Access denied. This passport link is no longer active.",
     };
@@ -182,6 +193,9 @@ export function buildShareProjection(
     verifiedSkills: authorizedSkills,
     authorizedEvidence,
     roleAlignment,
+    templateId: shareRecord.templateId || perms.templateId || "classic",
+    customSkills: [],
+    allowRecruiterMessaging: perms.allowRecruiterMessaging ?? true,
     verificationGuaranteeNote:
       "All capabilities listed in this passport are verified against authentic repository commits, technical specifications, and Jira work items via SkillPassport's evidence provenance engine.",
   };

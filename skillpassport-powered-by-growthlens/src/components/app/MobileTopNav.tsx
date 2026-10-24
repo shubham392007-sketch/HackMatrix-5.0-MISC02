@@ -11,7 +11,6 @@ export default function MobileTopNav() {
     toggleMobileSidebar,
     unreadNotificationsCount,
     userProfile,
-    currentRole,
   } = useEvidence();
   const { user: authUser, profile: authProfile } = useAuth();
 
@@ -60,12 +59,8 @@ export default function MobileTopNav() {
         </Link>
       </div>
 
-      {/* Right: Role indicator badge, Notifications, and Avatar */}
+      {/* Right: Notifications and Avatar */}
       <div className="flex items-center gap-2">
-        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#1C1C1C]/10 text-[#1C1C1C] border border-[#1C1C1C]/15 hidden xs:inline-block">
-          {currentRole}
-        </span>
-
         <Link
           href="/app/notifications"
           className="p-1.5 rounded-xl border border-[#1C1C1C]/20 bg-white/70 relative text-[#1C1C1C] hover:bg-white transition-colors"

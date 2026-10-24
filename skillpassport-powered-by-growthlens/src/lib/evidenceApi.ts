@@ -86,6 +86,15 @@ async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Pr
     response = await promise;
   }
 
+  if (response.status === 401) {
+    invalidateAuthTokenCache();
+    if (typeof window !== "undefined") {
+      try {
+        supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      } catch {}
+    }
+  }
+
   if (response.status === 503) {
     const retryAfterHeader = response.headers.get("Retry-After");
     const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 15;
@@ -123,14 +132,22 @@ export async function getMyProfile() {
 
 export async function updateMyProfile(updates: {
   display_name?: string;
+  preferred_name?: string;
   headline?: string;
   current_role?: string;
   job_title?: string;
   specialization?: string;
   department_or_team?: string;
+  location?: string;
+  work_preference?: string;
   experience_level?: string;
   professional_goal?: string;
   professional_summary?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  privacy_preferences?: Record<string, any>;
+  app_settings?: Record<string, any>;
   onboarding_status?: string;
   onboarding_current_step?: number;
   onboarding_current_category?: string;

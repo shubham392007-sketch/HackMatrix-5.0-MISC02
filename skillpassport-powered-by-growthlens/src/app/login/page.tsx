@@ -44,13 +44,34 @@ function LoginForm() {
       const { error } = await signIn(email.trim(), password);
 
       if (error) {
-        setErrorMessage(error.message || "Failed to sign in. Please verify your credentials.");
+        const msg = error.message || "";
+        if (msg.toLowerCase().includes("email not confirmed")) {
+          setErrorMessage(
+            "Your email address has not been verified yet. Please check your inbox or visit the verification screen to request a new link."
+          );
+        } else {
+          setErrorMessage(msg || "Failed to sign in. Please verify your credentials.");
+        }
         setLoading(false);
         return;
       }
 
-      // Check onboarding status
+      // Verify email confirmation status and check onboarding state
       const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const isConfirmed = Boolean(
+          session.user.email_confirmed_at || (session.user as any).confirmed_at
+        );
+        if (!isConfirmed) {
+          router.push(
+            `/auth/verify-email?status=unverified&email=${encodeURIComponent(
+              session.user.email || email.trim()
+            )}`
+          );
+          return;
+        }
+      }
+
       if (session?.access_token) {
         try {
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
@@ -106,7 +127,17 @@ function LoginForm() {
       {errorMessage && (
         <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
           <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-          <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{errorMessage}</p>
+          <div className="space-y-1.5 flex-1">
+            <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{errorMessage}</p>
+            {errorMessage.toLowerCase().includes("verified") && (
+              <Link
+                href={`/auth/verify-email?status=unverified${email ? `&email=${encodeURIComponent(email)}` : ""}`}
+                className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] underline hover:text-[#E0533C]"
+              >
+                <span>Go to verification screen &rarr;</span>
+              </Link>
+            )}
+          </div>
         </div>
       )}
 

@@ -27,7 +27,7 @@ import {
 } from "@/components/app/AIBadges";
 
 export default function HumanReviewQueuePage() {
-  const { currentRole, reviewTasks, updateReviewTask, addAIAuditEvent } =
+  const { currentRole, reviewTasks, updateReviewTask, addAIAuditEvent, addNotification } =
     useEvidence();
   const [selectedTaskId, setSelectedTaskId] = useState<string>(
     reviewTasks[0]?.id || ""
@@ -121,6 +121,36 @@ export default function HumanReviewQueuePage() {
         actor,
         model_or_policy_version: "human-review-v1.0",
       });
+
+      if (action === "escalated") {
+        addNotification({
+          title: "Policy enforcement blocked an operation",
+          description: `Review task '${task.title}' was escalated by ${actor}: ${note}`,
+          category: "governance",
+          severity: "warning",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/review-queue",
+          actionLabel: "Inspect Escalation",
+          dedupKey: `gov_task_escalated_${task.id}`,
+          entityType: "review_task",
+          entityId: task.id,
+          targetRole: ["reviewer", "admin"],
+        });
+      } else {
+        addNotification({
+          title: "Review decision completed",
+          description: `Review completed for '${task.title}': Status updated to ${decisionLabel}.`,
+          category: "governance",
+          severity: action === "reviewed" ? "success" : "info",
+          relatedDomain: "Trust & Governance",
+          actionRoute: "/app/ai/review-queue",
+          actionLabel: "View Decision",
+          dedupKey: `gov_review_dec_${task.id}_${action}`,
+          entityType: "review_task",
+          entityId: task.id,
+          targetRole: ["employee", "reviewer", "admin"],
+        });
+      }
 
       setReviewNote("");
       showToast(`Task ${task.id} marked as [${decisionLabel}]. Audit trail updated.`);

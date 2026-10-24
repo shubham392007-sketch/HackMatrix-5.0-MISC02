@@ -28,15 +28,15 @@ class Settings(BaseSettings):
         description="Direct database connection string for migrations",
     )
     db_pool_size: int = Field(
-        default=8,
-        description="SQLAlchemy QueuePool size (bounded <= 8 to preserve Supabase 15 limit)",
+        default=10,
+        description="SQLAlchemy QueuePool size (supports concurrent frontend requests safely)",
     )
     db_max_overflow: int = Field(
-        default=0,
-        description="SQLAlchemy QueuePool max overflow (0 enforces strict upper bound)",
+        default=5,
+        description="SQLAlchemy QueuePool max overflow",
     )
     db_pool_timeout: float = Field(
-        default=20.0,
+        default=30.0,
         description="Seconds to wait in queue for a connection from pool before timeout",
     )
     db_pool_recycle: int = Field(
@@ -107,6 +107,49 @@ class Settings(BaseSettings):
     job_search_cache_ttl_minutes: int = Field(default=120, description="Job search cache TTL in minutes")
     job_search_enable_fallback: bool = Field(default=True, description="Whether to allow fallback to secondary provider on eligible failures")
     job_search_monthly_budget: float = Field(default=0.0, description="Optional monthly budget cap (0.0 = unlimited/unknown)")
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_and_normalize_database_url(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError(
+                "DATABASE_URL is required. Configure it with your Supabase Session Pooler connection string in .env."
+            )
+        v = v.strip()
+        if v.startswith("postgres://"):
+            v = "postgresql+psycopg2://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        return v
+
+    @field_validator("direct_url")
+    @classmethod
+    def normalize_direct_url(cls, v: str) -> str:
+        if not v:
+            return ""
+        v = v.strip()
+        if v.startswith("postgres://"):
+            v = "postgresql+psycopg2://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        return v
+
+    @property
+    def sanitized_database_url(self) -> str:
+        """Returns the database URL with the password redacted for safe logging."""
+        if not self.database_url:
+            return "[NOT CONFIGURED]"
+        try:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(self.database_url)
+            if parsed.password:
+                netloc = f"{parsed.username}:***@{parsed.hostname}"
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                return parsed._replace(netloc=netloc).geturl()
+            return self.database_url
+        except Exception:
+            return "[REDACTED]"
 
     @property
     def cors_origins(self) -> List[str]:
