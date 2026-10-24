@@ -300,6 +300,7 @@ interface EvidenceContextType {
   recordShareAccess: (shareId: string) => void;
 
   // Global Application & Account Layer
+  currentUserId: string | null;
   userProfile: UserProfile;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
   connectedSourceDetails: ConnectedSourceDetails[];
@@ -3058,6 +3059,12 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       if (currentUserId) saveUserNotifications(currentUserId, updated);
       return updated;
     });
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(id)) {
+      sharingApi.markNotificationRead(id, true).catch((e) => {
+        console.warn("Failed to sync markNotificationRead with backend:", e);
+      });
+    }
   }, [currentUserId]);
 
   const markAllNotificationsRead = useCallback(() => {
@@ -3065,6 +3072,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       const updated = prev.map((n) => ({ ...n, read: true }));
       if (currentUserId) saveUserNotifications(currentUserId, updated);
       return updated;
+    });
+    sharingApi.markAllNotificationsRead().catch((e) => {
+      console.warn("Failed to sync markAllNotificationsRead with backend:", e);
     });
     addToast("Notifications Cleared", "All notifications marked as read.", "info");
   }, [currentUserId, addToast]);
@@ -3075,6 +3085,12 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       if (currentUserId) saveUserNotifications(currentUserId, updated);
       return updated;
     });
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(id)) {
+      sharingApi.deleteNotification(id).catch((e) => {
+        console.warn("Failed to delete notification on backend:", e);
+      });
+    }
   }, [currentUserId]);
 
   const addNotification = useCallback((notif: Omit<AppNotification, "id" | "timestamp" | "read">) => {
@@ -3109,6 +3125,125 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       notif.severity === "error" ? "error" : notif.severity === "warning" ? "error" : "info"
     );
   }, [currentUserId, addToast]);
+
+  // Synchronize persistent notifications from Supabase PostgreSQL
+  const syncPersistentNotifications = useCallback(async (userId: string) => {
+    try {
+      const serverNotifs = await sharingApi.listNotifications({ limit: 50 });
+      setNotifications((prev) => {
+        const seenIds = new Set<string>();
+        const merged: AppNotification[] = [];
+
+        // Server notifications are authoritative
+        for (const sn of serverNotifs) {
+          seenIds.add(sn.id);
+          if (sn.entityId) seenIds.add(sn.entityId);
+          merged.push(sn);
+        }
+
+        // Retain client-only local alerts if not yet in database
+        for (const pn of prev) {
+          if (!seenIds.has(pn.id) && (!pn.entityId || !seenIds.has(pn.entityId))) {
+            seenIds.add(pn.id);
+            merged.push(pn);
+          }
+        }
+
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        saveUserNotifications(userId, merged);
+        return merged;
+      });
+    } catch (err) {
+      console.warn("[EvidenceContext] Could not sync persistent notifications from backend:", err);
+    }
+  }, []);
+
+  // Live Supabase Realtime subscription for user notifications & recruiter inquiries
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    // Sync authoritative state from database upon auth activation
+    syncPersistentNotifications(currentUserId);
+
+    const channelName = `rt-user-${currentUserId}-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as any;
+            const newNotif: AppNotification = {
+              id: String(row.id),
+              userId: String(row.user_id),
+              title: row.title,
+              description: row.description,
+              category: row.category,
+              severity: row.severity,
+              read: Boolean(row.read),
+              timestamp: row.created_at || new Date().toISOString(),
+              relatedDomain: row.related_domain,
+              actionRoute: row.action_route,
+              actionLabel: row.action_label,
+              entityType: row.entity_type,
+              entityId: row.entity_id,
+            };
+            setNotifications((prev) => {
+              if (prev.some((n) => n.id === newNotif.id || (newNotif.entityId && n.entityId === newNotif.entityId))) {
+                return prev;
+              }
+              const updated = [newNotif, ...prev];
+              saveUserNotifications(currentUserId, updated);
+              return updated;
+            });
+            addToast(row.title, row.description, row.severity === "error" ? "error" : "info");
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as any;
+            setNotifications((prev) => {
+              const updated = prev.map((n) =>
+                n.id === String(row.id) ? { ...n, read: Boolean(row.read) } : n
+              );
+              saveUserNotifications(currentUserId, updated);
+              return updated;
+            });
+          } else if (payload.eventType === "DELETE") {
+            const row = payload.old as any;
+            setNotifications((prev) => {
+              const updated = prev.filter((n) => n.id !== String(row.id));
+              saveUserNotifications(currentUserId, updated);
+              return updated;
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "recruiter_messages",
+          filter: `recipient_user_id=eq.${currentUserId}`,
+        },
+        () => {
+          syncPersistentNotifications(currentUserId);
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log(`[EvidenceContext] Supabase Realtime active for user: ${currentUserId}`);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, syncPersistentNotifications, addToast]);
 
   const unreadNotificationsCount = useMemo(() => {
     return notifications.filter((n) => !n.read).length;
@@ -3398,6 +3533,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         recordShareAccess,
 
         // Global Application & Account Layer
+        currentUserId,
         userProfile,
         updateUserProfile,
         connectedSourceDetails,

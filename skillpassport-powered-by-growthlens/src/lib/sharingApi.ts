@@ -8,6 +8,7 @@ import {
   SharingOverviewData,
   UserMasterPassport,
 } from "@/types/sharing";
+import { AppNotification } from "@/types/account";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
 const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1/sharing`;
@@ -612,5 +613,93 @@ export const sharingApi = {
     }
 
     return payload as UserMasterPassport;
+  },
+
+  // 8. Persistent Notifications (Supabase PostgreSQL + Realtime)
+  async listNotifications(options?: {
+    category?: string;
+    unreadOnly?: boolean;
+    limit?: number;
+  }): Promise<AppNotification[]> {
+    const authHeaders = await getAuthHeader();
+    const params = new URLSearchParams();
+    if (options?.category && options.category !== "all") params.append("category", options.category);
+    if (options?.unreadOnly) params.append("unread_only", "true");
+    if (options?.limit) params.append("limit", options.limit.toString());
+    const queryStr = params.toString() ? `?${params.toString()}` : "";
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/notifications${queryStr}`, { headers: authHeaders });
+    } catch {
+      res = await fetch(`/api/v1/sharing/notifications${queryStr}`, { headers: authHeaders });
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to list notifications: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async markNotificationRead(
+    notificationId: string,
+    read: boolean = true
+  ): Promise<{ id: string; read: boolean; entityId?: string }> {
+    const authHeaders = await getAuthHeader();
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/notifications/${notificationId}/read?read=${read}`, {
+        method: "PATCH",
+        headers: authHeaders,
+      });
+    } catch {
+      res = await fetch(`/api/v1/sharing/notifications/${notificationId}/read?read=${read}`, {
+        method: "PATCH",
+        headers: authHeaders,
+      });
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to mark notification read: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async markAllNotificationsRead(): Promise<{ success: boolean; count: number }> {
+    const authHeaders = await getAuthHeader();
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/notifications/mark-all-read`, {
+        method: "POST",
+        headers: authHeaders,
+      });
+    } catch {
+      res = await fetch(`/api/v1/sharing/notifications/mark-all-read`, {
+        method: "POST",
+        headers: authHeaders,
+      });
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to mark all notifications read: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async deleteNotification(notificationId: string): Promise<{ success: boolean; id: string }> {
+    const authHeaders = await getAuthHeader();
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/notifications/${notificationId}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+    } catch {
+      res = await fetch(`/api/v1/sharing/notifications/${notificationId}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to delete notification: ${res.statusText}`);
+    }
+    return res.json();
   },
 };

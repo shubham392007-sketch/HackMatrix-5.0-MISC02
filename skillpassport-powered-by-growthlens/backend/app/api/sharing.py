@@ -1,3 +1,4 @@
+import re
 import secrets
 import uuid
 from typing import Optional, List, Dict, Any, Tuple, Union
@@ -1495,7 +1496,7 @@ def mark_recruiter_message_read(
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Toggle read status of a recruiter message."""
+    """Toggle read status of a recruiter message and sync linked notification."""
     if not _is_valid_uuid(message_id):
         raise HTTPException(status_code=400, detail="Invalid message UUID format")
     msg = db.query(RecruiterMessage).filter(
@@ -1505,8 +1506,152 @@ def mark_recruiter_message_read(
     if not msg:
         raise HTTPException(status_code=404, detail="Recruiter message not found")
     msg.is_read = read
+
+    # Synchronize corresponding persistent user notification
+    linked_notifs = db.query(UserNotification).filter(
+        UserNotification.user_id == user.id,
+        UserNotification.entity_type == "recruiter_message",
+        UserNotification.entity_id == str(msg.id),
+    ).all()
+    for notif in linked_notifs:
+        notif.read = read
+
     db.commit()
     return {"id": str(msg.id), "isRead": msg.is_read}
+
+
+# ==============================================================================
+# PERSISTENT IN-APP NOTIFICATIONS (SUPABASE POSTGRESQL + REALTIME)
+# ==============================================================================
+
+@router.get("/notifications")
+def list_user_notifications(
+    category: Optional[str] = Query(None),
+    unread_only: bool = Query(False),
+    limit: int = Query(50, ge=1, le=100),
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    List persistent in-app notifications for the authenticated user from Supabase PostgreSQL.
+    """
+    query = db.query(UserNotification).filter(
+        UserNotification.user_id == user.id
+    )
+    if category and category != "all":
+        query = query.filter(UserNotification.category == category)
+    if unread_only:
+        query = query.filter(UserNotification.read == False)
+
+    notifications = query.order_by(desc(UserNotification.created_at)).limit(limit).all()
+
+    items = []
+    for n in notifications:
+        items.append({
+            "id": str(n.id),
+            "userId": str(n.user_id),
+            "title": n.title,
+            "description": n.description,
+            "category": n.category,
+            "severity": n.severity,
+            "read": n.read,
+            "timestamp": n.created_at.isoformat() if n.created_at else datetime.now(timezone.utc).isoformat(),
+            "relatedDomain": n.related_domain,
+            "actionRoute": n.action_route,
+            "actionLabel": n.action_label,
+            "entityType": n.entity_type,
+            "entityId": n.entity_id,
+        })
+    return items
+
+
+@router.patch("/notifications/{notification_id}/read")
+def mark_user_notification_read(
+    notification_id: str,
+    read: bool = Query(True),
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update read status of a persistent user notification in Supabase PostgreSQL.
+    If linked to a recruiter message, synchronize the recruiter message status as well.
+    """
+    if not _is_valid_uuid(notification_id):
+        raise HTTPException(status_code=400, detail="Invalid notification UUID format.")
+    notif = db.query(UserNotification).filter(
+        UserNotification.id == uuid.UUID(notification_id),
+        UserNotification.user_id == user.id,
+    ).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+
+    notif.read = read
+
+    if notif.entity_type == "recruiter_message" and notif.entity_id and _is_valid_uuid(notif.entity_id):
+        linked_msg = db.query(RecruiterMessage).filter(
+            RecruiterMessage.id == uuid.UUID(notif.entity_id),
+            RecruiterMessage.recipient_user_id == user.id,
+        ).first()
+        if linked_msg:
+            linked_msg.is_read = read
+
+    db.commit()
+    return {
+        "id": str(notif.id),
+        "read": notif.read,
+        "entityId": notif.entity_id,
+    }
+
+
+@router.post("/notifications/mark-all-read")
+def mark_all_user_notifications_read(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Mark all unread notifications for the user as read.
+    Also synchronizes recruiter messages to read.
+    """
+    unread_notifs = db.query(UserNotification).filter(
+        UserNotification.user_id == user.id,
+        UserNotification.read == False,
+    ).all()
+
+    for n in unread_notifs:
+        n.read = True
+        if n.entity_type == "recruiter_message" and n.entity_id and _is_valid_uuid(n.entity_id):
+            linked_msg = db.query(RecruiterMessage).filter(
+                RecruiterMessage.id == uuid.UUID(n.entity_id),
+                RecruiterMessage.recipient_user_id == user.id,
+            ).first()
+            if linked_msg:
+                linked_msg.is_read = True
+
+    db.commit()
+    return {"success": True, "count": len(unread_notifs)}
+
+
+@router.delete("/notifications/{notification_id}")
+def delete_user_notification(
+    notification_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete / dismiss a persistent user notification from Supabase PostgreSQL.
+    """
+    if not _is_valid_uuid(notification_id):
+        raise HTTPException(status_code=400, detail="Invalid notification UUID format.")
+    notif = db.query(UserNotification).filter(
+        UserNotification.id == uuid.UUID(notification_id),
+        UserNotification.user_id == user.id,
+    ).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+
+    db.delete(notif)
+    db.commit()
+    return {"success": True, "id": notification_id}
 
 # ==============================================================================
 # PUBLIC RECRUITER ENDPOINTS (NO AUTH REQUIRED, TOKEN-VALIDATED)
@@ -1680,17 +1825,12 @@ def send_recruiter_message(
 ):
     """
     Submits a message from a recruiter viewing an active shared passport.
-    Persists message in recruiter_messages AND creates a real in-app notification
-    delivered to the candidate's dashboard!
+    Atomically persists message in recruiter_messages AND creates a real in-app
+    notification delivered to the candidate's dashboard with Supabase Realtime broadcast!
     """
-    sender_name = (payload.sender_name or payload.senderName or "Recruiter").strip()
-    sender_email = (payload.sender_email or payload.senderEmail or "recruiter@talent.org").strip()
-    company = (payload.company or "").strip() or None
-    role_title = (payload.role_title or payload.roleTitle or "").strip() or None
-    subject = (payload.subject or "Recruiter Inquiry").strip()
-    message_body = (payload.message_body or payload.messageBody or "Inquiry regarding candidate verified skills and passport.").strip()
+    clean_token = token.strip()
+    is_preview = clean_token in ("preview-token", "draft-preview", "preview")
 
-    is_preview = token.strip() in ("preview-token", "draft-preview", "preview") or token.strip().startswith("sh-")
     if is_preview:
         recipient_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         link = db.query(ShareLinkRecord).filter(
@@ -1709,38 +1849,83 @@ def send_recruiter_message(
             db.refresh(link)
     else:
         link = db.query(ShareLinkRecord).filter(
-            ShareLinkRecord.token == token.strip(),
-            ShareLinkRecord.status == "active",
+            ShareLinkRecord.token == clean_token
         ).first()
         if not link:
-            # Check without active filter
-            link = db.query(ShareLinkRecord).filter(
-                ShareLinkRecord.token == token.strip()
-            ).first()
-            if link and link.status == "revoked":
-                raise HTTPException(status_code=403, detail="Access to this shared passport was revoked by candidate.")
-            if not link:
-                # Graceful fallback: find default candidate user link
-                default_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-                link = db.query(ShareLinkRecord).filter(
-                    ShareLinkRecord.owner_user_id == default_user_id
-                ).order_by(desc(ShareLinkRecord.created_at)).first()
-                if not link:
-                    link = ShareLinkRecord(
-                        owner_user_id=default_user_id,
-                        label="Public Passport Link",
-                        token=token.strip(),
-                        status="active",
-                        permissions_json={"allow_recruiter_messaging": True},
-                    )
-                    db.add(link)
-                    db.commit()
-                    db.refresh(link)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Shared passport link not found or invalid."
+            )
+        if link.status == "revoked":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access to this shared passport was revoked by candidate."
+            )
+        if link.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="This shared passport link is not active."
+            )
         if link.expires_at and link.expires_at < datetime.now(timezone.utc):
-            raise HTTPException(status_code=410, detail="This share link has expired.")
-        if link.permissions_json and not link.permissions_json.get("allow_recruiter_messaging", True):
-            raise HTTPException(status_code=403, detail="The candidate has disabled recruiter messaging on this passport.")
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="This share link has expired."
+            )
+        
+        perms = link.permissions_json or {}
+        messaging_allowed = perms.get(
+            "allow_recruiter_messaging",
+            perms.get("allowRecruiterMessaging", perms.get("messagingAllowed", True))
+        )
+        if not messaging_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The candidate has disabled recruiter messaging on this passport."
+            )
         recipient_user_id = link.owner_user_id
+
+    # Validate input fields
+    sender_name = (payload.sender_name or payload.senderName or "").strip()
+    sender_email = (payload.sender_email or payload.senderEmail or "").strip()
+    company = (payload.company or "").strip() or None
+    role_title = (payload.role_title or payload.roleTitle or "").strip() or None
+    subject = (payload.subject or "Recruiter Inquiry").strip()
+    message_body = (payload.message_body or payload.messageBody or "").strip()
+
+    if not sender_name or len(sender_name) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Full name is required (minimum 2 characters)."
+        )
+    if not sender_email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", sender_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A valid work email address is required."
+        )
+    if not message_body or len(message_body) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message body must be at least 5 characters."
+        )
+    if len(message_body) > 3000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message body cannot exceed 3000 characters."
+        )
+
+    # Anti-spam rate limiting: max 5 messages per minute from the same sender on this link
+    one_minute_ago = datetime.now(timezone.utc) - timedelta(minutes=1)
+    recent_count = db.query(RecruiterMessage).filter(
+        RecruiterMessage.share_link_id == link.id,
+        RecruiterMessage.sender_email == sender_email,
+        RecruiterMessage.created_at >= one_minute_ago,
+    ).count()
+    if recent_count >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many messages sent recently from this email. Please wait a minute before sending another inquiry."
+        )
+
     # 1. Persist the Recruiter Message
     message = RecruiterMessage(
         recipient_user_id=recipient_user_id,
@@ -1764,11 +1949,13 @@ def send_recruiter_message(
     )
     db.add(event)
 
-    # 3. Create persistent User Notification in PostgreSQL
+    # 3. Atomically create persistent User Notification in PostgreSQL
+    sender_affiliation = f" from {company}" if company else ""
+    role_mention = f" for '{role_title}'" if role_title else ""
     notif = UserNotification(
         user_id=recipient_user_id,
-        title=f"New recruiter message from {sender_name}",
-        description=f"{sender_name} ({company or 'Recruiter'}) sent a message regarding '{link.label}'.",
+        title=f"New recruiter message: {sender_name}{sender_affiliation}",
+        description=f"{sender_name}{sender_affiliation} sent an inquiry regarding '{link.label}'{role_mention}.",
         category="sharing",
         severity="info",
         read=False,
@@ -1781,12 +1968,16 @@ def send_recruiter_message(
     db.add(notif)
     db.commit()
     db.refresh(message)
+    db.refresh(notif)
+
     logger.info(
-        f"Persisted recruiter message {message.id} from {sender_email} for user {recipient_user_id} via link {link.id}"
+        f"Persisted recruiter message {message.id} & notification {notif.id} from {sender_email} for user {recipient_user_id} via link {link.id}"
     )
     return {
         "success": True,
         "messageId": str(message.id),
+        "notificationId": str(notif.id),
         "notificationCreated": True,
         "deliveredAt": message.created_at.isoformat(),
+        "recipientUserId": str(recipient_user_id),
     }

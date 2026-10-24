@@ -46,6 +46,12 @@ export default function RecruiterMessageModal({
       return;
     }
 
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!emailRegex.test(senderEmail.trim())) {
+      setError("Please provide a valid work email address (e.g. recruiter@company.com).");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await sharingApi.sendPublicMessage(token, {

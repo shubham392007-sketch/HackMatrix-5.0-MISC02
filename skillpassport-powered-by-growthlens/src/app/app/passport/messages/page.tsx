@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { sharingApi } from "@/lib/sharingApi";
+import { supabase } from "@/lib/supabase/client";
+import { useEvidence } from "@/context/EvidenceContext";
 import { RecruiterMessage } from "@/types/sharing";
 import {
   Mail,
@@ -17,31 +19,70 @@ import {
   Inbox,
   ArrowLeft,
   Share2,
+  RefreshCw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function RecruiterMessagesPage() {
+  const { currentUserId, notifications, markNotificationRead } = useEvidence();
   const [messages, setMessages] = useState<RecruiterMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<RecruiterMessage | null>(null);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async (isSilent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
+      else setRefreshing(true);
       const data = await sharingApi.listMessages();
       setMessages(data);
-      if (data.length > 0 && !selectedMessage) {
-        setSelectedMessage(data[0]);
+      if (data.length > 0) {
+        setSelectedMessage((prev) => {
+          if (!prev) return data[0];
+          const updatedSelected = data.find((m) => m.id === prev.id);
+          return updatedSelected || data[0];
+        });
+      } else {
+        setSelectedMessage(null);
       }
     } catch (err) {
       console.warn("Could not load recruiter messages:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [fetchMessages]);
+
+  // Live Supabase Realtime subscription for inbound recruiter messages
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channelName = `rt-msg-page-${currentUserId}-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "recruiter_messages",
+          filter: `recipient_user_id=eq.${currentUserId}`,
+        },
+        () => {
+          fetchMessages(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, fetchMessages]);
 
   const handleSelectMessage = async (msg: RecruiterMessage) => {
     setSelectedMessage(msg);
@@ -51,9 +92,39 @@ export default function RecruiterMessagesPage() {
         setMessages((prev) =>
           prev.map((m) => (m.id === msg.id ? { ...m, isRead: true } : m))
         );
+        // Find matching notification in context and mark read
+        const matchingNotif = notifications.find(
+          (n) => n.entityId === msg.id || n.id === msg.id
+        );
+        if (matchingNotif) {
+          markNotificationRead(matchingNotif.id);
+        }
       } catch (err) {
         console.warn("Could not mark message read:", err);
       }
+    }
+  };
+
+  const handleToggleReadStatus = async (msg: RecruiterMessage) => {
+    const nextRead = !msg.isRead;
+    try {
+      await sharingApi.markMessageRead(msg.id, nextRead);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, isRead: nextRead } : m))
+      );
+      if (selectedMessage?.id === msg.id) {
+        setSelectedMessage({ ...msg, isRead: nextRead });
+      }
+      if (nextRead) {
+        const matchingNotif = notifications.find(
+          (n) => n.entityId === msg.id || n.id === msg.id
+        );
+        if (matchingNotif) {
+          markNotificationRead(matchingNotif.id);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not toggle message read status:", err);
     }
   };
 
@@ -97,13 +168,23 @@ export default function RecruiterMessagesPage() {
                 Recruiter Communication Channel
               </h2>
               <p className="text-xs text-[#1C1C1C]/60">
-                Messages submitted via your public recruiter links arrive here securely without exposing your personal contact email.
+                Messages submitted via your public recruiter links arrive here securely with live Supabase Realtime updates.
               </p>
             </div>
           </div>
-          <span className="text-xs font-black px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C]">
-            {unreadCount} Unread Inquiry{unreadCount === 1 ? "" : "ies"}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchMessages(true)}
+              disabled={refreshing}
+              className="p-1.5 rounded-full border border-[#1C1C1C]/20 hover:bg-[#1C1C1C]/5 text-[#1C1C1C] text-xs transition-colors"
+              title="Refresh messages"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+            <span className="text-xs font-black px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C]">
+              {unreadCount} Unread Inquiry{unreadCount === 1 ? "" : "ies"}
+            </span>
+          </div>
         </div>
 
         {/* Messages Split Pane */}
@@ -119,7 +200,7 @@ export default function RecruiterMessagesPage() {
             <div className="space-y-1">
               <h3 className="text-base font-black text-[#1C1C1C]">No Recruiter Messages Yet</h3>
               <p className="text-xs text-[#1C1C1C]/60 max-w-md mx-auto leading-relaxed">
-                When recruiters or hiring managers view your shared Skill Passport and click "Contact Candidate", their messages and role details will appear here.
+                When recruiters or hiring managers view your shared Skill Passport and click "Contact Candidate", their messages and role details will appear here live.
               </p>
             </div>
             <Link
@@ -233,13 +314,33 @@ export default function RecruiterMessagesPage() {
                       Verified via SkillPassport Inbound Relay
                     </span>
 
-                    <a
-                      href={`mailto:${selectedMessage.senderEmail}?subject=${encodeURIComponent(`Re: ${selectedMessage.subject || "Skill Passport Inquiry"}`)}`}
-                      className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-1.5"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>Reply via Email</span>
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleReadStatus(selectedMessage)}
+                        className="px-3.5 py-2 rounded-full border border-[#1C1C1C] text-xs font-bold text-[#1C1C1C] hover:bg-[#1C1C1C]/5 flex items-center gap-1"
+                      >
+                        {selectedMessage.isRead ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>Mark Unread</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Mark Read</span>
+                          </>
+                        )}
+                      </button>
+
+                      <a
+                        href={`mailto:${selectedMessage.senderEmail}?subject=${encodeURIComponent(`Re: ${selectedMessage.subject || "Skill Passport Inquiry"}`)}`}
+                        className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Reply via Email</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               ) : (
