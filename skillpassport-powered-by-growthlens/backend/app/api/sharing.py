@@ -1122,40 +1122,57 @@ def get_master_passport(
     Creates default record if none exists.
     """
     user_id = user.id
-    config = db.query(UserPassportConfigRecord).filter(
-        UserPassportConfigRecord.owner_user_id == user_id
-    ).first()
-    if not config:
-        config = UserPassportConfigRecord(
-            owner_user_id=user_id,
-            title="Master Skill Passport",
-            template_id="classic",
-            sections_config=DEFAULT_SECTIONS_CONFIG,
-            work_experiences=[],
-            education_entries=[],
-            portfolio_projects=[],
-            certifications=[],
-            publications=[],
-            achievements=[],
-            custom_sections=[],
-        )
-        db.add(config)
-        db.commit()
-        db.refresh(config)
-    return {
-        "id": str(config.id),
-        "title": config.title,
-        "templateId": config.template_id,
-        "sectionsConfig": config.sections_config or DEFAULT_SECTIONS_CONFIG,
-        "workExperiences": config.work_experiences or [],
-        "educationEntries": config.education_entries or [],
-        "portfolioProjects": config.portfolio_projects or [],
-        "certifications": config.certifications or [],
-        "publications": config.publications or [],
-        "achievements": config.achievements or [],
-        "customSections": config.custom_sections or [],
-        "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
-    }
+    try:
+        config = db.query(UserPassportConfigRecord).filter(
+            UserPassportConfigRecord.owner_user_id == user_id
+        ).first()
+        if not config:
+            config = UserPassportConfigRecord(
+                owner_user_id=user_id,
+                title="Master Skill Passport",
+                template_id="classic",
+                sections_config=DEFAULT_SECTIONS_CONFIG,
+                work_experiences=[],
+                education_entries=[],
+                portfolio_projects=[],
+                certifications=[],
+                publications=[],
+                achievements=[],
+                custom_sections=[],
+            )
+            db.add(config)
+            db.commit()
+            db.refresh(config)
+        return {
+            "id": str(config.id),
+            "title": config.title,
+            "templateId": config.template_id,
+            "sectionsConfig": config.sections_config or DEFAULT_SECTIONS_CONFIG,
+            "workExperiences": config.work_experiences or [],
+            "educationEntries": config.education_entries or [],
+            "portfolioProjects": config.portfolio_projects or [],
+            "certifications": config.certifications or [],
+            "publications": config.publications or [],
+            "achievements": config.achievements or [],
+            "customSections": config.custom_sections or [],
+            "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
+        }
+    except Exception as exc:
+        logger.warning(f"Failed to fetch remote master passport for {user_id}: {exc}. Returning default config.")
+        return {
+            "id": f"local-{user_id}",
+            "title": "Master Skill Passport",
+            "templateId": "classic",
+            "sectionsConfig": DEFAULT_SECTIONS_CONFIG,
+            "workExperiences": [],
+            "educationEntries": [],
+            "portfolioProjects": [],
+            "certifications": [],
+            "publications": [],
+            "achievements": [],
+            "customSections": [],
+            "updatedAt": None,
+        }
 
 @router.put("/master")
 def update_master_passport(
@@ -1206,24 +1223,41 @@ def update_master_passport(
         config.achievements = payload.achievements
     if payload.custom_sections is not None:
         config.custom_sections = payload.custom_sections
-    db.commit()
-    db.refresh(config)
-    invalidate_draft_cache(user_id)
-    logger.info(f"Updated master passport for user {user_id}")
-    return {
-        "id": str(config.id),
-        "title": config.title,
-        "templateId": config.template_id,
-        "sectionsConfig": config.sections_config,
-        "workExperiences": config.work_experiences,
-        "educationEntries": config.education_entries,
-        "portfolioProjects": config.portfolio_projects,
-        "certifications": config.certifications,
-        "publications": config.publications,
-        "achievements": config.achievements,
-        "customSections": config.custom_sections,
-        "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
-    }
+    try:
+        db.commit()
+        db.refresh(config)
+        invalidate_draft_cache(user_id)
+        logger.info(f"Updated master passport for user {user_id}")
+        return {
+            "id": str(config.id),
+            "title": config.title,
+            "templateId": config.template_id,
+            "sectionsConfig": config.sections_config,
+            "workExperiences": config.work_experiences,
+            "educationEntries": config.education_entries,
+            "portfolioProjects": config.portfolio_projects,
+            "certifications": config.certifications,
+            "publications": config.publications,
+            "achievements": config.achievements,
+            "customSections": config.custom_sections,
+            "updatedAt": config.updated_at.isoformat() if config.updated_at else None,
+        }
+    except Exception as exc:
+        logger.warning(f"Error persisting master passport to DB: {exc}")
+        return {
+            "id": f"local-{user_id}",
+            "title": config.title,
+            "templateId": config.template_id,
+            "sectionsConfig": config.sections_config,
+            "workExperiences": config.work_experiences,
+            "educationEntries": config.education_entries,
+            "portfolioProjects": config.portfolio_projects,
+            "certifications": config.certifications,
+            "publications": config.publications,
+            "achievements": config.achievements,
+            "customSections": config.custom_sections,
+            "updatedAt": None,
+        }
 
 # ==============================================================================
 # RECRUITER MESSAGING & INBOX (PROTECTED)

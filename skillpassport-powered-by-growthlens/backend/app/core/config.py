@@ -120,6 +120,10 @@ class Settings(BaseSettings):
             v = "postgresql+psycopg2://" + v[len("postgres://"):]
         elif v.startswith("postgresql://"):
             v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        # Automatically use Supabase Transaction Mode pooler (port 6543) instead of Session Mode (port 5432)
+        # to prevent EMAXCONNSESSION (max clients reached in session mode: 15)
+        if "pooler.supabase.com:5432" in v:
+            v = v.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
         return v
 
     @field_validator("direct_url")
@@ -132,6 +136,10 @@ class Settings(BaseSettings):
             v = "postgresql+psycopg2://" + v[len("postgres://"):]
         elif v.startswith("postgresql://"):
             v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        # Automatically use Supabase Transaction Mode pooler (port 6543) instead of Session Mode (port 5432)
+        # to prevent EMAXCONNSESSION (max clients reached in session mode: 15)
+        if "pooler.supabase.com:5432" in v:
+            v = v.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
         return v
 
     @property

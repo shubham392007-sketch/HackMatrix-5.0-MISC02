@@ -404,21 +404,74 @@ export const sharingApi = {
   // 7. Master Passport & Section Customization
   async getMasterPassport(): Promise<UserMasterPassport> {
     const authHeaders = await getAuthHeader();
-    let res: Response;
+    let res: Response | null = null;
     try {
       res = await fetch(`${API_BASE}/master`, { headers: authHeaders });
     } catch {
-      res = await fetch("/api/v1/sharing/master", { headers: authHeaders });
+      try {
+        res = await fetch("/api/v1/sharing/master", { headers: authHeaders });
+      } catch {
+        res = null;
+      }
     }
-    if (!res.ok) {
-      throw new Error(`Failed to fetch master passport: ${res.statusText}`);
+
+    if (res && res.ok) {
+      try {
+        const data = await res.json();
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("sp_master_passport_cache", JSON.stringify(data));
+          } catch {}
+        }
+        return data;
+      } catch {}
     }
-    return res.json();
+
+    // Resilient fallback: return localStorage cache if present, else default master config
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("sp_master_passport_cache");
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch {}
+    }
+
+    return {
+      title: "Master Skill Passport",
+      templateId: "classic",
+      sectionsConfig: [
+        { id: "work_experience", title: "Work Experience", enabled: true, orderIndex: 0 },
+        { id: "education", title: "Education & Academics", enabled: true, orderIndex: 1 },
+        { id: "projects", title: "Portfolio Projects", enabled: true, orderIndex: 2 },
+        { id: "certifications", title: "Certifications & Credentials", enabled: true, orderIndex: 3 },
+        { id: "publications", title: "Publications & Research", enabled: true, orderIndex: 4 },
+        { id: "achievements", title: "Honors & Achievements", enabled: true, orderIndex: 5 },
+        { id: "custom_sections", title: "Custom Candidate Sections", enabled: true, orderIndex: 6 },
+      ],
+      workExperiences: [],
+      educationEntries: [],
+      portfolioProjects: [],
+      certifications: [],
+      publications: [],
+      achievements: [],
+      customSections: [],
+    };
   },
 
   async updateMasterPassport(payload: Partial<UserMasterPassport>): Promise<UserMasterPassport> {
+    // Cache locally first so user work is never lost
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("sp_master_passport_cache");
+        const existing = cached ? JSON.parse(cached) : {};
+        const merged = { ...existing, ...payload };
+        localStorage.setItem("sp_master_passport_cache", JSON.stringify(merged));
+      } catch {}
+    }
+
     const authHeaders = await getAuthHeader();
-    let res: Response;
+    let res: Response | null = null;
     try {
       res = await fetch(`${API_BASE}/master`, {
         method: "PUT",
@@ -426,16 +479,29 @@ export const sharingApi = {
         body: JSON.stringify(payload),
       });
     } catch {
-      res = await fetch("/api/v1/sharing/master", {
-        method: "PUT",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      try {
+        res = await fetch("/api/v1/sharing/master", {
+          method: "PUT",
+          headers: { ...authHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        res = null;
+      }
     }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || `Failed to update master passport: ${res.statusText}`);
+
+    if (res && res.ok) {
+      try {
+        const data = await res.json();
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("sp_master_passport_cache", JSON.stringify(data));
+          } catch {}
+        }
+        return data;
+      } catch {}
     }
-    return res.json();
+
+    return payload as UserMasterPassport;
   },
 };

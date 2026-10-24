@@ -117,7 +117,7 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
           setMaster(data);
         }
       } catch (err: any) {
-        console.error("Failed to load master passport config:", err);
+        console.warn("Using local defaults for master passport:", err);
         setErrorMessage("Using local defaults (could not load remote record).");
       } finally {
         setLoading(false);
