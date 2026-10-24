@@ -36,6 +36,7 @@ import {
   Check,
   File as FileIcon,
   Info,
+  Sparkles,
 } from "lucide-react";
 import LoadingAnimation from "@/components/ui/LoadingAnimation";
 
@@ -79,6 +80,14 @@ export type QueueItemStatus =
   | "needs_review"
   | "failed";
 
+export interface CandidateSkillItem {
+  id?: string;
+  name: string;
+  proficiencyLevel?: string;
+  confidence?: number;
+  category?: string;
+}
+
 export interface QueueItem {
   id: string;
   file?: File; // Present during active session
@@ -93,7 +102,8 @@ export interface QueueItem {
   evidenceId?: string;
   wordCount?: number;
   chunksExtracted?: number;
-  candidateSkills?: Array<{ name: string; proficiencyLevel?: string }>;
+  extractionConfidence?: number;
+  candidateSkills?: CandidateSkillItem[];
   verificationStatus?: string;
   error?: string;
   completedAt?: number;
@@ -483,10 +493,54 @@ export default function UploadEvidencePage() {
 
       const rawSkills =
         result.candidateSkills || result.evidence?.candidateSkills || [];
-      const parsedSkills = rawSkills.map((s: any) => ({
-        name: typeof s === "string" ? s : s.name,
-        proficiencyLevel: typeof s === "object" ? s.proficiencyLevel : undefined,
-      }));
+      const parsedSkills: CandidateSkillItem[] = rawSkills.map((s: any) => {
+        const rawConf =
+          s.confidence ??
+          s.confidence_score ??
+          s.relevance_score ??
+          s.score;
+        const numConf =
+          typeof rawConf === "number"
+            ? rawConf
+            : typeof rawConf === "string" && !isNaN(Number(rawConf))
+            ? Number(rawConf)
+            : undefined;
+
+        return {
+          id: s.id,
+          name: typeof s === "string" ? s : s.name,
+          proficiencyLevel: typeof s === "object" ? s.proficiencyLevel : undefined,
+          confidence: numConf,
+          category: typeof s === "object" ? s.category : undefined,
+        };
+      });
+
+      // Calculate or extract artifact extraction confidence
+      const rawExtConf =
+        result.evidence?.confidence ??
+        result.evidence?.extraction_confidence ??
+        result.extraction_confidence ??
+        result.confidence;
+      let finalExtConf =
+        typeof rawExtConf === "number"
+          ? rawExtConf
+          : typeof rawExtConf === "string" && !isNaN(Number(rawExtConf))
+          ? Number(rawExtConf)
+          : undefined;
+
+      // Fallback: if no direct overall confidence, compute average of candidate skill confidences
+      if (finalExtConf === undefined && parsedSkills.length > 0) {
+        const skillsWithConf = parsedSkills.filter(
+          (s) => typeof s.confidence === "number"
+        );
+        if (skillsWithConf.length > 0) {
+          const sum = skillsWithConf.reduce(
+            (acc, s) => acc + (s.confidence as number),
+            0
+          );
+          finalExtConf = Math.round((sum / skillsWithConf.length) * 100) / 100;
+        }
+      }
 
       updateQueueItem(itemId, {
         status: finalStatus,
@@ -495,6 +549,7 @@ export default function UploadEvidencePage() {
         evidenceId: result.evidence_id || result.evidence?.id,
         wordCount: result.word_count || 0,
         chunksExtracted: result.chunks_extracted || 0,
+        extractionConfidence: finalExtConf,
         candidateSkills: parsedSkills,
         verificationStatus: evStatus,
         completedAt: Date.now(),
@@ -860,6 +915,78 @@ export default function UploadEvidencePage() {
                           </span>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Multi-Page Crawl Candidate Skills & Extraction Confidence */}
+              {((portfolioSuccessResult.candidateSkills && portfolioSuccessResult.candidateSkills.length > 0) ||
+                (portfolioSuccessResult.candidate_skills && portfolioSuccessResult.candidate_skills.length > 0) ||
+                portfolioSuccessResult.evidence?.confidence !== undefined) && (
+                <div className="p-4 rounded-2xl bg-[#FBF6DF] border border-[#1C1C1C] text-left max-w-xl mx-auto space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#C47D2B]" />
+                      <span className="text-xs font-black uppercase text-[#1C1C1C]">
+                        EXTRACTION CONFIDENCE
+                      </span>
+                    </div>
+                    {portfolioSuccessResult.evidence?.confidence !== undefined && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-[#1C1C1C]/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#2E7D32] rounded-full"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.round(portfolioSuccessResult.evidence.confidence * 100)
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono font-black text-[#2E7D32]">
+                          {Math.round(portfolioSuccessResult.evidence.confidence * 100)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {(portfolioSuccessResult.candidateSkills || portfolioSuccessResult.candidate_skills) && (
+                    <div className="space-y-1.5 pt-1 border-t border-[#1C1C1C]/15">
+                      <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 block">
+                        Detected Candidate Competencies:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {(
+                          portfolioSuccessResult.candidateSkills ||
+                          portfolioSuccessResult.candidate_skills
+                        ).map((sk: any, i: number) => {
+                          const conf = sk.confidence ?? sk.relevance_score;
+                          const confPct =
+                            typeof conf === "number"
+                              ? Math.round(conf <= 1 ? conf * 100 : conf)
+                              : null;
+                          return (
+                            <div
+                              key={i}
+                              className="inline-flex items-center gap-1.5 p-1 px-2.5 rounded-xl text-[11px] font-bold bg-white border border-[#1C1C1C]/20 text-[#1C1C1C]"
+                            >
+                              <span>{sk.name}</span>
+                              {sk.proficiencyLevel && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-[#DFE968] text-[#1C1C1C] font-black uppercase">
+                                  {sk.proficiencyLevel}
+                                </span>
+                              )}
+                              {confPct !== null && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded-md font-mono font-black bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30">
+                                  {confPct}% conf
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1357,26 +1484,137 @@ export default function UploadEvidencePage() {
                           </p>
                         )}
 
-                        {/* Extracted Candidate Skills Chips */}
-                        {item.candidateSkills && item.candidateSkills.length > 0 && (
-                          <div className="space-y-1 pt-1">
-                            <span className="text-[10px] font-black uppercase text-[#1C1C1C]/50 block">
-                              Detected Candidate Competencies ({item.candidateSkills.length}):
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.candidateSkills.map((sk, sidx) => (
-                                <span
-                                  key={sidx}
-                                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF6DF] border border-[#1C1C1C]/30 text-[#1C1C1C] flex items-center gap-1"
-                                >
-                                  <span>{sk.name}</span>
-                                  {sk.proficiencyLevel && (
-                                    <span className="text-[8px] px-1 py-0.1 rounded-full bg-[#DFE968] text-[#1C1C1C] font-black">
-                                      {sk.proficiencyLevel}
-                                    </span>
-                                  )}
+                        {/* Overall Artifact Extraction Confidence & Metrics */}
+                        {item.extractionConfidence !== undefined && (
+                          <div className="p-3 rounded-xl bg-white/80 border border-[#1C1C1C]/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-[#C47D2B] shrink-0" />
+                              <div>
+                                <span className="text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] block">
+                                  Extraction Confidence
                                 </span>
-                              ))}
+                                <span className="text-[10px] text-[#1C1C1C]/60 font-medium block">
+                                  AI &amp; Semantic Grounding Reliability
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {/* Visual meter */}
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2.5 bg-[#1C1C1C]/10 rounded-full overflow-hidden border border-[#1C1C1C]/10">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      (item.extractionConfidence <= 1
+                                        ? item.extractionConfidence * 100
+                                        : item.extractionConfidence) >= 75
+                                        ? "bg-[#2E7D32]"
+                                        : (item.extractionConfidence <= 1
+                                            ? item.extractionConfidence * 100
+                                            : item.extractionConfidence) >= 50
+                                        ? "bg-[#C47D2B]"
+                                        : "bg-[#C85A54]"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(
+                                        100,
+                                        Math.round(
+                                          item.extractionConfidence <= 1
+                                            ? item.extractionConfidence * 100
+                                            : item.extractionConfidence
+                                        )
+                                      )}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span
+                                  className={`text-xs font-mono font-black ${
+                                    (item.extractionConfidence <= 1
+                                      ? item.extractionConfidence * 100
+                                      : item.extractionConfidence) >= 75
+                                      ? "text-[#2E7D32]"
+                                      : (item.extractionConfidence <= 1
+                                          ? item.extractionConfidence * 100
+                                          : item.extractionConfidence) >= 50
+                                      ? "text-[#C47D2B]"
+                                      : "text-[#C85A54]"
+                                  }`}
+                                >
+                                  {Math.round(
+                                    item.extractionConfidence <= 1
+                                      ? item.extractionConfidence * 100
+                                      : item.extractionConfidence
+                                  )}%
+                                </span>
+                              </div>
+
+                              {item.wordCount !== undefined && item.wordCount > 0 && (
+                                <span className="text-[10px] font-mono text-[#1C1C1C]/60 border-l border-[#1C1C1C]/20 pl-2.5">
+                                  {item.wordCount} words
+                                </span>
+                              )}
+                              {item.chunksExtracted !== undefined && item.chunksExtracted > 0 && (
+                                <span className="text-[10px] font-mono text-[#1C1C1C]/60 border-l border-[#1C1C1C]/20 pl-2.5">
+                                  {item.chunksExtracted} chunks
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Extracted Candidate Skills Chips with Individual Confidence */}
+                        {item.candidateSkills && item.candidateSkills.length > 0 && (
+                          <div className="space-y-2 pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 tracking-wider">
+                                Detected Candidate Competencies ({item.candidateSkills.length})
+                              </span>
+                              <span className="text-[10px] font-bold text-[#1C1C1C]/50 uppercase">
+                                Confidence per Skill
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {item.candidateSkills.map((sk, sidx) => {
+                                const confPct =
+                                  sk.confidence !== undefined
+                                    ? Math.round(
+                                        sk.confidence <= 1
+                                          ? sk.confidence * 100
+                                          : sk.confidence
+                                      )
+                                    : null;
+
+                                return (
+                                  <div
+                                    key={sidx}
+                                    className="inline-flex items-center gap-1.5 p-1 px-2.5 rounded-xl text-[11px] font-bold bg-white border border-[#1C1C1C]/20 text-[#1C1C1C] shadow-xs hover:border-[#1C1C1C]/40 transition-colors"
+                                  >
+                                    <span>{sk.name}</span>
+
+                                    {sk.proficiencyLevel && (
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-[#DFE968] text-[#1C1C1C] font-black uppercase">
+                                        {sk.proficiencyLevel}
+                                      </span>
+                                    )}
+
+                                    {confPct !== null && (
+                                      <span
+                                        className={`text-[9px] px-1.5 py-0.2 rounded-md font-mono font-black ${
+                                          confPct >= 80
+                                            ? "bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30"
+                                            : confPct >= 60
+                                            ? "bg-[#FEF3E2] text-[#C47D2B] border border-[#C47D2B]/30"
+                                            : "bg-[#F6C8D6] text-[#C85A54] border border-[#C85A54]/30"
+                                        }`}
+                                        title={`Skill Confidence: ${confPct}%`}
+                                      >
+                                        {confPct}% conf
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
