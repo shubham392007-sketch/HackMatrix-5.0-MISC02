@@ -165,10 +165,11 @@ export default function UploadEvidencePage() {
           const skillsCount = result.candidateSkills?.length || 0;
 
           const isInsufficient =
-            result.extraction_quality === "insufficient_content" ||
-            result.extraction_quality === "failed" ||
-            result.status === "insufficient_content" ||
-            (typeof result.word_count === "number" && result.word_count < 15);
+            (result.extraction_quality === "insufficient_content" ||
+              result.extraction_quality === "failed" ||
+              result.status === "insufficient_content" ||
+              (typeof result.word_count === "number" && result.word_count < 10)) &&
+            skillsCount === 0;
 
           if (isInsufficient) {
             addNotification({

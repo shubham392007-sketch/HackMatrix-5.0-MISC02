@@ -270,6 +270,63 @@ TAXONOMY_KEYWORD_MAP = {
         ],
         "category": "Frontend Engineering",
     },
+    "C Programming & Systems Development": {
+        "keywords": [
+            "c programming",
+            "c programming basics",
+            "c language",
+            "procedural programming",
+            "ansi c",
+            "c compiler",
+            "c basics",
+            "pointers in c",
+            "memory allocation",
+            "malloc",
+            "free",
+            "struct",
+            "header files",
+            "c code",
+            "c standard library",
+            "stdio.h",
+            "stdlib.h",
+        ],
+        "category": "Backend Engineering",
+    },
+    "Computer Science & Programming Fundamentals": {
+        "keywords": [
+            "programming basics",
+            "programming fundamentals",
+            "control structures",
+            "functions",
+            "arrays",
+            "data types",
+            "variables",
+            "coding basics",
+            "computer science basics",
+            "procedural logic",
+            "online course: c programming",
+            "c programming basics",
+            "deepening their skills",
+            "computer programming",
+        ],
+        "category": "General Engineering",
+    },
+    "Low-Level Systems Architecture & Memory Management": {
+        "keywords": [
+            "memory management",
+            "pointers",
+            "buffer",
+            "registers",
+            "stack memory",
+            "heap memory",
+            "segmentation",
+            "assembly",
+            "low-level",
+            "system calls",
+            "posix",
+        ],
+        "category": "System Architecture",
+    },
 }
 
 
@@ -292,6 +349,11 @@ def is_insufficient_or_identity_only(text: str) -> bool:
         "machine learning", "deep learning", "prompt", "data", "system", "sql", "react", "fastapi",
         "docker", "aws", "security", "management", "project", "analysis", "implemented", "built",
         "configured", "designed", "created", "refactored", "tested", "routing", "cache", "model",
+        "programming", "program", "programmer", "coding", "code", "c programming", "c++", "c#",
+        "java", "course", "basics", "fundamental", "fundamentals", "computer", "science",
+        "database", "network", "web", "simplilearn", "coursera", "udemy", "edx", "certification",
+        "certified", "skill", "skills", "competenc", "curriculum", "training", "credential",
+        "completed the online course", "completed the course",
     ]
     has_tech = any(t in lower for t in technical_stems)
 
@@ -301,7 +363,12 @@ def is_insufficient_or_identity_only(text: str) -> bool:
 
     # Generic completion certificate with recipient name but no course subject
     if any(p in lower for p in ["certificate of completion", "certificate of participation", "certificate of achievement", "certificate of attendance"]):
-        if not any(t in lower for t in [" in ", " for ", " on ", "of generative", "of data", "of project", "of cloud", "of software", "of prompt"]) and not has_tech:
+        # A sparse certificate (< 15 words) is rejected only if it lacks both subject keywords and technical context
+        has_subject = any(t in lower for t in [
+            " in ", " for ", " on ", "course:", "course :", "online course", "of generative", "of data",
+            "of project", "of cloud", "of software", "of prompt", "of programming", "of ai"
+        ])
+        if len(words) < 15 and not has_subject and not has_tech:
             return True
 
     # Placeholder strings like "[Page 1: Image/Diagram Content..."
@@ -310,7 +377,10 @@ def is_insufficient_or_identity_only(text: str) -> bool:
 
     # Payment receipt / invoice check (contains invoice/order #/paid in full without any technical context)
     if any(k in lower for k in ["invoice receipt", "order receipt", "payment receipt", "receipt:", "order #", "paid in full"]) and not any(
-        tech in lower for tech in ["software", "engineering", "developer", "architecture", "algorithm", "python", "javascript", "cloud compute", "framework", "certif"]
+        tech in lower for tech in [
+            "software", "engineering", "developer", "architecture", "algorithm", "python",
+            "javascript", "cloud compute", "framework", "certif", "programming", "course", "skill"
+        ]
     ):
         return True
     return False
