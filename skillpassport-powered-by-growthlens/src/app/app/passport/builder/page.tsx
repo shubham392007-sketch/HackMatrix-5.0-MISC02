@@ -74,15 +74,15 @@ export default function PassportBuilderPage() {
             className={`pill-btn text-[11px] py-1.5 px-3.5 flex items-center gap-1.5 border border-[#1C1C1C] transition-all cursor-pointer font-black shrink-0 ${
               confirmed
                 ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-800 shadow-[1px_1px_0_0_#065f46]"
-                : "bg-[#DFE968] hover:bg-[#d4de58] text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] active:translate-x-[1px] active:translate-y-[1px]"
+                : "bg-[#000000] hover:bg-[#1A1918] text-[#FAF8F5] border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] active:translate-x-[1px] active:translate-y-[1px]"
             }`}
           >
             {confirming ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1C1C1C]" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FAF8F5]" />
             ) : (
               <CheckCircle2
                 className={`w-3.5 h-3.5 ${
-                  confirmed ? "text-emerald-700 stroke-[2.5]" : "text-[#1C1C1C] stroke-[2.5]"
+                  confirmed ? "text-emerald-700 stroke-[2.5]" : "text-[#FAF8F5] stroke-[2.5]"
                 }`}
               />
             )}

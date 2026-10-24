@@ -13,7 +13,8 @@ from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.models.user_profile import UserProfile
 from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMapping
 from backend.app.models.evidence import EvidenceItem
-from backend.app.models.career import UserTargetRoleRecord, RoleMatchSnapshotRecord
+from backend.app.models.career import UserTargetRoleRecord, RoleMatchSnapshotRecord, JobPostingRecord
+from backend.app.models.recruiter import CandidateShareInvitation, OrganizationMembership
 from backend.app.models.sharing import (
     ShareLinkRecord,
     UserCustomSkill,
@@ -126,11 +127,62 @@ class SharePermissionsInput(BaseModel):
     include_role_alignment: bool = Field(default=False)
     target_role_id: Optional[str] = None
     allow_recruiter_messaging: bool = Field(default=True)
+    template_id: Optional[str] = Field(default=None)
+    custom_link_label: Optional[str] = Field(default=None)
     expiry_days: Optional[int] = Field(default=14)
     custom_headline: Optional[str] = None
     custom_summary: Optional[str] = None
     sections: Optional[Dict[str, bool]] = None
     master_passport: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Identity
+            if "identity" in data and isinstance(data["identity"], dict):
+                ident = dict(data["identity"])
+                if "showDisplayName" in ident and "show_display_name" not in ident:
+                    ident["show_display_name"] = ident["showDisplayName"]
+                if "showHeadline" in ident and "show_headline" not in ident:
+                    ident["show_headline"] = ident["showHeadline"]
+                if "showSummary" in ident and "show_summary" not in ident:
+                    ident["show_summary"] = ident["showSummary"]
+                if "showContactInfo" in ident and "show_contact_info" not in ident:
+                    ident["show_contact_info"] = ident["showContactInfo"]
+                if "contactEmail" in ident and "contact_email" not in ident:
+                    ident["contact_email"] = ident["contactEmail"]
+                if "contactLinkedIn" in ident and "contact_linkedin" not in ident:
+                    ident["contact_linkedin"] = ident["contactLinkedIn"]
+                data["identity"] = ident
+
+            if "shareVerifiedSkillsOnly" in data and "share_verified_skills_only" not in data:
+                data["share_verified_skills_only"] = data["shareVerifiedSkillsOnly"]
+            if "selectedSkillIds" in data and "selected_skill_ids" not in data:
+                data["selected_skill_ids"] = data["selectedSkillIds"]
+            if "selectedCustomSkillIds" in data and "selected_custom_skill_ids" not in data:
+                data["selected_custom_skill_ids"] = data["selectedCustomSkillIds"]
+            if "selectedEvidencePermissions" in data and "selected_evidence_permissions" not in data:
+                data["selected_evidence_permissions"] = data["selectedEvidencePermissions"]
+            if "includeRoleAlignment" in data and "include_role_alignment" not in data:
+                data["include_role_alignment"] = data["includeRoleAlignment"]
+            if "targetRoleId" in data and "target_role_id" not in data:
+                data["target_role_id"] = data["targetRoleId"]
+            if "allowRecruiterMessaging" in data and "allow_recruiter_messaging" not in data:
+                data["allow_recruiter_messaging"] = data["allowRecruiterMessaging"]
+            if "expiryDays" in data and "expiry_days" not in data:
+                data["expiry_days"] = data["expiryDays"]
+            if "customLinkLabel" in data and "custom_link_label" not in data:
+                data["custom_link_label"] = data["customLinkLabel"]
+            if "customHeadline" in data and "custom_headline" not in data:
+                data["custom_headline"] = data["customHeadline"]
+            if "customSummary" in data and "custom_summary" not in data:
+                data["custom_summary"] = data["customSummary"]
+            if "templateId" in data and "template_id" not in data:
+                data["template_id"] = data["templateId"]
+            if "masterPassport" in data and "master_passport" not in data:
+                data["master_passport"] = data["masterPassport"]
+        return data
 
 class CreateShareLinkRequest(BaseModel):
     label: str = Field(..., min_length=2, max_length=255)
@@ -142,6 +194,9 @@ class DraftPreviewRequest(BaseModel):
     label: Optional[str] = Field(default="Draft Preview")
     template_id: Optional[str] = Field(default="classic")
     permissions: Optional[Dict[str, Any]] = None
+    recruiter_email: Optional[str] = None
+    job_id: Optional[str] = None
+    candidate_message: Optional[str] = None
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> Any:
@@ -194,6 +249,16 @@ def invalidate_draft_cache(user_id: Any = None):
         _DRAFT_CACHE = {k: v for k, v in _DRAFT_CACHE.items() if not k.startswith(uid_str)}
     else:
         _DRAFT_CACHE.clear()
+def _is_expired(expires_at, now=None) -> bool:
+    if not expires_at:
+        return False
+    if now is None:
+        now = datetime.now(timezone.utc)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at < now
+
+
 def build_canonical_projection(
     owner_user_id: uuid.UUID,
     permissions: Dict[str, Any],
@@ -223,8 +288,7 @@ def build_canonical_projection(
     if share_record:
         is_revoked = share_record.status == "revoked"
         is_expired = share_record.status == "expired"
-        if not is_expired and share_record.expires_at:
-            if share_record.expires_at < now_utc:
+        if not is_expired and _is_expired(share_record.expires_at, now_utc):
                 is_expired = True
                 share_record.status = "expired"
                 db.commit()
@@ -801,7 +865,7 @@ def get_sharing_overview(
     total_access_count = 0
     for link in all_links:
         # Check dynamic expiration
-        if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+        if link.status == "active" and _is_expired(link.expires_at, now_utc):
             link.status = "expired"
             db.commit()
         if link.status == "active":
@@ -885,7 +949,7 @@ def list_share_links(
     ).order_by(desc(ShareLinkRecord.created_at)).all()
     items = []
     for link in links:
-        if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+        if link.status == "active" and _is_expired(link.expires_at, now_utc):
             link.status = "expired"
             db.commit()
         items.append({
@@ -940,8 +1004,9 @@ def create_share_link(
         except (ValueError, TypeError):
             pass
     label_str = payload.label.strip() if (payload and payload.label) else "Shared Passport"
+    user_uuid = uuid.UUID(str(user_id))
     link = ShareLinkRecord(
-        owner_user_id=user_id,
+        owner_user_id=user_uuid,
         token=token,
         label=label_str,
         template_id=template_id,
@@ -953,6 +1018,102 @@ def create_share_link(
     db.add(link)
     db.commit()
     db.refresh(link)
+
+    # Check for targeted recruiter share
+    recruiter_email = getattr(payload, "recruiter_email", None)
+    if not recruiter_email and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        recruiter_email = payload.permissions.get("recruiter_email") or payload.permissions.get("recruiterEmail")
+    
+    target_job_id = getattr(payload, "job_id", None)
+    if not target_job_id and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        target_job_id = payload.permissions.get("job_id") or payload.permissions.get("jobId")
+
+    cand_message = getattr(payload, "candidate_message", None)
+    if not cand_message and payload and hasattr(payload, "permissions") and isinstance(payload.permissions, dict):
+        cand_message = payload.permissions.get("candidate_message") or payload.permissions.get("candidateMessage")
+
+    invitation_result = None
+    if recruiter_email and recruiter_email.strip():
+        norm_email = recruiter_email.strip().lower()
+        # Resolve recipient recruiter membership
+        membership = db.query(OrganizationMembership).filter(
+            (func.lower(OrganizationMembership.public_contact_email) == norm_email)
+            | (OrganizationMembership.user_id.in_(
+                db.query(UserProfile.id).filter(func.lower(UserProfile.email) == norm_email)
+            ))
+        ).filter(OrganizationMembership.status == "active").first()
+
+        recruiter_uid = membership.user_id if membership else None
+        org_id = membership.organization_id if membership else None
+        deliv_status = "delivered" if membership else "pending_account"
+
+        # Resolve job_id
+        parsed_job_uuid = None
+        if target_job_id:
+            try:
+                parsed_job_uuid = uuid.UUID(str(target_job_id).replace("job-", ""))
+            except (ValueError, TypeError):
+                pass
+
+        inv = CandidateShareInvitation(
+            share_link_id=link.id,
+            candidate_user_id=uuid.UUID(str(user_id)),
+            recruiter_email=norm_email,
+            recruiter_user_id=recruiter_uid,
+            organization_id=org_id,
+            job_id=parsed_job_uuid,
+            candidate_message=cand_message.strip() if cand_message else None,
+            delivery_status=deliv_status,
+            pipeline_status="new",
+        )
+        db.add(inv)
+        db.flush()
+
+        cand_profile = db.query(UserProfile).filter(UserProfile.id == user_uuid).first()
+        cand_name = cand_profile.display_name if cand_profile and cand_profile.display_name else "A candidate"
+        cand_email = cand_profile.email if cand_profile and cand_profile.email else getattr(user, "email", "candidate@skillpassport.io")
+
+        # Create initial candidate message record if message provided
+        if cand_message and cand_message.strip():
+            recip_uid = recruiter_uid if recruiter_uid else uuid.UUID("00000000-0000-0000-0000-000000000000")
+            init_msg = RecruiterMessage(
+                recipient_user_id=recip_uid,
+                share_link_id=link.id,
+                sender_user_id=user_uuid,
+                job_id=parsed_job_uuid,
+                sender_name=cand_name,
+                sender_email=cand_email,
+                role_title="Candidate",
+                subject="Skill Passport Application",
+                message_body=cand_message.strip(),
+                is_read=False,
+            )
+            db.add(init_msg)
+
+        # If delivered, create notification for recruiter
+        if deliv_status == "delivered" and recruiter_uid:
+            notif = UserNotification(
+                user_id=recruiter_uid,
+                category="candidate_share",
+                severity="info",
+                title="New Skill Passport Shared",
+                description=f"{cand_name} shared their verified Skill Passport with you.",
+                action_route=f"/recruiter/candidates/{inv.id}",
+                action_label="Review Candidate",
+                entity_type="candidate_share_invitation",
+                entity_id=str(inv.id),
+                read=False,
+            )
+            db.add(notif)
+
+        invitation_result = {
+            "invitationId": str(inv.id),
+            "recruiterEmail": norm_email,
+            "deliveryStatus": deliv_status,
+            "recipientFound": bool(membership),
+            "jobId": str(parsed_job_uuid) if parsed_job_uuid else None,
+        }
+
     # Record creation event
     event = ShareAccessEvent(
         share_link_id=link.id,
@@ -972,6 +1133,7 @@ def create_share_link(
         "expiresAt": link.expires_at.isoformat() if link.expires_at else None,
         "accessCount": 0,
         "permissions": link.permissions_json,
+        "invitation": invitation_result,
     }
 
 def _find_user_share_link(link_identifier: str, user_id: uuid.UUID, db: Session) -> Optional[ShareLinkRecord]:
@@ -1113,7 +1275,7 @@ def extend_share_link(
     if not link:
         raise HTTPException(status_code=404, detail="Share link not found")
     now_utc = datetime.now(timezone.utc)
-    base_time = link.expires_at if (link.expires_at and link.expires_at > now_utc) else now_utc
+    base_time = link.expires_at if (link.expires_at and not _is_expired(link.expires_at, now_utc)) else now_utc
     link.expires_at = base_time + timedelta(days=payload.additional_days)
     if link.status == "expired":
         link.status = "active"
@@ -1454,6 +1616,272 @@ def update_master_passport(
         }
 
 # ==============================================================================
+# AUTHORITATIVE SHARING PERMISSIONS (DOMAIN 6)
+# ==============================================================================
+
+def format_canonical_permissions(
+    user_id: Any,
+    raw_perms: Optional[Dict[str, Any]],
+    db: Session,
+    master_cfg: Optional[UserPassportConfigRecord] = None,
+) -> Dict[str, Any]:
+    """
+    Normalizes, validates, and formats sharing permissions against user's actual verified competencies
+    and owned evidence items. Returns canonical dictionary with both camelCase and snake_case properties.
+    """
+    profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
+
+    # User verified competency mappings
+    mappings = db.query(EvidenceCompetencyMapping).filter(
+        EvidenceCompetencyMapping.owner_user_id == user_id,
+        EvidenceCompetencyMapping.status.in_(["reviewed", "verified"]),
+    ).all()
+    if not mappings:
+        mappings = db.query(EvidenceCompetencyMapping).filter(
+            EvidenceCompetencyMapping.owner_user_id == user_id,
+            EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
+            (EvidenceCompetencyMapping.relevance_score == None) | (EvidenceCompetencyMapping.relevance_score >= 0.65),
+        ).all()
+    comp_ids = list({str(m.competency_id) for m in mappings if m.competency_id})
+    tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all() if comp_ids else []
+    valid_skill_id_set = set(comp_ids)
+    for tax in tax_records:
+        valid_skill_id_set.add(str(tax.id))
+        valid_skill_id_set.add(tax.canonical_name.lower())
+
+    # User evidence items
+    user_evidence = db.query(EvidenceItem).filter(EvidenceItem.owner_user_id == user_id).all()
+    valid_ev_id_set = {str(e.id) for e in user_evidence}
+
+    if not raw_perms:
+        ident_config = {
+            "showDisplayName": True,
+            "showHeadline": True,
+            "showSummary": True,
+            "showContactInfo": False,
+            "contactEmail": profile.email if profile else "",
+            "contactLinkedIn": profile.linkedin_url if profile else "",
+            "show_display_name": True,
+            "show_headline": True,
+            "show_summary": True,
+            "show_contact_info": False,
+            "contact_email": profile.email if profile else "",
+            "contact_linkedin": profile.linkedin_url if profile else "",
+        }
+        selected_skills = [c for c in comp_ids]
+        evidence_perms = {}
+        for ev in user_evidence:
+            evidence_perms[str(ev.id)] = {
+                "shareSummary": True,
+                "allowDetail": False,
+                "share_summary": True,
+                "allow_detail": False,
+            }
+        template_id = master_cfg.template_id if (master_cfg and master_cfg.template_id in VALID_TEMPLATES) else "classic"
+        sections = {
+            "work_experience": True,
+            "portfolio_projects": True,
+            "education": True,
+            "certifications": True,
+            "publications": True,
+            "achievements": True,
+            "custom_sections": True,
+        }
+        return {
+            "identity": ident_config,
+            "shareVerifiedSkillsOnly": True,
+            "share_verified_skills_only": True,
+            "selectedSkillIds": selected_skills,
+            "selected_skill_ids": selected_skills,
+            "selectedCustomSkillIds": [],
+            "selected_custom_skill_ids": [],
+            "evidenceAccessLevel": "detail_inspection",
+            "evidence_access_level": "detail_inspection",
+            "selectedEvidencePermissions": evidence_perms,
+            "selected_evidence_permissions": evidence_perms,
+            "includeRoleAlignment": True,
+            "include_role_alignment": True,
+            "targetRoleId": "role-data-scientist",
+            "target_role_id": "role-data-scientist",
+            "allowRecruiterMessaging": True,
+            "allow_recruiter_messaging": True,
+            "templateId": template_id,
+            "template_id": template_id,
+            "expiryDays": 14,
+            "expiry_days": 14,
+            "customLinkLabel": "Standard Recruiter Share",
+            "custom_link_label": "Standard Recruiter Share",
+            "customHeadline": profile.headline if profile else "",
+            "custom_headline": profile.headline if profile else "",
+            "customSummary": profile.professional_summary if profile else "",
+            "custom_summary": profile.professional_summary if profile else "",
+            "sections": sections,
+            "isDefault": True,
+        }
+
+    raw_ident = raw_perms.get("identity") or {}
+    show_dn = raw_ident.get("showDisplayName", raw_ident.get("show_display_name", True))
+    show_hl = raw_ident.get("showHeadline", raw_ident.get("show_headline", True))
+    show_sm = raw_ident.get("showSummary", raw_ident.get("show_summary", True))
+    show_ci = raw_ident.get("showContactInfo", raw_ident.get("show_contact_info", False))
+    email = raw_ident.get("contactEmail", raw_ident.get("contact_email", profile.email if profile else ""))
+    linkedin = raw_ident.get("contactLinkedIn", raw_ident.get("contact_linkedin", profile.linkedin_url if profile else ""))
+
+    ident_config = {
+        "showDisplayName": show_dn,
+        "showHeadline": show_hl,
+        "showSummary": show_sm,
+        "showContactInfo": show_ci,
+        "contactEmail": email,
+        "contactLinkedIn": linkedin,
+        "show_display_name": show_dn,
+        "show_headline": show_hl,
+        "show_summary": show_sm,
+        "show_contact_info": show_ci,
+        "contact_email": email,
+        "contact_linkedin": linkedin,
+    }
+
+    raw_skills = raw_perms.get("selectedSkillIds") or raw_perms.get("selected_skill_ids") or []
+    if not isinstance(raw_skills, list):
+        raw_skills = []
+    filtered_skills = [
+        s for s in raw_skills
+        if str(s) in valid_skill_id_set or str(s).lower() in valid_skill_id_set
+    ]
+
+    raw_custom = raw_perms.get("selectedCustomSkillIds") or raw_perms.get("selected_custom_skill_ids") or []
+    if not isinstance(raw_custom, list):
+        raw_custom = []
+
+    raw_ev = raw_perms.get("selectedEvidencePermissions") or raw_perms.get("selected_evidence_permissions") or {}
+    clean_ev = {}
+    if isinstance(raw_ev, dict):
+        for ev_k, ev_v in raw_ev.items():
+            if str(ev_k) in valid_ev_id_set and isinstance(ev_v, dict):
+                s_sum = ev_v.get("shareSummary", ev_v.get("share_summary", True))
+                a_det = ev_v.get("allowDetail", ev_v.get("allow_detail", False))
+                clean_ev[str(ev_k)] = {
+                    "shareSummary": s_sum,
+                    "allowDetail": a_det,
+                    "share_summary": s_sum,
+                    "allow_detail": a_det,
+                }
+
+    sections = raw_perms.get("sections")
+    if not isinstance(sections, dict):
+        sections = {
+            "work_experience": True,
+            "portfolio_projects": True,
+            "education": True,
+            "certifications": True,
+            "publications": True,
+            "achievements": True,
+            "custom_sections": True,
+        }
+
+    template_id = raw_perms.get("templateId") or raw_perms.get("template_id") or (master_cfg.template_id if master_cfg else "classic")
+    if template_id not in VALID_TEMPLATES:
+        template_id = "classic"
+
+    expiry_days = raw_perms.get("expiryDays") if "expiryDays" in raw_perms else raw_perms.get("expiry_days", 14)
+    link_label = raw_perms.get("customLinkLabel") or raw_perms.get("custom_link_label") or "Standard Recruiter Share"
+    role_align = raw_perms.get("includeRoleAlignment") if "includeRoleAlignment" in raw_perms else raw_perms.get("include_role_alignment", True)
+    target_role = raw_perms.get("targetRoleId") or raw_perms.get("target_role_id") or "role-data-scientist"
+    allow_msg = raw_perms.get("allowRecruiterMessaging") if "allowRecruiterMessaging" in raw_perms else raw_perms.get("allow_recruiter_messaging", True)
+
+    return {
+        "identity": ident_config,
+        "shareVerifiedSkillsOnly": True,
+        "share_verified_skills_only": True,
+        "selectedSkillIds": filtered_skills,
+        "selected_skill_ids": filtered_skills,
+        "selectedCustomSkillIds": raw_custom,
+        "selected_custom_skill_ids": raw_custom,
+        "evidenceAccessLevel": raw_perms.get("evidenceAccessLevel") or raw_perms.get("evidence_access_level") or "detail_inspection",
+        "evidence_access_level": raw_perms.get("evidenceAccessLevel") or raw_perms.get("evidence_access_level") or "detail_inspection",
+        "selectedEvidencePermissions": clean_ev,
+        "selected_evidence_permissions": clean_ev,
+        "includeRoleAlignment": bool(role_align),
+        "include_role_alignment": bool(role_align),
+        "targetRoleId": target_role,
+        "target_role_id": target_role,
+        "allowRecruiterMessaging": bool(allow_msg),
+        "allow_recruiter_messaging": bool(allow_msg),
+        "templateId": template_id,
+        "template_id": template_id,
+        "expiryDays": expiry_days,
+        "expiry_days": expiry_days,
+        "customLinkLabel": link_label,
+        "custom_link_label": link_label,
+        "customHeadline": raw_perms.get("customHeadline") or raw_perms.get("custom_headline") or (profile.headline if profile else ""),
+        "custom_headline": raw_perms.get("customHeadline") or raw_perms.get("custom_headline") or (profile.headline if profile else ""),
+        "customSummary": raw_perms.get("customSummary") or raw_perms.get("custom_summary") or (profile.professional_summary if profile else ""),
+        "custom_summary": raw_perms.get("customSummary") or raw_perms.get("custom_summary") or (profile.professional_summary if profile else ""),
+        "sections": sections,
+        "isDefault": False,
+    }
+
+
+@router.get("/permissions")
+def get_sharing_permissions(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the user's authoritative saved sharing permissions from PostgreSQL.
+    If none saved yet, returns secure defaults populated with user's verified competencies.
+    """
+    user_id = user.id
+    config = db.query(UserPassportConfigRecord).filter(
+        UserPassportConfigRecord.owner_user_id == user_id
+    ).first()
+    
+    saved_perms = config.sharing_permissions if config else None
+    return format_canonical_permissions(user_id, saved_perms, db, master_cfg=config)
+
+
+@router.put("/permissions")
+def update_sharing_permissions(
+    payload: SharePermissionsInput,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Persists the user's authoritative baseline sharing permissions to PostgreSQL.
+    Validates verified competencies and user-owned evidence items.
+    """
+    user_id = user.id
+    config = db.query(UserPassportConfigRecord).filter(
+        UserPassportConfigRecord.owner_user_id == user_id
+    ).first()
+    if not config:
+        config = UserPassportConfigRecord(
+            owner_user_id=user_id,
+            title="Master Skill Passport",
+            template_id="classic",
+            sections_config=DEFAULT_SECTIONS_CONFIG,
+            work_experiences=[],
+            education_entries=[],
+            portfolio_projects=[],
+            certifications=[],
+            publications=[],
+            achievements=[],
+            custom_sections=[],
+        )
+        db.add(config)
+
+    raw_dict = payload.model_dump()
+    canonical_perms = format_canonical_permissions(user_id, raw_dict, db, master_cfg=config)
+    
+    config.sharing_permissions = canonical_perms
+    db.commit()
+    db.refresh(config)
+    invalidate_draft_cache(user_id)
+    logger.info(f"Persisted authoritative sharing permissions for user {user_id}")
+    return canonical_perms
+
+# ==============================================================================
 # RECRUITER MESSAGING & INBOX (PROTECTED)
 
 # ==============================================================================
@@ -1500,9 +1928,10 @@ def mark_recruiter_message_read(
     """Toggle read status of a recruiter message and sync linked notification."""
     if not _is_valid_uuid(message_id):
         raise HTTPException(status_code=400, detail="Invalid message UUID format")
+    u_uuid = uuid.UUID(str(user.id)) if not isinstance(user.id, uuid.UUID) else user.id
     msg = db.query(RecruiterMessage).filter(
         RecruiterMessage.id == uuid.UUID(message_id),
-        RecruiterMessage.recipient_user_id == user.id,
+        RecruiterMessage.recipient_user_id == u_uuid,
     ).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Recruiter message not found")
@@ -1520,6 +1949,69 @@ def mark_recruiter_message_read(
     db.commit()
     return {"id": str(msg.id), "isRead": msg.is_read}
 
+
+
+class CandidateReplyRequest(BaseModel):
+    reply_body: str = Field(..., min_length=2)
+
+
+@router.post("/messages/{message_id}/reply")
+def reply_to_recruiter_message(
+    message_id: str,
+    payload: CandidateReplyRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Allows candidate to reply to an in-app message received from a recruiter."""
+    if not _is_valid_uuid(message_id):
+        raise HTTPException(status_code=400, detail="Invalid message UUID format")
+
+    cand_id = uuid.UUID(str(user.id)) if isinstance(user.id, (str, uuid.UUID)) else user.id
+    msg = db.query(RecruiterMessage).filter(
+        RecruiterMessage.id == uuid.UUID(message_id),
+        RecruiterMessage.recipient_user_id == cand_id,
+    ).first()
+
+    if not msg:
+        raise HTTPException(status_code=404, detail="Recruiter message not found.")
+
+    now = datetime.now(timezone.utc)
+    msg.reply_body = payload.reply_body.strip()
+    msg.replied_at = now
+
+    # Deliver persistent notification to sender recruiter if known
+    if msg.sender_user_id:
+        recruiter_uid = uuid.UUID(str(msg.sender_user_id)) if isinstance(msg.sender_user_id, (str, uuid.UUID)) else msg.sender_user_id
+        cand_prof = db.query(UserProfile).filter(UserProfile.id == cand_id).first()
+        cand_name = cand_prof.display_name if cand_prof and cand_prof.display_name else "Candidate"
+        rec_notif = UserNotification(
+            user_id=recruiter_uid,
+            category="candidate_reply",
+            severity="info",
+            title=f"Reply from {cand_name}",
+            description=payload.reply_body.strip()[:140],
+            action_route="/recruiter/inbox",
+            action_label="Open Inbox",
+            entity_type="recruiter_message",
+            entity_id=str(msg.id),
+            read=False,
+        )
+        db.add(rec_notif)
+
+    event = ShareAccessEvent(
+        share_link_id=msg.share_link_id,
+        action="candidate_replied",
+        details=f"Candidate replied to recruiter message '{msg.subject}'.",
+    )
+    db.add(event)
+    db.commit()
+
+    return {
+        "success": True,
+        "messageId": str(msg.id),
+        "replyBody": msg.reply_body,
+        "repliedAt": msg.replied_at.isoformat(),
+    }
 
 # ==============================================================================
 # PERSISTENT IN-APP NOTIFICATIONS (SUPABASE POSTGRESQL + REALTIME)
@@ -1714,7 +2206,7 @@ def get_public_share_projection(
             raise HTTPException(status_code=404, detail="Shared passport link not found or invalid.")
     now_utc = datetime.now(timezone.utc)
     # Dynamic Expiration Check
-    if link.status == "active" and link.expires_at and link.expires_at < now_utc:
+    if link.status == "active" and _is_expired(link.expires_at, now_utc):
         link.status = "expired"
         db.commit()
     # If active, track access count and event
@@ -1764,7 +2256,7 @@ def get_public_evidence_detail(
         ).first()
         if not link:
             raise HTTPException(status_code=404, detail="Active share link not found.")
-        if link.expires_at and link.expires_at < datetime.now(timezone.utc):
+        if _is_expired(link.expires_at):
             raise HTTPException(status_code=410, detail="This share link has expired.")
         owner_user_id = link.owner_user_id
         perms = link.permissions_json or {}
@@ -1867,7 +2359,7 @@ def send_recruiter_message(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="This shared passport link is not active."
             )
-        if link.expires_at and link.expires_at < datetime.now(timezone.utc):
+        if _is_expired(link.expires_at):
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
                 detail="This share link has expired."

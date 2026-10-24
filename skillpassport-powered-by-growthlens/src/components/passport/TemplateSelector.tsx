@@ -172,7 +172,7 @@ export default function TemplateSelector({
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center border border-[#1C1C1C]/20 ${
                       isSelected
-                        ? "bg-[#DFE968] text-[#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918]"
                         : "bg-[#1C1C1C]/5 text-[#1C1C1C] group-hover:bg-[#DFE968]/50"
                     }`}
                   >
@@ -181,7 +181,7 @@ export default function TemplateSelector({
                   <span
                     className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                       isSelected
-                        ? "bg-[#DFE968] text-[#1C1C1C] border-[#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918]"
                         : "bg-stone-100 text-stone-600 border-stone-200"
                     }`}
                   >

@@ -6,7 +6,9 @@
 import { supabase } from "@/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = typeof window !== "undefined" ? "/api/v1" : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
+const API_BASE = typeof window !== "undefined"
+  ? "/api/v1"
+  : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;

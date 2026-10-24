@@ -38,5 +38,7 @@ export default function AgentationProvider() {
     return null;
   }
 
-  return <Agentation endpoint="http://localhost:4747" />;
+  // Only mount if an explicit endpoint is configured or standalone mode is requested
+  const endpoint = process.env.NEXT_PUBLIC_AGENTATION_ENDPOINT;
+  return endpoint ? <Agentation endpoint={endpoint} /> : <Agentation />;
 }

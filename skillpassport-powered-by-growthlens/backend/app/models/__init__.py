@@ -22,6 +22,14 @@ from backend.app.models.ai_governance import (
     HumanReviewTask,
     AIEvaluationSuiteRun,
 )
+from backend.app.models.sharing import (
+    ShareLinkRecord,
+    ShareAccessEvent,
+    RecruiterMessage,
+    UserCustomSkill,
+    UserNotification,
+    UserPassportConfigRecord,
+)
 from backend.app.models.career import (
     JobPostingRecord,
     RoleDemandModelRecord,
@@ -48,6 +56,11 @@ from backend.app.models.learning import (
     LearningMiniProjectModel,
     LearningActivityRecord,
     LearningActivityModel,
+)
+from backend.app.models.recruiter import (
+    EmployerOrganization,
+    OrganizationMembership,
+    CandidateShareInvitation,
 )
 
 __all__ = [
@@ -86,7 +99,7 @@ __all__ = [
     "UserTargetRoleRecord",
     "RoleMatchSnapshotRecord",
     "JobSearchCacheRecord",
-    "LearningRoadmap",
+"LearningRoadmap",
     "LearningStep",
     "LearningResourceItem",
     "LearningAttempt",
@@ -104,4 +117,7 @@ __all__ = [
     "LearningMiniProjectModel",
     "LearningActivityRecord",
     "LearningActivityModel",
+    "EmployerOrganization",
+    "OrganizationMembership",
+    "CandidateShareInvitation",
 ]

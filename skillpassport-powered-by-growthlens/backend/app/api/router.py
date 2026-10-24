@@ -13,6 +13,9 @@ from backend.app.learning.router import router as learning_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.vault import router as vault_router
 from backend.app.api.sharing import router as sharing_router
+from backend.app.api.recruiter_auth import router as recruiter_auth_router
+from backend.app.api.recruiter_jobs import router as recruiter_jobs_router
+from backend.app.api.recruiter_candidates import router as recruiter_candidates_router
 
 api_router = APIRouter()
 
@@ -57,3 +60,8 @@ api_router.include_router(vault_router)
 
 # Sharing & Recruiter Experience (Domain 6)
 api_router.include_router(sharing_router)
+
+# Recruiter & Hiring Manager Portal
+api_router.include_router(recruiter_auth_router)
+api_router.include_router(recruiter_jobs_router)
+api_router.include_router(recruiter_candidates_router)

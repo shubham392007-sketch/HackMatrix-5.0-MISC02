@@ -30,7 +30,7 @@ export default function FeaturesPage() {
         {/* ── HERO SECTION ────────────────────────────────────────────── */}
         <section className="relative max-w-[1400px] mx-auto px-5 md:px-10 pt-10 pb-16 lg:pt-16 lg:pb-24">
           <div className="text-center max-w-4xl mx-auto space-y-6">
-            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-black tracking-[0.14em] uppercase shadow-[2px_2px_0_0_#1A1918]">
               CAPABILITIES & WORKFLOW
             </span>
 
@@ -60,7 +60,7 @@ export default function FeaturesPage() {
                 <a
                   key={link.href}
                   href={link.href}
-                  className="px-4 py-2 rounded-full border border-[#1A1918] bg-[#FAF8F5] text-[10px] sm:text-[11px] font-extrabold tracking-wider uppercase hover:bg-[#1E3A5F] transition-all shadow-[2px_2px_0_0_#1A1918]"
+                  className="px-4 py-2 rounded-full border border-[#1A1918] bg-[#FAF8F5] text-[10px] sm:text-[11px] font-extrabold tracking-wider uppercase hover:bg-[#000000] hover:text-[#FAF8F5] transition-all shadow-[2px_2px_0_0_#1A1918]"
                 >
                   {link.label}
                 </a>
@@ -105,8 +105,8 @@ export default function FeaturesPage() {
 
                 <div className="p-6 rounded-[24px] border border-[#1A1918] bg-white shadow-[2px_2px_0_0_#1A1918] flex flex-col justify-between">
                   <div>
-                    <div className="w-9 h-9 rounded-xl bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-4 shadow-[1px_1px_0_0_#1A1918]">
-                      <FileCode className="w-4 h-4 text-[#1A1918]" />
+                    <div className="w-9 h-9 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-4 shadow-[1px_1px_0_0_#1A1918]">
+                      <FileCode className="w-4 h-4 text-[#FAF8F5]" />
                     </div>
                     <h3 className="text-lg font-black mb-2">Project Documents & Architecture</h3>
                     <p className="text-xs font-medium text-[#1A1918]/80 leading-relaxed">
@@ -118,7 +118,7 @@ export default function FeaturesPage() {
                   </div>
                 </div>
 
-                <div className="p-6 rounded-[24px] border border-[#1A1918] bg-[#1E3A5F]/40 shadow-[2px_2px_0_0_#1A1918] flex flex-col justify-between">
+                <div className="p-6 rounded-[24px] border border-[#1A1918] bg-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex flex-col justify-between">
                   <div>
                     <div className="w-9 h-9 rounded-xl bg-[#1A1918] text-white flex items-center justify-center mb-4 shadow-[1px_1px_0_0_#1A1918]">
                       <ShieldCheck className="w-4 h-4" />
@@ -142,7 +142,7 @@ export default function FeaturesPage() {
           <ScrollReveal>
             <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0_0_#1A1918]">
               <div className="max-w-2xl mb-10 pb-8 border-b border-[#1A1918]/15">
-                <span className="inline-block px-3 py-1 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-black tracking-wider uppercase mb-3 shadow-[1.5px_1.5px_0_0_#1A1918]">
+                <span className="inline-block px-3 py-1 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-black tracking-wider uppercase mb-3 shadow-[1.5px_1.5px_0_0_#1A1918]">
                   FEATURE 2 • COMPETENCY MAPPING
                 </span>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
@@ -160,19 +160,19 @@ export default function FeaturesPage() {
                   </p>
                   <ul className="space-y-3 font-semibold">
                     <li className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                      <span className="w-5 h-5 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
                       <span><strong>The Skill Claim:</strong> What competency is being asserted.</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                      <span className="w-5 h-5 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
                       <span><strong>Supporting Artifacts:</strong> Direct links to code commits, pull requests, and designs.</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                      <span className="w-5 h-5 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
                       <span><strong>Recency & Freshness:</strong> When the capability was last applied in practice.</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
+                      <span className="w-5 h-5 rounded-full bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
                       <span><strong>Confidence Metrics:</strong> Mathematical estimation based on quantity and diversity of evidence.</span>
                     </li>
                   </ul>
@@ -181,7 +181,7 @@ export default function FeaturesPage() {
                 <div className="p-6 rounded-[24px] border border-[#1A1918] bg-[#FAF8F5] shadow-[3px_3px_0_0_#1A1918] space-y-4">
                   <div className="flex items-center justify-between border-b border-[#1A1918]/15 pb-3">
                     <span className="text-xs font-black uppercase tracking-wider">SAMPLE PASSPORT NODE</span>
-                    <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5]">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-[#000000] border border-[#1A1918] text-[#FAF8F5]">
                       VERIFIED
                     </span>
                   </div>
@@ -227,8 +227,8 @@ export default function FeaturesPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="p-6 rounded-[24px] border border-[#1A1918] bg-white shadow-[2px_2px_0_0_#1A1918]">
-                  <div className="w-8 h-8 rounded-lg bg-[#1E3A5F] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-3">
-                    <CheckCircle2 className="w-4 h-4 text-[#1A1918]" />
+                  <div className="w-8 h-8 rounded-lg bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center mb-3">
+                    <CheckCircle2 className="w-4 h-4 text-[#FAF8F5]" />
                   </div>
                   <h4 className="text-base font-black mb-2">Proven Matches</h4>
                   <p className="text-xs font-medium text-[#1A1918]/80 leading-relaxed">
@@ -265,7 +265,7 @@ export default function FeaturesPage() {
           <ScrollReveal>
             <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[36px] p-6 sm:p-10 lg:p-12 shadow-[5px_5px_0_0_#1A1918]">
               <div className="max-w-2xl mb-10 pb-8 border-b border-[#1A1918]/15">
-                <span className="inline-block px-3 py-1 rounded-full border border-[#1A1918] bg-[#1E3A5F] text-[10px] font-black tracking-wider uppercase mb-3 shadow-[1.5px_1.5px_0_0_#1A1918]">
+                <span className="inline-block px-3 py-1 rounded-full border border-[#1A1918] bg-[#000000] text-[#FAF8F5] text-[10px] font-black tracking-wider uppercase mb-3 shadow-[1.5px_1.5px_0_0_#1A1918]">
                   FEATURE 4 • ACTION ENGINE
                 </span>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
@@ -292,7 +292,7 @@ export default function FeaturesPage() {
                   <p className="text-xs font-medium text-[#1A1918]/80 leading-relaxed">
                     Learning is only verified when backed by applied work. Every pathway defines clear project or code milestones to prove comprehension.
                   </p>
-                  <div className="p-3 bg-[#1E3A5F]/50 rounded-xl border border-[#1A1918] text-xs font-mono">
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#1A1918] text-xs font-mono">
                     PROOF TARGET: Ship Blue/Green Router in Staging
                   </div>
                 </div>
@@ -322,7 +322,7 @@ export default function FeaturesPage() {
                   <span className="text-[#1A1918]/60 block mb-1">LAYER 1</span>
                   IMMUTABLE EVIDENCE
                 </div>
-                <div className="p-4 bg-[#1E3A5F]/50 rounded-xl border border-[#1A1918]">
+                <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#1A1918]">
                   <span className="text-[#1A1918]/60 block mb-1">LAYER 2</span>
                   TAXONOMY MAPPING
                 </div>

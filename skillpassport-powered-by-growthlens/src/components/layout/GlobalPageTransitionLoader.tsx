@@ -334,8 +334,8 @@ export default function GlobalPageTransitionLoader() {
           className="fixed top-0 left-0 right-0 z-[99999] h-[3.5px] pointer-events-none transition-all duration-200 ease-out"
           style={{
             width: `${progress}%`,
-            background: "#1E3A5F",
-            boxShadow: "0 0 14px rgba(30, 58, 95, 0.6), 0 0 4px #1C1C1C",
+            background: "#000000",
+            boxShadow: "0 0 14px rgba(0, 0, 0, 0.6), 0 0 4px #1A1918",
           }}
         />
       )}

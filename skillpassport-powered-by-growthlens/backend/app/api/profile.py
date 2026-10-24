@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
@@ -174,6 +175,11 @@ def get_my_profile(
             created_at=profile.created_at,
             updated_at=profile.updated_at,
         )
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Error fetching/creating profile for user {current_user.id}: {e}")

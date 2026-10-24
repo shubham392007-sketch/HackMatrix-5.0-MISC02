@@ -39,7 +39,7 @@ router = APIRouter(prefix="/career", tags=["Domain: Career Intelligence & Role D
 # ==============================================================================
 
 class JobDiscoveryRequest(BaseModel):
-    mode: str = Field(..., description="'mode_a_skills' (skills-derived) or 'mode_b_role' (explicit role)")
+    mode: str = Field(..., description="'mode_a_skills' (skills-derived), 'mode_b_role' (explicit role), or 'mode_c_recruiter' (recruiter-published jobs)")
     query: Optional[str] = Field(None, description="Role title to search for (required for Mode B)")
     location: Optional[str] = Field(None, description="Optional location / country name")
     country_code: Optional[str] = Field(None, description="Optional 2-letter ISO country code (e.g. 'US', 'IN', 'GB')")
@@ -750,6 +750,11 @@ def get_job_details(
         "posted_at": job.posted_at.isoformat() if job.posted_at else None,
         "retrieved_at": job.retrieved_at.isoformat(),
         "extracted_requirements": job.extracted_requirements or [],
+        "organization_id": str(job.organization_id) if job.organization_id else None,
+        "recruiter_user_id": str(job.recruiter_user_id) if job.recruiter_user_id else None,
+        "public_recruiter_name": job.public_recruiter_name,
+        "public_recruiter_email": job.public_recruiter_email,
+        "status": job.status,
     }
 
 

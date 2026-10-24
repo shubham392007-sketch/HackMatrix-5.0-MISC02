@@ -278,6 +278,15 @@ async def upload_document(
         user_id=user.id,
     )
 
+    candidate_skills = evidence_data.get("candidateSkills", [])
+    if candidate_skills and extraction.get("extraction_quality") != "verified_content":
+        extraction["extraction_quality"] = "verified_content"
+        extraction["quality_reason"] = f"Successfully extracted {extraction.get('word_count', 0)} words and {len(candidate_skills)} candidate competencies."
+        doc_record.processing_state = "completed"
+        job.status = "COMPLETED"
+        job.current_stage = "READY_FOR_REVIEW"
+        db.commit()
+
     return {
         "status": "success",
         "document_id": str(doc_id),

@@ -40,6 +40,7 @@ interface JiraProjectItem {
 export default function JiraSourceFlow() {
   const { sources, refreshEvidenceData, addNotification } = useEvidence();
   const currentSource = sources.find((s) => s.type === "jira" && s.status === "connected");
+  const [optimisticConnected, setOptimisticConnected] = useState<boolean>(false);
 
   const [siteUrl, setSiteUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -52,25 +53,31 @@ export default function JiraSourceFlow() {
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const isJiraConnected = Boolean(currentSource || optimisticConnected || projects.length > 0);
 
   useEffect(() => {
-    if (currentSource) {
-      loadProjects();
-    }
+    loadProjects(false);
   }, [currentSource?.id]);
 
-  const loadProjects = async () => {
+  const loadProjects = async (showNotification = false) => {
     setLoadingProjects(true);
     setConnectError(null);
     try {
       const data = await listJiraProjects();
       if (data && Array.isArray(data.projects)) {
         setProjects(data.projects);
+        if (data.projects.length > 0) {
+          setOptimisticConnected(true);
+        }
       }
     } catch (err: any) {
+      if (err?.status === 404 || err?.message?.toLowerCase().includes("no active jira connection")) {
+        // Jira not connected yet, normal initial state
+        return;
+      }
       console.warn("Could not load Jira projects:", err);
       const isAuthError = err?.status === 401 || err?.message?.toLowerCase().includes("unauthorized") || err?.message?.toLowerCase().includes("forbidden");
-      if (isAuthError) {
+      if (isAuthError && showNotification) {
         addNotification({
           title: "Source connection needs attention",
           description: "Jira authorization has expired or is invalid. Please reconnect your account.",
@@ -104,6 +111,7 @@ export default function JiraSourceFlow() {
       // 2. Connect and store encrypted credentials
       await connectJira(siteUrl.trim(), email.trim(), apiToken.trim());
 
+      setOptimisticConnected(true);
       setApiToken("");
       setStatusMessage("Jira connected successfully! Loading accessible projects...");
       addNotification({
@@ -116,8 +124,8 @@ export default function JiraSourceFlow() {
         actionLabel: "View Projects",
         dedupKey: `jira_connect_${Date.now()}`,
       });
-      await refreshEvidenceData();
-      await loadProjects();
+      await loadProjects(true);
+      await refreshEvidenceData(true);
     } catch (err: any) {
       const errMsg = err.message || "Failed to validate or connect Jira Cloud credentials.";
       setConnectError(errMsg);
@@ -163,7 +171,7 @@ export default function JiraSourceFlow() {
         actionLabel: "View Ingestion Runs",
         dedupKey: `jira_sync_${projectKey}_${Date.now()}`,
       });
-      await refreshEvidenceData();
+      await refreshEvidenceData(true);
     } catch (err: any) {
       const errMsg = err.message || `Failed to sync project ${projectKey}.`;
       setConnectError(errMsg);
@@ -210,7 +218,7 @@ export default function JiraSourceFlow() {
         actionLabel: "View Ingestion Runs",
         dedupKey: `jira_sync_${Date.now()}`,
       });
-      await refreshEvidenceData();
+      await refreshEvidenceData(true);
     } catch (err: any) {
       const errMsg = err.message || "Failed to update Jira projects or start sync.";
       setConnectError(errMsg);
@@ -230,15 +238,23 @@ export default function JiraSourceFlow() {
   };
 
   const handleDisconnect = async () => {
-    if (!currentSource) return;
+    const targetSource = currentSource || sources.find((s) => s.type === "jira");
+    if (!targetSource?.id) {
+      setOptimisticConnected(false);
+      setProjects([]);
+      setStatusMessage("Jira disconnected.");
+      await refreshEvidenceData(true);
+      return;
+    }
     if (!confirm("Are you sure you want to disconnect Jira? Existing imported evidence items will be preserved.")) return;
 
     setDisconnecting(true);
     try {
-      await disconnectSource(currentSource.id);
+      await disconnectSource(targetSource.id);
+      setOptimisticConnected(false);
       setProjects([]);
       setStatusMessage("Jira disconnected successfully.");
-      await refreshEvidenceData();
+      await refreshEvidenceData(true);
     } catch (err: any) {
       setConnectError(err.message || "Failed to disconnect Jira.");
     } finally {
@@ -272,7 +288,7 @@ export default function JiraSourceFlow() {
         </div>
 
         {statusMessage && (
-          <div className="p-4 rounded-xl bg-[#DFE968] border border-[#1C1C1C] text-xs font-black text-[#1C1C1C] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-[#000000] border border-[#1A1918] text-xs font-black text-[#FAF8F5] flex items-center justify-between">
             <span>{statusMessage}</span>
           </div>
         )}
@@ -284,7 +300,7 @@ export default function JiraSourceFlow() {
           </div>
         )}
 
-        {!currentSource ? (
+        {!isJiraConnected ? (
           /* Connect Jira Form */
           <div className="gl-card p-6 md:p-8 bg-[#FBF6DF] space-y-6">
             <div className="space-y-1 border-b border-[#1C1C1C]/15 pb-4">
@@ -376,20 +392,22 @@ export default function JiraSourceFlow() {
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Layers className="w-4 h-4 text-[#1C1C1C]" />
-                  <h4 className="text-sm font-black text-[#1C1C1C]">{currentSource.accountIdentity}</h4>
+                  <h4 className="text-sm font-black text-[#1C1C1C]">
+                    {currentSource?.accountIdentity || email || siteUrl || "Connected Jira Cloud"}
+                  </h4>
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#DFE968] border border-[#1C1C1C] text-[#4A7A4E]">
                     ACTIVE
                   </span>
                 </div>
                 <span className="text-[11px] text-[#1C1C1C]/65 block mt-1">
-                  Last sync: {currentSource.lastSync} • Imported items: {currentSource.importedRecordsCount}
+                  Last sync: {currentSource?.lastSync || "Just now"} • Imported items: {currentSource?.importedRecordsCount ?? "0"}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={loadProjects}
+                  onClick={() => loadProjects(true)}
                   disabled={loadingProjects}
                   className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1.5"
                   title="Reload Jira projects"

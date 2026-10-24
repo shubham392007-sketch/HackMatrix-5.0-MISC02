@@ -67,11 +67,11 @@ export default function EvidenceCenterPage() {
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-10 max-w-[1400px]">
+      <main className="p-6 lg:p-10 space-y-10 w-full max-w-[1400px] mx-auto">
         {/* ── 6.2 EDITORIAL METRICS ROW ─────────────────────────────────── */}
         <section>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full">
               <span className="text-[10px] font-black uppercase text-[#1C1C1C]/50 block mb-1">
                 TOTAL EVIDENCE
               </span>
@@ -89,7 +89,7 @@ export default function EvidenceCenterPage() {
               )}
             </div>
 
-            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#DFE968]/50 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#DFE968]/50 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full">
               <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 block mb-1">
                 INDEXED &amp; PROCESSED
               </span>
@@ -107,7 +107,7 @@ export default function EvidenceCenterPage() {
               )}
             </div>
 
-            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#F6BB84]/40 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#F6BB84]/40 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full">
               <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 block mb-1">
                 AWAITING REVIEW
               </span>
@@ -125,7 +125,7 @@ export default function EvidenceCenterPage() {
               )}
             </div>
 
-            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full">
               <span className="text-[10px] font-black uppercase text-[#1C1C1C]/50 block mb-1">
                 CONNECTED SOURCES
               </span>
@@ -143,7 +143,7 @@ export default function EvidenceCenterPage() {
               )}
             </div>
 
-            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#F6C8D6]/40 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#F6C8D6]/40 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full">
               <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60 block mb-1">
                 FAILED RUNS
               </span>
@@ -194,17 +194,19 @@ export default function EvidenceCenterPage() {
               return (
                 <div
                   key={st.num}
-                  className={`p-3.5 rounded-xl border border-[#1A1918] flex flex-col justify-between shadow-[1.5px_1.5px_0_0_#1A1918] ${
-                    isActive ? "bg-[#1E3A5F] text-[#FAF8F5]" : "bg-[#FAF8F5] text-[#1A1918]"
+                  className={`p-3.5 rounded-xl border border-[#1A1918] flex flex-col justify-between shadow-[1.5px_1.5px_0_0_#1A1918] h-full min-h-[96px] ${
+                    isActive ? "bg-[#000000] text-[#FAF8F5]" : "bg-[#FAF8F5] text-[#1A1918]"
                   }`}
                 >
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-[9px] font-mono font-bold ${isActive ? "text-[#FAF8F5]/70" : "text-[#1A1918]/50"}`}>{st.num}</span>
-                      <span className={`w-2 h-2 rounded-full ${isActive ? "bg-[#FAF8F5]" : "bg-[#1A1918]"}`} />
+                  <div className="flex flex-col justify-between h-full">
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className={`text-[9.5px] font-mono font-bold ${isActive ? "text-[#FAF8F5]/70" : "text-[#1A1918]/50"}`}>{st.num}</span>
+                        <span className={`w-2 h-2 rounded-full ${isActive ? "bg-[#DFE968]" : "bg-[#1A1918]"}`} />
+                      </div>
+                      <h4 className={`text-xs font-black tracking-tight leading-snug ${isActive ? "text-[#FAF8F5]" : "text-[#1A1918]"}`}>{st.name}</h4>
                     </div>
-                    <h4 className={`text-xs font-black ${isActive ? "text-[#FAF8F5]" : "text-[#1A1918]"}`}>{st.name}</h4>
-                    <p className={`text-[10px] mt-0.5 ${isActive ? "text-[#FAF8F5]/80" : "text-[#1A1918]/70"}`}>{st.desc}</p>
+                    <p className={`text-[10px] mt-2 font-medium leading-tight ${isActive ? "text-[#FAF8F5]/80" : "text-[#1A1918]/70"}`}>{st.desc}</p>
                   </div>
                 </div>
               );
@@ -225,7 +227,7 @@ export default function EvidenceCenterPage() {
           </div>
 
           {isDataLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
               {[1, 2].map((i) => (
                 <div
                   key={i}
@@ -263,7 +265,7 @@ export default function EvidenceCenterPage() {
               {sources.map((src) => (
                 <div
                   key={src.id}
-                  className="gl-card p-6 flex flex-col justify-between h-full bg-[#FBF6DF]"
+                  className="gl-card p-6 flex flex-col justify-between h-full bg-[#FBF6DF] !mt-0"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -282,14 +284,14 @@ export default function EvidenceCenterPage() {
                     <h4 className="text-base font-black text-[#1C1C1C] mb-1">{src.name}</h4>
                     <p className="text-xs font-medium text-[#1C1C1C]/75 mb-3">{src.accountIdentity}</p>
 
-                    <div className="space-y-1 text-[11px] font-bold text-[#1C1C1C]/80 border-t border-[#1C1C1C]/10 pt-3">
-                      <div className="flex justify-between">
-                        <span>Imported Items:</span>
+                    <div className="space-y-1.5 text-[11px] font-bold text-[#1C1C1C]/80 border-t border-[#1C1C1C]/10 pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#1C1C1C]/60">Imported Items:</span>
                         <span className="font-mono font-black">{src.importedRecordsCount}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Last Synced:</span>
-                        <span>{src.lastSync}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#1C1C1C]/60">Last Synced:</span>
+                        <span className="font-medium">{src.lastSync}</span>
                       </div>
                     </div>
                   </div>
@@ -304,6 +306,21 @@ export default function EvidenceCenterPage() {
                   </div>
                 </div>
               ))}
+
+              {sources.length < 3 && (
+                <Link
+                  href="/app/evidence/sources"
+                  className="p-6 rounded-[24px] border-2 border-dashed border-[#1C1C1C]/30 hover:border-[#1C1C1C] bg-[#FBF6DF]/40 hover:bg-[#FBF6DF] flex flex-col items-center justify-center text-center gap-3 transition-all group min-h-[200px]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white border border-[#1C1C1C] flex items-center justify-center group-hover:scale-105 transition-transform shadow-[1px_1px_0_0_#1C1C1C]">
+                    <Plus className="w-5 h-5 text-[#1C1C1C]" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-[#1C1C1C]">Connect Source</h4>
+                    <p className="text-xs text-[#1C1C1C]/60 mt-0.5">Integrate GitHub, Jira, or custom APIs</p>
+                  </div>
+                </Link>
+              )}
             </div>
           )}
         </section>
@@ -389,19 +406,19 @@ export default function EvidenceCenterPage() {
                   return (
                     <div
                       key={ev.id}
-                      className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FBF1CF]/60 transition-colors"
+                      className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-[#FBF1CF]/60 transition-colors"
                     >
-                      <div className="space-y-1 max-w-xl">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60 uppercase">
-                            [{ev.sourceType.toUpperCase()}]
+                      <div className="space-y-1.5 flex-1 min-w-0 pr-0 lg:pr-6">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-mono font-bold text-[#1C1C1C]/60 uppercase bg-white/70 px-2 py-0.5 rounded border border-[#1C1C1C]/15">
+                            {ev.sourceType.toUpperCase()}
                           </span>
-                          <h4 className="text-sm font-black text-[#1C1C1C]">{ev.title}</h4>
+                          <h4 className="text-sm font-black text-[#1C1C1C] truncate">{ev.title}</h4>
                         </div>
                         <p className="text-xs font-medium text-[#1C1C1C]/75 line-clamp-1">
                           {ev.description}
                         </p>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-[#1C1C1C]/60 pt-1">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-[#1C1C1C]/60 pt-0.5">
                           <span>Project: {ev.project}</span>
                           <span>•</span>
                           <span>Date: {ev.date}</span>
@@ -415,13 +432,13 @@ export default function EvidenceCenterPage() {
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 shrink-0 self-start lg:self-center">
                         <ProcessingStatusBadge status={ev.processingStatus} />
                         <ReviewStatusBadge status={ev.reviewStatus} />
 
                         {isOllamaAnalyzed ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
-                            <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1A1918] bg-[#000000] text-[#FAF8F5]">
+                            <Cpu className="w-3 h-3 text-[#FAF8F5]" />
                             {analysis.model_name || "qwen3:8b"}
                           </span>
                         ) : isRuleBased ? (

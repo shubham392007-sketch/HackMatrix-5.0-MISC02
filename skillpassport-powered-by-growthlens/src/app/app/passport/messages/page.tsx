@@ -7,6 +7,7 @@ import { sharingApi } from "@/lib/sharingApi";
 import { supabase } from "@/lib/supabase/client";
 import { useEvidence } from "@/context/EvidenceContext";
 import { RecruiterMessage } from "@/types/sharing";
+import { replyToRecruiterMessage } from "@/lib/recruiterApi";
 import {
   Mail,
   Building2,
@@ -22,6 +23,8 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Send,
+  RotateCw,
 } from "lucide-react";
 
 export default function RecruiterMessagesPage() {
@@ -30,6 +33,39 @@ export default function RecruiterMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<RecruiterMessage | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+
+  const handleSendReply = async () => {
+    if (!selectedMessage || !replyText.trim()) return;
+    setIsReplying(true);
+    try {
+      const res = await replyToRecruiterMessage(selectedMessage.id, replyText.trim());
+      setSelectedMessage((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              reply_body: res.replyBody,
+              replyBody: res.replyBody,
+              replied_at: res.repliedAt,
+              repliedAt: res.repliedAt,
+            }
+          : prev
+      );
+      setMessages((prev: any[]) =>
+        prev.map((m) =>
+          m.id === selectedMessage.id
+            ? { ...m, reply_body: res.replyBody, replyBody: res.replyBody, replied_at: res.repliedAt, repliedAt: res.repliedAt }
+            : m
+        )
+      );
+      setReplyText("");
+    } catch (err: any) {
+      alert(err.message || "Could not send reply.");
+    } finally {
+      setIsReplying(false);
+    }
+  };
 
   const fetchMessages = useCallback(async (isSilent: boolean = false) => {
     try {
@@ -160,7 +196,7 @@ export default function RecruiterMessagesPage() {
         {/* Status Banner */}
         <div className="p-4 rounded-2xl bg-white border border-[#1C1C1C]/15 flex items-center justify-between shadow-[2px_2px_0_0_#1C1C1C]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center text-[#1C1C1C]">
+            <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] flex items-center justify-center text-[#FAF8F5]">
               <Mail className="w-5 h-5" />
             </div>
             <div>
@@ -176,12 +212,12 @@ export default function RecruiterMessagesPage() {
             <button
               onClick={() => fetchMessages(true)}
               disabled={refreshing}
-              className="p-1.5 rounded-full border border-[#1C1C1C]/20 hover:bg-[#1C1C1C]/5 text-[#1C1C1C] text-xs transition-colors"
+              className="p-1.5 rounded-full border border-[#1A1918]/20 hover:bg-[#1A1918]/5 text-[#1A1918] text-xs transition-colors"
               title="Refresh messages"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <span className="text-xs font-black px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C]">
+            <span className="text-xs font-black px-3 py-1 rounded-full bg-[#000000] text-[#FAF8F5] border border-[#1A1918]">
               {unreadCount} Unread Inquiry{unreadCount === 1 ? "" : "ies"}
             </span>
           </div>
@@ -205,7 +241,7 @@ export default function RecruiterMessagesPage() {
             </div>
             <Link
               href="/app/passport/share"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#000000] hover:bg-[#1A1918] border border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918]"
             >
               <span>Create a Recruiter Share Link &rarr;</span>
             </Link>
@@ -307,6 +343,62 @@ export default function RecruiterMessagesPage() {
                     </div>
                   </div>
 
+                  {/* Candidate Existing Reply if already sent */}
+                  {((selectedMessage as any).reply_body || (selectedMessage as any).replyBody) && (
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between font-bold text-emerald-950">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          Your In-App Reply:
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-700">
+                          {(selectedMessage as any).replied_at || (selectedMessage as any).repliedAt
+                            ? new Date((selectedMessage as any).replied_at || (selectedMessage as any).repliedAt).toLocaleString()
+                            : ""}
+                        </span>
+                      </div>
+                      <p className="text-emerald-900 leading-relaxed whitespace-pre-wrap">
+                        {(selectedMessage as any).reply_body || (selectedMessage as any).replyBody}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* In-App Reply Composer */}
+                  <div className="space-y-2 pt-2 border-t border-[#1C1C1C]/10">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/60 block">
+                      Send Reply to {selectedMessage.senderName}:
+                    </span>
+                    <div className="space-y-2">
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        rows={3}
+                        placeholder={`Write an in-app reply to ${selectedMessage.senderName} (${selectedMessage.company || "Hiring Team"})...`}
+                        className="w-full bg-[#FAF8F5] border border-[#1C1C1C]/25 rounded-xl p-3 text-xs text-[#1C1C1C] placeholder:text-[#1C1C1C]/40 focus:outline-none focus:border-[#1C1C1C] font-sans"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          disabled={isReplying || !replyText.trim()}
+                          onClick={handleSendReply}
+                          className="px-4 py-2 rounded-full bg-[#1A1918] hover:bg-stone-800 text-xs font-bold text-white flex items-center gap-1.5 disabled:opacity-40"
+                        >
+                          {isReplying ? (
+                            <>
+                              <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Sending Reply...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Send In-App Reply</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Action Bar */}
                   <div className="pt-4 border-t border-[#1C1C1C]/15 flex items-center justify-between gap-3">
                     <span className="text-[11px] text-emerald-800 font-medium flex items-center gap-1">
@@ -318,7 +410,7 @@ export default function RecruiterMessagesPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleReadStatus(selectedMessage)}
-                        className="px-3.5 py-2 rounded-full border border-[#1C1C1C] text-xs font-bold text-[#1C1C1C] hover:bg-[#1C1C1C]/5 flex items-center gap-1"
+                        className="px-3.5 py-2 rounded-full border border-[#1A1918] text-xs font-bold text-[#1A1918] hover:bg-[#1A1918]/5 flex items-center gap-1"
                       >
                         {selectedMessage.isRead ? (
                           <>
@@ -335,7 +427,7 @@ export default function RecruiterMessagesPage() {
 
                       <a
                         href={`mailto:${selectedMessage.senderEmail}?subject=${encodeURIComponent(`Re: ${selectedMessage.subject || "Skill Passport Inquiry"}`)}`}
-                        className="px-5 py-2.5 rounded-full bg-[#DFE968] hover:bg-[#d4df55] border-[1.5px] border-[#1C1C1C] text-xs font-black uppercase tracking-wider text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-1.5"
+                        className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5"
                       >
                         <Mail className="w-3.5 h-3.5" />
                         <span>Reply via Email</span>

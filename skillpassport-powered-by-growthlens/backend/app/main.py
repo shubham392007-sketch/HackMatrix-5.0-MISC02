@@ -16,6 +16,8 @@ logger = get_logger("main")
 async def lifespan(app: FastAPI):
     settings = get_settings()
     setup_logging(debug=(settings.app_env == "development"))
+    from backend.app.core.security import validate_security_configuration
+    validate_security_configuration(settings)
     logger.info(
         f"Starting {settings.app_name} [v{settings.app_version}] in {settings.app_env} mode"
     )
@@ -50,7 +52,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS configuration
+    # Response Compression for large payloads
+    from fastapi.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # CORS configuration - added last so it wraps as outermost middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -59,10 +65,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Response Compression for large payloads
-    from fastapi.middleware.gzip import GZipMiddleware
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # Centralized Exception Handler for Domain Exceptions
     @app.exception_handler(SkillPassportError)
@@ -102,9 +104,11 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        circuit_breaker.record_failure(exc)
+        from backend.app.db.session import _use_fallback
+        if not _use_fallback:
+            circuit_breaker.record_failure(exc)
         logger.error(
-            f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}"
+            f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"
         )
 
         is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
@@ -134,9 +138,11 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        circuit_breaker.record_failure(exc)
+        from backend.app.db.session import _use_fallback
+        if not _use_fallback:
+            circuit_breaker.record_failure(exc)
         logger.error(
-            f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}"
+            f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"
         )
         is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
         msg = (

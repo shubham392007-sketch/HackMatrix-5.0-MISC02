@@ -354,3 +354,103 @@ def test_jira_secrets_never_exposed_in_api():
     content = resp.text
     assert "valid_token_12345" not in content
     assert "fake_token_12345" not in content
+
+
+@pytest.mark.asyncio
+async def test_jira_search_issues_v3_jql_and_pagination():
+    """Verifies that search_issues queries /rest/api/3/search/jql and processes nextPageToken."""
+    jira = JiraCloudClient("https://company.atlassian.net", "alex@company.com", "fake_token")
+
+    page1_data = {
+        "issues": [
+            {
+                "id": "1001",
+                "key": "TEST-1",
+                "fields": {
+                    "summary": "First Issue",
+                    "description": "ADF or plain text",
+                    "status": {"name": "In Progress", "statusCategory": {"key": "indeterminate"}},
+                    "issuetype": {"name": "Story"},
+                    "components": [{"name": "Auth"}],
+                    "labels": ["security"],
+                },
+            }
+        ],
+        "nextPageToken": "token_abc123",
+        "isLast": False,
+    }
+
+    page2_data = {
+        "issues": [
+            {
+                "id": "1002",
+                "key": "TEST-2",
+                "fields": {
+                    "summary": "Second Issue",
+                    "description": "ADF or plain text",
+                    "status": {"name": "Done", "statusCategory": {"key": "done"}},
+                    "issuetype": {"name": "Bug"},
+                    "components": [],
+                    "labels": [],
+                },
+            }
+        ],
+        "nextPageToken": None,
+        "isLast": True,
+    }
+
+    call_urls = []
+
+    async def mock_get(url, *args, **kwargs):
+        call_urls.append(url)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        params = kwargs.get("params", {})
+        if params.get("nextPageToken") == "token_abc123":
+            mock_resp.json.return_value = page2_data
+        else:
+            mock_resp.json.return_value = page1_data
+        return mock_resp
+
+    with patch("httpx.AsyncClient.get", side_effect=mock_get):
+        issues = await jira.search_issues("TEST", limit=10)
+        assert len(issues) == 2
+        assert issues[0]["key"] == "TEST-1"
+        assert issues[1]["key"] == "TEST-2"
+        assert all("/rest/api/3/search/jql" in u for u in call_urls)
+
+
+@pytest.mark.asyncio
+async def test_jira_search_issues_v2_fallback():
+    """Verifies that search_issues falls back to /rest/api/2/search if /search/jql returns 410 or 404."""
+    jira = JiraCloudClient("https://company.atlassian.net", "alex@company.com", "fake_token")
+
+    call_urls = []
+
+    async def mock_get(url, *args, **kwargs):
+        call_urls.append(url)
+        mock_resp = MagicMock()
+        if "/rest/api/3/search/jql" in url:
+            mock_resp.status_code = 410
+            mock_resp.json.return_value = {"errorMessages": ["Deprecated"]}
+        else:
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {
+                "issues": [
+                    {
+                        "id": "2001",
+                        "key": "FALLBACK-1",
+                        "fields": {"summary": "Fallback Issue", "description": ""},
+                    }
+                ],
+                "total": 1,
+            }
+        return mock_resp
+
+    with patch("httpx.AsyncClient.get", side_effect=mock_get):
+        issues = await jira.search_issues("FALLBACK", limit=10)
+        assert len(issues) == 1
+        assert issues[0]["key"] == "FALLBACK-1"
+        assert any("/rest/api/3/search/jql" in u for u in call_urls)
+        assert any("/rest/api/2/search" in u for u in call_urls)
+

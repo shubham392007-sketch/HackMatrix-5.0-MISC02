@@ -73,7 +73,7 @@ export default function SPHeader() {
                 }}
                 className={`text-[11px] font-extrabold tracking-[0.12em] uppercase transition-all py-1 relative inline-flex items-center gap-1.5 ${
                   isActive
-                    ? "text-[#1E3A5F] border-b-2 border-[#1E3A5F]"
+                    ? "text-[#000000] border-b-2 border-[#000000]"
                     : "text-[#1A1918]/70 hover:text-[#1A1918]"
                 }`}
               >
@@ -93,7 +93,7 @@ export default function SPHeader() {
               <Link
                 href="/app/evidence"
                 onClick={() => setNavigatingTarget("/app/evidence")}
-                className="bg-[#1E3A5F] hover:bg-[#162c48] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1A1918]"
+                className="bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1A1918]"
               >
                 {navigatingTarget === "/app/evidence" ? (
                   <>
@@ -130,7 +130,7 @@ export default function SPHeader() {
               <Link
                 href="/login?redirect=/app/onboarding"
                 onClick={() => setNavigatingTarget("/login?redirect=/app/onboarding")}
-                className="bg-[#1E3A5F] hover:bg-[#162c48] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1A1918]"
+                className="bg-[#000000] hover:bg-[#1A1918] border-[1.5px] border-[#1A1918] text-[#FAF8F5] text-[11px] font-black tracking-[0.08em] uppercase px-5 py-2.5 rounded-full inline-flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#1A1918]"
               >
                 {navigatingTarget === "/login?redirect=/app/onboarding" ? (
                   <>

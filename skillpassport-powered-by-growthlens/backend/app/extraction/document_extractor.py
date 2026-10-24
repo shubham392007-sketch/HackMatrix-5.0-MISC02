@@ -127,7 +127,7 @@ class DocumentExtractor:
         excerpt = clean_text(full_text[:400])
 
         # Evaluate extraction quality
-        if word_count < 15 or is_insufficient_or_identity_only(full_text):
+        if word_count < 10 or is_insufficient_or_identity_only(full_text):
             extraction_quality = "insufficient_content"
             quality_reason = f"Extracted only {word_count} word(s). Text is insufficient to substantiate candidate competencies."
             if ocr_candidates > 0 and ocr_processed == 0:

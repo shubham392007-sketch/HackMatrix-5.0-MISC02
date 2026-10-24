@@ -51,7 +51,7 @@ export default function TemplateTechnicalPortfolio({
           {projection.allowRecruiterMessaging && onOpenContact && (
             <button
               onClick={onOpenContact}
-              className="px-4 py-1.5 rounded-md bg-[#DFE968] text-[#1C1C1C] text-xs font-black uppercase tracking-wider hover:bg-[#d4df55] flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              className="px-4 py-1.5 rounded-md bg-[#000000] text-[#FAF8F5] text-xs font-black uppercase tracking-wider hover:bg-[#d4df55] flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
             >
               <Mail className="w-3.5 h-3.5" />
               <span>Contact Candidate</span>
@@ -136,7 +136,7 @@ export default function TemplateTechnicalPortfolio({
                           href={proj.repoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2 py-1 rounded bg-stone-100 hover:bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-bold flex items-center gap-1 text-[#1C1C1C]"
+                          className="px-2 py-1 rounded bg-stone-100 hover:bg-[#000000] hover:text-[#FAF8F5] border border-[#1C1C1C] text-[10px] font-bold flex items-center gap-1 text-[#1C1C1C]"
                         >
                           <GitBranch className="w-3 h-3" />
                           <span>Code</span>

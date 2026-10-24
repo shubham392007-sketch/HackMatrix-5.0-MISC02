@@ -97,7 +97,7 @@ export default function WorkAnalysisPage({
                   <span
                     className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border border-[#1C1C1C] ${
                       skill.status === "reviewed"
-                        ? "bg-[#DFE968] text-[#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918]"
                         : skill.status === "flagged"
                         ? "bg-[#F6C8D6] text-[#C85A54]"
                         : skill.status === "insufficient"

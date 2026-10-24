@@ -551,7 +551,7 @@ class JobSearchOrchestrator:
         self,
         db: Session,
         user_id: uuid.UUID,
-        mode: str,  # "mode_a_skills" or "mode_b_role"
+        mode: str,  # "mode_a_skills", "mode_b_role", or "mode_c_recruiter"
         query: Optional[str] = None,
         location: Optional[str] = None,
         remote_only: bool = False,
@@ -560,7 +560,7 @@ class JobSearchOrchestrator:
         selected_skills: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
-        Main entry point for cost-aware, security-prioritized job discovery.
+Main entry point for cost-aware, security-prioritized job discovery across Mode A, Mode B, and Mode C.
         Enforces:
         - Exactly 1 Ollama inference call per uncached Mode A search
         - Exactly 1 provider request per search
@@ -573,8 +573,90 @@ class JobSearchOrchestrator:
         ollama_latency_ms = 0.0
         used_fallback = False
         skill_snapshot: Optional[str] = None
+        now = datetime.now(timezone.utc)
 
-        # 1. Mode A: Resolve skills and synthesize structured search intent
+        # ----------------------------------------------------------------------
+        # MODE C: Recruiter-Published Openings (Internal Verified Platform Jobs)
+        # ----------------------------------------------------------------------
+        if mode == "mode_c_recruiter":
+            search_query = (query or "").strip()
+            q = db.query(JobPostingRecord).filter(
+                JobPostingRecord.status == "published",
+                JobPostingRecord.provider == "recruiter_portal",
+            )
+            if search_query:
+                q = q.filter(
+                    (JobPostingRecord.title.ilike(f"%{search_query}%"))
+                    | (JobPostingRecord.description.ilike(f"%{search_query}%"))
+                    | (JobPostingRecord.company_name.ilike(f"%{search_query}%"))
+                )
+            if location:
+                q = q.filter(JobPostingRecord.location_text.ilike(f"%{location.strip()}%"))
+            if remote_only:
+                q = q.filter(JobPostingRecord.remote_status.in_(["remote", "hybrid"]))
+
+            postings = (
+                q.order_by(desc(JobPostingRecord.posted_at), desc(JobPostingRecord.created_at))
+                .limit(bounded_limit)
+                .all()
+            )
+
+            job_results = [
+                JobSearchResult(
+                    id=f"job-{p.id}",
+                    provider=p.provider,
+                    provider_job_id=p.provider_job_id,
+                    canonical_dedupe_key=p.canonical_dedupe_key,
+                    title=p.title,
+                    company_name=p.company_name,
+                    company_domain=p.company_domain,
+                    location_text=p.location_text,
+                    remote_status=p.remote_status,
+                    employment_type=p.employment_type,
+                    seniority=p.seniority,
+                    salary_min=p.salary_min,
+                    salary_max=p.salary_max,
+                    salary_currency=p.salary_currency,
+                    salary_period=p.salary_period,
+                    description=p.description,
+                    job_url=p.job_url,
+                    apply_url=p.apply_url,
+                    posted_at=p.posted_at.isoformat() if p.posted_at else None,
+                    retrieved_at=p.retrieved_at.isoformat() if p.retrieved_at else now.isoformat(),
+                    organization_id=str(p.organization_id) if p.organization_id else None,
+                    recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                    public_recruiter_name=p.public_recruiter_name,
+                    public_recruiter_email=p.public_recruiter_email,
+                    raw_metadata=p.raw_source_metadata or {},
+                    extracted_requirements=p.extracted_requirements or [],
+                )
+                for p in postings
+            ]
+
+            return {
+                "status": "success",
+                "mode": mode,
+                "query": search_query,
+                "location": location,
+                "remote_only": remote_only,
+                "influencing_skills": [],
+                "provider_used": "recruiter_portal",
+                "from_cache": False,
+                "is_stale": False,
+                "total_results": len(job_results),
+                "total_returned": len(job_results),
+                "retrieved_at": now.isoformat(),
+                "notice": (
+                    "Displaying verified employer job postings published directly on Skill Passport."
+                    if job_results
+                    else "No recruiter-published openings match your search criteria yet. Verified employers can post openings directly."
+                ),
+                "jobs": [j.model_dump() for j in job_results],
+            }
+
+        # ----------------------------------------------------------------------
+        # MODE A & B: Query Determination & Discovery Pipeline
+        # ----------------------------------------------------------------------
         if mode == "mode_a_skills":
             if selected_skills and isinstance(selected_skills, list) and len(selected_skills) > 0:
                 skills_data = selected_skills
@@ -637,7 +719,6 @@ class JobSearchOrchestrator:
         cache_key = self._generate_cache_key(mode, search_query, location, remote_only, skill_snapshot)
 
         # 2. Check Database Cache
-        now = datetime.now(timezone.utc)
         cached_entry = None
         try:
             cached_entry = db.query(JobSearchCacheRecord).filter(JobSearchCacheRecord.cache_key == cache_key).first()
@@ -671,6 +752,10 @@ class JobSearchOrchestrator:
                     apply_url=p.apply_url,
                     posted_at=p.posted_at.isoformat() if p.posted_at else None,
                     retrieved_at=p.retrieved_at.isoformat(),
+                    organization_id=str(p.organization_id) if p.organization_id else None,
+                    recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                    public_recruiter_name=p.public_recruiter_name,
+                    public_recruiter_email=p.public_recruiter_email,
                     raw_metadata=p.raw_source_metadata or {},
                     extracted_requirements=p.extracted_requirements or [],
                     local_relevance_score=(p.raw_source_metadata or {}).get("local_relevance_score"),
@@ -774,6 +859,72 @@ class JobSearchOrchestrator:
         provider_latency_sec = asyncio.get_event_loop().time() - provider_start
 
         if not executed_successfully and last_error:
+# Check if database has any existing postings to serve gracefully
+            first_term = search_query.split()[0] if search_query else ""
+            persisted_fallback = (
+                db.query(JobPostingRecord)
+                .filter(JobPostingRecord.title.ilike(f"%{first_term}%"))
+                .order_by(JobPostingRecord.retrieved_at.desc())
+                .limit(bounded_limit)
+                .all()
+            )
+            if not persisted_fallback:
+                persisted_fallback = (
+                    db.query(JobPostingRecord)
+                    .order_by(JobPostingRecord.retrieved_at.desc())
+                    .limit(bounded_limit)
+                    .all()
+                )
+            if persisted_fallback:
+                logger.info(f"External providers hit limit ({last_error}). Serving {len(persisted_fallback)} vacancies from database.")
+                job_results = [
+                    JobSearchResult(
+                        id=f"job-{p.id}",
+                        provider=p.provider,
+                        provider_job_id=p.provider_job_id,
+                        canonical_dedupe_key=p.canonical_dedupe_key,
+                        title=p.title,
+                        company_name=p.company_name,
+                        company_domain=p.company_domain,
+                        location_text=p.location_text,
+                        remote_status=p.remote_status,
+                        employment_type=p.employment_type,
+                        seniority=p.seniority,
+                        salary_min=p.salary_min,
+                        salary_max=p.salary_max,
+                        salary_currency=p.salary_currency,
+                        salary_period=p.salary_period,
+                        description=p.description,
+                        job_url=p.job_url,
+                        apply_url=p.apply_url,
+                        posted_at=p.posted_at.isoformat() if p.posted_at else None,
+                        retrieved_at=p.retrieved_at.isoformat(),
+                        organization_id=str(p.organization_id) if p.organization_id else None,
+                        recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
+                        public_recruiter_name=p.public_recruiter_name,
+                        public_recruiter_email=p.public_recruiter_email,
+                        raw_metadata=p.raw_source_metadata or {},
+                        extracted_requirements=p.extracted_requirements or [],
+                    )
+                    for p in persisted_fallback
+                ]
+                return {
+                    "status": "success",
+                    "mode": mode,
+                    "query": search_query,
+                    "location": location,
+                    "remote_only": remote_only,
+                    "influencing_skills": [s.get("name") for s in skills_data] if mode == "mode_a_skills" else [],
+                    "provider_used": f"database_fallback (external: {str(last_error)[:60]})",
+                    "from_cache": True,
+                    "is_stale": True,
+                    "total_results": len(job_results),
+                    "total_returned": len(job_results),
+                    "retrieved_at": now.isoformat(),
+                    "notice": "External provider quota reached. Showing previously synchronized vacancies from database.",
+                    "jobs": [j.model_dump() for j in job_results],
+                }
+
             logger.error(f"Configured job provider failed. Error: {last_error}")
             if isinstance(last_error, ProviderException):
                 raise last_error
@@ -827,7 +978,11 @@ class JobSearchOrchestrator:
                     apply_url=res.apply_url,
                     posted_at=datetime.fromisoformat(res.posted_at) if res.posted_at else None,
                     retrieved_at=datetime.fromisoformat(res.retrieved_at),
-                    raw_source_metadata=meta_copy,
+organization_id=uuid.UUID(res.organization_id) if getattr(res, "organization_id", None) else None,
+                    recruiter_user_id=uuid.UUID(res.recruiter_user_id) if getattr(res, "recruiter_user_id", None) else None,
+                    public_recruiter_name=getattr(res, "public_recruiter_name", None),
+                    public_recruiter_email=getattr(res, "public_recruiter_email", None),
+                    raw_source_metadata=meta_copy or getattr(res, "raw_metadata", {}),
                     extracted_requirements=res.extracted_requirements,
                     content_hash=hashlib.sha256((res.description or res.title).encode()).hexdigest(),
                 )

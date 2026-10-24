@@ -61,7 +61,7 @@ export default function SPFooter() {
                   href="/app/evidence/upload"
                   className="inline-flex items-center gap-1.5 text-[#1A1918] font-bold hover:underline"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A5F] border border-[#1A1918]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#000000] border border-[#1A1918]"></span>
                   Passport Workspace
                 </Link>
               </li>

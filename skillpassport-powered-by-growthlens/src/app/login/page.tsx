@@ -11,6 +11,9 @@ import {
   EyeOff,
   Lock,
   Mail,
+  ShieldCheck,
+  GitBranch,
+  Sparkles,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -28,10 +31,12 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setTouched({ email: true, password: true });
 
     if (!email || !password) {
       setErrorMessage("Please enter both your email address and password.");
@@ -81,7 +86,7 @@ function LoginForm() {
               headers: { Authorization: `Bearer ${session.access_token}` },
             });
           } catch {
-            // direct backend unavailable, try relative
+            // direct backend unavailable, try relative fallback
           }
           if (!profileResp || !profileResp.ok) {
             profileResp = await fetch("/api/v1/profile/me", {
@@ -111,112 +116,185 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex-1 w-full max-w-lg mx-auto space-y-6">
-      <div className="text-center lg:text-left space-y-1">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider mb-2">
-          SECURE SUPABASE AUTHENTICATION
+    <div className="w-full max-w-[460px] bg-[#FAF8F5] border-[1.5px] border-[#171717] rounded-[28px] p-7 sm:p-9 md:p-10 shadow-[4px_4px_0px_#171717] flex flex-col justify-between transition-all animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div>
+        {/* Brand Monogram & Wordmark Header */}
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-8 h-8 rounded-xl bg-[#171717] text-[#FAF8F5] flex items-center justify-center font-black text-xs tracking-tight shadow-[1.5px_1.5px_0_0_#E6AC70]">
+            SP
+          </div>
+          <div className="flex items-center gap-1.5 select-none">
+            <span
+              className="text-xl sm:text-2xl text-[#171717] leading-none"
+              style={{ fontFamily: "'Yellowtail', cursive" }}
+            >
+              SkillPassport
+            </span>
+          </div>
+          <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#E6AC70] text-[#171717] border border-[#171717] shadow-[0.5px_0.5px_0_0_#171717]">
+            Auth
+          </span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
-          Welcome back
-        </h1>
-        <p className="text-sm font-medium text-[#1C1C1C]/75">
-          Sign in to access your personal SkillPassport evidence workspace.
-        </p>
-      </div>
 
-      {errorMessage && (
-        <div className="p-4 rounded-2xl bg-[#FFA69E]/30 border-[1.5px] border-[#E0533C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
-          <AlertCircle className="w-5 h-5 text-[#E0533C] shrink-0 mt-0.5" />
-          <div className="space-y-1.5 flex-1">
-            <p className="text-xs font-bold text-[#1C1C1C] leading-relaxed">{errorMessage}</p>
-            {errorMessage.toLowerCase().includes("verified") && (
-              <Link
-                href={`/auth/verify-email?status=unverified${email ? `&email=${encodeURIComponent(email)}` : ""}`}
-                className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] underline hover:text-[#E0533C]"
-              >
-                <span>Go to verification screen &rarr;</span>
-              </Link>
+        {/* Heading & Subtitle */}
+        <div className="space-y-1 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#171717] tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-[#171717]/70 leading-relaxed">
+            Sign in to continue to your SkillPassport workspace.
+          </p>
+        </div>
+
+        {/* Global Error Notification */}
+        {errorMessage && (
+          <div className="p-3.5 mb-5 rounded-2xl bg-[#FFE4E6] border border-[#FECDD3] text-[#BE123C] shadow-sm flex items-start gap-2.5 text-xs font-semibold animate-in fade-in duration-200">
+            <AlertCircle className="w-4 h-4 text-[#BE123C] shrink-0 mt-0.5" />
+            <div className="space-y-1 flex-1">
+              <p className="leading-relaxed">{errorMessage}</p>
+              {errorMessage.toLowerCase().includes("verified") && (
+                <Link
+                  href={`/auth/verify-email?status=unverified${
+                    email ? `&email=${encodeURIComponent(email)}` : ""
+                  }`}
+                  className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-[#BE123C] underline hover:text-[#9F1239]"
+                >
+                  <span>Go to email verification &rarr;</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Authentication Form */}
+        <form onSubmit={handleLogin} className="space-y-4" noValidate>
+          {/* Email Field */}
+          <div>
+            <label
+              htmlFor="login-email"
+              className="block text-xs font-bold uppercase tracking-wider text-[#171717] mb-1.5"
+            >
+              Email address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#171717]/45">
+                <Mail className="w-4 h-4" />
+              </div>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                placeholder="you@company.com"
+                className={`w-full h-[52px] bg-white border rounded-full pl-11 pr-4 text-sm font-semibold text-[#171717] placeholder:text-[#171717]/35 focus:outline-none transition-all duration-200 ${
+                  touched.email && !email
+                    ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
+                    : "border-[#171717]/25 hover:border-[#171717]/50 focus:border-[#171717] focus:ring-2 focus:ring-[#E6AC70]/40 focus:shadow-[1px_1px_0_0_#171717]"
+                }`}
+              />
+            </div>
+            {touched.email && !email && (
+              <p className="text-[11px] font-bold text-rose-600 mt-1 ml-3 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Please enter your email address.
+              </p>
             )}
           </div>
-        </div>
-      )}
 
-      {/* Main Authentication Form */}
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C] mb-1.5">
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@domain.com"
-              required
-              className="w-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-full pl-11 pr-5 py-3 text-sm font-bold text-[#1C1C1C] placeholder:text-[#1C1C1C]/35 focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
-            />
+          {/* Password Field */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                htmlFor="login-password"
+                className="block text-xs font-bold uppercase tracking-wider text-[#171717]"
+              >
+                Password
+              </label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-[11px] font-bold text-[#171717]/70 hover:text-[#171717] underline transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#171717]/45">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                id="login-password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                placeholder="••••••••••••"
+                className={`w-full h-[52px] bg-white border rounded-full pl-11 pr-12 text-sm font-semibold text-[#171717] placeholder:text-[#171717]/35 focus:outline-none transition-all duration-200 ${
+                  touched.password && !password
+                    ? "border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
+                    : "border-[#171717]/25 hover:border-[#171717]/50 focus:border-[#171717] focus:ring-2 focus:ring-[#E6AC70]/40 focus:shadow-[1px_1px_0_0_#171717]"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#171717]/45 hover:text-[#171717] transition-colors focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {touched.password && !password && (
+              <p className="text-[11px] font-bold text-rose-600 mt-1 ml-3 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Please enter your password.
+              </p>
+            )}
           </div>
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-black uppercase tracking-wider text-[#1C1C1C]">
-              Password
-            </label>
-            <Link
-              href="/auth/forgot-password"
-              className="text-[11px] font-black text-[#1C1C1C]/70 hover:text-[#1C1C1C] underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <Lock className="w-4 h-4 text-[#1C1C1C]/40 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              required
-              className="w-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] rounded-full pl-11 pr-12 py-3 text-sm font-bold text-[#1C1C1C] placeholder:text-[#1C1C1C]/35 focus:outline-none focus:ring-2 focus:ring-[#DFE968] shadow-[2px_2px_0px_#1C1C1C]"
-            />
+          {/* Primary Submit Button */}
+          <div className="pt-2">
             <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1C1C1C]/50 hover:text-[#1C1C1C]"
+              type="submit"
+              disabled={loading}
+              className="w-full h-[52px] bg-[#171717] hover:bg-[#000000] border-[1.5px] border-[#171717] text-[#FAF8F5] text-xs sm:text-sm font-extrabold tracking-[0.08em] uppercase px-5 rounded-full flex items-center justify-center gap-2 shadow-[2.5px_2.5px_0_0_#171717] hover:shadow-[3.5px_3.5px_0_0_#171717] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[1px_1px_0_0_#171717] cursor-pointer transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[2.5px_2.5px_0_0_#171717] group"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#E6AC70]" />
+                  <span>SIGNING IN ···</span>
+                </>
+              ) : (
+                <>
+                  <span>SIGN IN</span>
+                  <ArrowRight className="w-4 h-4 text-[#FAF8F5] group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
             </button>
           </div>
-        </div>
+        </form>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#DFE968] hover:bg-[#d4df55] active:scale-[0.99] border-[1.5px] border-[#1C1C1C] text-[#1C1C1C] text-xs sm:text-sm font-extrabold tracking-[0.06em] uppercase px-5 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-[3px_3px_0px_#1C1C1C] cursor-pointer transition-all disabled:opacity-60"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>AUTHENTICATING WITH SUPABASE ···</span>
-            </>
-          ) : (
-            <>
-              <span>LOG IN TO WORKSPACE</span>
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
-      </form>
-
-      <div className="text-center pt-2 border-t border-[#1C1C1C]/15">
-        <p className="text-xs font-bold text-[#1C1C1C]/70">
+      {/* Footer Secondary Registration Link */}
+      <div className="text-center pt-5 mt-6 border-t border-[#171717]/10">
+        <p className="text-xs font-semibold text-[#171717]/70">
           Don&apos;t have an account yet?{" "}
           <Link
             href="/signup"
-            className="font-black text-[#1C1C1C] underline hover:text-[#E0533C]"
+            className="font-extrabold text-[#171717] underline hover:text-[#E6AC70] ml-1 transition-colors"
           >
             Create an account
           </Link>
@@ -228,36 +306,97 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col text-[#1C1C1C]">
+    <div className="min-h-screen w-full flex flex-col text-[#171717] bg-transparent relative">
       <SPHeader />
 
-      <main className="flex-grow flex items-center justify-center py-12 px-6">
-        <div className="container mx-auto max-w-5xl flex flex-col lg:flex-row items-center gap-12">
-          <Suspense
-            fallback={
-              <div className="flex-1 flex justify-center items-center p-12">
-                <LoadingAnimation size="md" />
-              </div>
-            }
-          >
-            <LoginForm />
-          </Suspense>
-
-          {/* Right Column: Organic Graphic Visual */}
-          <div className="hidden lg:flex flex-1 justify-center relative w-full h-[540px]">
-            <div
-              className="w-full max-w-md h-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center p-8 text-center overflow-hidden shadow-[4px_4px_0_0_#1C1C1C]"
-              style={{ borderRadius: "45% 55% 45% 55% / 58% 42% 55% 45%" }}
+      <main className="flex-1 flex items-center justify-center py-8 sm:py-12 md:py-16 px-4 sm:px-6 z-10">
+        <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-stretch justify-items-center">
+          {/* Left Column: Dedicated Authentication Panel */}
+          <div className="w-full flex justify-center">
+            <Suspense
+              fallback={
+                <div className="w-full max-w-[460px] h-[520px] bg-[#FAF8F5] border-[1.5px] border-[#171717] rounded-[28px] p-10 flex flex-col items-center justify-center shadow-[4px_4px_0_0_#171717]">
+                  <LoadingAnimation size="md" />
+                </div>
+              }
             >
-              <h2
-                className="text-5xl md:text-6xl lg:text-7xl text-[#1C1C1C] mb-3 font-normal tracking-tight"
-                style={{ fontFamily: "'Yellowtail', cursive", transform: "rotate(-4deg)" }}
-              >
-                SkillPassport
-              </h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1C1C1C]/80 max-w-[260px]">
-                Powered by GrowthLens • Verifiable Skills
-              </p>
+              <LoginForm />
+            </Suspense>
+          </div>
+
+          {/* Right Column: Refined Product Information Card */}
+          <div className="w-full flex justify-center">
+            <div className="w-full max-w-[460px] bg-[#FAF8F5] border-[1.5px] border-[#171717] rounded-[28px] p-7 sm:p-9 md:p-10 flex flex-col justify-between shadow-[4px_4px_0_0_#171717] transition-all animate-in fade-in slide-in-from-bottom-2 duration-300 delay-100">
+              <div>
+                {/* GrowthLens Protocol Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#171717] text-[#FAF8F5] text-[10px] font-mono font-bold tracking-wider uppercase mb-5 shadow-[1px_1px_0_0_#E6AC70]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E6AC70] animate-pulse" />
+                  <span>GrowthLens Protocol</span>
+                </div>
+
+                {/* Primary Value Proposition Headline */}
+                <h2 className="text-2xl sm:text-[26px] font-serif font-black text-[#171717] tracking-tight leading-snug mb-3">
+                  Engineering merit backed by verifiable code evidence.
+                </h2>
+
+                <p className="text-xs sm:text-[13px] font-medium text-[#171717]/70 leading-relaxed mb-6">
+                  SkillPassport transforms daily engineering artifacts into inspectable, tamper-evident competency signals without self-attestation.
+                </p>
+
+                {/* The 3 Core Pillars */}
+                <div className="space-y-4">
+                  {/* Pillar 1: Deterministic Ingestion */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-white border border-[#171717] text-[#171717] flex items-center justify-center shrink-0 shadow-[1px_1px_0_0_#171717] mt-0.5">
+                      <GitBranch className="w-4 h-4 text-[#171717]" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <h3 className="text-xs font-black text-[#171717] uppercase tracking-wider">
+                        Deterministic Ingestion
+                      </h3>
+                      <p className="text-xs text-[#171717]/70 leading-relaxed">
+                        Claims are anchored to raw commit hashes, PR reviews, and author attribution.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pillar 2: Multi-Stage Verification */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-white border border-[#171717] text-[#171717] flex items-center justify-center shrink-0 shadow-[1px_1px_0_0_#171717] mt-0.5">
+                      <ShieldCheck className="w-4 h-4 text-[#2D5A43]" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <h3 className="text-xs font-black text-[#171717] uppercase tracking-wider">
+                        Multi-Stage Verification
+                      </h3>
+                      <p className="text-xs text-[#171717]/70 leading-relaxed">
+                        Zero synthetic padding. Every capability is verified against proven work.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pillar 3: Auditable Passport */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-white border border-[#171717] text-[#171717] flex items-center justify-center shrink-0 shadow-[1px_1px_0_0_#171717] mt-0.5">
+                      <Sparkles className="w-4 h-4 text-[#E6AC70]" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <h3 className="text-xs font-black text-[#171717] uppercase tracking-wider">
+                        Auditable Passport
+                      </h3>
+                      <p className="text-xs text-[#171717]/70 leading-relaxed">
+                        Shareable candidate view with granular privacy and verifiable provenance proofs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-divider & Footer */}
+              <div className="pt-6 mt-6 border-t border-[#171717]/10 flex items-center justify-between text-[10.5px] font-mono font-bold tracking-wider text-[#171717]/60">
+                <span>SKILLPASSPORT · v2.4</span>
+                <span>AUDITABLE PROVENANCE</span>
+              </div>
             </div>
           </div>
         </div>

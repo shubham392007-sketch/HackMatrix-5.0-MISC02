@@ -318,6 +318,8 @@ interface EvidenceContextType {
   shareActivities: ShareActivityEvent[];
   draftPermissions: SharePermissionsConfig;
   setDraftPermissions: React.Dispatch<React.SetStateAction<SharePermissionsConfig>>;
+  loadAuthoritativePermissions: () => Promise<SharePermissionsConfig>;
+  saveAuthoritativePermissions: (config: SharePermissionsConfig) => Promise<SharePermissionsConfig>;
   createShareRecord: (label: string, config: SharePermissionsConfig) => ShareRecord;
   updateSharePermissions: (shareId: string, config: SharePermissionsConfig) => void;
   revokeShareRecord: (shareId: string, reason?: string) => void;
@@ -360,6 +362,14 @@ interface EvidenceContextType {
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobileSidebar: () => void;
+
+  // Desktop Sidebar Dynamic Push & Expansion State
+  desktopSidebarPinned: boolean;
+  setDesktopSidebarPinned: React.Dispatch<React.SetStateAction<boolean>>;
+  desktopSidebarHovered: boolean;
+  setDesktopSidebarHovered: (hovered: boolean) => void;
+  desktopSidebarExpanded: boolean;
+  toggleDesktopSidebarPinned: () => void;
 
   // Live Evidence Synchronization & Database Resilience
   refreshEvidenceData: (force?: boolean) => Promise<void>;
@@ -533,6 +543,50 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Mobile Navigation Drawer State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const toggleMobileSidebar = () => setMobileSidebarOpen((prev) => !prev);
+
+  // Desktop Sidebar Dynamic Push & Expansion State
+  const [desktopSidebarPinned, setDesktopSidebarPinned] = useState<boolean>(false);
+  const [desktopSidebarHovered, setDesktopSidebarHoveredState] = useState<boolean>(false);
+  const sidebarHoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("skillpassport_sidebar_pinned");
+      if (stored === "true") {
+        setDesktopSidebarPinned(true);
+      }
+    }
+  }, []);
+
+  const toggleDesktopSidebarPinned = useCallback(() => {
+    setDesktopSidebarPinned((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("skillpassport_sidebar_pinned", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const setDesktopSidebarHovered = useCallback((hovered: boolean) => {
+    if (sidebarHoverTimeoutRef.current) {
+      clearTimeout(sidebarHoverTimeoutRef.current);
+      sidebarHoverTimeoutRef.current = null;
+    }
+    if (hovered) {
+      // 120ms hover-intent dwell delay before expansion begins (prevents accidental trigger on fast sweeps)
+      sidebarHoverTimeoutRef.current = setTimeout(() => {
+        setDesktopSidebarHoveredState(true);
+      }, 120);
+    } else {
+      // 140ms exit delay before collapse begins (prevents accidental collapse when moving between items/edges)
+      sidebarHoverTimeoutRef.current = setTimeout(() => {
+        setDesktopSidebarHoveredState(false);
+      }, 140);
+    }
+  }, []);
+
+  const desktopSidebarExpanded = desktopSidebarPinned || desktopSidebarHovered;
 
   // Domain 3 AI State - Zero Demo Data, live database-driven
   const [currentRole, setDemoRole] = useState<DemoRole>("admin");
@@ -1906,7 +1960,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         const userNotifs = loadUserNotifications(uid);
         setNotifications(userNotifs);
         refreshEvidenceData();
-        refreshLearningState().catch(() => {});
+refreshLearningState().catch(() => {});
+        sharingApi.getSharingPermissions().then((perms) => {
+          if (perms) setDraftPermissions(perms);
+        }).catch(() => {});
       } else {
         setIsAuthenticated(false);
         setCurrentUserId(null);
@@ -2603,7 +2660,15 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Domain 6 Sharing & Recruiter Experience State
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>(INITIAL_SHARE_RECORDS);
   const [shareActivities, setShareActivities] = useState<ShareActivityEvent[]>(INITIAL_SHARE_ACTIVITIES);
-  const [draftPermissions, setDraftPermissions] = useState<SharePermissionsConfig>(DEFAULT_SHARE_PERMISSIONS);
+  const [draftPermissions, setDraftPermissions] = useState<SharePermissionsConfig>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("sp_finalized_permissions") || localStorage.getItem("sp_draft_permissions");
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return DEFAULT_SHARE_PERMISSIONS;
+  });
 
   const activeBlueprint = useMemo(() => {
     return blueprints.find((b) => b.domain_id === activeDomainId) || blueprints[0];
@@ -2963,6 +3028,25 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, [refreshLearningState]);
 
   // Domain 6 Sharing & Recruiter Handlers
+  const loadAuthoritativePermissions = useCallback(async (): Promise<SharePermissionsConfig> => {
+    try {
+      const perms = await sharingApi.getSharingPermissions();
+      if (perms) {
+        setDraftPermissions(perms);
+        return perms;
+      }
+    } catch (e) {
+      console.warn("Could not load authoritative sharing permissions from server:", e);
+    }
+    return draftPermissions;
+  }, [draftPermissions]);
+
+  const saveAuthoritativePermissions = useCallback(async (config: SharePermissionsConfig): Promise<SharePermissionsConfig> => {
+    const saved = await sharingApi.saveSharingPermissions(config);
+    setDraftPermissions(saved);
+    return saved;
+  }, []);
+
   const createShareRecord = (label: string, config: SharePermissionsConfig): ShareRecord => {
     const randomHex = Math.random().toString(36).substring(2, 8);
     const newShareId = `sh-${randomHex}`;
@@ -3754,6 +3838,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         shareActivities,
         draftPermissions,
         setDraftPermissions,
+        loadAuthoritativePermissions,
+        saveAuthoritativePermissions,
         createShareRecord,
         updateSharePermissions,
         revokeShareRecord,
@@ -3796,6 +3882,14 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         mobileSidebarOpen,
         setMobileSidebarOpen,
         toggleMobileSidebar,
+
+        // Desktop Sidebar Dynamic Push & Expansion State
+        desktopSidebarPinned,
+        setDesktopSidebarPinned,
+        desktopSidebarHovered,
+        setDesktopSidebarHovered,
+        desktopSidebarExpanded,
+        toggleDesktopSidebarPinned,
 
         // Live Evidence Synchronization
         refreshEvidenceData,

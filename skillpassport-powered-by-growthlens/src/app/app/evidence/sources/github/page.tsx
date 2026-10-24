@@ -819,13 +819,13 @@ export default function GitHubSourceFlow() {
         </div>
 
         {statusMessage && (
-          <div className="p-4 rounded-xl bg-[#DFE968] border border-[#1C1C1C] text-xs font-black text-[#1C1C1C] flex items-center justify-between shadow-[2px_2px_0_0_#1C1C1C]">
+          <div className="p-4 rounded-xl bg-[#000000] border border-[#1A1918] text-xs font-black text-[#FAF8F5] flex items-center justify-between shadow-[2px_2px_0_0_#1A1918]">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#4A7A4E]" />
+              <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
               <span>{statusMessage}</span>
             </div>
-            <button onClick={() => setStatusMessage(null)} className="text-[#1C1C1C]/60 hover:text-[#1C1C1C]">
-              <X className="w-4 h-4" />
+            <button onClick={() => setStatusMessage(null)} className="text-[#FAF8F5]/70 hover:text-[#FAF8F5]">
+              <X className="w-4 h-4 text-[#FAF8F5]" />
             </button>
           </div>
         )}
@@ -1047,7 +1047,7 @@ export default function GitHubSourceFlow() {
                     onClick={() => setActiveTab("selected")}
                     className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all border border-[#1C1C1C] ${
                       activeTab === "selected"
-                        ? "bg-[#DFE968] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
                         : "bg-white text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
                     }`}
                   >
@@ -1058,7 +1058,7 @@ export default function GitHubSourceFlow() {
                     onClick={() => setActiveTab("available")}
                     className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all border border-[#1C1C1C] ${
                       activeTab === "available"
-                        ? "bg-[#DFE968] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
                         : "bg-white text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
                     }`}
                   >
@@ -1069,7 +1069,7 @@ export default function GitHubSourceFlow() {
                     onClick={() => setActiveTab("all")}
                     className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all border border-[#1C1C1C] ${
                       activeTab === "all"
-                        ? "bg-[#DFE968] text-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C]"
+                        ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
                         : "bg-white text-[#1C1C1C]/70 hover:text-[#1C1C1C]"
                     }`}
                   >
@@ -1145,7 +1145,7 @@ export default function GitHubSourceFlow() {
                       }
                     } else if (isStaged) {
                       statusLabel = "READY TO ADD";
-                      statusStyle = "bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C]";
+                      statusStyle = "bg-[#000000] border border-[#1A1918] text-[#FAF8F5]";
                     }
 
                     return (

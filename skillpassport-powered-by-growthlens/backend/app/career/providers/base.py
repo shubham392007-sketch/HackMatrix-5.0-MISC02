@@ -3,9 +3,8 @@ import re
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-
-
 from enum import Enum
+
 
 class ProviderErrorType(str, Enum):
     MISSING_KEY = "missing_api_key"
@@ -41,7 +40,7 @@ class ProviderException(Exception):
 
 class JobSearchResult(BaseModel):
     id: str
-    provider: str  # jsearch, theirstack, fantastic_jobs, custom_upload
+    provider: str  # jsearch, theirstack, fantastic_jobs, recruiter_portal, custom_upload
     provider_job_id: str
     canonical_dedupe_key: str
     title: str
@@ -60,6 +59,10 @@ class JobSearchResult(BaseModel):
     apply_url: Optional[str] = None
     posted_at: Optional[str] = None
     retrieved_at: str
+    organization_id: Optional[str] = None
+    recruiter_user_id: Optional[str] = None
+    public_recruiter_name: Optional[str] = None
+    public_recruiter_email: Optional[str] = None
     raw_metadata: Dict[str, Any] = Field(default_factory=dict)
     extracted_requirements: List[Dict[str, Any]] = Field(default_factory=list)
     local_relevance_score: Optional[float] = None

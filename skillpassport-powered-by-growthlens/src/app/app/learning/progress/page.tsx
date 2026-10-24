@@ -27,13 +27,16 @@ import {
 } from "lucide-react";
 import { calculateTopicMastery } from "@/lib/learningCalculations";
 import AppTopBar from "@/components/app/AppTopBar";
+import TopicMasteryComponentBars from "@/components/learning/TopicMasteryComponentBars";
+import { LayoutGrid, Table as TableIcon } from "lucide-react";
 
 export default function LearningProgressPage() {
   const { activeBlueprint, activeRoadmap, activeDiagnosticResult } = useEvidence();
 
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
-  const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m) => m.topics || []) : [];
+const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m) => m.topics || []) : [];
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"visual" | "table">("visual");
 
   const selectedTopic = (selectedTopicId ? allTopics.find((t) => t.id === selectedTopicId) : null) || allTopics[0] || null;
 
@@ -151,14 +154,59 @@ export default function LearningProgressPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-ink/60">
-            <span className="px-2 py-0.5 rounded bg-stone-200 text-stone-800">Novice (&lt;40%)</span>
-            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">Dev (40-69%)</span>
-            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800">Prof (70-84%)</span>
-            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Adv (85%+)</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 p-1 bg-paper rounded-xl border border-ink/10 text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("visual")}
+                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all ${
+                  viewMode === "visual"
+                    ? "bg-ink text-[#FAF8F5] shadow-sm"
+                    : "text-ink/60 hover:text-ink"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Component Bars</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all ${
+                  viewMode === "table"
+                    ? "bg-ink text-[#FAF8F5] shadow-sm"
+                    : "text-ink/60 hover:text-ink"
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span>Data Table</span>
+              </button>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-ink/70">
+              <span className="px-2 py-0.5 rounded border border-ink/15 bg-white text-ink">Novice (&lt;40%)</span>
+              <span className="px-2 py-0.5 rounded border border-ink/15 bg-white text-ink">Dev (40-69%)</span>
+              <span className="px-2 py-0.5 rounded border border-ink/15 bg-white text-ink">Prof (70-84%)</span>
+              <span className="px-2 py-0.5 rounded border border-ink/15 bg-white text-ink">Adv (85%+)</span>
+            </div>
           </div>
         </div>
 
+        {viewMode === "visual" ? (
+          <TopicMasteryComponentBars
+            topics={allTopics}
+            selectedTopicId={selectedTopicId}
+            onSelectTopic={(topicId) => {
+              setSelectedTopicId(topicId);
+              const t = allTopics.find((x) => x.id === topicId);
+              if (t) {
+                setSimK(t.knowledge_signal);
+                setSimP(t.practice_signal);
+                setSimA(t.assessment_signal);
+                setSimPrj(t.project_signal);
+              }
+            }}
+          />
+        ) : (
         <div className="overflow-x-auto border border-ink/10 rounded-2xl bg-paper">
           <table className="w-full text-left text-xs border-collapse min-w-[720px]">
             <thead>
@@ -263,6 +311,7 @@ export default function LearningProgressPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Interactive Mastery Simulator Sandbox */}

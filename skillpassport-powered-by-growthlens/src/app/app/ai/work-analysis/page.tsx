@@ -494,7 +494,7 @@ function WorkAnalysisContent() {
                   onClick={() => setShowDirectory(!showDirectory)}
                   className={`pill-btn text-xs py-2 px-3 flex items-center gap-1.5 transition-all ${
                     showDirectory
-                      ? "bg-[#DFE968] text-[#1C1C1C] font-bold border-[#1C1C1C]"
+                      ? "bg-[#000000] text-[#FAF8F5] font-bold border-[#1A1918]"
                       : "pill-btn-secondary"
                   }`}
                   title="Browse all ingested sources in an organized directory view"
