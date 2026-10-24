@@ -10,6 +10,7 @@ import {
   getLearningStepPacket,
   getBackendAssessment,
   submitBackendAssessment,
+  skipLearningStep,
 } from "@/lib/evidenceApi";
 import { INITIAL_STEP_PACKETS } from "@/data/learningMock";
 import {
@@ -39,6 +40,9 @@ import {
   Database,
   BookMarked,
   Cpu,
+  FastForward,
+  SkipForward,
+  RotateCcw,
 } from "lucide-react";
 import SkillProvenanceModal from "@/components/app/SkillProvenanceModal";
 
@@ -295,6 +299,58 @@ export default function LearningStepDetailPage() {
       addToast("Assessment Error", err.message || "Failed to submit assessment.", "error");
     } finally {
       setIsSubmittingAssessment(false);
+    }
+  };
+
+  const handleSkipAssessment = async () => {
+    if (!assessment || isSubmittingAssessment) return;
+    setIsSubmittingAssessment(true);
+    try {
+      let res: any;
+      try {
+        if (assessment.assessment_id && !assessment.assessment_id.startsWith("asmt-step-") && !assessment.assessment_id.startsWith("asmt-topic-")) {
+          res = await submitBackendAssessment(assessment.assessment_id, {}, true);
+        } else {
+          throw new Error("Local skip");
+        }
+      } catch {
+        res = {
+          score: 0,
+          passed: false,
+          is_skipped: true,
+          evaluations: [],
+        };
+      }
+      setSubmissionResult(res);
+      addToast(
+        "Assessment Skipped",
+        "Assessment bypassed with score 0. You can retake it anytime.",
+        "info"
+      );
+    } catch (err: any) {
+      addToast("Skip Error", err.message || "Failed to skip assessment.", "error");
+    } finally {
+      setIsSubmittingAssessment(false);
+    }
+  };
+
+  const handleSkipStepDirect = async () => {
+    if (step && !isMarkingComplete) {
+      setIsMarkingComplete(true);
+      try {
+        const targetRoadmapId = roadmapId || step.roadmap_id || activeRoadmap?.id || activeRoadmap?.path_id;
+        await skipLearningStep(step.step_id, { roadmap_id: targetRoadmapId });
+        step.status = "skipped";
+        addToast(
+          "Step Skipped",
+          "Objective bypassed without awarding mastery credit. Next step unlocked.",
+          "info"
+        );
+      } catch (err: any) {
+        addToast("Skip Error", err?.message || "Failed to skip step.", "error");
+      } finally {
+        setIsMarkingComplete(false);
+      }
     }
   };
 
@@ -672,18 +728,37 @@ export default function LearningStepDetailPage() {
                   </div>
                   {submissionResult && (
                     <div className={`text-xs font-bold px-3 py-1 rounded-full ${
-                      submissionResult.passed ? "bg-emerald-100 text-emerald-900 border border-emerald-300" : "bg-red-100 text-red-900 border border-red-300"
+                      submissionResult.is_skipped
+                        ? "bg-stone-100 text-stone-800 border border-stone-300"
+                        : submissionResult.passed
+                        ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                        : "bg-red-100 text-red-900 border border-red-300"
                     }`}>
-                      Score: {submissionResult.score}% &bull; {submissionResult.passed ? "PASSED" : "NEEDS RETRY"}
+                      {submissionResult.is_skipped
+                        ? "SKIPPED · Retake Available Anytime"
+                        : `Score: ${submissionResult.score}% • ${submissionResult.passed ? "PASSED" : "NEEDS RETRY"}`}
                     </div>
                   )}
                 </div>
+
+                {/* Dedicated Skipped Notice if user skipped */}
+                {submissionResult?.is_skipped && (
+                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 space-y-1">
+                    <span className="font-bold flex items-center gap-1.5 text-stone-900">
+                      <FastForward className="w-3.5 h-3.5 text-stone-600" />
+                      Test Skipped
+                    </span>
+                    <p className="text-[11px] leading-relaxed">
+                      You bypassed this knowledge assessment. No mastery points were granted. Evaluation feedback and answer keys are hidden for skipped attempts. You can retake this assessment at any time.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-6 pt-2">
                   {assessment.questions.map((q: any, qIdx: number) => {
                     const qId = q.id || `q-${qIdx+1}`;
                     const selectedOpt = selectedAnswers[qId];
-                    const evalData = submissionResult?.evaluations?.find((e: any) => e.question_id === qId);
+                    const evalData = !submissionResult?.is_skipped ? submissionResult?.evaluations?.find((e: any) => e.question_id === qId) : null;
 
                     return (
                       <div key={qId} className="space-y-3 p-4 rounded-2xl bg-sand/15 border border-ink/10 text-xs">
@@ -739,54 +814,76 @@ export default function LearningStepDetailPage() {
                   })}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-ink/10">
+                <div className="flex items-center justify-between pt-2 border-t border-ink/10 flex-wrap gap-2">
                   <span className="text-xs text-ink-muted">
                     {Object.keys(selectedAnswers).length} of {assessment.questions.length} answered
                   </span>
 
                   {!submissionResult ? (
-                    <button
-                      onClick={handleSubmitAssessment}
-                      disabled={isSubmittingAssessment || Object.keys(selectedAnswers).length === 0}
-                      className="pill-btn pill-btn-primary text-xs py-2 px-6 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      {isSubmittingAssessment ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Grading...
-                        </>
-                      ) : (
-                        "Submit for Server Evaluation"
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleSkipAssessment}
+                        disabled={isSubmittingAssessment}
+                        className="pill-btn bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs py-2 px-3.5 text-stone-700 font-medium"
+                      >
+                        Skip Test
+                      </button>
+                      <button
+                        onClick={handleSubmitAssessment}
+                        disabled={isSubmittingAssessment || Object.keys(selectedAnswers).length === 0}
+                        className="pill-btn pill-btn-primary text-xs py-2 px-6 flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {isSubmittingAssessment ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Grading...
+                          </>
+                        ) : (
+                          "Submit Test"
+                        )}
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => {
                         setSubmissionResult(null);
                         setSelectedAnswers({});
                       }}
-                      className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-4 text-ink"
+                      className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-4 text-ink flex items-center gap-1.5"
                     >
-                      Retake Assessment
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Retake Test
                     </button>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Direct Completion Option if no assessment required */}
-            {(!assessment || !assessment.questions || assessment.questions.length === 0) && (
-              <div className="p-4 rounded-2xl bg-white border border-ink/15 flex items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-xs font-bold text-ink">Milestone Progress</h4>
-                  <p className="text-[11px] text-ink-muted">
-                    Mark this step completed once you have studied the material and implemented the guidance.
-                  </p>
-                </div>
+            {/* Direct Step Completion & Skip Controls */}
+            <div className="p-4 rounded-2xl bg-white border border-ink/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-xs font-bold text-ink">Milestone Progress</h4>
+                <p className="text-[11px] text-ink-muted">
+                  {step.status === "skipped"
+                    ? "This step is currently skipped. You can unskip or complete it anytime."
+                    : "Complete this step after reviewing the materials or skip to unlock subsequent steps."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {step.status !== "skipped" && !isCompleted && (
+                  <button
+                    onClick={handleSkipStepDirect}
+                    disabled={isMarkingComplete}
+                    className="pill-btn bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs py-2 px-3.5 text-stone-700 font-medium flex items-center gap-1"
+                  >
+                    <SkipForward className="w-3.5 h-3.5 text-stone-500" />
+                    Skip Step
+                  </button>
+                )}
                 <button
                   onClick={handleMarkCompletedDirect}
                   disabled={isCompleted || isMarkingComplete}
-                  className={`pill-btn text-xs py-2 px-6 shrink-0 flex items-center gap-1.5 ${
+                  className={`pill-btn text-xs py-2 px-5 shrink-0 flex items-center gap-1.5 ${
                     isCompleted ? "bg-emerald-600 text-white cursor-default" : "pill-btn-primary"
                   }`}
                 >
@@ -798,14 +895,14 @@ export default function LearningStepDetailPage() {
                   ) : isMarkingComplete ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      Updating Progress...
+                      Updating...
                     </>
                   ) : (
                     "Mark Step Completed &rarr;"
                   )}
                 </button>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Right Column (1 span): Progress Panel & Next Actions */}

@@ -25,8 +25,6 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  Compass,
-  Briefcase,
 } from "lucide-react";
 import { GapRecord } from "@/types/career";
 
@@ -36,17 +34,42 @@ export default function GapPrioritizationPage() {
   const [strategyFilter, setStrategyFilter] = useState<
     "all" | "top3" | "quick_wins" | "critical_blockers"
   >("all");
+  const [effortWeight, setEffortWeight] = useState<number>(1.0); // 0.5 to 2.0
+  const [leverageBoost, setLeverageBoost] = useState<number>(1.0); // 1.0 to 2.0
   const [isExplainModalOpen, setIsExplainModalOpen] = useState<boolean>(false);
   const [expandedGapId, setExpandedGapId] = useState<string | null>(null);
 
-  // System-calculated gap priorities via topological DAG prerequisite sequencing
+  // Dynamic re-ranking based on interactive sliders
   const dynamicRankedGaps = useMemo(() => {
-    const list = [...activeGaps].map((gap) => ({
-      ...gap,
-      dynamic_score: gap.priority_score,
-    }));
+    const list = [...activeGaps].map((gap) => {
+      const inputs = gap.priority_inputs;
+      
+      // Calculate normalized 0–100 dynamic priority score
+      const levelGap = Math.max(0, inputs.level_gap || 1);
+      const criticalityRatio = (inputs.criticality || 4) / 5;
+      const urgencyRatio = gap.requirement_type === "core_required" ? 1.0 : 0.8;
+      const gapRatio = Math.min(1.0, Math.max(0.2, levelGap / 4.0));
+      const baseScore = 100.0 * gapRatio * criticalityRatio * urgencyRatio;
 
-    // Sort descending by system priority score
+      const effortDiscount = Math.max(
+        0.50,
+        1.0 - 0.08 * Math.max(0, (inputs.estimated_effort || 2.0) - 1.0) * effortWeight
+      );
+      const hasEvidence = inputs.evidence_leverage > 1.0 || (gap.project_leverage_example !== undefined);
+      const levBoost = Math.min(1.35, 1.0 + (hasEvidence ? 0.12 * leverageBoost : 0.0));
+
+      const adjustedScore = Math.min(
+        100.0,
+        Math.max(1.0, Math.round(baseScore * effortDiscount * levBoost * 10) / 10)
+      );
+
+      return {
+        ...gap,
+        dynamic_score: adjustedScore,
+      };
+    });
+
+    // Sort descending by dynamic_score
     list.sort((a, b) => b.dynamic_score - a.dynamic_score);
 
     // Apply filters
@@ -67,43 +90,7 @@ export default function GapPrioritizationPage() {
     }
 
     return list;
-  }, [activeGaps, strategyFilter]);
-
-  if (!activeRole) {
-    return (
-      <div className="flex-1 flex flex-col">
-        <AppTopBar
-          title="Gap Prioritization & Leverage Engine"
-          description="Rank development actions by expected career impact rather than chronological listing."
-          badge="Strategic Prioritization"
-          badgeColor="border-ink/20 text-ink bg-lime/40"
-        />
-        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          <TargetRoleSelectorBar />
-          <div className="gl-card p-12 bg-white border border-ink/10 text-center space-y-4 max-w-xl mx-auto my-8 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
-              <Compass className="w-6 h-6 text-ink" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-ink">No active target role selected</h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Select a target role from our curated catalogue or parse a custom job description to calculate prioritized learning actions and prerequisite sequences.
-              </p>
-            </div>
-            <div className="pt-2">
-              <Link
-                href="/app/career/roles"
-                className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold inline-flex items-center gap-1.5"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                Select Target Role
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [activeGaps, effortWeight, leverageBoost, strategyFilter]);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -154,6 +141,8 @@ export default function GapPrioritizationPage() {
             <button
               onClick={() => {
                 setStrategyFilter("all");
+                setEffortWeight(1.0);
+                setLeverageBoost(1.0);
               }}
               className={`px-3 py-1.5 rounded-full font-medium transition-all ${
                 strategyFilter === "all"
@@ -178,6 +167,8 @@ export default function GapPrioritizationPage() {
             <button
               onClick={() => {
                 setStrategyFilter("quick_wins");
+                setLeverageBoost(1.6);
+                setEffortWeight(1.4);
               }}
               className={`px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1 ${
                 strategyFilter === "quick_wins"
@@ -203,12 +194,43 @@ export default function GapPrioritizationPage() {
           </div>
         </div>
 
-        {/* System DAG Prerequisite & Priority Notice */}
-        <div className="pt-4 border-t border-ink/10 flex items-center justify-between text-xs bg-sand/10 p-3 rounded-xl border border-ink/5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-ink shrink-0" />
-            <span className="text-ink text-[11px] font-medium">
-              Priority scores are strictly calculated by the system using <strong>topological DAG prerequisite sequencing</strong>, requirement criticality, and proficiency gap distance. No manual tuning required.
+        {/* Real-time Weight Sliders */}
+        <div className="pt-4 border-t border-ink/10 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="space-y-1.5 p-3 rounded-xl bg-white border border-ink/10">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-ink">Effort Sensitivity Discount:</span>
+              <span className="font-mono font-bold text-ink">{effortWeight.toFixed(1)}&times;</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={effortWeight}
+              onChange={(e) => setEffortWeight(parseFloat(e.target.value))}
+              className="w-full accent-ink h-1.5 bg-sand/40 rounded-lg cursor-pointer"
+            />
+            <span className="text-[10px] text-ink-muted block">
+              Higher values penalize high-effort skills and prioritize low-effort wins.
+            </span>
+          </div>
+
+          <div className="space-y-1.5 p-3 rounded-xl bg-white border border-ink/10">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-ink">Existing Evidence Leverage Multiplier:</span>
+              <span className="font-mono font-bold text-ink">{leverageBoost.toFixed(1)}&times;</span>
+            </div>
+            <input
+              type="range"
+              min="1.0"
+              max="2.0"
+              step="0.1"
+              value={leverageBoost}
+              onChange={(e) => setLeverageBoost(parseFloat(e.target.value))}
+              className="w-full accent-ink h-1.5 bg-sand/40 rounded-lg cursor-pointer"
+            />
+            <span className="text-[10px] text-ink-muted block">
+              Boosts skills where you already have existing project repositories that can be extended.
             </span>
           </div>
         </div>

@@ -49,6 +49,17 @@ import {
   listPassportTaxonomy,
   listPassportHistory,
   reviewPassportCandidate,
+  getLearningOverview,
+  getLearningPriorities,
+  listDomainBlueprints,
+  submitDiagnostic,
+  submitLearningAttempt,
+  generateBackendRoadmap,
+  submitMiniProjectApi,
+  markStepComplete,
+  listUserRoadmaps,
+  listMiniProjects,
+  getLearningHistory,
   DatabaseUnavailableError,
 } from "@/lib/evidenceApi";
 import {
@@ -83,7 +94,11 @@ import {
   listRoles as listBackendRolesApi,
   deleteRole as deleteBackendRoleApi,
   saveCatalogueRoleToTargets as saveCatalogueRoleToTargetsApi,
+  getUserTargetRole,
+  setUserTargetRole as apiSetUserTargetRole,
+  listRoles as listCareerRoles,
 } from "@/lib/careerApi";
+import { learningCache } from "@/lib/learningCache";
 import {
   evaluateRoleMatch,
   extractGapRecords,
@@ -252,6 +267,16 @@ interface EvidenceContextType {
   refreshRoles: () => Promise<void>;
 
   // Domain 5 Learning Intelligence State & Mutators
+  activeTargetRole: {
+    target_role_id: string | null;
+    target_role_version: string | null;
+    role_title: string | null;
+    has_target: boolean;
+  } | null;
+  setActiveTargetRole: (roleId: string, roleTitle: string, version?: string) => Promise<void>;
+  isLoadingLearning: boolean;
+  hasUserRoadmaps: boolean;
+  refreshLearningState: (targetRoleId?: string) => Promise<void>;
   blueprints: DomainBlueprint[];
   activeDomainId: string;
   setActiveDomainId: (id: string) => void;
@@ -277,9 +302,9 @@ interface EvidenceContextType {
     pace: "standard" | "fast_track"
   ) => void;
   recordDiagnosticResult: (result: DiagnosticResult) => void;
-  completeStep: (stepId: string) => void;
+  completeStep: (stepId: string, roadmapId?: string, notes?: string) => Promise<any> | void;
   completePracticeExercise: (exerciseId: string, score: number) => void;
-  recordAssessmentAttempt: (attempt: AssessmentAttempt) => void;
+  recordAssessmentAttempt: (attempt: AssessmentAttempt, skipBackendSync?: boolean) => void;
   submitMiniProject: (
     projectId: string,
     repoUrl: string,
@@ -1881,6 +1906,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         const userNotifs = loadUserNotifications(uid);
         setNotifications(userNotifs);
         refreshEvidenceData();
+        refreshLearningState().catch(() => {});
       } else {
         setIsAuthenticated(false);
         setCurrentUserId(null);
@@ -1899,8 +1925,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         setNotifications(userNotifs);
         if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
           refreshEvidenceData(true);
+          refreshLearningState().catch(() => {});
         } else {
           refreshEvidenceData();
+          refreshLearningState().catch(() => {});
         }
       } else if (sessionStorage.getItem("sp_session_auth") !== "true") {
         setIsAuthenticated(false);
@@ -1919,6 +1947,15 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem("sp_selected_role_id", roleId);
     } catch {}
+    const allRolesList = [...targetRoles, ...savedTargetRoles, ...catalogueRoles, ...customRoles];
+    const match = allRolesList.find((r) => r.role_id === roleId);
+    if (match) {
+      const title = match.title || (match as any).role_title || "Target Role";
+      const ver = match.version || (match as any).role_version || "v2026.1";
+      setActiveTargetRole(roleId, title, ver).catch((e) =>
+        console.warn("[EvidenceContext] Bidirectional role sync:", e)
+      );
+    }
   };
 
   const handleSaveCustomRole = (newRole: RoleDemandModel) => {
@@ -2540,23 +2577,25 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Domain 5 Learning Intelligence State
-  const [blueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
+  const [activeTargetRole, setActiveTargetRoleState] = useState<{
+    target_role_id: string | null;
+    target_role_version: string | null;
+    role_title: string | null;
+    has_target: boolean;
+  } | null>(null);
+  const [isLoadingLearning, setIsLoadingLearning] = useState<boolean>(false);
+  const [hasUserRoadmaps, setHasUserRoadmaps] = useState<boolean>(false);
+  const [blueprints, setBlueprints] = useState<DomainBlueprint[]>(INITIAL_BLUEPRINTS);
   const [activeDomainId, setActiveDomainId] = useState<string>("domain-data-preprocessing");
   
-  const [roadmaps, setRoadmaps] = useState<Record<string, LearningRoadmap>>(() => {
-    const initialMap: Record<string, LearningRoadmap> = {};
-    INITIAL_BLUEPRINTS.forEach((bp) => {
-      initialMap[bp.domain_id] = generatePersonalizedRoadmap(bp);
-    });
-    return initialMap;
-  });
+  const [roadmaps, setRoadmaps] = useState<Record<string, LearningRoadmap>>({});
 
   const [diagnosticResults, setDiagnosticResults] = useState<Record<string, DiagnosticResult>>({});
   const [miniProjects, setMiniProjects] = useState<MiniProject[]>([INITIAL_MINI_PROJECT]);
   const [assessment] = useState<KnowledgeAssessment>(INITIAL_KNOWLEDGE_ASSESSMENT);
   const [assessmentAttempts, setAssessmentAttempts] = useState<AssessmentAttempt[]>([]);
   const [remediationSession, setRemediationSession] = useState<RemediationSession>(INITIAL_REMEDIATION_SESSION);
-  const [learningHistory, setLearningHistory] = useState<LearningHistoryEvent[]>(INITIAL_LEARNING_HISTORY);
+  const [learningHistory, setLearningHistory] = useState<LearningHistoryEvent[]>([]);
   const [candidateEvidences, setCandidateEvidences] = useState<CandidateLearningEvidence[]>(INITIAL_CANDIDATE_EVIDENCES);
   const [resources] = useState<LearningResource[]>(INITIAL_RESOURCES);
   const [practiceExercises, setPracticeExercises] = useState<PracticeExercise[]>(INITIAL_PRACTICE_EXERCISES);
@@ -2571,7 +2610,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, [blueprints, activeDomainId]);
 
   const activeRoadmap = useMemo(() => {
-    return roadmaps[activeDomainId] || roadmaps["domain-data-preprocessing"] || generatePersonalizedRoadmap(activeBlueprint);
+    return roadmaps[activeDomainId] || Object.values(roadmaps)[0] || generatePersonalizedRoadmap(activeBlueprint);
   }, [roadmaps, activeDomainId, activeBlueprint]);
 
   const activeDiagnosticResult = diagnosticResults[activeDomainId];
@@ -2620,9 +2659,19 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const completeStep = (stepId: string) => {
+  const completeStep = async (stepId: string, roadmapId?: string, notes?: string) => {
     const roadmap = roadmaps[activeDomainId];
     if (!roadmap) return;
+
+    const targetRoadmapId = roadmapId || roadmap.id || (roadmap as any).path_id;
+    if (targetRoadmapId) {
+      try {
+        await markStepComplete(stepId, { roadmap_id: targetRoadmapId, notes });
+      } catch (err) {
+        console.warn("[EvidenceContext] Backend step completion sync note:", err);
+      }
+    }
+
     const updatedSteps = roadmap.steps.map((s) => {
       if (s.step_id === stepId) {
         return { ...s, status: "completed" as const, current_mastery: s.target_mastery };
@@ -2654,6 +2703,10 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         link_route: `/app/learning/steps/${stepId}`,
       });
     }
+
+    if (currentUserId) {
+      learningCache.invalidate(currentUserId);
+    }
   };
 
   const completePracticeExercise = (exerciseId: string, score: number) => {
@@ -2675,7 +2728,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const recordAssessmentAttempt = (attempt: AssessmentAttempt) => {
+  const recordAssessmentAttempt = (attempt: AssessmentAttempt, skipBackendSync?: boolean) => {
     setAssessmentAttempts((prev) => [attempt, ...prev]);
     addLearningHistoryEvent({
       timestamp: "Just now",
@@ -2728,7 +2781,7 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
 
     const newReviewTask: HumanReviewTask = {
       id: `task-rev-${Date.now()}`,
-      claim_id: attempt.candidate_evidence_id,
+      claim_id: attempt.candidate_evidence_id || "",
       title: `Verify Learning Mini-Project Evidence: ${proj.title}`,
       category: "insufficient_evidence",
       priority: "high",
@@ -2761,6 +2814,153 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       link_route: `/app/learning/remediation/${sessionId}`,
     });
   };
+
+  const refreshLearningState = useCallback(async (explicitRoleId?: string) => {
+    setIsLoadingLearning(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authUser = sessionData.session?.user;
+      if (!authUser) {
+        setIsLoadingLearning(false);
+        return;
+      }
+
+      // 1. Resolve user's active target role
+      let currentRoleId = explicitRoleId;
+      if (!currentRoleId) {
+        try {
+          const targetRes = await getUserTargetRole();
+          if (targetRes) {
+            setActiveTargetRoleState({
+              target_role_id: targetRes.target_role_id || null,
+              target_role_version: targetRes.target_role_version || null,
+              role_title: targetRes.role_title || null,
+              has_target: !!targetRes.has_target && !!targetRes.target_role_id,
+            });
+            currentRoleId = targetRes.target_role_id || undefined;
+          }
+        } catch (e) {
+          console.warn("[EvidenceContext] Target role fetch note:", e);
+        }
+      }
+
+      // 2. Immediate cache check
+      const cached = learningCache.get(authUser.id, currentRoleId || null, "overview");
+      if (cached) {
+        if (cached.blueprints && Array.isArray(cached.blueprints)) setBlueprints(cached.blueprints);
+        if (cached.roadmaps && typeof cached.roadmaps === "object") {
+          setRoadmaps(cached.roadmaps);
+          setHasUserRoadmaps(Object.keys(cached.roadmaps).length > 0);
+        }
+        if (cached.history && Array.isArray(cached.history)) setLearningHistory(cached.history);
+      }
+
+      // 3. Live parallel fetch
+      const [overviewRes, blueprintsRes, roadmapsRes, miniProjectsRes, historyRes] = await Promise.allSettled([
+        getLearningOverview(currentRoleId),
+        listDomainBlueprints(),
+        listUserRoadmaps(),
+        listMiniProjects(),
+        getLearningHistory({ limit: 50 }),
+      ]);
+
+      let newBlueprints = blueprints;
+      if (blueprintsRes.status === "fulfilled" && Array.isArray(blueprintsRes.value?.blueprints) && blueprintsRes.value.blueprints.length > 0) {
+        newBlueprints = blueprintsRes.value.blueprints;
+        setBlueprints(newBlueprints);
+      }
+
+      const mapObj: Record<string, LearningRoadmap> = {};
+      let userHasRoadmaps = false;
+      if (roadmapsRes.status === "fulfilled" && Array.isArray(roadmapsRes.value?.roadmaps)) {
+        roadmapsRes.value.roadmaps.forEach((r: any) => {
+          if (r.domain_id) mapObj[r.domain_id] = r;
+        });
+        userHasRoadmaps = roadmapsRes.value.roadmaps.length > 0;
+      }
+
+      if (overviewRes.status === "fulfilled" && overviewRes.value) {
+        const overview = overviewRes.value;
+        if (overview.target_role_id) {
+          setActiveTargetRoleState({
+            target_role_id: overview.target_role_id,
+            target_role_version: overview.target_role_version || "v2026.1",
+            role_title: overview.target_role_title,
+            has_target: true,
+          });
+        }
+        if (overview.active_roadmap) {
+          mapObj[overview.active_roadmap.domain_id] = overview.active_roadmap;
+          userHasRoadmaps = true;
+          if (overview.active_roadmap.domain_id) {
+            setActiveDomainId(overview.active_roadmap.domain_id);
+          }
+        } else if (overview.active_blueprint?.domain_id) {
+          setActiveDomainId(overview.active_blueprint.domain_id);
+        }
+      }
+
+      if (Object.keys(mapObj).length > 0) {
+        setRoadmaps(mapObj);
+      }
+      setHasUserRoadmaps(userHasRoadmaps);
+
+      if (miniProjectsRes.status === "fulfilled" && Array.isArray(miniProjectsRes.value?.projects) && miniProjectsRes.value.projects.length > 0) {
+        setMiniProjects(miniProjectsRes.value.projects);
+      }
+
+      let mappedHistory: LearningHistoryEvent[] = [];
+      if (historyRes.status === "fulfilled" && Array.isArray(historyRes.value?.activities)) {
+        mappedHistory = historyRes.value.activities.map((a: any) => ({
+          id: a.id,
+          timestamp: a.created_at ? new Date(a.created_at).toLocaleString() : "Recently",
+          type: a.activity_type,
+          title: a.title,
+          domain_id: a.domain_id || "general",
+          topic_id: a.step_id || undefined,
+          detail: a.detail || "",
+          link_route: a.link_route || undefined,
+          score: a.score != null ? a.score : undefined,
+        }));
+        setLearningHistory(mappedHistory);
+      }
+
+      // 4. Update scoped cache
+      learningCache.set(authUser.id, currentRoleId || null, "overview", {
+        blueprints: newBlueprints,
+        roadmaps: mapObj,
+        history: mappedHistory,
+      });
+    } catch (err) {
+      console.warn("[EvidenceContext] refreshLearningState note:", err);
+    } finally {
+      setIsLoadingLearning(false);
+    }
+  }, [blueprints]);
+
+  const setActiveTargetRole = useCallback(async (roleId: string, roleTitle: string, version: string = "v2026.1") => {
+    setActiveTargetRoleState({
+      target_role_id: roleId,
+      target_role_version: version,
+      role_title: roleTitle,
+      has_target: true,
+    });
+    setSelectedRoleIdState(roleId);
+    try {
+      localStorage.setItem("sp_selected_role_id", roleId);
+    } catch {}
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authUser = sessionData.session?.user;
+      if (authUser?.id) {
+        learningCache.invalidate(authUser.id);
+      }
+      await apiSetUserTargetRole(roleId, roleTitle, version);
+      await refreshLearningState(roleId);
+    } catch (e) {
+      console.error("[EvidenceContext] Failed to persist target role:", e);
+    }
+  }, [refreshLearningState]);
 
   // Domain 6 Sharing & Recruiter Handlers
   const createShareRecord = (label: string, config: SharePermissionsConfig): ShareRecord => {
@@ -3518,6 +3718,11 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         activeReadiness,
 
         // Domain 5 Learning Intelligence
+        activeTargetRole,
+        setActiveTargetRole,
+        isLoadingLearning,
+        hasUserRoadmaps,
+        refreshLearningState,
         blueprints,
         activeDomainId,
         setActiveDomainId,

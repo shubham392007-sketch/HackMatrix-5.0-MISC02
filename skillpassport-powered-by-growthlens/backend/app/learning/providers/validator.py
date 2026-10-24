@@ -195,7 +195,11 @@ def is_resource_relevant(
     """
     Evaluates whether a candidate resource is genuinely relevant to the requested query/topic.
     Rejects completely unrelated articles, personal blogs, and non-educational repos.
+    Verified curated catalog entries are always accepted.
     """
+    if getattr(resource, "is_fallback", False) or getattr(resource, "validation_status", "") == "verified_available":
+        return True, getattr(resource, "relevance_score", 0.90), "Verified Curated Resource"
+
     rel = compute_topic_relevance(
         query=query,
         title=resource.title,
@@ -214,6 +218,7 @@ def deduplicate_resources(
 ) -> List[NormalizedLearningResource]:
     """
     Deduplicates resources by canonicalized URL (ignoring tracking query params).
+    Preserves YouTube video identifiers (v parameter or youtu.be path).
     """
     seen_urls = set()
     deduped = []
@@ -221,8 +226,15 @@ def deduplicate_resources(
     for res in resources:
         try:
             parsed = urllib.parse.urlparse(res.url)
-            # Normalize URL: scheme + netloc + path
-            canonical = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{parsed.path.rstrip('/')}"
+            netloc = parsed.netloc.lower()
+            if "youtube.com" in netloc:
+                qs = urllib.parse.parse_qs(parsed.query)
+                vid = qs.get("v", [""])[0]
+                canonical = f"{parsed.scheme.lower()}://{netloc}{parsed.path.rstrip('/')}?v={vid}" if vid else f"{parsed.scheme.lower()}://{netloc}{parsed.path.rstrip('/')}"
+            elif "youtu.be" in netloc:
+                canonical = f"{parsed.scheme.lower()}://{netloc}{parsed.path.rstrip('/')}"
+            else:
+                canonical = f"{parsed.scheme.lower()}://{netloc}{parsed.path.rstrip('/')}"
         except Exception:
             canonical = res.url.lower().strip()
 

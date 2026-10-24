@@ -26,6 +26,8 @@ class TheirStackAdapter(BaseJobSearchAdapter):
     pagination seamlessly for requests up to 50 jobs.
     """
 
+    _exhausted_keys: set = set()
+
     def __init__(self):
         self.settings = get_settings()
 
@@ -67,10 +69,17 @@ class TheirStackAdapter(BaseJobSearchAdapter):
         role_families: Optional[List[str]] = None,
         **kwargs,
     ) -> List[JobSearchResult]:
-        keys_to_try = self.api_keys
-        if not keys_to_try:
+        configured_keys = self.api_keys
+        if not configured_keys:
             logger.warning("TheirStack API called but THEIRSTACK_API_KEY is not configured.")
             return []
+
+        # Filter out keys known to be credit-exhausted or invalid
+        keys_to_try = [k for k in configured_keys if k not in self._exhausted_keys]
+        if not keys_to_try:
+            # If all configured keys were exhausted, clear the cache to allow a retry
+            self._exhausted_keys.clear()
+            keys_to_try = configured_keys
 
         # Enforce strict bounded limit (TheirStack free tier max is 25 per page)
         bounded_limit = min(max(1, limit), self.settings.job_search_max_results, 50)
@@ -123,7 +132,7 @@ class TheirStackAdapter(BaseJobSearchAdapter):
             )
 
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                async with httpx.AsyncClient(timeout=8.0) as client:
                     response = await client.post(url, headers=headers, json=payload)
                     # If free-tier page size limit error E-020 is returned, clamp limit to 25 and retry current key
                     if response.status_code == 403 and "E-020" in response.text:
@@ -151,9 +160,11 @@ class TheirStackAdapter(BaseJobSearchAdapter):
 
             # Detect quota exhaustion (402), rate limits (429), or auth/permission errors (401, 403)
             if response.status_code in (401, 402, 403, 429):
+                # Mark this key as exhausted so subsequent searches bypass it instantly
+                self._exhausted_keys.add(current_key)
                 logger.warning(
                     f"TheirStack key {key_idx + 1}/{len(keys_to_try)} failed with HTTP {response.status_code}: "
-                    f"{response.text[:120]}. Falling back to next key..."
+                    f"{response.text[:120]}. Cached as exhausted; falling back to next key..."
                 )
                 err_type = (
                     ProviderErrorType.RATE_LIMITED

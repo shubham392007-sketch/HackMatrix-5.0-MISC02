@@ -73,8 +73,37 @@ class CareerIntelligenceDbAdapter:
     Operates strictly within the authenticated user's scope.
     """
 
-    def __init__(self, query_timeout_seconds: int = 5):
+    def __init__(self, query_timeout_seconds: int = 5, cache_ttl_seconds: int = 120):
         self.query_timeout_seconds = query_timeout_seconds
+        self.cache_ttl_seconds = cache_ttl_seconds
+        self._cache: Dict[str, Any] = {}
+
+    def _cache_key(self, user_id: str, target_role_id: Optional[str]) -> str:
+        return f"{user_id}::{target_role_id or 'default'}"
+
+    def get_cached_triggers(self, user_id: str, target_role_id: Optional[str]) -> Optional[List[UpstreamGapTrigger]]:
+        import time
+        k = self._cache_key(user_id, target_role_id)
+        if k in self._cache:
+            ts, triggers = self._cache[k]
+            if time.time() - ts < self.cache_ttl_seconds:
+                logger.debug(f"[UpstreamAdapterCache] HIT for key {k}")
+                return triggers
+            else:
+                del self._cache[k]
+        return None
+
+    def set_cached_triggers(self, user_id: str, target_role_id: Optional[str], triggers: List[UpstreamGapTrigger]) -> None:
+        import time
+        k = self._cache_key(user_id, target_role_id)
+        self._cache[k] = (time.time(), triggers)
+
+    def invalidate_cache(self, user_id: str) -> None:
+        prefix = f"{user_id}::"
+        to_del = [k for k in self._cache if k.startswith(prefix)]
+        for k in to_del:
+            del self._cache[k]
+        logger.info(f"[UpstreamAdapterCache] Invalidated {len(to_del)} cache entries for user {user_id}")
 
     def _has_table(self, db: Session, table_name: str) -> bool:
         try:
@@ -120,41 +149,17 @@ class CareerIntelligenceDbAdapter:
                     """
                 )
                 row = db.execute(stmt, params_target).fetchone()
-                if row:
+                if row and row[1]:
                     return {
                         "id": str(row[0]),
-                        "target_role_id": row[1] or "role-senior-backend",
-                        "target_role_version": row[2] or "v1.0",
-                        "role_title": row[3] or "Senior Backend & Distributed Systems Engineer",
+                        "target_role_id": row[1],
+                        "target_role_version": row[2] or "v2026.1",
+                        "role_title": row[3] or row[1].replace("role-", "").replace("-", " ").title(),
                         "selected_at": row[4],
                     }
             except Exception as e:
                 db.rollback()
-                logger.warning(f"user_target_roles query exception (table may be empty or evolving): {e}")
-
-        # Fallback to user_profiles table if user_target_roles has no record
-        if self._has_table(db, "user_profiles"):
-            try:
-                profile_stmt = text(
-                    """
-                    SELECT job_title, professional_goal
-                    FROM user_profiles
-                    WHERE (id = :owner_id OR id = :owner_hex)
-                    LIMIT 1
-                    """
-                )
-                p_row = db.execute(profile_stmt, params_target).fetchone()
-                if p_row and (p_row[0] or p_row[1]):
-                    return {
-                        "id": str(owner_uuid),
-                        "target_role_id": "role-custom-goal",
-                        "target_role_version": "v1.0",
-                        "role_title": p_row[1] or p_row[0] or "Target Engineering Role",
-                        "selected_at": None,
-                    }
-            except Exception as e:
-                db.rollback()
-                logger.debug(f"user_profiles fallback check: {e}")
+                logger.warning(f"user_target_roles query exception: {e}")
 
         return None
 
@@ -320,7 +325,7 @@ class CareerIntelligenceDbAdapter:
         return None
 
     def fetch_upstream_triggers(
-        self, db: Session, user_id: str, target_role_id: Optional[str] = None
+        self, db: Session, user_id: str, target_role_id: Optional[str] = None, force_refresh: bool = False
     ) -> List[UpstreamGapTrigger]:
         """
         Primary ingestion method:
@@ -329,6 +334,11 @@ class CareerIntelligenceDbAdapter:
         3. If no snapshot exists yet, queries user's actual Skill Intelligence mappings
            from competency_taxonomy + evidence_competency_mappings to construct deterministic triggers.
         """
+        if not force_refresh:
+            cached = self.get_cached_triggers(user_id, target_role_id)
+            if cached is not None:
+                return cached
+
         owner_uuid = self._safe_user_uuid(user_id)
         triggers: List[UpstreamGapTrigger] = []
 
@@ -438,6 +448,7 @@ class CareerIntelligenceDbAdapter:
                 )
                 triggers.append(trigger)
 
+            self.set_cached_triggers(user_id, target_role_id, triggers)
             return triggers
 
         # 2. Resilient Database Fallback:
@@ -450,18 +461,16 @@ class CareerIntelligenceDbAdapter:
             .all()
         )
 
-        target_role = self.get_user_target_role(db, user_id) or {
-            "target_role_id": "role-senior-backend",
-            "target_role_version": "v1.0",
-            "role_title": "Senior Distributed Systems Engineer",
-        }
+        target_role = self.get_user_target_role(db, user_id)
+        if not target_role and not mappings:
+            return []
 
         role_ctx = RoleContext(
-            role_id=target_role.get("target_role_id", "role-senior-backend"),
-            role_title=target_role.get("role_title", "Senior Distributed Systems Engineer"),
+            role_id=(target_role.get("target_role_id") if target_role else "role-default"),
+            role_title=(target_role.get("role_title") if target_role else "Software Engineer"),
             seniority="Senior Level",
-            context_domain="Distributed Systems",
-            role_version=target_role.get("target_role_version", "v1.0"),
+            context_domain="Engineering",
+            role_version=(target_role.get("target_role_version") if target_role else "v1.0"),
         )
 
         for idx, (cmap, comp) in enumerate(mappings):
@@ -538,6 +547,7 @@ class CareerIntelligenceDbAdapter:
             )
             triggers.append(trigger)
 
+        self.set_cached_triggers(user_id, target_role_id, triggers)
         return triggers
 
     def has_new_upstream_snapshot(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -25,31 +25,105 @@ import {
   Code2,
   PlayCircle,
   FileText,
+  AlertCircle,
 } from "lucide-react";
+import { getDomainBlueprint } from "@/lib/evidenceApi";
 
 export default function DomainBlueprintDetailPage() {
   const params = useParams();
   const domainId = params?.domainId as string;
 
   const { blueprints, activeRoadmap, setActiveDomainId } = useEvidence();
+  const [fetchedBlueprint, setFetchedBlueprint] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setFetchedBlueprint(null);
+    setActiveDomainId(domainId);
+
+    const existing = blueprints.find((b) => b.domain_id === domainId);
+    if (existing && existing.modules && existing.modules.length > 0) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getDomainBlueprint(domainId)
+      .then((res) => {
+        if (isMounted && res) {
+          setFetchedBlueprint(res);
+        }
+      })
+      .catch((e) => {
+        console.warn("Could not fetch remote blueprint:", e);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [domainId, blueprints, setActiveDomainId]);
 
   const blueprint = useMemo(() => {
-    return (
-      blueprints.find((b) => b.domain_id === domainId) ||
-      blueprints[0]
-    );
-  }, [blueprints, domainId]);
+    const fromContext = blueprints.find((b) => b.domain_id === domainId);
+    if (fromContext && fromContext.modules && fromContext.modules.length > 0) {
+      return fromContext;
+    }
+    if (fetchedBlueprint && fetchedBlueprint.domain_id === domainId) {
+      return fetchedBlueprint;
+    }
+    return fromContext || fetchedBlueprint || null;
+  }, [blueprints, domainId, fetchedBlueprint]);
 
-  const totalTopics = blueprint.modules.flatMap((m) => m.topics).length;
+  if (loading && !blueprint) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-16 space-y-4">
+        <Sparkles className="w-8 h-8 animate-spin text-ink/40" />
+        <p className="text-xs font-mono text-ink-muted">Loading learning blueprint from database...</p>
+      </div>
+    );
+  }
+
+  if (!blueprint || !blueprint.modules) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-16 space-y-4 text-center">
+        <AlertCircle className="w-10 h-10 text-ink/30 mx-auto" />
+        <h3 className="text-base font-bold text-ink">Blueprint Not Found</h3>
+        <p className="text-xs text-ink/70 max-w-sm mx-auto">
+          We could not resolve curriculum blueprint "{domainId}".
+        </p>
+        <Link href="/app/learning" className="pill-btn pill-btn-primary text-xs py-2 px-4">
+          Return to Learning Hub &rarr;
+        </Link>
+      </div>
+    );
+  }
+
+  const rawTitle = blueprint.title || domainId;
+  const cleanTitle = (!rawTitle || rawTitle.toLowerCase().includes("custom") || rawTitle === "Domain Custom")
+    ? domainId.replace(/^domain-/, "").replace(/^skill-/, "").replace(/^gap-/, "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : rawTitle;
+
+  const totalTopics = blueprint.modules.flatMap((m: any) => m.topics || []).length;
 
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
-        title={`${blueprint.title} Blueprint`}
+        title={`${cleanTitle} Blueprint`}
         description={blueprint.description}
         badge={blueprint.version}
         badgeColor="border-sky-300 text-sky-900 bg-sky-100"
       >
+        <Link
+          href="/app/learning/domains"
+          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          Browse All Blueprints
+        </Link>
         <Link
           href={`/app/learning/domains/${blueprint.domain_id}/diagnostic`}
           className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
@@ -115,7 +189,7 @@ export default function DomainBlueprintDetailPage() {
             Core Domain Competency Objectives
           </span>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-ink/80 pt-1">
-            {blueprint.learning_objectives.map((obj, i) => (
+            {(blueprint.learning_objectives || []).map((obj: string, i: number) => (
               <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>{obj}</span>
@@ -137,7 +211,7 @@ export default function DomainBlueprintDetailPage() {
           </span>
         </div>
 
-        {blueprint.modules.map((module, mIdx) => (
+        {(blueprint.modules || []).map((module: any, mIdx: number) => (
           <div key={module.id} className="gl-card p-6 space-y-4 border-ink/15">
             <div className="flex items-start justify-between gap-4 pb-2 border-b border-ink/10">
               <div>
@@ -148,13 +222,13 @@ export default function DomainBlueprintDetailPage() {
                 <p className="text-xs text-ink-muted mt-0.5">{module.description}</p>
               </div>
               <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-sand/30 text-ink shrink-0">
-                {module.topics.length} Topics
+                {(module.topics || []).length} Topics
               </span>
             </div>
 
             {/* Topics inside this module */}
             <div className="space-y-3">
-              {module.topics.map((topic) => (
+              {(module.topics || []).map((topic: any) => (
                 <div
                   key={topic.id}
                   className="p-4 rounded-2xl bg-white border border-ink/10 space-y-3 hover:shadow-sm transition-all"
@@ -188,10 +262,10 @@ export default function DomainBlueprintDetailPage() {
                   <div className="pt-2 border-t border-ink/5 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2 text-[11px] text-ink-muted flex-wrap">
                       <span>Prerequisites:</span>
-                      {topic.prerequisites.length === 0 ? (
+                      {(topic.prerequisites || []).length === 0 ? (
                         <span className="text-emerald-700 font-medium">None (Entry Point)</span>
                       ) : (
-                        topic.prerequisites.map((p) => (
+                        (topic.prerequisites || []).map((p: string) => (
                           <span
                             key={p}
                             className="font-mono text-[10px] px-2 py-0.2 rounded bg-sand/30 text-ink"

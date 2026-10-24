@@ -3,7 +3,8 @@ export type StepStatus =
   | "available"
   | "in_progress"
   | "completed"
-  | "needs_remediation";
+  | "needs_remediation"
+  | "skipped";
 
 export type TopicDifficulty = "Beginner" | "Intermediate" | "Advanced";
 
@@ -232,6 +233,7 @@ export interface AssessmentAttempt {
   feedback: string;
   needs_remediation: boolean;
   failed_topic_ids: string[];
+  is_skipped?: boolean;
 }
 
 export interface MiniProjectRubricItem {

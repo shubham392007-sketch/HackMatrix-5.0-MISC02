@@ -36,16 +36,16 @@ export default function RoleSkillMappingPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const filteredCompetencies = (activeRole?.competencies || []).filter((c) => {
+  const filteredCompetencies = activeRole.competencies.filter((c) => {
     if (statusFilter === "all") return true;
     return c.mapping_status === statusFilter;
   });
 
-  const mappedCount = (activeRole?.competencies || []).filter(
+  const mappedCount = activeRole.competencies.filter(
     (c) => c.mapping_status === "mapped" || c.mapping_status === "alias_resolved"
   ).length;
 
-  const ambiguousCount = (activeRole?.competencies || []).filter(
+  const ambiguousCount = activeRole.competencies.filter(
     (c) => c.mapping_status === "ambiguous" || c.mapping_status === "needs_review"
   ).length;
 
@@ -57,7 +57,7 @@ export default function RoleSkillMappingPage() {
   const handleSaveCorrection = (skillId: string) => {
     const targetCanonicalSkill = skills.find((s) => s.id === editedCanonicalId);
     if (targetCanonicalSkill) {
-      if (activeRole) updateRoleCompetency(activeRole.role_id, skillId, {
+      updateRoleCompetency(activeRole.role_id, skillId, {
         skill_id: targetCanonicalSkill.id,
         canonical_name: targetCanonicalSkill.canonicalName,
         category: targetCanonicalSkill.category,
@@ -134,7 +134,7 @@ export default function RoleSkillMappingPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="gl-card p-4 bg-white">
           <span className="text-xs font-mono text-ink-muted uppercase">Role Demands</span>
-          <p className="text-2xl font-bold text-ink mt-1">{activeRole?.competencies.length || 0}</p>
+          <p className="text-2xl font-bold text-ink mt-1">{activeRole.competencies.length}</p>
           <span className="text-[11px] text-ink-muted">In active role model</span>
         </div>
         <div className="gl-card p-4 bg-emerald-50/50 border-emerald-200">
@@ -205,11 +205,11 @@ export default function RoleSkillMappingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/10 font-sans">
-              {filteredCompetencies.map((comp, compIdx) => {
+              {filteredCompetencies.map((comp) => {
                 const isEditing = editingSkillId === comp.skill_id;
 
                 return (
-                  <tr key={`${comp.skill_id || comp.canonical_name || "comp"}-${compIdx}`} className="hover:bg-sand/10 transition-all">
+                  <tr key={comp.skill_id} className="hover:bg-sand/10 transition-all">
                     <td className="py-3.5 px-3 font-medium text-ink">
                       <div>{comp.canonical_name}</div>
                       {comp.source_span && (

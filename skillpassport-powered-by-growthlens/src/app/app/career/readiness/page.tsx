@@ -21,8 +21,6 @@ import {
   FileText,
   Target,
   Award,
-  Compass,
-  Briefcase,
 } from "lucide-react";
 
 export default function CareerReadinessPage() {
@@ -43,42 +41,6 @@ export default function CareerReadinessPage() {
         return "bg-slate-100 text-slate-950 border-slate-300";
     }
   };
-
-  if (!activeRole) {
-    return (
-      <div className="flex-1 flex flex-col">
-        <AppTopBar
-          title="Career Readiness & Blocker Diagnosis"
-          description="A comprehensive audit of your career readiness across required coverage, proficiency alignment, and verification certainty."
-          badge="Career Readiness Index"
-          badgeColor="border-emerald-300 text-emerald-900 bg-emerald-100"
-        />
-        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          <TargetRoleSelectorBar />
-          <div className="gl-card p-12 bg-white border border-ink/10 text-center space-y-4 max-w-xl mx-auto my-8 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
-              <Compass className="w-6 h-6 text-ink" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-ink">No active target role selected</h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Select a target role from our curated catalogue or parse a custom job description to calculate career readiness, critical blockers, and uncertainties.
-              </p>
-            </div>
-            <div className="pt-2">
-              <Link
-                href="/app/career/roles"
-                className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold inline-flex items-center gap-1.5"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                Select Target Role
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col">
@@ -130,49 +92,8 @@ export default function CareerReadinessPage() {
             </h2>
 
             <p className="text-xs md:text-sm text-ink-muted max-w-xl leading-relaxed">
-              {(() => {
-                const coreMatches = activeMatch?.competency_matches.filter((m) => m.requirement_type === "core_required") || [];
-                const hasCore = coreMatches.length > 0;
-                const corePct = activeReadiness.required_supported_pct ?? activeMatch?.required_coverage_score ?? 0;
-                const blockerCount = activeReadiness.critical_blockers?.length ?? 0;
-                const blockerNames = (activeReadiness.critical_blockers || [])
-                  .slice(0, 3)
-                  .map((b) => b.skill_name)
-                  .join(", ");
-                const tier = activeReadiness.readiness_tier;
-
-                let baselineSentence = "";
-                if (!hasCore) {
-                  baselineSentence = `This role does not designate separate core requirements; readiness is evaluated across all ${activeMatch?.total_competencies || 0} role competencies (${activeMatch?.overall_match_score || 0}% overall match).`;
-                } else if (corePct >= 80) {
-                  baselineSentence = `Your profile demonstrates robust coverage (${corePct}%) of core baseline competencies.`;
-                } else if (corePct >= 50) {
-                  baselineSentence = `Your profile establishes moderate coverage (${corePct}%) across core baseline competencies.`;
-                } else if (corePct > 0) {
-                  baselineSentence = `Your profile shows developing baseline coverage (${corePct}%) with foundational competencies in progress.`;
-                } else {
-                  baselineSentence = `Your profile currently lacks verified evidence for core baseline competencies.`;
-                }
-
-                let nextSentence = "";
-                if (tier === "High Readiness") {
-                  nextSentence = blockerCount > 0
-                    ? `Advancing further involves resolving ${blockerCount} minor blocker${blockerCount > 1 ? "s" : ""} (${blockerNames}).`
-                    : "Your evidence profile aligns comprehensively across all evaluated demand dimensions.";
-                } else if (tier === "Moderate Alignment") {
-                  nextSentence = blockerCount > 0
-                    ? `Advancing to High Readiness requires establishing verified production depth in ${blockerCount} critical blocker${blockerCount > 1 ? "s" : ""}${blockerNames ? `: ${blockerNames}` : ""}.`
-                    : "Advancing to High Readiness requires strengthening formal verification across candidate skills.";
-                } else if (tier === "Developing Foundations") {
-                  nextSentence = blockerCount > 0
-                    ? `Advancing toward Moderate Alignment requires closing foundational skill gaps in ${blockerCount} requirement area${blockerCount > 1 ? "s" : ""}${blockerNames ? `: ${blockerNames}` : ""}.`
-                    : "Advancing toward Moderate Alignment requires demonstrating attributable work artifacts.";
-                } else {
-                  nextSentence = "Focus initial effort on establishing demonstrable project artifacts for core prerequisite requirements.";
-                }
-
-                return `${baselineSentence} ${nextSentence}`;
-              })()}
+              Your profile satisfies the core baseline competencies, with strong evidence in core engineering.
+              Advancing to <em>High Readiness</em> requires formalizing verification for candidate skills and establishing production depth in {activeReadiness.critical_blockers.length} critical requirement areas.
             </p>
           </div>
 
@@ -192,32 +113,23 @@ export default function CareerReadinessPage() {
 
         {/* 3 Component Breakdown Columns */}
         <div className="pt-6 border-t border-ink/10 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(() => {
-            const hasCore = (activeMatch?.competency_matches || []).some((m) => m.requirement_type === "core_required");
-            return (
-              <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-ink">
-                    {hasCore ? "Core Required Coverage" : "Baseline Coverage (All Competencies)"}
-                  </span>
-                  <span className="font-mono font-bold text-ink">
-                    {activeReadiness.required_supported_pct}%
-                  </span>
-                </div>
-                <div className="w-full bg-sand/30 rounded-full h-2">
-                  <div
-                    className="bg-emerald-500 h-2 rounded-full transition-all"
-                    style={{ width: `${activeReadiness.required_supported_pct}%` }}
-                  />
-                </div>
-                <span className="text-[11px] text-ink-muted block">
-                  {hasCore
-                    ? "Percentage of essential competencies with demonstrable baseline capability."
-                    : "Evaluated across all extracted competencies (no core/supporting distinction in posting)."}
-                </span>
-              </div>
-            );
-          })()}
+          <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-ink">Core Required Coverage</span>
+              <span className="font-mono font-bold text-ink">
+                {activeReadiness.required_supported_pct}%
+              </span>
+            </div>
+            <div className="w-full bg-sand/30 rounded-full h-2">
+              <div
+                className="bg-emerald-500 h-2 rounded-full transition-all"
+                style={{ width: `${activeReadiness.required_supported_pct}%` }}
+              />
+            </div>
+            <span className="text-[11px] text-ink-muted block">
+              Percentage of essential competencies with demonstrable baseline capability.
+            </span>
+          </div>
 
           <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-2">
             <div className="flex items-center justify-between text-xs">

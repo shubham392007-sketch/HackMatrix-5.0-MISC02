@@ -15,6 +15,7 @@ import {
   RequirementTypeBadge,
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
+import { RoleDemandModel } from "@/types/career";
 import AppTopBar from "@/components/app/AppTopBar";
 import {
   GitCompare,
@@ -30,24 +31,42 @@ import {
 } from "lucide-react";
 
 export default function CompareRolesPage() {
-  const { targetRoles, skills, selectedRoleId, setSelectedRoleId } =
-    useEvidence();
+  const {
+    targetRoles,
+    catalogueRoles,
+    savedTargetRoles,
+    customRoles,
+    skills,
+    initialLoading,
+    selectedRoleId,
+    setSelectedRoleId,
+  } = useEvidence();
+
+  // Combine all database roles so user can compare ANY industry role or custom target
+  const availableRoles = useMemo(() => {
+    const map = new Map<string, RoleDemandModel>();
+    (savedTargetRoles || []).forEach((r) => r?.role_id && map.set(r.role_id, r));
+    (catalogueRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    (targetRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    (customRoles || []).forEach((r) => r?.role_id && !map.has(r.role_id) && map.set(r.role_id, r));
+    return Array.from(map.values());
+  }, [savedTargetRoles, catalogueRoles, targetRoles, customRoles]);
 
   // Role selections for side-by-side comparison
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
 
   // Initialize selection with first 2 available database roles once loaded
   React.useEffect(() => {
-    if (targetRoles && targetRoles.length >= 2) {
+    if (availableRoles.length >= 2) {
       setSelectedRoleIds((prev) => {
-        const valid = prev.filter((id) => targetRoles.some((r) => r.role_id === id));
+        const valid = prev.filter((id) => availableRoles.some((r) => r.role_id === id));
         if (valid.length >= 2) return valid;
-        return [targetRoles[0].role_id, targetRoles[1].role_id];
+        return [availableRoles[0].role_id, availableRoles[1].role_id];
       });
-    } else if (targetRoles && targetRoles.length === 1) {
-      setSelectedRoleIds([targetRoles[0].role_id]);
+    } else if (availableRoles.length === 1) {
+      setSelectedRoleIds([availableRoles[0].role_id]);
     }
-  }, [targetRoles]);
+  }, [availableRoles]);
 
   const [filterMode, setFilterMode] = useState<
     "all" | "gaps_only" | "differences"
@@ -58,7 +77,7 @@ export default function CompareRolesPage() {
   const evaluatedRoles = useMemo(() => {
     return selectedRoleIds
       .map((id) => {
-        const role = targetRoles.find((r) => r.role_id === id);
+        const role = availableRoles.find((r) => r.role_id === id);
         if (!role || !role.competencies) return null;
         const match = evaluateRoleMatch(role, skills);
         const gaps = extractGapRecords(match, role);
@@ -66,7 +85,7 @@ export default function CompareRolesPage() {
         return { role, match, gaps, readiness };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [selectedRoleIds, targetRoles, skills]);
+  }, [selectedRoleIds, availableRoles, skills]);
 
   // Aggregate union of all competency skill_ids across selected roles
   const allSkillIds = useMemo(() => {
@@ -149,81 +168,129 @@ export default function CompareRolesPage() {
 
       {/* Role Selector Chips */}
       <div className="p-4 rounded-2xl bg-white border border-ink/10 space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-ink">
-            Select 2 or 3 Roles to Compare:
-          </span>
-          <span className="text-ink-muted text-[11px]">
-            Selected: {selectedRoleIds.length} / 3 max
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-ink">
+              Select 2 or 3 Roles to Compare:
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-950 text-[10px] font-medium">
+              <Sparkles className="w-3 h-3 text-emerald-600" />
+              Live Evaluation &bull; {skills.length} skills computed
+            </span>
+          </div>
+          <span className="text-ink-muted text-[11px] font-mono">
+            Selected: {selectedRoleIds.length} / 3 max &bull; {availableRoles.length} roles in DB
           </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {targetRoles.map((role) => {
-            const isSelected = selectedRoleIds.includes(role.role_id);
-            return (
-              <button
-                key={role.role_id}
-                onClick={() => handleRoleToggle(role.role_id)}
-                className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-2 ${
-                  isSelected
-                    ? "bg-ink text-white shadow-sm"
-                    : "bg-sand/20 text-ink hover:bg-sand/40 border border-ink/10"
-                }`}
-              >
-                <span>{role.title}</span>
-                <span className="text-[10px] opacity-70">({role.seniority})</span>
-                {isSelected && (
-                  <span className="w-2 h-2 rounded-full bg-lime" />
-                )}
-              </button>
-            );
-          })}
+          {availableRoles.length === 0 ? (
+            <div className="text-xs text-ink-muted py-2 flex items-center gap-2">
+              <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+              Loading database roles...
+            </div>
+          ) : (
+            availableRoles.map((role) => {
+              const isSelected = selectedRoleIds.includes(role.role_id);
+              return (
+                <button
+                  key={role.role_id}
+                  onClick={() => handleRoleToggle(role.role_id)}
+                  className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-2 ${
+                    isSelected
+                      ? "bg-ink text-white shadow-sm"
+                      : "bg-sand/20 text-ink hover:bg-sand/40 border border-ink/10"
+                  }`}
+                >
+                  <span>{role.title}</span>
+                  <span className="text-[10px] opacity-70">({role.seniority})</span>
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-lime" />
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* Side-by-Side Summary Cards */}
-      <div
-        className={`grid grid-cols-1 ${
-          evaluatedRoles.length === 2
-            ? "md:grid-cols-2"
-            : evaluatedRoles.length === 3
-            ? "md:grid-cols-3"
-            : "md:grid-cols-1"
-        } gap-4`}
-      >
-        {evaluatedRoles.map(({ role, match, gaps, readiness }) => {
-          const isActive = selectedRoleId === role.role_id;
+      {initialLoading || (availableRoles.length > 0 && evaluatedRoles.length === 0) ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="gl-card p-6 animate-pulse space-y-4 bg-white">
+            <div className="h-4 bg-sand/50 rounded w-1/4"></div>
+            <div className="h-6 bg-sand/60 rounded w-1/2"></div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="h-3 bg-sand/30 rounded"></div>
+              <div className="h-3 bg-sand/30 rounded"></div>
+            </div>
+          </div>
+          <div className="gl-card p-6 animate-pulse space-y-4 bg-white">
+            <div className="h-4 bg-sand/50 rounded w-1/4"></div>
+            <div className="h-6 bg-sand/60 rounded w-1/2"></div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+              <div className="h-16 bg-sand/30 rounded-xl"></div>
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="h-3 bg-sand/30 rounded"></div>
+              <div className="h-3 bg-sand/30 rounded"></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`grid grid-cols-1 ${
+            evaluatedRoles.length === 2
+              ? "md:grid-cols-2"
+              : evaluatedRoles.length === 3
+              ? "md:grid-cols-3"
+              : "md:grid-cols-1"
+          } gap-4`}
+        >
+          {evaluatedRoles.map(({ role, match, gaps, readiness }) => {
+            const isActive = selectedRoleId === role.role_id;
 
-          return (
-            <div
-              key={role.role_id}
-              className={`gl-card p-5 space-y-4 border-ink/15 transition-all ${
-                isActive ? "ring-2 ring-ink bg-white shadow-md" : "bg-white/80"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-mono uppercase text-ink-muted block">
-                    {role.seniority} &bull; {role.version}
-                  </span>
-                  <h3 className="text-base font-bold text-ink">{role.title}</h3>
-                  <span className="text-xs text-ink-muted">{role.context}</span>
+            return (
+              <div
+                key={role.role_id}
+                className={`gl-card p-5 space-y-4 border-ink/15 transition-all ${
+                  isActive ? "ring-2 ring-ink bg-white shadow-md" : "bg-white/80"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[10px] font-mono uppercase text-ink-muted">
+                        {role.seniority} &bull; {role.version}
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
+                        <Sparkles className="w-2.5 h-2.5" /> Live
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-ink">{role.title}</h3>
+                    <span className="text-xs text-ink-muted">{role.context}</span>
+                  </div>
+
+                  {isActive ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-lime text-ink border border-ink/20">
+                      Active Target
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setSelectedRoleId(role.role_id)}
+                      className="pill-btn bg-sand/20 hover:bg-sand/40 text-[10px] py-1 px-2 text-ink"
+                    >
+                      Set Active
+                    </button>
+                  )}
                 </div>
-
-                {isActive ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-lime text-ink border border-ink/20">
-                    Active Target
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setSelectedRoleId(role.role_id)}
-                    className="pill-btn bg-sand/20 hover:bg-sand/40 text-[10px] py-1 px-2 text-ink"
-                  >
-                    Set Active
-                  </button>
-                )}
-              </div>
 
               {/* Match Dial & Stats */}
               <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-sand/20 border border-ink/10 text-center text-xs">
@@ -280,6 +347,7 @@ export default function CompareRolesPage() {
           );
         })}
       </div>
+      )}
 
       {/* Comparison Filter Controls */}
       <div className="flex items-center justify-between gap-4">

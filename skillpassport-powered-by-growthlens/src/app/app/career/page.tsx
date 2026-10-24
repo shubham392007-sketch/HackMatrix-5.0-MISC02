@@ -29,7 +29,6 @@ import {
   RequirementTypeBadge,
   MatchStatusBadge,
 } from "@/components/app/CareerBadges";
-import MarkdownContent from '@/components/MarkdownContent';
 import AppTopBar from "@/components/app/AppTopBar";
 
 export default function RoleIntelligenceOverviewPage() {
@@ -49,6 +48,24 @@ export default function RoleIntelligenceOverviewPage() {
 
       {/* Target Role Selector Bar */}
       <TargetRoleSelectorBar />
+
+      {/* Core Architectural Philosophy Callout */}
+      <div className="gl-card p-5 bg-[#FAF8F5] border border-ink/15">
+        <div className="flex items-start gap-3">
+          <Scale className="w-5 h-5 text-ink shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-ink">
+              Evidence-Grounded Demand Matching (No Unexplained Percentages)
+            </h4>
+            <p className="text-xs text-ink/80 leading-relaxed">
+              We never compare you against a fictional &ldquo;ideal candidate&rdquo; or output an arbitrary
+              keyword similarity score. Every match is evaluated across a 5-point maturity scale and discounted
+              if supporting evidence is unverified or conflicting. A high extraction confidence score does not
+              award credit without attributable work.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Key Metric Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -126,31 +143,9 @@ export default function RoleIntelligenceOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Active Role Demand Summary */}
         <div className="lg:col-span-7 space-y-4">
-          {!activeRole ? (
-            <div className="gl-card p-10 bg-white border border-ink/10 text-center space-y-4 shadow-sm">
-              <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
-                <Compass className="w-6 h-6 text-ink" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-lg font-bold text-ink">No active target role selected</h3>
-                <p className="text-xs text-ink-muted leading-relaxed max-w-md mx-auto">
-                  Select a curated benchmark role or parse a custom job description to activate role matching, skill gap diagnosis, and learning blueprints.
-                </p>
-              </div>
-              <div className="pt-2">
-                <Link
-                  href="/app/career/roles"
-                  className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold inline-flex items-center gap-1.5 shadow-sm"
-                >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  Select a Target Role
-                </Link>
-              </div>
-            </div>
-          ) : (
           <div className="gl-card p-6 bg-white space-y-5">
             <div className="flex items-start justify-between gap-4 border-b border-ink/10 pb-4">
-              <div className="flex-1 min-w-0">
+              <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-mono px-2 py-0.5 rounded bg-ink/5 text-ink font-semibold">
                     {activeRole.seniority}
@@ -159,10 +154,9 @@ export default function RoleIntelligenceOverviewPage() {
                   <span className="text-xs font-mono text-ink-muted">&bull; {activeRole.version}</span>
                 </div>
                 <h2 className="text-2xl font-bold text-ink">{activeRole.title}</h2>
-                <MarkdownContent
-                  content={activeRole.description}
-                  className="mt-2 text-xs text-ink/80 leading-relaxed"
-                />
+                <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+                  {activeRole.description}
+                </p>
               </div>
               <Link
                 href={`/app/career/roles/${activeRole.role_id}`}
@@ -230,16 +224,20 @@ export default function RoleIntelligenceOverviewPage() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex items-center justify-end pt-3 border-t border-ink/10">
-              <Link
-                href="/app/career/match"
-                className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
-              >
-                Full Role Match Breakdown <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+            <div className="flex items-center justify-between pt-2 border-t border-ink/10">
+              <span className="text-[11px] text-ink-muted font-mono">
+                Model Provenance: {activeRole.provenance}
+              </span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/app/career/match"
+                  className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+                >
+                  Full Role Match Breakdown <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
-          )}
         </div>
 
         {/* Right Side: Quick Action Suite */}

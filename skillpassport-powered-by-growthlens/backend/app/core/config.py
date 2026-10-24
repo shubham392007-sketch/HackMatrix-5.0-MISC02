@@ -99,10 +99,13 @@ class Settings(BaseSettings):
     # AI / LLM / Ollama
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
+    ollama_qwen_model: str = "qwen3:8b"
+    ollama_ocr_model: str = "glm-ocr"
+    ollama_embed_model: str = "nomic-embed-text"
     ollama_embedding_model: str = "all-minilm:latest"
-    ollama_timeout_seconds: float = 45.0
+    ollama_timeout_seconds: float = 180.0
     ollama_keep_alive: str = "30m"
-    ollama_num_ctx: int = 4096
+    ollama_num_ctx: int = 8192
     ollama_num_gpu: int = 99
     ollama_roadmap_timeout_seconds: Optional[float] = None
     ollama_assessment_timeout_seconds: Optional[float] = None

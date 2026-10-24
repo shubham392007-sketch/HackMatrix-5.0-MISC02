@@ -71,8 +71,8 @@ export default function LearningHistoryPage() {
     if (serverEvents !== null) {
       return serverEvents;
     }
-    return learningHistory || [];
-  }, [serverEvents, learningHistory]);
+    return [];
+  }, [serverEvents]);
 
   const filteredHistory = useMemo(() => {
     return allDisplayHistory.filter((ev) => {
@@ -197,15 +197,33 @@ export default function LearningHistoryPage() {
 
       {/* Chronological Timeline Stream */}
       <div className="space-y-4">
-        {filteredHistory.map((item, idx) => {
-          const badge = getTypeBadge(item.type);
-          const IconComp = badge.icon;
+        {serverEvents === null && isRefreshing ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="gl-card p-5 h-20 animate-pulse bg-sand/20 rounded-2xl" />
+            ))}
+          </div>
+        ) : filteredHistory.length === 0 ? (
+          <div className="gl-card p-12 text-center space-y-3 rounded-2xl bg-white/80 border-ink/10">
+            <History className="w-10 h-10 text-ink/30 mx-auto" />
+            <h4 className="font-bold text-ink text-sm">No Learning Activities Recorded Yet</h4>
+            <p className="text-xs text-ink/70 max-w-sm mx-auto">
+              Your verified learning sessions, completed steps, diagnostics, and code exercises will automatically appear here.
+            </p>
+            <Link href="/app/learning" className="pill-btn pill-btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5 mt-2">
+              Explore Active Roadmaps &rarr;
+            </Link>
+          </div>
+        ) : (
+          filteredHistory.map((item, idx) => {
+            const badge = getTypeBadge(item.type);
+            const IconComp = badge.icon;
 
-          return (
-            <div
-              key={item.id}
-              className="gl-card p-5 transition-all hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
+            return (
+              <div
+                key={item.id}
+                className="gl-card p-5 transition-all hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
               <div className="flex items-start gap-4">
                 <div
                   className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${badge.color}`}
@@ -262,20 +280,7 @@ export default function LearningHistoryPage() {
               </div>
             </div>
           );
-        })}
-
-        {filteredHistory.length === 0 && (
-          <div className="gl-card p-12 text-center text-ink/60">
-            <History className="w-8 h-8 mx-auto text-ink/30 mb-2" />
-            <p className="font-semibold">No history events match your filter.</p>
-            <button
-              onClick={() => setSelectedType("all")}
-              className="mt-3 text-xs text-ink underline font-medium"
-            >
-              Show all events
-            </button>
-          </div>
-        )}
+        }))}
       </div>
       </div>
     </div>

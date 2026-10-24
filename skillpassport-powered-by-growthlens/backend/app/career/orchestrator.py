@@ -395,19 +395,21 @@ class JobSearchOrchestrator:
         t0 = asyncio.get_event_loop().time()
 
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
+            async with httpx.AsyncClient(timeout=3.5) as client:
                 resp = await client.post(
                     f"{ollama_url}/api/chat",
                     json={
                         "model": model,
                         "think": False,
+                        "keep_alive": "60m",
                         "format": "json",
                         "messages": [{"role": "user", "content": prompt}],
                         "stream": False,
                         "options": {
-                            "temperature": 0.1,
-                            "num_ctx": 2048,
-                            "num_predict": 400,
+                            "temperature": 0.0,
+                            "num_ctx": 1024,
+                            "num_predict": 120,
+                            "num_thread": 8,
                         },
                     },
                 )
@@ -622,7 +624,7 @@ class JobSearchOrchestrator:
                 )
                 ollama_latency_ms = intent.ollama_latency_ms
                 used_fallback = intent.used_fallback
-                self._intent_cache[intent_cache_key] = (now + timedelta(minutes=120), intent)
+                self._intent_cache[intent_cache_key] = (now + timedelta(hours=4), intent)
 
             search_query = intent.search_query
             role_families_to_query = intent.role_families[:5]

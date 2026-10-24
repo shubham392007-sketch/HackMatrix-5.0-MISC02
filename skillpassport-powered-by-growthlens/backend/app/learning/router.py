@@ -196,7 +196,8 @@ class AssessmentGenerateRequest(BaseModel):
 
 
 class AssessmentSubmitRequest(BaseModel):
-    answers: Dict[str, int] = Field(..., description="Map of question_id to selected option index (0-indexed)")
+    answers: Dict[str, int] = Field(default_factory=dict, description="Map of question_id to selected option index (0-indexed)")
+    is_skipped: bool = Field(False, description="Flag indicating if learner explicitly chose to skip the assessment")
 
 
 class ProjectGenerateRequest(BaseModel):
@@ -231,6 +232,7 @@ class ProjectEvaluationRequest(BaseModel):
 
 @router.get("/priorities")
 def get_learning_priorities(
+    target_role_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -239,7 +241,8 @@ def get_learning_priorities(
     Career Intelligence snapshots and Skill Intelligence taxonomy in the shared database.
     """
     target_role = career_db_adapter.get_user_target_role(db, user.id)
-    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id)
+    resolved_role_id = target_role_id or (target_role.get("target_role_id") if target_role else None)
+    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id, resolved_role_id)
     results = [prioritizer.evaluate_item(t) for t in triggers]
     results.sort(key=lambda r: (r.priority_rank, -r.priority_score))
 
@@ -255,7 +258,7 @@ def get_learning_priorities(
     role_title = (
         target_role.get("role_title")
         if target_role
-        else (triggers[0].role.role_title if triggers else "Target Career Role")
+        else (triggers[0].role.role_title if triggers else None)
     )
     role_id = (
         target_role.get("target_role_id")
@@ -282,8 +285,10 @@ def refresh_career_gaps(
     Explicitly re-evaluates upstream Career Intelligence and Skill Intelligence records.
     Guarantees idempotency and avoids unnecessary database polling loops.
     """
+    career_db_adapter.invalidate_cache(user.id)
     target_role = career_db_adapter.get_user_target_role(db, user.id)
-    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id)
+    resolved_role_id = target_role.get("target_role_id") if target_role else None
+    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id, resolved_role_id, force_refresh=True)
     results = [prioritizer.evaluate_item(t) for t in triggers]
     results.sort(key=lambda r: (r.priority_rank, -r.priority_score))
 
@@ -750,8 +755,10 @@ def ensure_learning_step(
     # 2. Not found: resolve topic across blueprints
     top, bp = find_topic_across_blueprints(clean_topic_id)
     if not top or not bp:
-        domain_id = payload.domain_id or "domain-custom"
-        bp = synthesize_gap_blueprint(domain_id, domain_id.replace("gap-", "").replace("skill-", "").replace("-", " ").title())
+        fallback_slug = clean_topic_id or "core-engineering"
+        domain_id = payload.domain_id or f"domain-{fallback_slug}"
+        derived_title = (payload.domain_id or fallback_slug).replace("domain-", "").replace("gap-", "").replace("skill-", "").replace("-", " ").title()
+        bp = synthesize_gap_blueprint(domain_id, derived_title)
         top = bp.get("modules", [{}])[0].get("topics", [{}])[0] if bp.get("modules") and bp["modules"][0].get("topics") else {
             "id": topic_candidate,
             "title": topic_candidate.replace("-", " ").title(),
@@ -761,8 +768,8 @@ def ensure_learning_step(
             "target_mastery": 85.0,
         }
 
-    domain_id = payload.domain_id or bp.get("domain_id", "domain-custom")
-    domain_title = bp.get("title", "Targeted Learning")
+    domain_id = payload.domain_id or bp.get("domain_id") or f"domain-{clean_topic_id}"
+    domain_title = bp.get("title") or domain_id.replace("domain-", "").replace("-", " ").title()
 
     # Locate or create roadmap for this user in this domain
     roadmap = (
@@ -990,6 +997,170 @@ def mark_step_complete(
             "target_mastery": roadmap.target_mastery,
             "status": roadmap.status,
         },
+    }
+
+
+@router.post("/steps/{step_id}/skip")
+def skip_step(
+    step_id: str,
+    payload: Optional[StepCompleteRequest] = None,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Explicitly marks a roadmap step as 'skipped'.
+    1. Authenticates user and verifies step ownership.
+    2. Atomically sets step status to 'skipped'.
+    3. Unlocks the next sequential step without granting mastery credit (score remains 0.0 or unchanged).
+    4. Records a LearningActivityRecord with status 'skipped'.
+    """
+    try:
+        user_uuid = uuid.UUID(current_user.id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+    clean_step_id = step_id.strip()
+    topic_candidate = clean_step_id.replace("step-", "")
+
+    query = (
+        db.query(LearningStep)
+        .join(LearningRoadmap, LearningStep.roadmap_id == LearningRoadmap.id)
+        .filter(
+            or_(
+                LearningStep.step_id == clean_step_id,
+                LearningStep.topic_id == clean_step_id,
+                LearningStep.topic_id == topic_candidate,
+                LearningStep.step_id == topic_candidate,
+                LearningStep.step_id == f"step-{topic_candidate}",
+            ),
+            LearningRoadmap.owner_user_id == user_uuid,
+        )
+    )
+
+    req_roadmap_id = payload.roadmap_id if payload else None
+    if req_roadmap_id:
+        try:
+            rm_uuid = uuid.UUID(req_roadmap_id)
+            query = query.filter(LearningRoadmap.id == rm_uuid)
+        except ValueError:
+            query = query.filter(LearningRoadmap.path_id == req_roadmap_id)
+    else:
+        query = query.order_by(
+            desc(LearningRoadmap.status == "in_progress"),
+            desc(LearningRoadmap.created_at),
+        )
+
+    step = query.first()
+    if not step:
+        raise HTTPException(status_code=404, detail=f"Learning step '{step_id}' not found for user")
+
+    roadmap = step.roadmap
+    if not roadmap or roadmap.owner_user_id != user_uuid:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this roadmap step")
+
+    # 1. Update step status to 'skipped' and preserve zero/existing mastery (DO NOT award mastery credit)
+    step.status = "skipped"
+
+    # 2. Unlock next sequential step in roadmap so user can proceed
+    next_step = (
+        db.query(LearningStep)
+        .filter(
+            LearningStep.roadmap_id == roadmap.id,
+            LearningStep.sequence_order == step.sequence_order + 1,
+        )
+        .first()
+    )
+    if next_step and next_step.status == "locked":
+        next_step.status = "available"
+        next_step.prerequisites_met = True
+
+    # 3. Record learning activity
+    act = LearningActivityRecord(
+        owner_user_id=user_uuid,
+        roadmap_id=roadmap.id,
+        step_id=step.step_id,
+        activity_type="step_skipped",
+        activity_status="skipped",
+        title=f"Skipped Step: {step.title}",
+        detail=f"Bypassed objective: {step.learning_objective}. No mastery credit granted.",
+        domain_id=roadmap.domain_id,
+        skill_id=roadmap.domain_id.replace("gap-", "") if roadmap.domain_id else None,
+        target_role_id=roadmap.target_role_id,
+        score=0.0,
+        link_route=f"/app/learning/steps/{step.step_id}",
+    )
+    db.add(act)
+    db.commit()
+    db.refresh(step)
+    db.refresh(roadmap)
+
+    return {
+        "status": "skipped",
+        "step_id": step.step_id,
+        "title": step.title,
+        "current_mastery": step.current_mastery,
+        "roadmap_id": str(roadmap.id),
+        "path_id": roadmap.path_id,
+        "unlocked_next_step_id": next_step.step_id if next_step else None,
+        "message": "Step skipped successfully. Subsequent step unlocked without awarding mastery credit.",
+    }
+
+
+@router.post("/steps/{step_id}/resume")
+def resume_step(
+    step_id: str,
+    payload: Optional[StepCompleteRequest] = None,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Un-skips / resumes a skipped step so the learner can complete it.
+    """
+    try:
+        user_uuid = uuid.UUID(current_user.id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+    clean_step_id = step_id.strip()
+    topic_candidate = clean_step_id.replace("step-", "")
+
+    query = (
+        db.query(LearningStep)
+        .join(LearningRoadmap, LearningStep.roadmap_id == LearningRoadmap.id)
+        .filter(
+            or_(
+                LearningStep.step_id == clean_step_id,
+                LearningStep.topic_id == clean_step_id,
+                LearningStep.topic_id == topic_candidate,
+                LearningStep.step_id == topic_candidate,
+                LearningStep.step_id == f"step-{topic_candidate}",
+            ),
+            LearningRoadmap.owner_user_id == user_uuid,
+        )
+    )
+
+    req_roadmap_id = payload.roadmap_id if payload else None
+    if req_roadmap_id:
+        try:
+            rm_uuid = uuid.UUID(req_roadmap_id)
+            query = query.filter(LearningRoadmap.id == rm_uuid)
+        except ValueError:
+            query = query.filter(LearningRoadmap.path_id == req_roadmap_id)
+
+    step = query.first()
+    if not step:
+        raise HTTPException(status_code=404, detail=f"Learning step '{step_id}' not found for user")
+
+    if step.status == "skipped":
+        step.status = "in_progress"
+        db.commit()
+        db.refresh(step)
+
+    return {
+        "status": step.status,
+        "step_id": step.step_id,
+        "title": step.title,
+        "message": "Step unskipped. Ready to resume.",
     }
 
 
@@ -1313,11 +1484,11 @@ def validate_practice_code(
         ))
 
     # Check for unedited pass skeleton
-    lines = [line.strip() for line in code_text.splitlines() if line.strip() and not line.strip().startswith("#")]
-    if len(lines) <= 2 and all(l in ("def execute_task(payload):", "pass", "return None") for l in lines):
+    lines = [line.strip() for line in code_text.splitlines() if line.strip() and not line.strip().startswith("#") and not line.strip().startswith("--")]
+    if len(lines) <= 2 and all(l in ("def execute_task(payload):", "pass", "return None", ";", "select 1;") for l in lines):
         return _build_and_record(CodeValidationResponse(
             passed=False,
-            score=35.0,
+            score=0.0,
             execution_type="structural_ast_validation",
             sandboxed_runner_available=False,
             test_cases=[
@@ -1325,7 +1496,7 @@ def validate_practice_code(
                 CodeTestCaseResult(name="Test 2: AST Implementation Depth", status="fail", details="No concrete algorithmic statements found in AST tree."),
                 CodeTestCaseResult(name="Test 3: Functional Structural Verification", status="fail", details="Verification halted due to placeholder code."),
             ],
-            summary_message="Starter skeleton detected. Please implement the required functionality.",
+            summary_message="Starter skeleton detected. Please implement the required functionality (Score: 0/100).",
         ))
 
     # Python AST verification
@@ -1336,18 +1507,19 @@ def validate_practice_code(
             has_return = any(isinstance(node, (ast.Return, ast.Yield)) for node in ast.walk(tree))
             has_assign = any(isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)) for node in ast.walk(tree))
 
+            # Strictly 0 score if implementation does not perform state transformation or return result
             if not has_return and not has_assign:
                 return _build_and_record(CodeValidationResponse(
                     passed=False,
-                    score=50.0,
+                    score=0.0,
                     execution_type="structural_ast_validation",
                     sandboxed_runner_available=False,
                     test_cases=[
                         CodeTestCaseResult(name="Test 1: Python AST Syntax Compilation", status="pass", details="Code compiled cleanly into valid Python Abstract Syntax Tree."),
                         CodeTestCaseResult(name="Test 2: Output or Transformation Verification", status="fail", details="Function does not produce a return value or assign transformed state."),
-                        CodeTestCaseResult(name="Test 3: Boundary Assertions", status="fail", details="Structural assertion failed: expected explicit return statement."),
+                        CodeTestCaseResult(name="Test 3: Boundary Assertions", status="fail", details="Structural assertion failed: expected explicit return statement or state mutation."),
                     ],
-                    summary_message="Syntax is valid Python, but implementation must include a return statement or state transformation.",
+                    summary_message="Syntax is valid Python, but no functional transformations or return values were detected. Zero points awarded.",
                 ))
 
             return _build_and_record(CodeValidationResponse(
@@ -1365,7 +1537,7 @@ def validate_practice_code(
         except SyntaxError as syn_err:
             return _build_and_record(CodeValidationResponse(
                 passed=False,
-                score=30.0,
+                score=0.0,
                 execution_type="structural_ast_validation",
                 sandboxed_runner_available=False,
                 test_cases=[
@@ -1373,13 +1545,53 @@ def validate_practice_code(
                     CodeTestCaseResult(name="Test 2: Structural Verification", status="fail", details="Cannot parse AST tree due to syntax mismatch."),
                     CodeTestCaseResult(name="Test 3: Boundary Assertions", status="fail", details="Halted prior to structural analysis."),
                 ],
-                summary_message=f"Python syntax error on line {syn_err.lineno}: {syn_err.msg}",
+                summary_message=f"Python syntax error on line {syn_err.lineno}: {syn_err.msg}. Zero points awarded.",
             ))
     else:
-        # Non-python delimiter check
+        # Non-python / SQL structural validation (e.g. B-Tree vs GIN Index Selection)
+        clean_lines = [
+            line.strip() for line in code_text.splitlines()
+            if line.strip() and not line.strip().startswith("--") and not line.strip().startswith("//") and not line.strip().startswith("/*")
+        ]
+        clean_text = " ".join(clean_lines).strip()
+        clean_upper = clean_text.upper()
+
+        # Reject empty, trivial, or pass statements immediately with 0 points
+        if len(clean_text) < 15 or clean_upper in ("PASS", "SELECT 1;", ";"):
+            return _build_and_record(CodeValidationResponse(
+                passed=False,
+                score=0.0,
+                execution_type="structural_ast_validation",
+                sandboxed_runner_available=False,
+                test_cases=[
+                    CodeTestCaseResult(name="Test 1: Statement Completeness", status="fail", details="Code contains insufficient implementation logic or placeholder comments."),
+                    CodeTestCaseResult(name="Test 2: Keyword Structure", status="fail", details="Aborted due to trivial or missing statements."),
+                    CodeTestCaseResult(name="Test 3: Structural Execution", status="fail", details="Aborted prior to execution analysis."),
+                ],
+                summary_message="Incomplete implementation. Please write the required functional query or index statement (Score: 0/100).",
+            ))
+
+        # Check required domain keywords (e.g., CREATE INDEX, USING GIN, SELECT, WHERE, etc.)
+        has_required_kw = any(kw in clean_upper for kw in ("CREATE INDEX", "USING GIN", "USING BTREE", "SELECT", "INSERT", "UPDATE", "WITH", "ALTER"))
+        if not has_required_kw:
+            return _build_and_record(CodeValidationResponse(
+                passed=False,
+                score=0.0,
+                execution_type="structural_ast_validation",
+                sandboxed_runner_available=False,
+                test_cases=[
+                    CodeTestCaseResult(name="Test 1: Statement Completeness", status="pass", details="Non-empty statements detected."),
+                    CodeTestCaseResult(name="Test 2: Keyword Structure", status="fail", details="Required DDL/DML keywords missing (e.g., CREATE INDEX, USING GIN/BTREE, or SELECT)."),
+                    CodeTestCaseResult(name="Test 3: Structural Execution", status="fail", details="Cannot verify query plan against missing directives."),
+                ],
+                summary_message="Required SQL index or query directives missing. Zero points awarded.",
+            ))
+
+        # Check delimiter balancing
         open_parens = code_text.count("(") == code_text.count(")")
         open_brackets = code_text.count("[") == code_text.count("]")
         open_braces = code_text.count("{") == code_text.count("}")
+
         if open_parens and open_brackets and open_braces:
             return _build_and_record(CodeValidationResponse(
                 passed=True,
@@ -1391,12 +1603,12 @@ def validate_practice_code(
                     CodeTestCaseResult(name="Test 2: Keyword Structure", status="pass", details="Required declarative directives present."),
                     CodeTestCaseResult(name="Test 3: Syntax Sanity", status="pass", details="No unclosed strings or directives."),
                 ],
-                summary_message="Structural delimiter verification passed. Dynamic sandbox container is offline.",
+                summary_message="Structural delimiter and directive verification passed. Dynamic sandbox container is offline.",
             ))
         else:
             return _build_and_record(CodeValidationResponse(
                 passed=False,
-                score=40.0,
+                score=0.0,
                 execution_type="structural_ast_validation",
                 sandboxed_runner_available=False,
                 test_cases=[
@@ -1404,7 +1616,7 @@ def validate_practice_code(
                     CodeTestCaseResult(name="Test 2: Keyword Structure", status="fail", details="Halted due to delimiter mismatch."),
                     CodeTestCaseResult(name="Test 3: Syntax Sanity", status="fail", details="Halted prior to structural check."),
                 ],
-                summary_message="Unbalanced delimiters detected in code.",
+                summary_message="Unbalanced delimiters detected in code. Zero points awarded.",
             ))
 
 
@@ -1447,7 +1659,7 @@ async def search_resources(
     query: str = Query(..., min_length=2),
     skill_id: Optional[str] = Query(None),
     level: str = Query("intermediate"),
-    limit: int = Query(5, ge=1, le=15),
+    limit: int = Query(6, ge=1, le=20),
     db: Optional[Session] = Depends(get_db_optional),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -1464,6 +1676,7 @@ async def search_resources(
         skill_ids=skill_ids,
         level=level,
         limit_per_provider=limit,
+        total_limit=max(18, limit * 3),
     )
 
     # Persist / cache discovered valid resources in learning_resources table
@@ -1810,10 +2023,10 @@ async def generate_personalized_roadmap(
     path_rec = await advisor.recommend_learning_path(top_gap, available_catalogue)
 
     target_role = career_db_adapter.get_user_target_role(db, user.id)
-    target_role_id_str = str(payload.target_role_id or (target_role.get("target_role_id") if target_role else "role-senior-backend"))
+    target_role_id_str = str(payload.target_role_id or (target_role.get("target_role_id") if target_role else (top_gap.role.role_id if hasattr(top_gap, 'role') and top_gap.role else "")))
 
     # Fetch latest snapshot to maintain authoritative provenance linkage
-    latest_snapshot = career_db_adapter.get_latest_role_match_snapshot(db, user.id, target_role_id_str)
+    latest_snapshot = career_db_adapter.get_latest_role_match_snapshot(db, user.id, target_role_id_str) if target_role_id_str else None
     up_snap_id = uuid.UUID(latest_snapshot["snapshot_id"]) if latest_snapshot and latest_snapshot.get("snapshot_id") else None
     up_snap_ver = latest_snapshot.get("role_version") or "v2026.1" if latest_snapshot else None
 
@@ -1825,6 +2038,12 @@ async def generate_personalized_roadmap(
     clean_domain_short = domain_id[:75] if len(domain_id) > 75 else domain_id
     generated_path_id = f"path-{clean_domain_short}-{path_suffix}"[:100]
 
+    resolved_role_title = (
+        target_role.get("role_title")
+        if target_role
+        else (top_gap.role.role_title if hasattr(top_gap, 'role') and top_gap.role else "Target Career Role")
+    )
+
     roadmap = LearningRoadmap(
         owner_user_id=owner_uuid,
         path_id=generated_path_id,
@@ -1832,7 +2051,7 @@ async def generate_personalized_roadmap(
         domain_title=domain_title[:255],
         blueprint_version="v1.0",
         target_role_id=target_role_id_str[:100],
-        target_role_title=str(target_role.get("role_title") if target_role else "Senior Distributed Systems Engineer")[:255],
+        target_role_title=str(resolved_role_title)[:255],
         upstream_snapshot_id=up_snap_id,
         upstream_snapshot_version=up_snap_ver,
         status="in_progress",
@@ -2007,6 +2226,7 @@ def list_user_roadmaps(
                 "path_id": r.path_id,
                 "domain_id": r.domain_id,
                 "domain_title": r.domain_title,
+                "target_role_id": getattr(r, "target_role_id", None),
                 "target_role_title": r.target_role_title,
                 "status": r.status,
                 "current_mastery": r.current_mastery,
@@ -2103,6 +2323,7 @@ def get_roadmap_by_path(
         "domain_id": roadmap.domain_id,
         "domain_title": roadmap.domain_title,
         "skill_id": roadmap.domain_id.replace("gap-", "") if roadmap.domain_id else None,
+        "target_role_id": getattr(roadmap, "target_role_id", None),
         "target_role_title": roadmap.target_role_title or "AI / Software Engineer",
         "status": roadmap.status,
         "current_mastery": roadmap.current_mastery,
@@ -2135,6 +2356,35 @@ def get_roadmap_by_path(
             for s in roadmap.steps
         ],
     }
+
+
+@router.delete("/roadmaps/{path_id}")
+def delete_user_roadmap(
+    path_id: str,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Deletes a learning roadmap and its associated steps for the authenticated user.
+    """
+    owner_uuid = uuid.UUID(user.id)
+    query = db.query(LearningRoadmap).filter(LearningRoadmap.owner_user_id == owner_uuid)
+    try:
+        rm_uuid = uuid.UUID(path_id)
+        query = query.filter(or_(LearningRoadmap.id == rm_uuid, LearningRoadmap.path_id == path_id))
+    except ValueError:
+        query = query.filter(LearningRoadmap.path_id == path_id)
+
+    roadmap = query.first()
+    if not roadmap:
+        raise HTTPException(status_code=404, detail="Roadmap not found or unauthorized")
+
+    db.query(LearningStep).filter(LearningStep.roadmap_id == roadmap.id).delete(synchronize_session=False)
+    db.query(LearningMasterySnapshot).filter(LearningMasterySnapshot.roadmap_id == roadmap.id).delete(synchronize_session=False)
+    db.delete(roadmap)
+    db.commit()
+
+    return {"status": "deleted", "path_id": path_id, "message": "Roadmap deleted successfully"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -2402,6 +2652,75 @@ def submit_assessment_attempt(
         generation_latency_seconds=asmt.generation_latency_seconds,
         questions=q_objs,
     )
+
+    # Handle Explicit Skip Action (Part 5 Requirements)
+    if payload.is_skipped:
+        attempt = LearningAttempt(
+            owner_user_id=owner_uuid,
+            step_id=asmt.step_id or f"step-{asmt.skill_id[:8]}",
+            roadmap_id=asmt.roadmap_id,
+            attempt_type="assessment",
+            activity_id=asmt.assessment_id,
+            score=0.0,
+            passed=False,
+            signals={
+                "knowledge_signal": 0.0,
+                "practice_signal": 0.0,
+                "assessment_signal": 0.0,
+                "project_signal": 0.0,
+            },
+            computed_mastery=0.0,
+            attempt_metadata={
+                "status": "skipped",
+                "is_skipped": True,
+                "submitted_answers": {},
+                "earned_points": 0,
+                "total_points": sum(q.points for q in q_objs),
+            },
+        )
+        db.add(attempt)
+
+        # If linked to roadmap and step, mark step skipped and unlock next step without awarding mastery
+        if asmt.roadmap_id and asmt.step_id:
+            step = (
+                db.query(LearningStep)
+                .filter(LearningStep.roadmap_id == asmt.roadmap_id, LearningStep.step_id == asmt.step_id)
+                .first()
+            )
+            if step and step.status != "completed":
+                step.status = "skipped"
+                next_step = (
+                    db.query(LearningStep)
+                    .filter(
+                        LearningStep.roadmap_id == asmt.roadmap_id,
+                        LearningStep.sequence_order == step.sequence_order + 1,
+                    )
+                    .first()
+                )
+                if next_step and next_step.status == "locked":
+                    next_step.status = "available"
+                    next_step.prerequisites_met = True
+
+        db.commit()
+        db.refresh(attempt)
+
+        return {
+            "assessment_id": asmt.assessment_id,
+            "skill_id": asmt.skill_id,
+            "total_questions": len(q_objs),
+            "total_points": sum(q.points for q in q_objs),
+            "earned_points": 0,
+            "score_percentage": 0.0,
+            "passing_threshold": asmt.passing_threshold,
+            "passed": False,
+            "is_skipped": True,
+            "computed_mastery": 0.0,
+            "recommendation": "Assessment was skipped. No mastery credit awarded. You can retake this assessment at any time to verify competency.",
+            "results": [],
+            "attempt_id": str(attempt.id),
+            "step_id": asmt.step_id,
+            "roadmap_id": str(asmt.roadmap_id) if asmt.roadmap_id else None,
+        }
 
     # Grade submitted answers
     grade_report = assessment_generator.grade_assessment(asmt_def, payload.answers)
@@ -2899,6 +3218,80 @@ async def generate_mini_projects_endpoint(
     }
 
 
+@router.get("/projects/submissions")
+def list_project_submissions(
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Lists all mini-project submissions for the authenticated user.
+    Enforces strict user isolation.
+    """
+    owner_uuid = uuid.UUID(user.id)
+    subs = (
+        db.query(LearningProjectSubmission)
+        .filter(LearningProjectSubmission.owner_user_id == owner_uuid)
+        .order_by(desc(LearningProjectSubmission.created_at))
+        .all()
+    )
+    return [
+        {
+            "submission_id": str(s.id),
+            "project_id": s.project_id,
+            "github_repo_url": s.github_repo_url,
+            "summary_notes": s.summary_notes,
+            "status": s.status,
+            "score": s.score,
+            "passed": s.passed,
+            "step_id": s.step_id,
+            "created_at": s.created_at.isoformat(),
+            "updated_at": s.updated_at.isoformat(),
+        }
+        for s in subs
+    ]
+
+
+@router.get("/projects/submissions/{project_id}")
+def get_project_submission(
+    project_id: str,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Retrieves a single mini-project submission by project_id for the authenticated user.
+    Returns 404 if not found or belongs to another user.
+    """
+    owner_uuid = uuid.UUID(user.id)
+    sub = (
+        db.query(LearningProjectSubmission)
+        .filter(
+            LearningProjectSubmission.owner_user_id == owner_uuid,
+            LearningProjectSubmission.project_id == project_id,
+        )
+        .first()
+    )
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project submission for '{project_id}' not found for authenticated user.",
+        )
+
+    return {
+        "submission_id": str(sub.id),
+        "project_id": sub.project_id,
+        "github_repo_url": sub.github_repo_url,
+        "summary_notes": sub.summary_notes,
+        "status": sub.status,
+        "score": sub.score,
+        "passed": sub.passed,
+        "feedback": sub.feedback,
+        "rubric_scores": sub.rubric_scores,
+        "step_id": sub.step_id,
+        "created_at": sub.created_at.isoformat(),
+        "updated_at": sub.updated_at.isoformat(),
+    }
+
+
 @router.get("/projects/{project_id}")
 def get_mini_project_detail(
     project_id: str,
@@ -3126,80 +3519,6 @@ def submit_mini_project(
     }
 
 
-@router.get("/projects/submissions")
-def list_project_submissions(
-    db: Session = Depends(get_db),
-    user: AuthenticatedUser = Depends(get_current_user),
-):
-    """
-    Lists all mini-project submissions for the authenticated user.
-    Enforces strict user isolation.
-    """
-    owner_uuid = uuid.UUID(user.id)
-    subs = (
-        db.query(LearningProjectSubmission)
-        .filter(LearningProjectSubmission.owner_user_id == owner_uuid)
-        .order_by(desc(LearningProjectSubmission.created_at))
-        .all()
-    )
-    return [
-        {
-            "submission_id": str(s.id),
-            "project_id": s.project_id,
-            "github_repo_url": s.github_repo_url,
-            "summary_notes": s.summary_notes,
-            "status": s.status,
-            "score": s.score,
-            "passed": s.passed,
-            "step_id": s.step_id,
-            "created_at": s.created_at.isoformat(),
-            "updated_at": s.updated_at.isoformat(),
-        }
-        for s in subs
-    ]
-
-
-@router.get("/projects/submissions/{project_id}")
-def get_project_submission(
-    project_id: str,
-    db: Session = Depends(get_db),
-    user: AuthenticatedUser = Depends(get_current_user),
-):
-    """
-    Retrieves a single mini-project submission by project_id for the authenticated user.
-    Returns 404 if not found or belongs to another user.
-    """
-    owner_uuid = uuid.UUID(user.id)
-    sub = (
-        db.query(LearningProjectSubmission)
-        .filter(
-            LearningProjectSubmission.owner_user_id == owner_uuid,
-            LearningProjectSubmission.project_id == project_id,
-        )
-        .first()
-    )
-    if not sub:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project submission for '{project_id}' not found for authenticated user.",
-        )
-
-    return {
-        "submission_id": str(sub.id),
-        "project_id": sub.project_id,
-        "github_repo_url": sub.github_repo_url,
-        "summary_notes": sub.summary_notes,
-        "status": sub.status,
-        "score": sub.score,
-        "passed": sub.passed,
-        "feedback": sub.feedback,
-        "rubric_scores": sub.rubric_scores,
-        "step_id": sub.step_id,
-        "created_at": sub.created_at.isoformat(),
-        "updated_at": sub.updated_at.isoformat(),
-    }
-
-
 @router.post("/projects/{project_id}/evaluate")
 def evaluate_project_submission(
     project_id: str,
@@ -3396,6 +3715,7 @@ def get_mastery_telemetry(
 
 @router.get("/overview")
 def get_learning_overview(
+    target_role_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -3414,7 +3734,8 @@ def get_learning_overview(
 
     # 2. Priorities
     target_role = career_db_adapter.get_user_target_role(db, user.id)
-    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id)
+    resolved_role_id = target_role_id or (target_role.get("target_role_id") if target_role else None)
+    triggers = career_db_adapter.fetch_upstream_triggers(db, user.id, resolved_role_id)
     results = [prioritizer.evaluate_item(t) for t in triggers]
     results.sort(key=lambda r: (r.priority_rank, -r.priority_score))
     priorities = []
@@ -3483,7 +3804,7 @@ def get_learning_overview(
     return {
         "user_id": user.id,
         "target_role_id": target_role.get("target_role_id") if target_role else (triggers[0].role.role_id if triggers else None),
-        "target_role_title": target_role.get("role_title") if target_role else (triggers[0].role.role_title if triggers else "Target Career Role"),
+        "target_role_title": target_role.get("role_title") if target_role else (triggers[0].role.role_title if triggers else None),
         "active_blueprint": active_bp,
         "active_roadmap": roadmap_data,
         "priorities": priorities[:5],

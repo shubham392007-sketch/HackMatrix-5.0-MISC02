@@ -32,26 +32,41 @@ export default function LearningProgressPage() {
   const { activeBlueprint, activeRoadmap, activeDiagnosticResult } = useEvidence();
 
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
-  const [selectedTopicId, setSelectedTopicId] = useState<string>("topic-outlier-winsorization");
+  const allTopics = activeBlueprint?.modules ? activeBlueprint.modules.flatMap((m) => m.topics || []) : [];
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
 
-  // All topics in domain
-  const allTopics = activeBlueprint.modules.flatMap((m) => m.topics);
-  const selectedTopic = allTopics.find((t) => t.id === selectedTopicId) || allTopics[0];
+  const selectedTopic = (selectedTopicId ? allTopics.find((t) => t.id === selectedTopicId) : null) || allTopics[0] || null;
 
   // Interactive formula simulator state for the selected topic
-  const [simK, setSimK] = useState<number>(selectedTopic.knowledge_signal);
-  const [simP, setSimP] = useState<number>(selectedTopic.practice_signal);
-  const [simA, setSimA] = useState<number>(selectedTopic.assessment_signal);
-  const [simPrj, setSimPrj] = useState<number>(selectedTopic.project_signal);
+  const [simK, setSimK] = useState<number>(selectedTopic?.knowledge_signal ?? 70);
+  const [simP, setSimP] = useState<number>(selectedTopic?.practice_signal ?? 60);
+  const [simA, setSimA] = useState<number>(selectedTopic?.assessment_signal ?? 75);
+  const [simPrj, setSimPrj] = useState<number>(selectedTopic?.project_signal ?? 65);
 
-  const simulatedMastery = calculateTopicMastery(simK, simP, simA, simPrj);
+  React.useEffect(() => {
+    if (selectedTopic) {
+      setSimK(selectedTopic.knowledge_signal ?? 70);
+      setSimP(selectedTopic.practice_signal ?? 60);
+      setSimA(selectedTopic.assessment_signal ?? 75);
+      setSimPrj(selectedTopic.project_signal ?? 65);
+    } else {
+      setSimK(0);
+      setSimP(0);
+      setSimA(0);
+      setSimPrj(0);
+    }
+  }, [selectedTopic]);
+
+  const simulatedMastery = calculateTopicMastery(simK ?? 0, simP ?? 0, simA ?? 0, simPrj ?? 0);
 
   // Overall summary stats
   const avgMastery = Math.round(
-    allTopics.reduce((acc, t) => acc + t.current_mastery, 0) / (allTopics.length || 1)
+    allTopics.length > 0
+      ? allTopics.reduce((acc, t) => acc + (t.current_mastery || 0), 0) / allTopics.length
+      : (activeRoadmap?.current_mastery || 0)
   );
-  const baseline = activeDiagnosticResult?.overall_score || activeRoadmap.baseline_mastery || 48;
-  const target = activeBlueprint.target_mastery || 85;
+  const baseline = activeDiagnosticResult?.overall_score || activeRoadmap?.baseline_mastery || 0;
+  const target = activeBlueprint?.target_mastery || 85;
   const growthDelta = avgMastery - baseline;
 
   const getTierLabel = (score: number) => {
@@ -292,8 +307,8 @@ export default function LearningProgressPage() {
               type="range"
               min={0}
               max={100}
-              value={simK}
-              onChange={(e) => setSimK(Number(e.target.value))}
+              value={simK ?? 0}
+              onChange={(e) => setSimK(Number(e.target.value) || 0)}
               className="w-full accent-ink"
             />
             <p className="text-[10px] text-ink/50">Driven by reading packet & knowledge checks</p>
@@ -308,8 +323,8 @@ export default function LearningProgressPage() {
               type="range"
               min={0}
               max={100}
-              value={simP}
-              onChange={(e) => setSimP(Number(e.target.value))}
+              value={simP ?? 0}
+              onChange={(e) => setSimP(Number(e.target.value) || 0)}
               className="w-full accent-ink"
             />
             <p className="text-[10px] text-ink/50">Driven by completed coding exercises</p>
@@ -324,8 +339,8 @@ export default function LearningProgressPage() {
               type="range"
               min={0}
               max={100}
-              value={simA}
-              onChange={(e) => setSimA(Number(e.target.value))}
+              value={simA ?? 0}
+              onChange={(e) => setSimA(Number(e.target.value) || 0)}
               className="w-full accent-ink"
             />
             <p className="text-[10px] text-ink/50">Driven by timed objective evaluations</p>
@@ -340,8 +355,8 @@ export default function LearningProgressPage() {
               type="range"
               min={0}
               max={100}
-              value={simPrj}
-              onChange={(e) => setSimPrj(Number(e.target.value))}
+              value={simPrj ?? 0}
+              onChange={(e) => setSimPrj(Number(e.target.value) || 0)}
               className="w-full accent-ink"
             />
             <p className="text-[10px] text-ink/50">Driven by mini-project rubric score</p>

@@ -370,10 +370,22 @@ class LearningAIAdvisor:
             '  "implementation_steps": ["Step 1", "Step 2", "Step 3"],\n'
             '  "knowledge_check": [\n'
             "    {\n"
-            '      "question": "Diagnostic multiple choice question?",\n'
+            '      "question": "Question 1 assessing conceptual understanding?",\n'
+            '      "options": ["Plausible choice A", "Plausible choice B", "Correct choice C", "Plausible choice D"],\n'
+            '      "correct_index": 2,\n'
+            '      "explanation": "Detailed explanation of why C is correct."\n'
+            "    },\n"
+            "    {\n"
+            '      "question": "Question 2 assessing edge cases and error boundaries?",\n'
             '      "options": ["A", "B", "C", "D"],\n'
             '      "correct_index": 0,\n'
-            '      "explanation": "Why A is correct"\n'
+            '      "explanation": "Detailed explanation."\n'
+            "    },\n"
+            "    {\n"
+            '      "question": "Question 3 assessing trade-offs and operational implementation?",\n'
+            '      "options": ["A", "B", "C", "D"],\n'
+            '      "correct_index": 1,\n'
+            '      "explanation": "Detailed explanation."\n'
             "    }\n"
             "  ],\n"
             '  "source_attribution": "Official Documentation or RFC Citation"\n'
@@ -462,7 +474,29 @@ class LearningAIAdvisor:
                     ],
                     "correct_index": 0,
                     "explanation": "Standardized engineering patterns provide predictable lifecycle guarantees and facilitate verifiable automated testing.",
-                }
+                },
+                {
+                    "question": f"Which failure mode is most critical to protect against when executing {topic_title} in production?",
+                    "options": [
+                        "Unhandled edge-case exceptions causing silent pipeline corruption or state drift",
+                        "Source files containing too many descriptive comments",
+                        "Using strong type annotations on function signatures",
+                        "Enforcing linting checks during local development",
+                    ],
+                    "correct_index": 0,
+                    "explanation": "Silent state drift and unhandled boundary inputs corrupt downstream stores without immediate alerting, making recovery costly.",
+                },
+                {
+                    "question": f"How should {topic_title} implementations be validated to guarantee regression resistance?",
+                    "options": [
+                        "Comprehensive unit, property-based, and boundary test coverage run in CI before merge",
+                        "Occasional manual testing directly against production databases",
+                        "Relying solely on runtime client error complaints",
+                        "Skipping test suites if compilation succeeds",
+                    ],
+                    "correct_index": 0,
+                    "explanation": "Automated regression test suites verifying edge inputs and happy paths ensure system integrity across releases.",
+                },
             ],
             "source_attribution": f"GrowthLens Technical Curriculum & Industry Best Practice Specifications ({domain_name})",
             "generation_method": "deterministic_fallback",
@@ -847,6 +881,28 @@ CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]""",
                 "correct_index": 0,
                 "explanation": "Executing under an unprivileged user ensures that even if an attacker achieves remote code execution within the container, they cannot modify system libraries or mount host resources as root.",
             },
+            {
+                "question": "Why should package manager caches be deleted in the same RUN instruction as package installation (e.g. 'rm -rf /var/lib/apt/lists/*')?",
+                "options": [
+                    "Because files deleted in subsequent RUN instructions remain frozen in underlying Docker image layers, bloating final image size",
+                    "Because apt-get crashes if cache files exist when containers boot",
+                    "To prevent compiler binaries from installing",
+                    "To enforce non-root permissions",
+                ],
+                "correct_index": 0,
+                "explanation": "Each RUN instruction creates an immutable layer. Deleting cache files in a subsequent layer does not reclaim disk space from earlier layers.",
+            },
+            {
+                "question": "What is the primary architectural purpose of multi-stage Docker builds?",
+                "options": [
+                    "Isolating heavy build dependencies (compilers, SDKs) in intermediate stages so the runtime container contains only production artifacts",
+                    "Allowing multiple operating systems to execute simultaneously in one container",
+                    "Automatically running integration test suites on Docker Hub",
+                    "Bypassing Linux kernel security policies",
+                ],
+                "correct_index": 0,
+                "explanation": "Multi-stage builds allow clean extraction of compiled artifacts from a builder container into a minimal runtime base, eliminating attack surface and reducing image size.",
+            },
         ],
         "source_attribution": "Docker Official Documentation (Dockerfile Best Practices) & CIS Docker Benchmark v1.6.0",
     },
@@ -936,7 +992,40 @@ networks:
                 ],
                 "correct_index": 0,
                 "explanation": "A database container enters 'running' state long before PostgreSQL finishes initialization. Healthcheck conditions prevent race condition connection errors.",
-            }
+            },
+            {
+                "question": "What security vulnerability arises when database ports are exposed via 'ports: [\"5432:5432\"]' in production Compose files?",
+                "options": [
+                    "It binds the database port to the host's public interface (0.0.0.0), exposing it to external internet traffic without network isolation",
+                    "It forces PostgreSQL to downgrade to plaintext passwords",
+                    "It causes memory exhaustion on Redis",
+                    "It disables Linux firewall rules permanently",
+                ],
+                "correct_index": 0,
+                "explanation": "Services sharing a Docker bridge network communicate via service names (e.g. 'db:5432') without exposing ports to external host interfaces.",
+            },
+            {
+                "question": "Which volume configuration in Docker Compose guarantees that PostgreSQL data survives container recreation?",
+                "options": [
+                    "Declaring a persistent named volume mapped to '/var/lib/postgresql/data'",
+                    "Using a tmpfs in-memory mount",
+                    "Relying on default container layer storage",
+                    "Running 'docker commit' after every write",
+                ],
+                "correct_index": 0,
+                "explanation": "Named volumes are managed by the Docker daemon outside container lifecycles, ensuring database records persist across restarts.",
+            },
+            {
+                "question": "How does Docker Compose enable communication between containers on the same user-defined bridge network?",
+                "options": [
+                    "Through an embedded DNS server that resolves service names (e.g. 'cache', 'db') to current container IP addresses",
+                    "By hardcoding IP addresses into /etc/hosts at image build time",
+                    "Via Bluetooth mesh protocol",
+                    "Through shared disk files in /tmp",
+                ],
+                "correct_index": 0,
+                "explanation": "Docker's embedded DNS server dynamically maps service names declared in compose.yaml to ephemeral container IPs.",
+            },
         ],
         "source_attribution": "Docker Compose Specification & Cloud Native Computing Foundation (CNCF) Reference Architectures",
     },
@@ -1010,7 +1099,40 @@ async def create_user(payload: UserCreate):
                 ],
                 "correct_index": 0,
                 "explanation": "FastAPI uses response_model to filter the output data through Pydantic, ensuring only fields explicitly defined in the response model are serialized.",
-            }
+            },
+            {
+                "question": "Which HTTP status code must be returned when a new entity is successfully created on the server?",
+                "options": [
+                    "201 CREATED",
+                    "200 OK",
+                    "204 NO CONTENT",
+                    "202 ACCEPTED",
+                ],
+                "correct_index": 0,
+                "explanation": "RFC 9110 specifies that 201 Created should be returned whenever a request results in the creation of a new resource.",
+            },
+            {
+                "question": "How should unexpected application errors or failed validations be returned from FastAPI endpoints?",
+                "options": [
+                    "By raising HTTPException with explicit status_code and detail dictionary",
+                    "By returning a dict with {'error': 'true', 'code': 500}",
+                    "By calling sys.exit(1)",
+                    "By printing to stdout and returning None",
+                ],
+                "correct_index": 0,
+                "explanation": "Raising HTTPException triggers FastAPI's exception handlers, generating standardized JSON responses and appropriate HTTP status headers.",
+            },
+            {
+                "question": "When defining an asynchronous route in FastAPI (async def), when is it appropriate to use standard 'def' instead?",
+                "options": [
+                    "When the endpoint executes blocking synchronous I/O operations (like SQLAlchemy without async driver), allowing FastAPI to run it in a threadpool",
+                    "Never; def endpoints are forbidden in FastAPI",
+                    "Only on Windows operating systems",
+                    "When returning HTML templates",
+                ],
+                "correct_index": 0,
+                "explanation": "FastAPI automatically executes standard 'def' endpoints in an external threadpool so blocking I/O does not freeze the event loop.",
+            },
         ],
         "source_attribution": "FastAPI Official Documentation (Tutorial - Response Model & Status Codes)",
     },
@@ -1065,7 +1187,40 @@ LIMIT 10;""",
                 ],
                 "correct_index": 0,
                 "explanation": "Included columns are stored in the leaf pages of the B-Tree but do not participate in index sorting, enabling Index Only Scans without bloating search tree traversal.",
-            }
+            },
+            {
+                "question": "For a query filtering on 'WHERE tenant_id = ? AND status = ? ORDER BY created_at DESC', what is the optimal B-Tree index column order?",
+                "options": [
+                    "(tenant_id, status, created_at DESC)",
+                    "(created_at DESC, tenant_id, status)",
+                    "(status, created_at DESC, tenant_id)",
+                    "Three separate single-column indexes on each field",
+                ],
+                "correct_index": 0,
+                "explanation": "Equality filter columns should precede range/sort columns in composite indexes so the planner can seek directly to the matching subset and read rows in sort order.",
+            },
+            {
+                "question": "Why should 'CREATE INDEX CONCURRENTLY' always be used in production environments?",
+                "options": [
+                    "It avoids acquiring an exclusive table lock (SHARE lock), allowing concurrent reads and writes to continue unimpeded during index build",
+                    "It makes the index 10x smaller on disk",
+                    "It automatically backs up the database to S3",
+                    "It converts B-Tree indexes into hash tables",
+                ],
+                "correct_index": 0,
+                "explanation": "Standard CREATE INDEX acquires a SHARE lock that blocks table writes. CONCURRENTLY builds the index through multiple passes without locking out writes.",
+            },
+            {
+                "question": "When querying complex JSONB documents with containment operators ('@>'), which index type offers optimal search speed?",
+                "options": [
+                    "GIN index using jsonb_path_ops",
+                    "Standard single-column B-Tree index",
+                    "GiST index",
+                    "Hash index",
+                ],
+                "correct_index": 0,
+                "explanation": "GIN with jsonb_path_ops hashes each path/value pair, providing faster search and smaller index size than default jsonb_ops for containment lookups.",
+            },
         ],
         "source_attribution": "PostgreSQL Documentation (Chapter 11 - Indexes: Index-Only Scans and Covering Indexes)",
     },
@@ -1122,7 +1277,40 @@ def clean_tabular_batch(df: pd.DataFrame) -> pd.DataFrame:
                 ],
                 "correct_index": 0,
                 "explanation": "Computing statistics on the entire dataset leaks information about the test distribution into the training pipeline, leading to overly optimistic evaluation metrics.",
-            }
+            },
+            {
+                "question": "Under which missing data mechanism is complete case analysis (dropping rows with dropna()) guaranteed to produce unbiased estimates?",
+                "options": [
+                    "Missing Completely at Random (MCAR)",
+                    "Missing at Random (MAR)",
+                    "Missing Not at Random (MNAR)",
+                    "It is never unbiased under any circumstance",
+                ],
+                "correct_index": 0,
+                "explanation": "When data is MCAR, the missingness is completely unrelated to observed or unobserved variables, meaning the remaining complete cases represent an unbiased random subsample.",
+            },
+            {
+                "question": "Why is median imputation preferred over mean imputation for heavily skewed numerical features (e.g. user income, server latency)?",
+                "options": [
+                    "The median is robust to extreme outliers that heavily distort the arithmetic mean",
+                    "The median executes in faster O(1) time in all databases",
+                    "The mean always rounds to zero on floating point values",
+                    "Scikit-Learn SimpleImputer prohibits mean imputation",
+                ],
+                "correct_index": 0,
+                "explanation": "The median represents the 50th percentile and remains unaffected by extreme tail values, providing a central tendency measure unaffected by outliers.",
+            },
+            {
+                "question": "What common defect occurs when parsing mixed datetime strings without enforcing UTC timezone awareness in pandas?",
+                "options": [
+                    "Timezone drift and daylight saving hour offsets cause inconsistent sorting and feature alignment",
+                    "Pandas converts all strings to integer zeros",
+                    "Memory leakage in Python bytecode",
+                    "Failure to serialize into JSON",
+                ],
+                "correct_index": 0,
+                "explanation": "Without explicit utc=True normalization, timestamps from different client regions are treated as naive local times, producing erroneous delta features.",
+            },
         ],
         "source_attribution": "Google Data Quality Guidelines & Scikit-Learn Documentation (Imputation of missing values)",
     },

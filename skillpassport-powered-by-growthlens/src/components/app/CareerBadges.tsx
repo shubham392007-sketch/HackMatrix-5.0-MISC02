@@ -282,31 +282,33 @@ export function TargetRoleSelectorBar() {
           onChange={(e) => setSelectedRoleId(e.target.value)}
           className="pill-input text-xs py-1.5 px-3 bg-sand/20"
         >
-          {userTargets.length > 0 ? (
-            <>
-              <optgroup label="My Target Roles">
-                {userTargets.map((r) => (
-                  <option key={r.role_id} value={r.role_id}>
-                    {r.title} — {r.seniority}
-                  </option>
-                ))}
-              </optgroup>
-              {benchmarkRoles.length > 0 && (
-                <optgroup label="Explore Catalogue Benchmarks">
-                  {benchmarkRoles.map((r) => (
-                    <option key={r.role_id} value={r.role_id}>
-                      {r.title} — {r.seniority} (Benchmark)
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </>
+          {userTargets.length > 0 && (
+            <optgroup label="My Selected Targets">
+              {userTargets.map((r) => (
+                <option key={r.role_id} value={r.role_id}>
+                  {r.title} — {r.seniority}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {benchmarkRoles.length > 0 ? (
+            <optgroup label="Industry Roles (Live Database)">
+              {benchmarkRoles.map((r) => (
+                <option key={r.role_id} value={r.role_id}>
+                  {r.title} — {r.seniority}
+                </option>
+              ))}
+            </optgroup>
+          ) : targetRoles.length > 0 ? (
+            <optgroup label="Industry Roles (Live Database)">
+              {targetRoles.map((r) => (
+                <option key={r.role_id} value={r.role_id}>
+                  {r.title} — {r.seniority}
+                </option>
+              ))}
+            </optgroup>
           ) : (
-            targetRoles.map((r) => (
-              <option key={r.role_id} value={r.role_id}>
-                {r.title} — {r.seniority} ({r.source_type === "custom_parsed_job" ? "Custom" : "Benchmark"})
-              </option>
-            ))
+            <option disabled value="">Loading live roles...</option>
           )}
         </select>
         <Link

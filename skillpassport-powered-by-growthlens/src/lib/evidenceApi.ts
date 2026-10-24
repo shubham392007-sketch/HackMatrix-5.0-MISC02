@@ -1205,14 +1205,18 @@ export async function listPassportHistory(): Promise<{
 // DOMAIN 5: LEARN & GROW ENGINE API CLIENT
 // ==============================================================================
 
-export async function getLearningPriorities(): Promise<{
+export async function getLearningPriorities(targetRoleId?: string): Promise<{
   user_id: string;
   count: number;
   confidence_review_threshold: number;
   priorities: any[];
+  target_role_title?: string;
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetchWithDedupe(`${API_BASE}/learning/priorities`, { headers });
+  const url = targetRoleId
+    ? `${API_BASE}/learning/priorities?target_role_id=${encodeURIComponent(targetRoleId)}`
+    : `${API_BASE}/learning/priorities`;
+  const res = await fetchWithDedupe(url, { headers });
   if (!res.ok) throw new Error("Failed to load learning priorities");
   return res.json();
 }
@@ -1232,18 +1236,40 @@ export async function refreshCareerGaps(): Promise<{
   return res.json();
 }
 
-export async function listDomainBlueprints(): Promise<{ blueprints: any[] }> {
+// In-memory cache for domain blueprints
+const _blueprintCache = new Map<string, { data: any; ts: number }>();
+const BLUEPRINT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
+
+export async function listDomainBlueprints(force: boolean = false): Promise<{ blueprints: any[] }> {
+  const cacheKey = "__list_all__";
+  if (!force) {
+    const cached = _blueprintCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < BLUEPRINT_CACHE_TTL) {
+      return cached.data;
+    }
+  }
   const headers = await getAuthHeaders();
   const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints`, { headers });
   if (!res.ok) throw new Error("Failed to load domain blueprints");
-  return res.json();
+  const data = await res.json();
+  _blueprintCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
 }
 
-export async function getDomainBlueprint(domainId: string): Promise<any> {
+export async function getDomainBlueprint(domainId: string, force: boolean = false): Promise<any> {
+  const cacheKey = `domain_${domainId}`;
+  if (!force) {
+    const cached = _blueprintCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < BLUEPRINT_CACHE_TTL) {
+      return cached.data;
+    }
+  }
   const headers = await getAuthHeaders();
   const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}`, { headers });
   if (!res.ok) throw new Error(`Failed to load blueprint for domain ${domainId}`);
-  return res.json();
+  const data = await res.json();
+  _blueprintCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
 }
 
 export async function getDiagnosticQuestions(domainId: string): Promise<{
@@ -1281,7 +1307,7 @@ export async function searchCuratedResources(
   query: string,
   skillId?: string,
   level: string = "intermediate",
-  limit: number = 5
+  limit: number = 6
 ): Promise<{
   query: string;
   count: number;
@@ -1363,6 +1389,16 @@ export async function getRoadmapByPathId(pathId: string): Promise<any> {
   return res.json();
 }
 
+export async function deleteLearningRoadmap(pathId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/roadmaps/${encodeURIComponent(pathId)}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to delete roadmap");
+  return res.json();
+}
+
 export async function submitLearningAttempt(payload: {
   step_id: string;
   roadmap_id?: string;
@@ -1402,9 +1438,12 @@ export async function getLearningMasteryTelemetry(): Promise<{
   return res.json();
 }
 
-export async function getLearningOverview(): Promise<any> {
+export async function getLearningOverview(targetRoleId?: string): Promise<any> {
   const headers = await getAuthHeaders();
-  const res = await fetchWithDedupe(`${API_BASE}/learning/overview`, { headers });
+  const url = targetRoleId
+    ? `${API_BASE}/learning/overview?target_role_id=${encodeURIComponent(targetRoleId)}`
+    : `${API_BASE}/learning/overview`;
+  const res = await fetchWithDedupe(url, { headers });
   if (!res.ok) throw new Error("Failed to load learning overview");
   return res.json();
 }
@@ -1450,7 +1489,8 @@ export async function getBackendAssessment(assessmentId: string): Promise<any> {
 
 export async function submitBackendAssessment(
   assessmentId: string,
-  answers: Record<string, number>
+  answers: Record<string, number>,
+  isSkipped: boolean = false
 ): Promise<any> {
   const headers = await getAuthHeaders();
   const res = await fetch(
@@ -1458,7 +1498,7 @@ export async function submitBackendAssessment(
     {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, is_skipped: isSkipped }),
     }
   );
   if (!res.ok) {
@@ -1720,6 +1760,44 @@ export async function markStepComplete(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const error: any = new Error(err.detail || `Failed to mark step complete (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function skipLearningStep(
+  stepId: string,
+  payload?: { roadmap_id?: string; notes?: string }
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/skip`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to skip step (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function resumeLearningStep(
+  stepId: string,
+  payload?: { roadmap_id?: string; notes?: string }
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/resume`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to resume step (${res.status})`);
     error.status = res.status;
     throw error;
   }

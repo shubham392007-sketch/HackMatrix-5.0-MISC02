@@ -284,10 +284,12 @@ export async function getRoleDemandModel(roleId: string): Promise<RoleDemandMode
  * 7. Get user's active target role
  */
 export async function getUserTargetRole(): Promise<{
-  user_id: string;
-  target_role_id: string;
-  target_role_version: string;
-  role_title: string;
+  has_target?: boolean;
+  user_id?: string;
+  target_role_id: string | null;
+  target_role_version: string | null;
+  role_title: string | null;
+  selected_at?: string;
   updated_at?: string;
 }> {
   const authHeaders = await getAuthHeaders();

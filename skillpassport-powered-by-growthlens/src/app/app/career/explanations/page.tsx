@@ -32,8 +32,6 @@ import {
   Layers,
   ChevronRight,
   TrendingUp,
-  Compass,
-  Briefcase,
 } from "lucide-react";
 
 export default function RoleExplanationExplorerPage() {
@@ -41,7 +39,7 @@ export default function RoleExplanationExplorerPage() {
     useEvidence();
 
   const [selectedSkillId, setSelectedSkillId] = useState<string>(
-    activeRole?.competencies[0]?.skill_id || "skill-python"
+    activeRole.competencies[0]?.skill_id || "skill-python"
   );
   const [activeTab, setActiveTab] = useState<
     "match" | "verification" | "gap" | "priority"
@@ -50,18 +48,15 @@ export default function RoleExplanationExplorerPage() {
 
   // Compute evaluations for current active role
   const matchResult = useMemo(() => {
-    if (!activeRole) return null;
     return evaluateRoleMatch(activeRole, skills);
   }, [activeRole, skills]);
 
   const gapRecords = useMemo(() => {
-    if (!activeRole || !matchResult) return [];
     return extractGapRecords(matchResult, activeRole);
   }, [activeRole, matchResult]);
 
   // Selected competency definition
   const roleComp = useMemo(() => {
-    if (!activeRole) return undefined;
     return (
       activeRole.competencies.find((c) => c.skill_id === selectedSkillId) ||
       activeRole.competencies[0]
@@ -70,7 +65,6 @@ export default function RoleExplanationExplorerPage() {
 
   // Selected competency match
   const compMatch = useMemo(() => {
-    if (!matchResult) return undefined;
     return (
       matchResult.competency_matches.find(
         (m) => m.skill_id === selectedSkillId
@@ -93,42 +87,6 @@ export default function RoleExplanationExplorerPage() {
         compMatch?.evidence_ids.includes(item.id)
     );
   }, [evidenceItems, selectedSkillId, compMatch, roleComp]);
-
-  if (!activeRole) {
-    return (
-      <div className="flex-1 flex flex-col">
-        <AppTopBar
-          title="Role Decision Explanations"
-          description="Audit-grade reasoning chains for skill matching, gap classification, and readiness scoring."
-          badge="Explainability Engine"
-          badgeColor="border-sky-300 text-sky-900 bg-sky-100"
-        />
-        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
-          <TargetRoleSelectorBar />
-          <div className="gl-card p-12 bg-white border border-ink/10 text-center space-y-4 max-w-xl mx-auto my-8 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-sand/40 border border-ink/10 flex items-center justify-center mx-auto text-ink">
-              <Compass className="w-6 h-6 text-ink" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-ink">No active target role selected</h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Select a target role from our curated catalogue or parse a custom job description to inspect decision logic and provenance.
-              </p>
-            </div>
-            <div className="pt-2">
-              <Link
-                href="/app/career/roles"
-                className="pill-btn pill-btn-primary text-xs py-2 px-4 font-bold inline-flex items-center gap-1.5"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                Select Target Role
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col">
@@ -170,11 +128,11 @@ export default function RoleExplanationExplorerPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-          {activeRole.competencies.map((comp, compIdx) => {
+          {activeRole.competencies.map((comp) => {
             const isSelected = comp.skill_id === selectedSkillId;
             return (
               <button
-                key={`${comp.skill_id || comp.canonical_name || "comp"}-${compIdx}`}
+                key={comp.skill_id}
                 onClick={() => setSelectedSkillId(comp.skill_id)}
                 className={`px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isSelected

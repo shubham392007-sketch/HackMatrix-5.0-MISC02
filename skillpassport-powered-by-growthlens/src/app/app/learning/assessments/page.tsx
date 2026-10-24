@@ -38,35 +38,61 @@ export default function DynamicAssessmentsPage() {
     isDatabaseUnavailable,
   } = useEvidence();
 
-  // Extract eligible assessment steps strictly from user's active roadmap
-  const eligibleAssessmentSteps = useMemo<RoadmapStep[]>(() => {
-    if (!activeRoadmap?.steps || !Array.isArray(activeRoadmap.steps)) return [];
-    return activeRoadmap.steps.filter(
-      (step) => Boolean(step.assessment_id) || step.step_id.includes("assessment")
-    );
-  }, [activeRoadmap]);
-
-  // Determine available assessment destinations from real active roadmap steps
+  // Determine available assessment destinations from real active roadmap steps and active blueprint
   const assessmentsList = useMemo<AssessmentCardItem[]>(() => {
     const list: AssessmentCardItem[] = [];
+    const seenIds = new Set<string>();
 
-    for (const step of eligibleAssessmentSteps) {
-      const targetId = step.assessment_id || step.step_id;
-      const attempt = assessmentAttempts.find((a: AssessmentAttempt) => a.assessment_id === targetId);
-      list.push({
-        id: targetId,
-        title: step.title,
-        domainId: activeBlueprint?.domain_id || "general",
-        domainTitle: activeBlueprint?.title || "Active Roadmap",
-        estimatedMinutes: step.estimated_minutes || 15,
-        status: attempt ? (attempt.passed ? "passed" : "needs_remediation") : "available",
-        score: attempt?.total_score,
-        stepType: "roadmap_step",
-      });
+    // 1. From active roadmap steps
+    if (activeRoadmap?.steps && Array.isArray(activeRoadmap.steps) && activeRoadmap.steps.length > 0) {
+      for (const step of activeRoadmap.steps) {
+        const targetId = step.assessment_id || `assessment-${step.step_id}`;
+        if (seenIds.has(targetId)) continue;
+        seenIds.add(targetId);
+
+        const attempt = assessmentAttempts.find(
+          (a: AssessmentAttempt) => a.assessment_id === targetId || a.assessment_id === step.step_id
+        );
+        list.push({
+          id: targetId,
+          title: step.title,
+          domainId: activeRoadmap.domain_id || activeBlueprint?.domain_id || "general",
+          domainTitle: activeRoadmap.domain_title || activeBlueprint?.title || "Personalized Roadmap",
+          estimatedMinutes: step.estimated_minutes || 15,
+          status: attempt ? (attempt.passed ? "passed" : "needs_remediation") : "available",
+          score: attempt?.total_score,
+          stepType: "roadmap_step",
+        });
+      }
+    }
+
+    // 2. From active blueprint topics (if active roadmap has few or no steps)
+    if (activeBlueprint?.modules && Array.isArray(activeBlueprint.modules)) {
+      for (const mod of activeBlueprint.modules) {
+        for (const topic of mod.topics || []) {
+          const targetId = `assessment-${topic.id || "topic"}`;
+          if (seenIds.has(targetId)) continue;
+          seenIds.add(targetId);
+
+          const attempt = assessmentAttempts.find(
+            (a: AssessmentAttempt) => a.assessment_id === targetId || a.assessment_id === topic.id
+          );
+          list.push({
+            id: targetId,
+            title: topic.title,
+            domainId: activeBlueprint.domain_id,
+            domainTitle: activeBlueprint.title,
+            estimatedMinutes: topic.estimated_minutes || 15,
+            status: attempt ? (attempt.passed ? "passed" : "needs_remediation") : "available",
+            score: attempt?.total_score,
+            stepType: "blueprint_diagnostic",
+          });
+        }
+      }
     }
 
     return list;
-  }, [eligibleAssessmentSteps, activeBlueprint, assessmentAttempts]);
+  }, [activeRoadmap, activeBlueprint, assessmentAttempts]);
 
   return (
     <div className="flex-1 flex flex-col">

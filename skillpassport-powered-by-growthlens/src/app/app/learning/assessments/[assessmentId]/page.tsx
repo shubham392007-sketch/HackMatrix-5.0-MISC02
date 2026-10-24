@@ -20,6 +20,7 @@ import {
   X,
   Loader2,
   RefreshCw,
+  FastForward,
 } from "lucide-react";
 import {
   getBackendAssessment,
@@ -70,6 +71,7 @@ interface SubmittedResultItem {
 interface SubmittedAssessmentAttempt extends AssessmentAttempt {
   passing_threshold: number;
   results: SubmittedResultItem[];
+  is_skipped?: boolean;
 }
 
 export default function KnowledgeAssessmentPage() {
@@ -266,6 +268,40 @@ export default function KnowledgeAssessmentPage() {
     }
   };
 
+  const handleSkipTest = async () => {
+    if (!assessmentData || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      try {
+        await submitBackendAssessment(assessmentData.assessment_id, {}, true);
+      } catch (e) {
+        console.warn("Backend skip failed, recording local attempt:", e);
+      }
+
+      const attemptObj: SubmittedAssessmentAttempt = {
+        attempt_id: `att-skip-${Date.now()}`,
+        assessment_id: assessmentData.assessment_id,
+        timestamp: "Just now",
+        total_score: 0,
+        passed: false,
+        passing_threshold: assessmentData.passing_threshold,
+        concept_score: 0,
+        application_score: 0,
+        objective_results: [],
+        feedback: "Assessment skipped by learner. No mastery credit awarded.",
+        needs_remediation: false,
+        failed_topic_ids: [],
+        results: [],
+        is_skipped: true as any,
+      };
+
+      setSubmittedAttempt(attemptObj);
+      recordAssessmentAttempt(attemptObj, true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleRetake = () => {
     setAnswers({});
     setFlagged({});
@@ -416,13 +452,20 @@ export default function KnowledgeAssessmentPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-ink/10">
+                <div className="mt-6 pt-4 border-t border-ink/10 space-y-2">
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     className="w-full pill-btn pill-btn-primary text-xs justify-center flex items-center gap-2"
                   >
                     {isSubmitting ? "Scoring Attempt..." : "Submit Assessment →"}
+                  </button>
+                  <button
+                    onClick={handleSkipTest}
+                    disabled={isSubmitting}
+                    className="w-full pill-btn bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 text-xs justify-center flex items-center gap-2 font-medium"
+                  >
+                    Skip Test
                   </button>
                 </div>
               </div>
@@ -505,15 +548,27 @@ export default function KnowledgeAssessmentPage() {
                   </div>
 
                   {/* Stepper Navigation Buttons */}
-                  <div className="flex items-center justify-between pt-6 border-t border-ink/10">
-                    <button
-                      disabled={currentIdx === 0}
-                      onClick={() => setCurrentIdx((prev) => Math.max(0, prev - 1))}
-                      className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 disabled:opacity-30"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      Previous Question
-                    </button>
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-ink/10">
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={currentIdx === 0}
+                        onClick={() => setCurrentIdx((prev) => Math.max(0, prev - 1))}
+                        className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 disabled:opacity-30"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        Previous Question
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSkipTest}
+                        disabled={isSubmitting}
+                        className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 text-amber-800 hover:bg-amber-100/60 border border-amber-300"
+                        title="Skip this assessment. Score will be recorded as 0 and no mastery credit awarded."
+                      >
+                        <FastForward className="w-3.5 h-3.5 text-amber-700" />
+                        Skip Test
+                      </button>
+                    </div>
 
                     {currentIdx < questions.length - 1 ? (
                       <button
@@ -538,6 +593,43 @@ export default function KnowledgeAssessmentPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        ) : (submittedAttempt as any).is_skipped ? (
+          /* Dedicated Skipped Test State */
+          <div className="space-y-6">
+            <div className="gl-card p-6 md:p-8 border-2 bg-amber-50/50 border-amber-300">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-200 text-amber-900">
+                    <FastForward className="w-4 h-4" />
+                    Assessment Skipped by Learner
+                  </div>
+
+                  <h2 className="text-3xl font-extrabold text-ink">
+                    Recorded Score: 0%
+                  </h2>
+                  <p className="text-xs md:text-sm text-ink/70">
+                    This assessment was explicitly skipped. Answer keys, individual grading marks, and rationale rubrics are withheld. No mastery credit has been awarded to your skill profile.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    onClick={handleRetake}
+                    className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 border border-ink/20"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Retake Assessment
+                  </button>
+                  <Link
+                    href="/app/learning"
+                    className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+                  >
+                    Back to Learning Overview →
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
