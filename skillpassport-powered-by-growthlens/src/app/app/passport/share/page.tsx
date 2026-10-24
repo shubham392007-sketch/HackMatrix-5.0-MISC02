@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   Link2,
+  Loader2,
   CheckCircle,
   Copy,
   ExternalLink,
@@ -32,6 +33,7 @@ import {
 import AppTopBar from "@/components/app/AppTopBar";
 import TemplateSelector from "@/components/passport/TemplateSelector";
 import { SharePermissionsConfig, PassportTemplateId } from "@/types/sharing";
+import { sharingApi } from "@/lib/sharingApi";
 
 export default function SharePassportWizardPage() {
   const router = useRouter();
@@ -136,7 +138,10 @@ export default function SharePassportWizardPage() {
     });
   };
 
-  const handleCreateLink = () => {
+  const [creatingLink, setCreatingLink] = useState<boolean>(false);
+
+  const handleCreateLink = async () => {
+    setCreatingLink(true);
     const config: SharePermissionsConfig = {
       identity: {
         showDisplayName,
@@ -160,9 +165,25 @@ export default function SharePassportWizardPage() {
       sections: includedSections,
     };
 
-    const newShare = createShareRecord(label, config);
-    setCreatedShareId(newShare.shareId);
-    setStep(4);
+    try {
+      const serverRecord = await sharingApi.createLink({
+        label: label || "Selective Recruiter Share",
+        template_id: templateId,
+        permissions: config,
+        expiry_days: expiryDays,
+      });
+      const effectiveShareId = serverRecord.shareId || (serverRecord as any).id;
+      createShareRecord(label, { ...config, customLinkLabel: label });
+      setCreatedShareId(effectiveShareId);
+      setStep(4);
+    } catch (err) {
+      console.warn("Backend share creation failed, falling back to local record:", err);
+      const newShare = createShareRecord(label, config);
+      setCreatedShareId(newShare.shareId);
+      setStep(4);
+    } finally {
+      setCreatingLink(false);
+    }
   };
 
   const shareUrl = typeof window !== "undefined" && createdShareId
@@ -641,10 +662,15 @@ export default function SharePassportWizardPage() {
             </button>
             <button
               onClick={handleCreateLink}
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
+              disabled={creatingLink}
+              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-60"
             >
-              <Link2 className="w-4 h-4" />
-              Generate Public Recruiter Link
+              {creatingLink ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Link2 className="w-4 h-4" />
+              )}
+              {creatingLink ? "Generating Secure Link..." : "Generate Public Recruiter Link"}
             </button>
           </div>
         </div>

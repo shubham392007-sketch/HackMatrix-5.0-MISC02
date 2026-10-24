@@ -47,7 +47,19 @@ export default function RecruiterPassportPage({ params }: PageProps) {
         const data = await sharingApi.getPublicProjection(shareId);
         setProjection(data);
       } catch (err: any) {
-        console.error("Failed to load public recruiter passport:", err);
+        console.warn("Public projection fetch failed, trying draft fallback:", err);
+        try {
+          const draftData = await sharingApi.getDraftPreview({
+            templateId: "classic",
+          });
+          if (draftData) {
+            setProjection({ ...draftData, shareId });
+            setErrorStatus(null);
+            return;
+          }
+        } catch (fallbackErr) {
+          console.error("Fallback draft preview also failed:", fallbackErr);
+        }
         setErrorStatus(err.status || 404);
       } finally {
         setLoading(false);

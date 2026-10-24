@@ -62,6 +62,8 @@ export const sharingApi = {
     template_id?: string;
     templateId?: string;
     permissions?: SharePermissionsConfig;
+    expiry_days?: number | null;
+    expiryDays?: number | null;
   } | SharePermissionsConfig): Promise<ShareRecord> {
     const authHeaders = await getAuthHeader();
     const formatted = "label" in payload
@@ -69,11 +71,13 @@ export const sharingApi = {
           label: payload.label || "Selective Skill Passport Share",
           template_id: payload.template_id || payload.templateId || "classic",
           permissions: payload.permissions,
+          expiry_days: payload.expiry_days ?? payload.expiryDays ?? payload.permissions?.expiryDays,
         }
       : {
           label: (payload as any).customLinkLabel || "Selective Skill Passport Share",
           template_id: (payload as any).templateId || "classic",
           permissions: payload,
+          expiry_days: (payload as any).expiryDays,
         };
     let res: Response;
     try {
