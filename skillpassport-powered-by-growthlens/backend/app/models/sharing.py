@@ -144,5 +144,6 @@ class UserPassportConfigRecord(Base, TimestampMixin):
     publications: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     achievements: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     custom_sections: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    sharing_permissions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
 

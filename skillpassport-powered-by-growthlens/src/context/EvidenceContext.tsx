@@ -293,6 +293,8 @@ interface EvidenceContextType {
   shareActivities: ShareActivityEvent[];
   draftPermissions: SharePermissionsConfig;
   setDraftPermissions: React.Dispatch<React.SetStateAction<SharePermissionsConfig>>;
+  loadAuthoritativePermissions: () => Promise<SharePermissionsConfig>;
+  saveAuthoritativePermissions: (config: SharePermissionsConfig) => Promise<SharePermissionsConfig>;
   createShareRecord: (label: string, config: SharePermissionsConfig) => ShareRecord;
   updateSharePermissions: (shareId: string, config: SharePermissionsConfig) => void;
   revokeShareRecord: (shareId: string, reason?: string) => void;
@@ -1881,6 +1883,9 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         const userNotifs = loadUserNotifications(uid);
         setNotifications(userNotifs);
         refreshEvidenceData();
+        sharingApi.getSharingPermissions().then((perms) => {
+          if (perms) setDraftPermissions(perms);
+        }).catch(() => {});
       } else {
         setIsAuthenticated(false);
         setCurrentUserId(null);
@@ -2564,7 +2569,15 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Domain 6 Sharing & Recruiter Experience State
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>(INITIAL_SHARE_RECORDS);
   const [shareActivities, setShareActivities] = useState<ShareActivityEvent[]>(INITIAL_SHARE_ACTIVITIES);
-  const [draftPermissions, setDraftPermissions] = useState<SharePermissionsConfig>(DEFAULT_SHARE_PERMISSIONS);
+  const [draftPermissions, setDraftPermissions] = useState<SharePermissionsConfig>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("sp_finalized_permissions") || localStorage.getItem("sp_draft_permissions");
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return DEFAULT_SHARE_PERMISSIONS;
+  });
 
   const activeBlueprint = useMemo(() => {
     return blueprints.find((b) => b.domain_id === activeDomainId) || blueprints[0];
@@ -2763,6 +2776,25 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Domain 6 Sharing & Recruiter Handlers
+  const loadAuthoritativePermissions = useCallback(async (): Promise<SharePermissionsConfig> => {
+    try {
+      const perms = await sharingApi.getSharingPermissions();
+      if (perms) {
+        setDraftPermissions(perms);
+        return perms;
+      }
+    } catch (e) {
+      console.warn("Could not load authoritative sharing permissions from server:", e);
+    }
+    return draftPermissions;
+  }, [draftPermissions]);
+
+  const saveAuthoritativePermissions = useCallback(async (config: SharePermissionsConfig): Promise<SharePermissionsConfig> => {
+    const saved = await sharingApi.saveSharingPermissions(config);
+    setDraftPermissions(saved);
+    return saved;
+  }, []);
+
   const createShareRecord = (label: string, config: SharePermissionsConfig): ShareRecord => {
     const randomHex = Math.random().toString(36).substring(2, 8);
     const newShareId = `sh-${randomHex}`;
@@ -3549,6 +3581,8 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         shareActivities,
         draftPermissions,
         setDraftPermissions,
+        loadAuthoritativePermissions,
+        saveAuthoritativePermissions,
         createShareRecord,
         updateSharePermissions,
         revokeShareRecord,

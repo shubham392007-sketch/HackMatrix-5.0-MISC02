@@ -126,11 +126,62 @@ class SharePermissionsInput(BaseModel):
     include_role_alignment: bool = Field(default=False)
     target_role_id: Optional[str] = None
     allow_recruiter_messaging: bool = Field(default=True)
+    template_id: Optional[str] = Field(default=None)
+    custom_link_label: Optional[str] = Field(default=None)
     expiry_days: Optional[int] = Field(default=14)
     custom_headline: Optional[str] = None
     custom_summary: Optional[str] = None
     sections: Optional[Dict[str, bool]] = None
     master_passport: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Identity
+            if "identity" in data and isinstance(data["identity"], dict):
+                ident = dict(data["identity"])
+                if "showDisplayName" in ident and "show_display_name" not in ident:
+                    ident["show_display_name"] = ident["showDisplayName"]
+                if "showHeadline" in ident and "show_headline" not in ident:
+                    ident["show_headline"] = ident["showHeadline"]
+                if "showSummary" in ident and "show_summary" not in ident:
+                    ident["show_summary"] = ident["showSummary"]
+                if "showContactInfo" in ident and "show_contact_info" not in ident:
+                    ident["show_contact_info"] = ident["showContactInfo"]
+                if "contactEmail" in ident and "contact_email" not in ident:
+                    ident["contact_email"] = ident["contactEmail"]
+                if "contactLinkedIn" in ident and "contact_linkedin" not in ident:
+                    ident["contact_linkedin"] = ident["contactLinkedIn"]
+                data["identity"] = ident
+
+            if "shareVerifiedSkillsOnly" in data and "share_verified_skills_only" not in data:
+                data["share_verified_skills_only"] = data["shareVerifiedSkillsOnly"]
+            if "selectedSkillIds" in data and "selected_skill_ids" not in data:
+                data["selected_skill_ids"] = data["selectedSkillIds"]
+            if "selectedCustomSkillIds" in data and "selected_custom_skill_ids" not in data:
+                data["selected_custom_skill_ids"] = data["selectedCustomSkillIds"]
+            if "selectedEvidencePermissions" in data and "selected_evidence_permissions" not in data:
+                data["selected_evidence_permissions"] = data["selectedEvidencePermissions"]
+            if "includeRoleAlignment" in data and "include_role_alignment" not in data:
+                data["include_role_alignment"] = data["includeRoleAlignment"]
+            if "targetRoleId" in data and "target_role_id" not in data:
+                data["target_role_id"] = data["targetRoleId"]
+            if "allowRecruiterMessaging" in data and "allow_recruiter_messaging" not in data:
+                data["allow_recruiter_messaging"] = data["allowRecruiterMessaging"]
+            if "expiryDays" in data and "expiry_days" not in data:
+                data["expiry_days"] = data["expiryDays"]
+            if "customLinkLabel" in data and "custom_link_label" not in data:
+                data["custom_link_label"] = data["customLinkLabel"]
+            if "customHeadline" in data and "custom_headline" not in data:
+                data["custom_headline"] = data["customHeadline"]
+            if "customSummary" in data and "custom_summary" not in data:
+                data["custom_summary"] = data["customSummary"]
+            if "templateId" in data and "template_id" not in data:
+                data["template_id"] = data["templateId"]
+            if "masterPassport" in data and "master_passport" not in data:
+                data["master_passport"] = data["masterPassport"]
+        return data
 
 class CreateShareLinkRequest(BaseModel):
     label: str = Field(..., min_length=2, max_length=255)
@@ -1452,6 +1503,272 @@ def update_master_passport(
             "customSections": config.custom_sections,
             "updatedAt": None,
         }
+
+# ==============================================================================
+# AUTHORITATIVE SHARING PERMISSIONS (DOMAIN 6)
+# ==============================================================================
+
+def format_canonical_permissions(
+    user_id: Any,
+    raw_perms: Optional[Dict[str, Any]],
+    db: Session,
+    master_cfg: Optional[UserPassportConfigRecord] = None,
+) -> Dict[str, Any]:
+    """
+    Normalizes, validates, and formats sharing permissions against user's actual verified competencies
+    and owned evidence items. Returns canonical dictionary with both camelCase and snake_case properties.
+    """
+    profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
+
+    # User verified competency mappings
+    mappings = db.query(EvidenceCompetencyMapping).filter(
+        EvidenceCompetencyMapping.owner_user_id == user_id,
+        EvidenceCompetencyMapping.status.in_(["reviewed", "verified"]),
+    ).all()
+    if not mappings:
+        mappings = db.query(EvidenceCompetencyMapping).filter(
+            EvidenceCompetencyMapping.owner_user_id == user_id,
+            EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
+            (EvidenceCompetencyMapping.relevance_score == None) | (EvidenceCompetencyMapping.relevance_score >= 0.65),
+        ).all()
+    comp_ids = list({str(m.competency_id) for m in mappings if m.competency_id})
+    tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all() if comp_ids else []
+    valid_skill_id_set = set(comp_ids)
+    for tax in tax_records:
+        valid_skill_id_set.add(str(tax.id))
+        valid_skill_id_set.add(tax.canonical_name.lower())
+
+    # User evidence items
+    user_evidence = db.query(EvidenceItem).filter(EvidenceItem.owner_user_id == user_id).all()
+    valid_ev_id_set = {str(e.id) for e in user_evidence}
+
+    if not raw_perms:
+        ident_config = {
+            "showDisplayName": True,
+            "showHeadline": True,
+            "showSummary": True,
+            "showContactInfo": False,
+            "contactEmail": profile.email if profile else "",
+            "contactLinkedIn": profile.linkedin_url if profile else "",
+            "show_display_name": True,
+            "show_headline": True,
+            "show_summary": True,
+            "show_contact_info": False,
+            "contact_email": profile.email if profile else "",
+            "contact_linkedin": profile.linkedin_url if profile else "",
+        }
+        selected_skills = [c for c in comp_ids]
+        evidence_perms = {}
+        for ev in user_evidence:
+            evidence_perms[str(ev.id)] = {
+                "shareSummary": True,
+                "allowDetail": False,
+                "share_summary": True,
+                "allow_detail": False,
+            }
+        template_id = master_cfg.template_id if (master_cfg and master_cfg.template_id in VALID_TEMPLATES) else "classic"
+        sections = {
+            "work_experience": True,
+            "portfolio_projects": True,
+            "education": True,
+            "certifications": True,
+            "publications": True,
+            "achievements": True,
+            "custom_sections": True,
+        }
+        return {
+            "identity": ident_config,
+            "shareVerifiedSkillsOnly": True,
+            "share_verified_skills_only": True,
+            "selectedSkillIds": selected_skills,
+            "selected_skill_ids": selected_skills,
+            "selectedCustomSkillIds": [],
+            "selected_custom_skill_ids": [],
+            "evidenceAccessLevel": "detail_inspection",
+            "evidence_access_level": "detail_inspection",
+            "selectedEvidencePermissions": evidence_perms,
+            "selected_evidence_permissions": evidence_perms,
+            "includeRoleAlignment": True,
+            "include_role_alignment": True,
+            "targetRoleId": "role-data-scientist",
+            "target_role_id": "role-data-scientist",
+            "allowRecruiterMessaging": True,
+            "allow_recruiter_messaging": True,
+            "templateId": template_id,
+            "template_id": template_id,
+            "expiryDays": 14,
+            "expiry_days": 14,
+            "customLinkLabel": "Standard Recruiter Share",
+            "custom_link_label": "Standard Recruiter Share",
+            "customHeadline": profile.headline if profile else "",
+            "custom_headline": profile.headline if profile else "",
+            "customSummary": profile.professional_summary if profile else "",
+            "custom_summary": profile.professional_summary if profile else "",
+            "sections": sections,
+            "isDefault": True,
+        }
+
+    raw_ident = raw_perms.get("identity") or {}
+    show_dn = raw_ident.get("showDisplayName", raw_ident.get("show_display_name", True))
+    show_hl = raw_ident.get("showHeadline", raw_ident.get("show_headline", True))
+    show_sm = raw_ident.get("showSummary", raw_ident.get("show_summary", True))
+    show_ci = raw_ident.get("showContactInfo", raw_ident.get("show_contact_info", False))
+    email = raw_ident.get("contactEmail", raw_ident.get("contact_email", profile.email if profile else ""))
+    linkedin = raw_ident.get("contactLinkedIn", raw_ident.get("contact_linkedin", profile.linkedin_url if profile else ""))
+
+    ident_config = {
+        "showDisplayName": show_dn,
+        "showHeadline": show_hl,
+        "showSummary": show_sm,
+        "showContactInfo": show_ci,
+        "contactEmail": email,
+        "contactLinkedIn": linkedin,
+        "show_display_name": show_dn,
+        "show_headline": show_hl,
+        "show_summary": show_sm,
+        "show_contact_info": show_ci,
+        "contact_email": email,
+        "contact_linkedin": linkedin,
+    }
+
+    raw_skills = raw_perms.get("selectedSkillIds") or raw_perms.get("selected_skill_ids") or []
+    if not isinstance(raw_skills, list):
+        raw_skills = []
+    filtered_skills = [
+        s for s in raw_skills
+        if str(s) in valid_skill_id_set or str(s).lower() in valid_skill_id_set
+    ]
+
+    raw_custom = raw_perms.get("selectedCustomSkillIds") or raw_perms.get("selected_custom_skill_ids") or []
+    if not isinstance(raw_custom, list):
+        raw_custom = []
+
+    raw_ev = raw_perms.get("selectedEvidencePermissions") or raw_perms.get("selected_evidence_permissions") or {}
+    clean_ev = {}
+    if isinstance(raw_ev, dict):
+        for ev_k, ev_v in raw_ev.items():
+            if str(ev_k) in valid_ev_id_set and isinstance(ev_v, dict):
+                s_sum = ev_v.get("shareSummary", ev_v.get("share_summary", True))
+                a_det = ev_v.get("allowDetail", ev_v.get("allow_detail", False))
+                clean_ev[str(ev_k)] = {
+                    "shareSummary": s_sum,
+                    "allowDetail": a_det,
+                    "share_summary": s_sum,
+                    "allow_detail": a_det,
+                }
+
+    sections = raw_perms.get("sections")
+    if not isinstance(sections, dict):
+        sections = {
+            "work_experience": True,
+            "portfolio_projects": True,
+            "education": True,
+            "certifications": True,
+            "publications": True,
+            "achievements": True,
+            "custom_sections": True,
+        }
+
+    template_id = raw_perms.get("templateId") or raw_perms.get("template_id") or (master_cfg.template_id if master_cfg else "classic")
+    if template_id not in VALID_TEMPLATES:
+        template_id = "classic"
+
+    expiry_days = raw_perms.get("expiryDays") if "expiryDays" in raw_perms else raw_perms.get("expiry_days", 14)
+    link_label = raw_perms.get("customLinkLabel") or raw_perms.get("custom_link_label") or "Standard Recruiter Share"
+    role_align = raw_perms.get("includeRoleAlignment") if "includeRoleAlignment" in raw_perms else raw_perms.get("include_role_alignment", True)
+    target_role = raw_perms.get("targetRoleId") or raw_perms.get("target_role_id") or "role-data-scientist"
+    allow_msg = raw_perms.get("allowRecruiterMessaging") if "allowRecruiterMessaging" in raw_perms else raw_perms.get("allow_recruiter_messaging", True)
+
+    return {
+        "identity": ident_config,
+        "shareVerifiedSkillsOnly": True,
+        "share_verified_skills_only": True,
+        "selectedSkillIds": filtered_skills,
+        "selected_skill_ids": filtered_skills,
+        "selectedCustomSkillIds": raw_custom,
+        "selected_custom_skill_ids": raw_custom,
+        "evidenceAccessLevel": raw_perms.get("evidenceAccessLevel") or raw_perms.get("evidence_access_level") or "detail_inspection",
+        "evidence_access_level": raw_perms.get("evidenceAccessLevel") or raw_perms.get("evidence_access_level") or "detail_inspection",
+        "selectedEvidencePermissions": clean_ev,
+        "selected_evidence_permissions": clean_ev,
+        "includeRoleAlignment": bool(role_align),
+        "include_role_alignment": bool(role_align),
+        "targetRoleId": target_role,
+        "target_role_id": target_role,
+        "allowRecruiterMessaging": bool(allow_msg),
+        "allow_recruiter_messaging": bool(allow_msg),
+        "templateId": template_id,
+        "template_id": template_id,
+        "expiryDays": expiry_days,
+        "expiry_days": expiry_days,
+        "customLinkLabel": link_label,
+        "custom_link_label": link_label,
+        "customHeadline": raw_perms.get("customHeadline") or raw_perms.get("custom_headline") or (profile.headline if profile else ""),
+        "custom_headline": raw_perms.get("customHeadline") or raw_perms.get("custom_headline") or (profile.headline if profile else ""),
+        "customSummary": raw_perms.get("customSummary") or raw_perms.get("custom_summary") or (profile.professional_summary if profile else ""),
+        "custom_summary": raw_perms.get("customSummary") or raw_perms.get("custom_summary") or (profile.professional_summary if profile else ""),
+        "sections": sections,
+        "isDefault": False,
+    }
+
+
+@router.get("/permissions")
+def get_sharing_permissions(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the user's authoritative saved sharing permissions from PostgreSQL.
+    If none saved yet, returns secure defaults populated with user's verified competencies.
+    """
+    user_id = user.id
+    config = db.query(UserPassportConfigRecord).filter(
+        UserPassportConfigRecord.owner_user_id == user_id
+    ).first()
+    
+    saved_perms = config.sharing_permissions if config else None
+    return format_canonical_permissions(user_id, saved_perms, db, master_cfg=config)
+
+
+@router.put("/permissions")
+def update_sharing_permissions(
+    payload: SharePermissionsInput,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Persists the user's authoritative baseline sharing permissions to PostgreSQL.
+    Validates verified competencies and user-owned evidence items.
+    """
+    user_id = user.id
+    config = db.query(UserPassportConfigRecord).filter(
+        UserPassportConfigRecord.owner_user_id == user_id
+    ).first()
+    if not config:
+        config = UserPassportConfigRecord(
+            owner_user_id=user_id,
+            title="Master Skill Passport",
+            template_id="classic",
+            sections_config=DEFAULT_SECTIONS_CONFIG,
+            work_experiences=[],
+            education_entries=[],
+            portfolio_projects=[],
+            certifications=[],
+            publications=[],
+            achievements=[],
+            custom_sections=[],
+        )
+        db.add(config)
+
+    raw_dict = payload.model_dump()
+    canonical_perms = format_canonical_permissions(user_id, raw_dict, db, master_cfg=config)
+    
+    config.sharing_permissions = canonical_perms
+    db.commit()
+    db.refresh(config)
+    invalidate_draft_cache(user_id)
+    logger.info(f"Persisted authoritative sharing permissions for user {user_id}")
+    return canonical_perms
 
 # ==============================================================================
 # RECRUITER MESSAGING & INBOX (PROTECTED)

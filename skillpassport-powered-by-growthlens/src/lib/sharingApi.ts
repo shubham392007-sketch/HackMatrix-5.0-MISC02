@@ -9,6 +9,7 @@ import {
   UserMasterPassport,
 } from "@/types/sharing";
 import { AppNotification } from "@/types/account";
+import { DEFAULT_SHARE_PERMISSIONS } from "@/lib/sharingCalculations";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
 const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1/sharing`;
@@ -800,5 +801,91 @@ export const sharingApi = {
       throw new Error(`Failed to delete notification: ${res.statusText}`);
     }
     return res.json();
+  },
+
+  // 9. Authoritative Sharing Permissions (Domain 6 Synchronization)
+  async getSharingPermissions(): Promise<SharePermissionsConfig> {
+    const authHeaders = await getAuthHeader();
+    let res: Response | null = null;
+    try {
+      res = await fetch(`${API_BASE}/permissions`, { headers: authHeaders });
+    } catch {
+      try {
+        res = await fetch("/api/v1/sharing/permissions", { headers: authHeaders });
+      } catch {
+        res = null;
+      }
+    }
+
+    if (res && res.ok) {
+      try {
+        const data = await res.json();
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("sp_finalized_permissions", JSON.stringify(data));
+          } catch {}
+        }
+        return data;
+      } catch {}
+    }
+
+    // Resilient fallback: return localStorage cache if present, else DEFAULT_SHARE_PERMISSIONS
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("sp_finalized_permissions") || localStorage.getItem("sp_draft_permissions");
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch {}
+    }
+
+    return DEFAULT_SHARE_PERMISSIONS;
+  },
+
+  async saveSharingPermissions(config: SharePermissionsConfig): Promise<SharePermissionsConfig> {
+    const authHeaders = await getAuthHeader();
+    let res: Response | null = null;
+    try {
+      res = await fetch(`${API_BASE}/permissions`, {
+        method: "PUT",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+    } catch {
+      try {
+        res = await fetch("/api/v1/sharing/permissions", {
+          method: "PUT",
+          headers: { ...authHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        });
+      } catch {
+        res = null;
+      }
+    }
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sp_finalized_permissions", JSON.stringify(data));
+          localStorage.setItem("sp_draft_permissions", JSON.stringify(data));
+          localStorage.setItem("sp_permissions_finalized_at", new Date().toISOString());
+        } catch {}
+      }
+      return data;
+    }
+
+    if (res && !res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to save sharing permissions: ${res.statusText}`);
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("sp_finalized_permissions", JSON.stringify(config));
+        localStorage.setItem("sp_draft_permissions", JSON.stringify(config));
+      } catch {}
+    }
+    throw new Error("Network unreachable while saving sharing permissions to database.");
   },
 };

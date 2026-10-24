@@ -50,6 +50,8 @@ export default function SharingPermissionsPage() {
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
 
   // Load initial config from localStorage cache (if finalized previously) or EvidenceContext draft
   const [localConfig, setLocalConfig] = useState<SharePermissionsConfig>(() => {
@@ -63,6 +65,31 @@ export default function SharingPermissionsPage() {
     }
     return { ...draftPermissions };
   });
+
+  // Fetch authoritative saved permissions from PostgreSQL backend
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadAuthoritative() {
+      try {
+        const perms = await sharingApi.getSharingPermissions();
+        if (isMounted && perms) {
+          setLocalConfig(perms);
+          setDraftPermissions(perms);
+          if (perms.selectedSkillIds && perms.selectedSkillIds.length > 0) {
+            setIsFinalized(true);
+          }
+        }
+      } catch (err: any) {
+        console.warn("Could not fetch remote sharing permissions, using local cache:", err);
+      } finally {
+        if (isMounted) setIsLoadingAuth(false);
+      }
+    }
+    loadAuthoritative();
+    return () => {
+      isMounted = false;
+    };
+  }, [setDraftPermissions]);
 
   const [isFinalized, setIsFinalized] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -198,9 +225,10 @@ export default function SharingPermissionsPage() {
     });
   };
 
-  // Finalize Permissions and lock them in for the Live Passport Preview
+  // Finalize Permissions and persist them authoritatively to PostgreSQL
   const finalizePermissions = async (navigateImmediately: boolean = false) => {
     setIsFinalizing(true);
+    setSaveError(null);
 
     // Build cleaned evidence permissions: only keep permissions for relevant evidence of chosen skills!
     const allowedEvIds = new Set(Array.from(evidenceToSelectedSkillsMap.keys()));
@@ -218,59 +246,78 @@ export default function SharingPermissionsPage() {
       selectedEvidencePermissions: cleanedEvidencePermissions,
     };
 
-    // 1. Update EvidenceContext
-    setDraftPermissions(finalizedPermissions);
-
-    // 2. Persist to localStorage
-    const nowIso = new Date().toISOString();
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("sp_finalized_permissions", JSON.stringify(finalizedPermissions));
-        localStorage.setItem("sp_draft_permissions", JSON.stringify(finalizedPermissions));
-        localStorage.setItem("sp_permissions_finalized_at", nowIso);
-      } catch (e) {
-        console.warn("Could not save to localStorage:", e);
-      }
-    }
-
-    setIsFinalized(true);
-    setSuccessMessage(
-      `Finalized! Exactly ${selectedVerifiedSkills.length} skills and ${relevantEvidenceItems.length} supporting evidences locked in for your passport.`
-    );
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 4000);
-
-    // 3. Pre-warm / synchronize with backend preview
     try {
-      await sharingApi.getDraftPreview({
-        permissions: finalizedPermissions,
-      });
-    } catch (e) {
-      console.warn("Notice during background preview sync:", e);
-    }
+      // 1. Authoritative Backend Persistence to PostgreSQL
+      const persisted = await sharingApi.saveSharingPermissions(finalizedPermissions);
 
-    setIsFinalizing(false);
+      // 2. Update context state
+      setDraftPermissions(persisted);
+      setLocalConfig(persisted);
 
-    // 4. Navigate to Live Passport Preview if requested
-    if (navigateImmediately) {
-      router.push("/app/passport/preview");
+      // 3. Persist to localStorage cache
+      const nowIso = new Date().toISOString();
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sp_finalized_permissions", JSON.stringify(persisted));
+          localStorage.setItem("sp_draft_permissions", JSON.stringify(persisted));
+          localStorage.setItem("sp_permissions_finalized_at", nowIso);
+        } catch (e) {
+          console.warn("Could not save to localStorage:", e);
+        }
+      }
+
+      setIsFinalized(true);
+      setSuccessMessage(
+        `Finalized & Saved! Exactly ${persisted.selectedSkillIds?.length ?? selectedVerifiedSkills.length} skills and ${Object.keys(cleanedEvidencePermissions).length} supporting evidences securely locked in for new share links.`
+      );
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 5000);
+
+      // 4. Pre-warm / synchronize with backend preview
+      try {
+        await sharingApi.getDraftPreview({
+          permissions: persisted,
+        });
+      } catch (e) {
+        console.warn("Notice during background preview sync:", e);
+      }
+
+      // 5. Navigate to Live Passport Preview if requested
+      if (navigateImmediately) {
+        router.push("/app/passport/preview");
+      }
+    } catch (err: any) {
+      console.error("Failed to save sharing permissions to database:", err);
+      setSaveError(err.message || "Failed to persist sharing preferences. The server may be busy or temporarily unreachable.");
+    } finally {
+      setIsFinalizing(false);
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (confirm("Reset sharing permissions to secure default configuration?")) {
-      setLocalConfig({ ...DEFAULT_SHARE_PERMISSIONS });
-      setDraftPermissions({ ...DEFAULT_SHARE_PERMISSIONS });
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.removeItem("sp_finalized_permissions");
-          localStorage.removeItem("sp_permissions_finalized_at");
-        } catch {}
+      try {
+        setIsFinalizing(true);
+        setSaveError(null);
+        const resetPerms = { ...DEFAULT_SHARE_PERMISSIONS };
+        const persisted = await sharingApi.saveSharingPermissions(resetPerms);
+        setLocalConfig(persisted);
+        setDraftPermissions(persisted);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("sp_finalized_permissions", JSON.stringify(persisted));
+            localStorage.removeItem("sp_permissions_finalized_at");
+          } catch {}
+        }
+        setIsFinalized(false);
+        setSuccessMessage("Permissions reset to defaults and saved to server.");
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+      } catch (err: any) {
+        setSaveError("Failed to reset permissions on server.");
+      } finally {
+        setIsFinalizing(false);
       }
-      setIsFinalized(false);
-      setSuccessMessage("Permissions reset to defaults.");
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2000);
     }
   };
 
@@ -299,6 +346,21 @@ export default function SharingPermissionsPage() {
             <span>Content Builder</span>
           </Link>
 
+          {/* Save Defaults Button */}
+          <button
+            onClick={() => finalizePermissions(false)}
+            disabled={isFinalizing}
+            className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1.5 shrink-0"
+            title="Save these permissions as your authoritative default configuration for future share links"
+          >
+            {isFinalizing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Save className="w-3.5 h-3.5 text-ink/70" />
+            )}
+            <span>Save Preferences</span>
+          </button>
+
           {/* Primary Finalize Button in TopBar */}
           <button
             onClick={() => finalizePermissions(true)}
@@ -317,6 +379,21 @@ export default function SharingPermissionsPage() {
       </AppTopBar>
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-20">
+        {saveError && (
+          <div className="p-4 bg-rose-50 border border-rose-300 text-rose-900 rounded-2xl text-xs font-bold flex items-center justify-between gap-3 animate-fadeIn shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+            <button
+              onClick={() => finalizePermissions(false)}
+              className="px-3 py-1 bg-rose-700 text-white rounded-xl text-[11px] font-bold hover:bg-rose-800 flex items-center gap-1"
+            >
+              <span>Retry Save</span>
+            </button>
+          </div>
+        )}
+
         {savedSuccess && (
           <div className="p-4 bg-emerald-100 border border-emerald-400 text-emerald-950 rounded-2xl text-xs font-bold flex items-center justify-between gap-3 animate-fadeIn shadow-sm">
             <div className="flex items-center gap-2.5">
@@ -796,7 +873,7 @@ export default function SharingPermissionsPage() {
                   className="pill-btn pill-btn-ghost text-xs py-2 px-4 border border-[#1C1C1C]/30 font-bold flex items-center gap-1.5 bg-white/80 hover:bg-white"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Finalize On This Screen Only</span>
+                  <span>Save Sharing Preferences</span>
                 </button>
 
                 <button
