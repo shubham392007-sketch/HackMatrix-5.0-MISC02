@@ -101,6 +101,8 @@ export interface CompetencyMatchResult {
   reason_codes: string[];
   confidence_explanation?: string;
   confidence_rationale?: ConfidenceRationale;
+  requirement_source?: string;
+  provenance?: string;
 }
 
 export interface RoleMatchResult {
@@ -159,6 +161,8 @@ export interface GapRecord {
   confidence?: number;
   confidence_explanation?: string;
   confidence_rationale?: ConfidenceRationale;
+  requirement_source?: string;
+  provenance?: string;
 }
 
 export interface CareerReadinessAssessment {

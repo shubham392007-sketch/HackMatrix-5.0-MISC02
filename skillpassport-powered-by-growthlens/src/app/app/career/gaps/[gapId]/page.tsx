@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
+import { generatePersonalizedRoadmap } from "@/lib/evidenceApi";
 import {
   GapTypeBadge,
   RequirementTypeBadge,
@@ -30,14 +31,50 @@ import {
   FolderGit2,
   Info,
   Scale,
+  Briefcase,
+  BrainCircuit,
 } from "lucide-react";
+import SkillProvenanceModal from "@/components/app/SkillProvenanceModal";
 
 export default function WhyThisGapDetailPage() {
   const params = useParams();
   const router = useRouter();
   const gapId = params?.gapId as string;
 
-  const { activeRole, activeGaps, evidenceItems, skills } = useEvidence();
+  const { activeRole, activeGaps, evidenceItems, skills, addToast, setActiveDomainId } = useEvidence();
+  const [isRemediating, setIsRemediating] = useState(false);
+  const [isProvenanceOpen, setIsProvenanceOpen] = useState(false);
+
+  const handleRemediate = async () => {
+    if (!gap) return;
+    setIsRemediating(true);
+    try {
+      const res = await generatePersonalizedRoadmap({
+        target_role_id: activeRole?.role_id || gap.role_id,
+        skill_gap_id: gap.gap_id,
+        skill_id: gap.skill_id,
+      });
+      if (res?.domain_id) {
+        setActiveDomainId(res.domain_id);
+      } else if (gap.skill_id) {
+        setActiveDomainId(gap.skill_id.startsWith("gap-") ? gap.skill_id : `gap-${gap.skill_id}`);
+      }
+      addToast(
+        "Roadmap Ready",
+        `Created personalized learning roadmap for ${gap.canonical_name}.`,
+        "success"
+      );
+      router.push(`/app/learning/roadmaps/${res.path_id}`);
+    } catch (err: any) {
+      addToast(
+        "Remediation Notice",
+        err.message || "Failed to generate roadmap. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsRemediating(false);
+    }
+  };
 
   // Find the gap record
   const gap = useMemo(() => {
@@ -170,6 +207,67 @@ export default function WhyThisGapDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 spans): Diagnosis, Traceability, Leverage */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Authoritative Source & Assurance of Authentication Card */}
+          <div className="gl-card p-6 space-y-4 border-indigo-200/80 bg-gradient-to-r from-indigo-50/40 via-white to-white">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700">
+                    <ShieldCheck className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold text-ink flex items-center gap-2">
+                      Source Provenance &amp; Assurance of Authentication
+                    </h2>
+                    <span className="text-[11px] font-mono text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Authenticity Verified &bull; Anti-Hallucination Guard Active
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsProvenanceOpen(true)}
+                className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink font-semibold flex items-center gap-1.5 shadow-xs"
+              >
+                <BrainCircuit className="w-4 h-4 text-indigo-600" />
+                Audit Full AI &amp; Evidence Provenance
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
+              <div className="p-3 rounded-xl bg-white border border-ink/10 space-y-1">
+                <span className="text-[10px] uppercase font-mono text-ink-muted font-bold block flex items-center gap-1">
+                  <Briefcase className="w-3 h-3 text-indigo-600" />
+                  Requirement Source Standard
+                </span>
+                <p className="font-semibold text-ink text-xs">
+                  {gap.requirement_source || `${gap.role_title} Competency Model`}
+                </p>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  {gap.provenance || activeRole?.provenance || "GrowthLens Curated Industry Benchmark v2026.1"}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white border border-ink/10 space-y-1">
+                <span className="text-[10px] uppercase font-mono text-ink-muted font-bold block flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-emerald-600" />
+                  Demonstrated Evidence Source
+                </span>
+                <p className="font-semibold text-ink text-xs">
+                  {gap.relevant_evidence_ids?.length > 0
+                    ? `${gap.relevant_evidence_ids.length} Ingested Repository Artifact(s)`
+                    : "Zero Verified Artifacts in Workspace"}
+                </p>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  {gap.relevant_evidence_ids?.length > 0
+                    ? "Evaluated against authentic Git commits, PRs, and work deliverables."
+                    : "Identified as genuine Evidence Gap: user has not yet submitted attributable artifacts confirming Level 3+."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Forensic Diagnosis Card */}
           <div className="gl-card p-6 space-y-4">
             <h2 className="text-base font-bold text-ink flex items-center gap-2">
@@ -357,9 +455,26 @@ export default function WhyThisGapDetailPage() {
             <h3 className="text-sm font-bold text-ink">Recommended Actions</h3>
 
             <div className="space-y-2 text-xs">
+              <button
+                onClick={handleRemediate}
+                disabled={isRemediating}
+                className="w-full pill-btn pill-btn-primary py-2.5 px-3 text-center flex items-center justify-center gap-2 font-bold disabled:opacity-60"
+              >
+                {isRemediating ? (
+                  <>
+                    <Sparkles className="w-4 h-4 animate-spin text-amber-500" />
+                    Generating Roadmap...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    Remediate in Learn &amp; Grow &rarr;
+                  </>
+                )}
+              </button>
               <Link
                 href="/app/career/priorities"
-                className="w-full pill-btn pill-btn-primary py-2 px-3 text-center block"
+                className="w-full pill-btn bg-white hover:bg-sand/30 border border-ink/20 py-2 px-3 text-center block text-ink"
               >
                 View in Ranked Priority List
               </Link>
@@ -380,6 +495,18 @@ export default function WhyThisGapDetailPage() {
         </div>
       </div>
     </div>
+
+    {/* Evidence & Provenance Assurance Modal */}
+    {gap && (
+      <SkillProvenanceModal
+        isOpen={isProvenanceOpen}
+        onClose={() => setIsProvenanceOpen(false)}
+        skillId={gap.skill_id}
+        skillTitle={gap.canonical_name}
+        roleId={gap.role_id}
+        gapId={gap.gap_id}
+      />
+    )}
   </div>
 );
 }

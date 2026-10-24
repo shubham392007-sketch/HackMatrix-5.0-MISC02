@@ -147,7 +147,7 @@ async function extractZipArchive(
     };
   }
 
-  const entries = Object.entries(zip.files).filter(([_, entry]) => !entry.dir);
+  const entries = (Object.entries(zip.files) as [string, any][]).filter(([_, entry]) => !entry.dir);
   if (entries.length === 0) {
     return {
       validFiles: [],
