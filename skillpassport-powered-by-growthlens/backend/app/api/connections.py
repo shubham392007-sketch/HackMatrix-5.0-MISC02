@@ -2455,14 +2455,23 @@ async def test_jira_connection(payload: JiraTestRequest):
     Validates Jira Cloud credentials against Atlassian REST API.
     Does not store credentials.
     """
-    client = JiraCloudClient(payload.site_url, payload.email, payload.api_token)
-    result = await client.test_connection()
-    if not result.get("valid"):
+    try:
+        client = JiraCloudClient(payload.site_url, payload.email, payload.api_token)
+        result = await client.test_connection()
+        if not result.get("valid"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("message", "Invalid Jira credentials"),
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error validating Jira credentials: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("message", "Invalid Jira credentials"),
+            detail=f"Jira validation failed: {str(exc)}",
         )
-    return result
 
 
 @router.post("/jira")
@@ -2474,8 +2483,16 @@ async def connect_jira(
     Validates, encrypts, and stores Jira credentials for the user.
     Validates credentials with Jira Cloud API before opening any database session.
     """
-    client = JiraCloudClient(payload.site_url, payload.email, payload.api_token)
-    validation = await client.test_connection()
+    try:
+        client = JiraCloudClient(payload.site_url, payload.email, payload.api_token)
+        validation = await client.test_connection()
+    except Exception as exc:
+        logger.error(f"Error testing Jira credentials during connect: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Jira validation failed: {str(exc)}",
+        )
+
     if not validation.get("valid"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2599,7 +2616,16 @@ async def list_jira_projects(
         }
 
     client = JiraCloudClient(creds["site_url"], creds["email"], creds["api_token"])
-    projects = await client.list_projects()
+    try:
+        projects = await client.list_projects()
+    except ConnectorAuthError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to list Jira projects: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list Jira projects: {str(e)}",
+        )
 
     for p in projects:
         p["selected"] = p["key"] in selected_keys

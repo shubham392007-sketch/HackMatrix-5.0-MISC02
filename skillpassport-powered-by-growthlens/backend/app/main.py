@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -151,6 +152,24 @@ def create_app() -> FastAPI:
                     "code": "DATABASE_TEMPORARILY_UNAVAILABLE",
                     "message": msg,
                     "details": {"retry_after_seconds": 15},
+                }
+            },
+        )
+
+    # Centralized Fallback Exception Handler for any unhandled Exception
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.error(
+            f"Unhandled server error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}",
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "An internal server error occurred while processing the request.",
+                    "details": {"type": type(exc).__name__, "message": str(exc)},
                 }
             },
         )
