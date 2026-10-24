@@ -282,18 +282,35 @@ def is_insufficient_or_identity_only(text: str) -> bool:
         return True
     cleaned = text.strip()
     words = cleaned.split()
-    if len(words) < 4:
+    if len(words) < 2:
         return True
-    # If the text only consists of 1-3 capitalized name words (e.g. 'Shubham Pokale')
-    if len(words) <= 3 and all(w.replace(".", "").isalpha() for w in words):
+    
+    lower = cleaned.lower()
+    technical_stems = [
+        "software", "engineering", "engineer", "developer", "develop", "architecture", "architect",
+        "algorithm", "python", "javascript", "typescript", "cloud", "framework",
+        "machine learning", "deep learning", "prompt", "data", "system", "sql", "react", "fastapi",
+        "docker", "aws", "security", "management", "project", "analysis", "implemented", "built",
+        "configured", "designed", "created", "refactored", "tested", "routing", "cache", "model",
+    ]
+    has_tech = any(t in lower for t in technical_stems)
+
+    # If the text only consists of 1-3 capitalized name words without any technical action or subject
+    if len(words) <= 3 and all(w.replace(".", "").isalpha() for w in words) and not has_tech:
         return True
+
+    # Generic completion certificate with recipient name but no course subject
+    if any(p in lower for p in ["certificate of completion", "certificate of participation", "certificate of achievement", "certificate of attendance"]):
+        if not any(t in lower for t in [" in ", " for ", " on ", "of generative", "of data", "of project", "of cloud", "of software", "of prompt"]) and not has_tech:
+            return True
+
     # Placeholder strings like "[Page 1: Image/Diagram Content..."
     if cleaned.startswith("[Page") and "embedded image(s)]" in cleaned and len(words) <= 12:
         return True
+
     # Payment receipt / invoice check (contains invoice/order #/paid in full without any technical context)
-    lower = cleaned.lower()
     if any(k in lower for k in ["invoice receipt", "order receipt", "payment receipt", "receipt:", "order #", "paid in full"]) and not any(
-        tech in lower for tech in ["software", "engineering", "developer", "architecture", "algorithm", "python", "javascript", "cloud", "framework", "certif"]
+        tech in lower for tech in ["software", "engineering", "developer", "architecture", "algorithm", "python", "javascript", "cloud compute", "framework", "certif"]
     ):
         return True
     return False

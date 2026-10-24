@@ -64,6 +64,15 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
   const [saving, setSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [finalized, setFinalized] = useState<boolean>(false);
+  const [finalizing, setFinalizing] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isFin = localStorage.getItem("sp_master_content_finalized") === "true";
+      if (isFin) setFinalized(true);
+    }
+  }, []);
 
   const [master, setMaster] = useState<UserMasterPassport>({
     title: "Master Skill Passport",
@@ -125,6 +134,26 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
     }
     loadMaster();
   }, []);
+
+  const handleConfirmAndFinalize = async () => {
+    setFinalizing(true);
+    setErrorMessage(null);
+    try {
+      await handleSaveAll();
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sp_master_content_finalized", "true");
+        localStorage.setItem("sp_master_content_finalized_at", new Date().toISOString());
+      }
+      setFinalized(true);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err: any) {
+      console.error("Error finalizing passport content:", err);
+      setErrorMessage("Failed to finalize passport content. Please try again.");
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const handleSaveAll = async (updatedData?: Partial<UserMasterPassport>) => {
     setSaving(true);
@@ -389,14 +418,58 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
 
           <button
             onClick={() => handleSaveAll()}
-            disabled={saving}
-            className="pill-btn pill-btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5"
+            disabled={saving || finalizing}
+            className="pill-btn pill-btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             <span>{saving ? "Saving..." : "Save All"}</span>
           </button>
+
+          <button
+            onClick={handleConfirmAndFinalize}
+            disabled={saving || finalizing}
+            className={`pill-btn text-xs py-1.5 px-3.5 flex items-center gap-1.5 border border-[#1C1C1C] transition-all cursor-pointer font-extrabold ${
+              finalized
+                ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-800 shadow-[1px_1px_0_0_#065f46]"
+                : "bg-[#DFE968] hover:bg-[#d4de58] text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] active:translate-x-[1px] active:translate-y-[1px]"
+            }`}
+          >
+            {finalizing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <CheckCircle className={`w-3.5 h-3.5 ${finalized ? "text-emerald-700" : "text-[#1C1C1C]"}`} />
+            )}
+            <span>{finalized ? "Flow Finalized ✓" : "Finalize & Confirm Content Flow"}</span>
+          </button>
         </div>
       </div>
+
+      {finalized && (
+        <div className="p-4 bg-emerald-50 border-2 border-emerald-600 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[2px_2px_0_0_#065f46] animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-emerald-200 border border-emerald-700 rounded-lg shrink-0">
+              <CheckCircle className="w-4 h-4 text-emerald-900" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                Passport Content Selection Finalized
+              </h4>
+              <p className="text-[11px] text-emerald-800">
+                This customized section flow and portfolio content are finalized and will be rendered on your Live Passport and recruiter shares.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/app/passport/preview"
+              className="pill-btn bg-white hover:bg-stone-50 text-emerald-950 border border-emerald-700 text-xs py-1 px-3 flex items-center gap-1.5 font-bold shadow-sm"
+            >
+              <Eye className="w-3.5 h-3.5 text-emerald-700" />
+              <span>View in Live Preview &rarr;</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-900 flex items-center gap-2">
@@ -507,6 +580,40 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Bottom Finalize Confirmation Card */}
+            <div className="mt-6 p-5 rounded-2xl bg-amber-50/80 border-2 border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-md bg-[#DFE968] border border-[#1C1C1C]">
+                    <CheckCircle className="w-4 h-4 text-[#1C1C1C]" />
+                  </span>
+                  <h4 className="text-sm font-extrabold text-[#1C1C1C]">
+                    Finalize Content Flow for Live Passport
+                  </h4>
+                </div>
+                <p className="text-xs text-[#1C1C1C]/80 max-w-xl">
+                  Confirm that the enabled sections, ordering, and portfolio entries customized here are finalized to render directly on your Live Passport and recruiter shares.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleConfirmAndFinalize}
+                  disabled={saving || finalizing}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#DFE968] hover:bg-[#d4de58] text-[#1C1C1C] border-2 border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all active:translate-x-[1px] active:translate-y-[1px]"
+                >
+                  {finalizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 stroke-[3]" />}
+                  <span>{finalized ? "Flow Finalized ✓" : "Finalize & Confirm Content"}</span>
+                </button>
+                <Link
+                  href="/app/passport/preview"
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-stone-50 text-[#1C1C1C] border-2 border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View Live &rarr;</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
