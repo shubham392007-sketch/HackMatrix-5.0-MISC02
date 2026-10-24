@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   ShieldCheck,
   Award,
@@ -13,6 +13,10 @@ import {
   Sparkles,
   FileText,
   Bookmark,
+  Search,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   ShareProjection,
@@ -48,6 +52,43 @@ export default function TemplateVerifiedCompetency({
 
   // Determine if secondary column has sufficient content
   const hasSecondaryContent = certifications.length > 0 || !!alignment || categories.length > 1;
+
+  // Search & Filtering State for Large Competency Sets
+  const [skillSearch, setSkillSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showAllSkills, setShowAllSkills] = useState(false);
+  const [showAllCustom, setShowAllCustom] = useState(false);
+
+  const allCategories = useMemo(() => {
+    const cats = Array.from(new Set(verifiedSkills.map((s) => s.category || "General").filter(Boolean)));
+    return ["All", ...cats];
+  }, [verifiedSkills]);
+
+  const filteredVerifiedSkills = useMemo(() => {
+    return verifiedSkills.filter((s) => {
+      const matchCat = selectedCategory === "All" || (s.category || "General") === selectedCategory;
+      if (!matchCat) return false;
+      if (!skillSearch.trim()) return true;
+      const q = skillSearch.toLowerCase();
+      return (
+        s.canonicalName.toLowerCase().includes(q) ||
+        (s.description && s.description.toLowerCase().includes(q)) ||
+        (s.category && s.category.toLowerCase().includes(q)) ||
+        (s.verifiedProficiency && s.verifiedProficiency.toLowerCase().includes(q))
+      );
+    });
+  }, [verifiedSkills, selectedCategory, skillSearch]);
+
+  const INITIAL_SKILLS_LIMIT = 8;
+  const isFiltered = skillSearch.trim().length > 0 || selectedCategory !== "All";
+  const visibleVerifiedSkills = showAllSkills || isFiltered
+    ? filteredVerifiedSkills
+    : filteredVerifiedSkills.slice(0, INITIAL_SKILLS_LIMIT);
+
+  const INITIAL_CUSTOM_LIMIT = 6;
+  const visibleCustomSkills = showAllCustom
+    ? customSkills
+    : customSkills.slice(0, INITIAL_CUSTOM_LIMIT);
 
   return (
     <div className="space-y-8 font-sans">
@@ -136,56 +177,148 @@ export default function TemplateVerifiedCompetency({
         <div className={hasSecondaryContent ? "lg:col-span-8 space-y-8" : "space-y-8"}>
           {/* Section 1: Verified Capabilities */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#1C1C1C] flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-700" />
-                Verified Competencies ({verifiedSkills.length})
-              </h2>
+                <h2 className="text-lg font-black text-[#1C1C1C]">
+                  Verified Competencies ({verifiedSkills.length})
+                </h2>
+              </div>
               <span className="text-xs text-[#1C1C1C]/60 font-semibold">
                 Click any skill to inspect supporting workplace proof
               </span>
             </div>
 
+            {/* Filter and Search Bar for large skill sets */}
+            {verifiedSkills.length > 0 && (
+              <div className="space-y-3 bg-[#FFFFFF] p-3.5 rounded-xl border border-[#1C1C1C]/15 shadow-sm">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#1C1C1C]/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={skillSearch}
+                    onChange={(e) => setSkillSearch(e.target.value)}
+                    placeholder={`Search ${verifiedSkills.length} verified competencies by keyword, category, or proficiency...`}
+                    className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-[#1C1C1C]/20 focus:border-[#1C1C1C] focus:outline-none bg-[#FDFBF7]"
+                  />
+                  {skillSearch && (
+                    <button
+                      onClick={() => setSkillSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#1C1C1C]/40 hover:text-[#1C1C1C]"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {allCategories.length > 2 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                    {allCategories.map((cat) => {
+                      const count =
+                        cat === "All"
+                          ? verifiedSkills.length
+                          : verifiedSkills.filter((s) => (s.category || "General") === cat).length;
+                      const active = selectedCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border ${
+                            active
+                              ? "bg-[#1C1C1C] text-[#DFE968] border-[#1C1C1C]"
+                              : "bg-[#FDFBF7] text-[#1C1C1C]/70 border-[#1C1C1C]/15 hover:border-[#1C1C1C]/40"
+                          }`}
+                        >
+                          {cat} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Skill Cards Grid */}
             {verifiedSkills.length === 0 ? (
               <div className="p-8 rounded-2xl bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] text-center text-sm text-[#1C1C1C]/60">
                 No verified competencies authorized for this share configuration.
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {verifiedSkills.map((skill) => (
-                  <div
-                    key={skill.id}
-                    onClick={() => onSelectSkill(skill)}
-                    className="p-5 rounded-xl bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#1C1C1C] transition-all cursor-pointer space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
-                          {skill.category}
-                        </span>
-                        <h3 className="text-base font-black text-[#1C1C1C] leading-tight">
-                          {skill.canonicalName}
-                        </h3>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-400 text-emerald-900 text-xs font-black">
-                        {skill.verifiedProficiency}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-[#1C1C1C]/75 leading-relaxed line-clamp-2">
-                      {skill.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[11px] text-[#1C1C1C]/60 pt-2 border-t border-[#1C1C1C]/10 font-bold">
-                      <span className="flex items-center gap-1 text-emerald-800">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        Verified Workplace Proof
-                      </span>
-                      <span>{skill.evidenceCount} Artifacts &rarr;</span>
-                    </div>
-                  </div>
-                ))}
+            ) : filteredVerifiedSkills.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-[#FFFFFF] border border-[#1C1C1C]/15 text-center text-xs text-[#1C1C1C]/60 space-y-2">
+                <p>No verified competencies matched "{skillSearch}".</p>
+                <button
+                  onClick={() => {
+                    setSkillSearch("");
+                    setSelectedCategory("All");
+                  }}
+                  className="text-xs font-bold underline text-ink"
+                >
+                  Clear search and filters
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {visibleVerifiedSkills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      onClick={() => onSelectSkill(skill)}
+                      className="p-5 rounded-xl bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#1C1C1C] transition-all cursor-pointer space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#1C1C1C]/50 block">
+                            {skill.category}
+                          </span>
+                          <h3 className="text-base font-black text-[#1C1C1C] leading-tight">
+                            {skill.canonicalName}
+                          </h3>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-400 text-emerald-900 text-xs font-black">
+                          {skill.verifiedProficiency}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#1C1C1C]/75 leading-relaxed line-clamp-2">
+                        {skill.description}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[11px] text-[#1C1C1C]/60 pt-2 border-t border-[#1C1C1C]/10 font-bold">
+                        <span className="flex items-center gap-1 text-emerald-800">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          Verified Workplace Proof
+                        </span>
+                        <span>{skill.evidenceCount} Artifacts &rarr;</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {filteredVerifiedSkills.length > INITIAL_SKILLS_LIMIT && !isFiltered && (
+                  <div className="pt-2 text-center">
+                    <button
+                      onClick={() => setShowAllSkills(!showAllSkills)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FFFFFF] border-[1.5px] border-[#1C1C1C] text-xs font-black text-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] hover:bg-[#DFE968] transition-all cursor-pointer"
+                    >
+                      {showAllSkills ? (
+                        <>
+                          <ChevronUp className="w-4 h-4" />
+                          <span>Show Top {INITIAL_SKILLS_LIMIT} Competencies Only</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4" />
+                          <span>Show All {filteredVerifiedSkills.length} Verified Competencies</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[11px] text-[#1C1C1C]/50 mt-1 font-mono">
+                      Showing {visibleVerifiedSkills.length} of {filteredVerifiedSkills.length} skills
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -208,7 +341,7 @@ export default function TemplateVerifiedCompetency({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {customSkills.map((skill) => (
+                {visibleCustomSkills.map((skill) => (
                   <div
                     key={skill.id}
                     onClick={() => onSelectSkill(skill)}
@@ -230,6 +363,27 @@ export default function TemplateVerifiedCompetency({
                   </div>
                 ))}
               </div>
+
+              {customSkills.length > INITIAL_CUSTOM_LIMIT && (
+                <div className="pt-2 text-center">
+                  <button
+                    onClick={() => setShowAllCustom(!showAllCustom)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FFFFFF] border border-amber-300 text-xs font-bold text-[#1C1C1C] shadow-sm hover:bg-amber-50 transition-all cursor-pointer"
+                  >
+                    {showAllCustom ? (
+                      <>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>Show Top {INITIAL_CUSTOM_LIMIT} Claims Only</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                        <span>Show All {customSkills.length} Self-Declared Claims</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

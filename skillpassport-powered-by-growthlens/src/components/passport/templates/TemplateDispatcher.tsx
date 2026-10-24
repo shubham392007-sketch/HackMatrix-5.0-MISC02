@@ -24,6 +24,7 @@ interface TemplateDispatcherProps {
   projection: ShareProjection;
   activeTemplateId?: PassportTemplateId;
   isPreview?: boolean;
+  onOpenContact?: () => void;
 }
 
 export function normalizeTemplateId(templateId?: string): string {
@@ -62,6 +63,7 @@ export default function TemplateDispatcher({
   projection,
   activeTemplateId,
   isPreview = false,
+  onOpenContact,
 }: TemplateDispatcherProps) {
   const [selectedSkill, setSelectedSkill] = useState<
     AuthorizedVerifiedSkill | AuthorizedCustomSkill | null
@@ -72,11 +74,13 @@ export default function TemplateDispatcher({
   const rawTemplateId = activeTemplateId || projection.templateId || "verified-competency";
   const canonicalId = normalizeTemplateId(rawTemplateId);
 
+  const handleOpenContact = onOpenContact || (() => setContactOpen(true));
+
   const templateProps = {
     projection,
     onSelectSkill: (skill: AuthorizedVerifiedSkill | AuthorizedCustomSkill) => setSelectedSkill(skill),
     onInspectEvidence: (evidenceId: string) => setInspectingEvidenceId(evidenceId),
-    onOpenContact: () => setContactOpen(true),
+    onOpenContact: handleOpenContact,
     isPreview,
   };
 
@@ -128,8 +132,8 @@ export default function TemplateDispatcher({
         />
       )}
 
-      {/* Recruiter Message Modal */}
-      {contactOpen && (
+      {/* Recruiter Message Modal (fallback if not controlled by parent) */}
+      {!onOpenContact && contactOpen && (
         <RecruiterMessageModal
           token={projection.shareId}
           candidateName={projection.candidateProfile?.displayName || "Candidate"}

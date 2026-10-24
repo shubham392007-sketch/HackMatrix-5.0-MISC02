@@ -127,8 +127,8 @@ class DatabaseCircuitBreaker:
 
     def __init__(
         self,
-        failure_threshold: int = 5,
-        recovery_timeout_seconds: float = 15.0,
+        failure_threshold: int = 15,
+        recovery_timeout_seconds: float = 3.0,
     ):
         self._lock = threading.Lock()
         self._failure_threshold = failure_threshold

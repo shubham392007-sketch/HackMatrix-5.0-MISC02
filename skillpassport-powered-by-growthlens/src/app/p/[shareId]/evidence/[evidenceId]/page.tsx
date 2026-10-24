@@ -136,7 +136,7 @@ export default function RecruiterEvidenceDetailPage({ params }: PageProps) {
   const ev = accessResult.evidence;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Back to Shared Passport */}
       <Link
         href={`/p/${shareId}`}

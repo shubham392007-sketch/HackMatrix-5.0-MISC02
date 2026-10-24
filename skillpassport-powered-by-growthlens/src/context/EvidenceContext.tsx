@@ -132,6 +132,7 @@ import {
   DEFAULT_SHARE_PERMISSIONS,
   buildShareProjection,
 } from "@/lib/sharingCalculations";
+import { sharingApi } from "@/lib/sharingApi";
 import {
   UserProfile,
   ConnectedSourceDetails,
@@ -1760,6 +1761,47 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
             return updated;
           });
         }
+
+        // Process Domain 6 (Recruiter Inbound Messages) Notifications
+        if (authUser?.id) {
+          try {
+            const msgs = await sharingApi.listMessages();
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              const storedNotifs = loadUserNotifications(authUser.id);
+              const domain6NotifsToAppend: AppNotification[] = [];
+              for (const m of msgs) {
+                const dedupKey = `recruiter_msg_${m.id}`;
+                if (!storedNotifs.some((n) => n.dedupKey === dedupKey)) {
+                  domain6NotifsToAppend.push({
+                    id: `notif-msg-${m.id}`,
+                    title: `New recruiter message from ${m.senderName}`,
+                    description: `${m.subject || "Recruiter Inquiry"}${m.company ? ` (${m.company})` : ""}: "${m.messageBody.slice(0, 80)}${m.messageBody.length > 80 ? "..." : ""}"`,
+                    category: "sharing",
+                    severity: "info",
+                    timestamp: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now",
+                    read: m.isRead,
+                    relatedDomain: "Domain 6: Sharing & Recruiter",
+                    actionRoute: "/app/passport/messages",
+                    actionLabel: "Read Message",
+                    dedupKey,
+                    userId: authUser.id,
+                    entityType: "recruiter_message",
+                    entityId: m.id,
+                  });
+                }
+              }
+              if (domain6NotifsToAppend.length > 0) {
+                setNotifications((prev) => {
+                  const updated = [...domain6NotifsToAppend, ...prev];
+                  saveUserNotifications(authUser.id, updated);
+                  return updated;
+                });
+              }
+            }
+          } catch (sharingErr) {
+            // Silently continue if sharing API is offline
+          }
+        }
       }
     } catch (e) {
       console.warn("Could not load evidence data from backend:", e);
@@ -3081,11 +3123,11 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   }, [notifications]);
 
   const verificationNotifications = useMemo(() => {
-    return notifications.filter((n) => n.category === "verification");
+    return notifications.filter((n) => n.category === "verification" || n.category === "sharing");
   }, [notifications]);
 
   const verificationUnreadCount = useMemo(() => {
-    return notifications.filter((n) => n.category === "verification" && !n.read).length;
+    return notifications.filter((n) => (n.category === "verification" || n.category === "sharing") && !n.read).length;
   }, [notifications]);
 
   const aiNotifications = useMemo(() => {

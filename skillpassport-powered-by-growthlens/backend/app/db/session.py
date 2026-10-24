@@ -16,12 +16,12 @@ settings = get_settings()
 # on Supabase to prevent EMAXCONNSESSION errors.
 engine = create_engine(
     settings.database_url,
-    pool_pre_ping=settings.db_pool_pre_ping,
-    pool_recycle=settings.db_pool_recycle,
+    pool_pre_ping=True,
+    pool_recycle=60,
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
     pool_timeout=settings.db_pool_timeout,
-    pool_reset_on_return="rollback",
+    pool_reset_on_return=None,
     connect_args={
         "connect_timeout": 30,
         "keepalives": 1,
@@ -58,7 +58,10 @@ def get_db() -> Generator[Session, None, None]:
         circuit_breaker.record_failure(exc)
         raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_err:
+            logger.debug(f'Safely ignored stale connection close exception: {close_err}')
 
 
 def check_database_connection() -> dict:
