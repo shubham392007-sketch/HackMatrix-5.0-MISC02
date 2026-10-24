@@ -12,7 +12,9 @@ import { AppNotification } from "@/types/account";
 import { DEFAULT_SHARE_PERMISSIONS } from "@/lib/sharingCalculations";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1/sharing`;
+const API_BASE = typeof window !== "undefined"
+  ? "/api/v1/sharing"
+  : `${BACKEND_URL.replace(/\/$/, "")}/api/v1/sharing`;
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   try {

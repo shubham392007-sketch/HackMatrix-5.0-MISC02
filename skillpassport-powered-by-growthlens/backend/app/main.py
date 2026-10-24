@@ -52,7 +52,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS configuration
+    # Response Compression for large payloads
+    from fastapi.middleware.gzip import GZipMiddleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # CORS configuration - added last so it wraps as outermost middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -61,10 +65,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Response Compression for large payloads
-    from fastapi.middleware.gzip import GZipMiddleware
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # Centralized Exception Handler for Domain Exceptions
     @app.exception_handler(SkillPassportError)
