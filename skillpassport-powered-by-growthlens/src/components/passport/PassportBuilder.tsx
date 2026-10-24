@@ -67,7 +67,7 @@ export default function PassportBuilder({ onSaved }: PassportBuilderProps) {
 
   const [master, setMaster] = useState<UserMasterPassport>({
     title: "Master Skill Passport",
-    templateId: "classic",
+    templateId: "verified-competency",
     sectionsConfig: [
       { id: "work_experience", title: "Work Experience", enabled: true, orderIndex: 0 },
       { id: "education", title: "Education & Academics", enabled: true, orderIndex: 1 },

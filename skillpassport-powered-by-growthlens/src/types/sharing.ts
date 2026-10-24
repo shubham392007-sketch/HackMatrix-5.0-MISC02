@@ -5,6 +5,14 @@ export type ShareStatus = "active" | "expired" | "revoked" | "restricted" | "una
 export type EvidenceAccessLevel = "none" | "summary_only" | "detail_inspection";
 
 export type PassportTemplateId =
+  | "verified-competency"
+  | "professional-resume"
+  | "technical-portfolio"
+  | "ai-ml-engineer"
+  | "software-fullstack"
+  | "research-academic"
+  | "projects-impact"
+  | "minimal-privacy"
   | "classic"
   | "executive"
   | "technical"

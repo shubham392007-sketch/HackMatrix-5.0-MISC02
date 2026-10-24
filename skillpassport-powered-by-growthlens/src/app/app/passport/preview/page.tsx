@@ -34,7 +34,7 @@ function PassportPreviewContent() {
 
   const { draftPermissions, skills, evidenceItems, targetRoles, userProfile } = useEvidence();
 
-  const [selectedTemplate, setSelectedTemplate] = useState<PassportTemplateId>("classic");
+  const [selectedTemplate, setSelectedTemplate] = useState<PassportTemplateId>("verified-competency");
   const [loading, setLoading] = useState<boolean>(true);
   const [projection, setProjection] = useState<ShareProjection | null>(null);
   const [error, setError] = useState<string | null>(null);

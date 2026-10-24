@@ -67,7 +67,7 @@ export default function SharePassportWizardPage() {
   );
 
   const [templateId, setTemplateId] = useState<PassportTemplateId>(
-    draftPermissions.templateId || "classic"
+    draftPermissions.templateId || "verified-competency"
   );
   const [allowRecruiterMessaging, setAllowRecruiterMessaging] = useState<boolean>(
     draftPermissions.allowRecruiterMessaging ?? true

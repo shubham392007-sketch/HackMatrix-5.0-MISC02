@@ -27,14 +27,24 @@ logger = get_logger("api.sharing")
 router = APIRouter(prefix="/sharing", tags=["Domain 6: Sharing & Recruiter"])
 # 8 Canonical Templates
 VALID_TEMPLATES = {
-    "classic": "Professional Classic",
-    "executive": "Minimal Executive",
+    # 8 Canonical Template IDs
+    "verified-competency": "Verified Competency Passport",
+    "professional-resume": "Professional Resume",
+    "technical-portfolio": "Technical Portfolio",
+    "ai-ml-engineer": "AI & Machine Learning Engineer",
+    "software-fullstack": "Software & Full-Stack Engineer",
+    "research-academic": "Research & Academic",
+    "projects-impact": "Projects & Impact",
+    "minimal-privacy": "Minimal & Privacy-First",
+    # Legacy aliases
+    "classic": "Verified Competency Passport",
+    "executive": "Professional Resume",
     "technical": "Technical Portfolio",
-    "ai_ml": "AI & Machine Learning",
-    "engineering": "Software & Full-Stack Engineering",
+    "ai_ml": "AI & Machine Learning Engineer",
+    "engineering": "Software & Full-Stack Engineer",
     "academic": "Research & Academic",
-    "project": "Project & Impact",
-    "anonymous": "Privacy-First Anonymous",
+    "project": "Projects & Impact",
+    "anonymous": "Minimal & Privacy-First",
 }
 DEFAULT_SECTIONS_CONFIG = [
     {"id": "summary", "title": "Professional Summary", "enabled": True, "orderIndex": 0},

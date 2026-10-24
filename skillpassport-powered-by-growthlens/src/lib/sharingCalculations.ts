@@ -37,7 +37,7 @@ export const DEFAULT_SHARE_PERMISSIONS: SharePermissionsConfig = {
   customLinkLabel: "Standard Recruiter Share",
   selectedCustomSkillIds: [],
   allowRecruiterMessaging: true,
-  templateId: "classic",
+  templateId: "verified-competency",
   sections: {
     work_experience: true,
     portfolio_projects: true,
@@ -84,7 +84,7 @@ export function buildShareProjection(
       verifiedSkills: [],
       authorizedEvidence: [],
       roleAlignment: null,
-      templateId: shareRecord.templateId || "classic",
+      templateId: shareRecord.templateId || "verified-competency",
       customSkills: [],
       allowRecruiterMessaging: false,
       verificationGuaranteeNote:
@@ -193,7 +193,7 @@ export function buildShareProjection(
     verifiedSkills: authorizedSkills,
     authorizedEvidence,
     roleAlignment,
-    templateId: shareRecord.templateId || perms.templateId || "classic",
+    templateId: shareRecord.templateId || perms.templateId || "verified-competency",
     customSkills: [],
     allowRecruiterMessaging: perms.allowRecruiterMessaging ?? true,
     verificationGuaranteeNote:
