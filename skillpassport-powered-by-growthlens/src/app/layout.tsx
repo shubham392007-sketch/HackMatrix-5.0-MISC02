@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} bg-[#F5F2EB]`}
+      className={`${poppins.variable} bg-[#F8F5EF]`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

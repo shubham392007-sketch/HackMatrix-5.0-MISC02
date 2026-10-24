@@ -31,7 +31,7 @@ export default function MobileTopNav() {
   })();
 
   return (
-    <div className="lg:hidden sticky top-0 z-30 bg-[#FAF8F5] border-b-[1.5px] border-[#1A1918] px-3.5 py-2.5 flex items-center justify-between shrink-0 shadow-sm">
+    <div className="lg:hidden relative z-30 bg-[#FAF8F5] border-b-[1.5px] border-[#1A1918] px-3.5 py-2.5 flex items-center justify-between shrink-0 shadow-sm">
       {/* Left: Mobile Drawer Trigger + Brand */}
       <div className="flex items-center gap-2.5">
         <button

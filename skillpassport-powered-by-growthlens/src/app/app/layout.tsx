@@ -16,7 +16,7 @@ export default function WorkspaceLayout({
   const pathname = usePathname();
   const isOnboarding = pathname === "/app/onboarding";
   const mainScrollRef = useRef<HTMLElement>(null);
-  const { isDatabaseUnavailable, refreshEvidenceData } = useEvidence();
+  const { isDatabaseUnavailable, refreshEvidenceData, desktopSidebarExpanded } = useEvidence();
 
   // When opening a new feature screen, scroll the main content area to the top
   // while leaving the sidebar's scroll position untouched
@@ -37,7 +37,17 @@ export default function WorkspaceLayout({
           {children}
         </main>
       ) : (
-        <div className="h-screen max-h-screen overflow-hidden flex flex-col lg:flex-row text-[#1C1C1C]">
+        <div
+          className="h-screen max-h-screen overflow-hidden flex flex-col lg:flex-row text-[#1C1C1C]"
+          style={{
+            ["--sidebar-width" as any]: desktopSidebarExpanded ? "272px" : "72px",
+            ["--sidebar-offset" as any]: desktopSidebarExpanded ? "304px" : "104px",
+            ["--sidebar-duration" as any]: desktopSidebarExpanded ? "720ms" : "620ms",
+            ["--sidebar-easing" as any]: desktopSidebarExpanded
+              ? "cubic-bezier(0.22, 1, 0.36, 1)"
+              : "cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
           {/* Persistent App Sidebar on Desktop & Slide-out Drawer on Mobile/Tablet */}
           <AppSidebar />
 

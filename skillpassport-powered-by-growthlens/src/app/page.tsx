@@ -242,73 +242,77 @@ export default function LandingPage() {
             </div>
           </ScrollReveal>
 
-          {/* 4 Process Cards */}
+          {/* 4 Process Cards with Enhanced Contrast & Visibility */}
           <ScrollReveal direction="up" delayMs={100}>
-            <div className="bg-[#FAF8F5] border-[1.5px] border-[#1A1918] rounded-[32px] p-6 md:p-8 shadow-[4px_4px_0px_#1A1918]">
+            <div className="bg-[#FAF8F5] border-2 border-[#1A1918] rounded-[32px] p-6 md:p-8 shadow-[4px_4px_0px_#1A1918]">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#FAF8F5] border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
+                {/* 01 COLLECT */}
+                <div className="bg-white border-2 border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[3px_3px_0_0_#1A1918] transition-all hover:-translate-y-1 hover:shadow-[5px_5px_0_0_#1A1918]">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
-                        01 COLLECT
+                    <div className="flex items-center justify-between mb-3.5">
+                      <span className="text-[10px] font-mono font-extrabold tracking-wider uppercase text-[#1A1918] bg-[#FAF8F5] border border-[#1A1918]/25 px-2.5 py-1 rounded-full">
+                        01 &bull; COLLECT
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
-                        <GitBranch className="w-4 h-4 text-[#1A1918]" />
+                      <div className="w-8 h-8 rounded-xl bg-[#1A1918] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-sm">
+                        <GitBranch className="w-4 h-4 text-[#DFE968]" />
                       </div>
                     </div>
-                    <h3 className="text-base font-extrabold mb-2">Raw Work Ingestion</h3>
-                    <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
+                    <h3 className="text-base font-extrabold text-[#1A1918] mb-2 leading-snug">Raw Work Ingestion</h3>
+                    <p className="text-xs font-medium text-[#1A1918]/85 leading-relaxed">
                       Commits, pull request reviews, project documents, and certificates without loss of author context or timestamps.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-[#FAF8F5] border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
+                {/* 02 EXTRACT */}
+                <div className="bg-white border-2 border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[3px_3px_0_0_#1A1918] transition-all hover:-translate-y-1 hover:shadow-[5px_5px_0_0_#1A1918]">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
-                        02 EXTRACT
+                    <div className="flex items-center justify-between mb-3.5">
+                      <span className="text-[10px] font-mono font-extrabold tracking-wider uppercase text-[#1A1918] bg-[#FAF8F5] border border-[#1A1918]/25 px-2.5 py-1 rounded-full">
+                        02 &bull; EXTRACT
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-[#FAF8F5] border border-[#1A1918] flex items-center justify-center">
-                        <Layers className="w-4 h-4 text-[#1A1918]" />
+                      <div className="w-8 h-8 rounded-xl bg-[#1A1918] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-sm">
+                        <Layers className="w-4 h-4 text-[#D4E09B]" />
                       </div>
                     </div>
-                    <h3 className="text-base font-extrabold mb-2">Candidate Skills</h3>
-                    <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
+                    <h3 className="text-base font-extrabold text-[#1A1918] mb-2 leading-snug">Candidate Skills</h3>
+                    <p className="text-xs font-medium text-[#1A1918]/85 leading-relaxed">
                       Maps artifacts against canonical skills, preserving exact citations and distinguishing claims from proven work.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-[#F6C8D6]/60 border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
+                {/* 03 VERIFY */}
+                <div className="bg-white border-2 border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[3px_3px_0_0_#1A1918] transition-all hover:-translate-y-1 hover:shadow-[5px_5px_0_0_#1A1918]">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
-                        03 VERIFY
+                    <div className="flex items-center justify-between mb-3.5">
+                      <span className="text-[10px] font-mono font-extrabold tracking-wider uppercase text-[#1A1918] bg-[#FAF8F5] border border-[#1A1918]/25 px-2.5 py-1 rounded-full">
+                        03 &bull; VERIFY
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
-                        <Activity className="w-4 h-4 text-[#1A1918]" />
+                      <div className="w-8 h-8 rounded-xl bg-[#1A1918] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-sm">
+                        <Activity className="w-4 h-4 text-[#CBDFBD]" />
                       </div>
                     </div>
-                    <h3 className="text-base font-extrabold mb-2">Verification Guard</h3>
-                    <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
+                    <h3 className="text-base font-extrabold text-[#1A1918] mb-2 leading-snug">Verification Guard</h3>
+                    <p className="text-xs font-medium text-[#1A1918]/85 leading-relaxed">
                       Claims without sufficient evidence are flagged as candidate or insufficient, never prematurely verified.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-[#000000] text-[#FAF8F5]/70 border border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[2px_2px_0px_#1A1918]">
+                {/* 04 ACTION */}
+                <div className="bg-white border-2 border-[#1A1918] rounded-2xl p-5 flex flex-col justify-between shadow-[3px_3px_0_0_#1A1918] transition-all hover:-translate-y-1 hover:shadow-[5px_5px_0_0_#1A1918]">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-extrabold tracking-wider uppercase text-[#1A1918]/60">
-                        04 ACTION
+                    <div className="flex items-center justify-between mb-3.5">
+                      <span className="text-[10px] font-mono font-extrabold tracking-wider uppercase text-[#1A1918] bg-[#DFE968] border border-[#1A1918]/25 px-2.5 py-1 rounded-full">
+                        04 &bull; ACTION
                       </span>
-                      <div className="w-7 h-7 rounded-lg bg-white border border-[#1A1918] flex items-center justify-center">
-                        <Sparkles className="w-4 h-4 text-[#1A1918]" />
+                      <div className="w-8 h-8 rounded-xl bg-[#1A1918] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center shadow-sm">
+                        <Sparkles className="w-4 h-4 text-[#DFE968]" />
                       </div>
                     </div>
-                    <h3 className="text-base font-extrabold mb-2">Role Alignment &amp; Growth</h3>
-                    <p className="text-xs font-medium text-[#1A1918]/75 leading-relaxed">
+                    <h3 className="text-base font-extrabold text-[#1A1918] mb-2 leading-snug">Role Alignment &amp; Growth</h3>
+                    <p className="text-xs font-medium text-[#1A1918]/85 leading-relaxed">
                       Actionable roadmaps, practice projects, and targeted resources to bridge verified capability gaps.
                     </p>
                   </div>
@@ -345,7 +349,7 @@ export default function LandingPage() {
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
-                    <FileCode className="w-5 h-5 text-[#1A1918]" />
+                    <FileCode className="w-5 h-5 text-[#DFE968]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
                     INGESTION
@@ -396,7 +400,7 @@ export default function LandingPage() {
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
-                    <Compass className="w-5 h-5 text-[#1A1918]" />
+                    <Compass className="w-5 h-5 text-[#DFE968]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
                     GROWTH
@@ -430,7 +434,7 @@ export default function LandingPage() {
               <div>
                 <div className="flex items-center justify-between mb-5">
                   <div className="w-10 h-10 rounded-xl bg-[#000000] border border-[#1A1918] text-[#FAF8F5] flex items-center justify-center">
-                    <Brain className="w-5 h-5 text-[#1A1918]" />
+                    <Brain className="w-5 h-5 text-[#DFE968]" />
                   </div>
                   <span className="text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full border border-[#1A1918] bg-white/70">
                     GROWTHLENS AI

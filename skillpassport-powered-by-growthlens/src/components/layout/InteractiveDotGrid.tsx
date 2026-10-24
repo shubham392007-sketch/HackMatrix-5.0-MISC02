@@ -1,58 +1,88 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
 
+/**
+ * SkillPassport Premium Interactive Floating Dotted Background
+ * - Grid: 22px × 22px uniform square matrix spanning the entire viewport
+ * - Base dot: 2.3px diameter (1.15px radius), rgba(35, 31, 28, 0.20) warm charcoal
+ * - Floating interaction: 135px circular zone around the cursor
+ * - Physics: Nearby dots gently lift and drift radially away with organic divergence (6–10px displacement)
+ * - Motion: Frame-rate-independent exponential decay numerical simulation (~480–550ms return)
+ * - Ambient accent: Subtle amber tint (#E6AC70) and gentle size scale (up to 1.85px radius)
+ * - Performance: High-DPR canvas, pointer-events: none, zero-CPU idle sleep when resting
+ */
 export default function InteractiveDotGrid() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.removeAttribute("data-theme");
-      try { localStorage.removeItem("sp-theme"); } catch {}
-    }
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
+    // Check for accessibility reduced motion preference
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Check for touch-only coarse pointer devices
+    const isTouchOnly =
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: coarse)").matches &&
+      !window.matchMedia("(pointer: fine)").matches;
+
     let animationFrameId: number;
     let width = 0;
     let height = 0;
     let dpr = 1;
 
-    // Grid spacing & sizing (slightly larger architectural drafting matrix)
-    const GRID_SIZE = 28;
-    const BASE_RADIUS = 2.0;
-    const MAX_RADIUS = 4.4;
-    const HOVER_RADIUS = 150;
+    // Grid & particle physical parameters
+    const GRID_SIZE = 22;
+    const BASE_RADIUS = 1.15;
+    const MAX_RADIUS = 1.85;
+    const HOVER_RADIUS = 135;
+    const HOVER_RADIUS_SQ = HOVER_RADIUS * HOVER_RADIUS;
+    const MAX_DISP = 8.0; // 6–10px displacement range
+
+    // Palette: Base Warm Charcoal #231F1C (35, 31, 28) and Brand Amber #E6AC70 (230, 172, 112)
+    const BASE_R = 35;
+    const BASE_G = 31;
+    const BASE_B = 28;
+    const BASE_ALPHA = 0.20;
+
+    const AMBER_R = 230;
+    const AMBER_G = 172;
+    const AMBER_B = 112;
+    const PEAK_ALPHA = 0.48;
 
     let mouseX = -9999;
     let mouseY = -9999;
     let targetMouseX = -9999;
     let targetMouseY = -9999;
-    let isMouseOver = false;
+    let isPointerOver = false;
     let isAnimating = false;
     let idleCounter = 0;
+    let lastTime = performance.now();
 
-    interface Dot {
-      x: number;
-      y: number;
+    interface FloatingDot {
+      originX: number;
+      originY: number;
+      dispX: number;
+      dispY: number;
+      targetDispX: number;
+      targetDispY: number;
+      angleVariance: number;
       currentRadius: number;
       targetRadius: number;
-      intensity: number;
+      amberWeight: number;
+      targetAmberWeight: number;
+      currentAlpha: number;
+      targetAlpha: number;
     }
 
-    let dots: Dot[] = [];
-
-    // Check if sidebar is present on desktop (256px width on /app/ routes)
-    const getSidebarWidth = () => {
-      const isDesktop = window.innerWidth >= 1024;
-      const isAppRoute = pathname?.startsWith("/app");
-      return isDesktop && isAppRoute ? 256 : 0;
-    };
+    let dots: FloatingDot[] = [];
 
     const initGrid = () => {
       width = window.innerWidth;
@@ -67,107 +97,169 @@ export default function InteractiveDotGrid() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       dots = [];
-      const sidebarW = getSidebarWidth();
-      const startX = sidebarW > 0 ? sidebarW + 8 : 0;
-      const usableWidth = width - startX;
-
-      const cols = Math.ceil(usableWidth / GRID_SIZE) + 1;
+      const cols = Math.ceil(width / GRID_SIZE) + 1;
       const rows = Math.ceil(height / GRID_SIZE) + 1;
 
-      const offsetX = startX + (usableWidth % GRID_SIZE) / 2;
+      const offsetX = (width % GRID_SIZE) / 2;
       const offsetY = (height % GRID_SIZE) / 2;
 
       for (let r = 0; r < rows; r++) {
+        const dotY = Math.round(r * GRID_SIZE + offsetY);
         for (let c = 0; c < cols; c++) {
           const dotX = Math.round(c * GRID_SIZE + offsetX);
-          // Strictly exclude dots that fall into the sidebar region
-          if (dotX < sidebarW) continue;
+          // Deterministic organic angle variance so each particle drifts with subtle divergence
+          const angleVariance = Math.sin(r * 12.9898 + c * 78.233) * 0.32;
 
           dots.push({
-            x: dotX,
-            y: Math.round(r * GRID_SIZE + offsetY),
+            originX: dotX,
+            originY: dotY,
+            dispX: 0,
+            dispY: 0,
+            targetDispX: 0,
+            targetDispY: 0,
+            angleVariance,
             currentRadius: BASE_RADIUS,
             targetRadius: BASE_RADIUS,
-            intensity: 0,
+            amberWeight: 0,
+            targetAmberWeight: 0,
+            currentAlpha: BASE_ALPHA,
+            targetAlpha: BASE_ALPHA,
           });
         }
       }
 
-      draw();
+      draw(performance.now());
     };
 
-    const draw = () => {
+    const draw = (currentTime: number) => {
+      // Frame-rate independent delta time (clamped between 0.001s and 0.05s)
+      const dt = Math.min(Math.max((currentTime - lastTime) / 1000, 0.001), 0.05);
+      lastTime = currentTime;
+
+      // Exponential decay blend factors (identical physics across 60Hz, 120Hz, 144Hz)
+      const pointerBlend = 1 - Math.exp(-16 * dt);
+      const dispBlend = 1 - Math.exp(-8.2 * dt); // ~480-550ms return duration
+      const visualBlend = 1 - Math.exp(-9.0 * dt);
+
       ctx.clearRect(0, 0, width, height);
 
-      const sidebarW = getSidebarWidth();
+      let activeParticles = 0;
 
-      // Permanent Executive Press Palette: base ink #1A1918, hover highlight Pitch Black #000000
-      const baseR = 26;
-      const baseG = 25;
-      const baseB = 24;
-
-      const highlightR = 0;
-      const highlightG = 0;
-      const highlightB = 0;
-
-      let animatingDotsCount = 0;
-
-      // Cursor smoothing
-      mouseX += (targetMouseX - mouseX) * 0.22;
-      mouseY += (targetMouseY - mouseY) * 0.22;
+      // Smooth pointer tracking lerp
+      if (isPointerOver && !prefersReducedMotion && !isTouchOnly) {
+        mouseX += (targetMouseX - mouseX) * pointerBlend;
+        mouseY += (targetMouseY - mouseY) * pointerBlend;
+      }
 
       for (let i = 0; i < dots.length; i++) {
         const dot = dots[i];
 
-        // Never draw on sidebar area
-        if (sidebarW > 0 && dot.x < sidebarW) continue;
-
-        if (isMouseOver && mouseX >= sidebarW) {
-          const dx = mouseX - dot.x;
-          const dy = mouseY - dot.y;
+        if (isPointerOver && !prefersReducedMotion && !isTouchOnly) {
+          const dx = dot.originX - mouseX;
+          const dy = dot.originY - mouseY;
           const distSq = dx * dx + dy * dy;
 
-          if (distSq < HOVER_RADIUS * HOVER_RADIUS) {
+          if (distSq < HOVER_RADIUS_SQ) {
             const dist = Math.sqrt(distSq);
-            const factor = Math.pow(1 - dist / HOVER_RADIUS, 1.8);
+            // Smooth cosine falloff (1.0 at epicenter -> 0.0 at 135px radius)
+            const norm = dist / HOVER_RADIUS;
+            const factor = 0.5 * (1 + Math.cos(norm * Math.PI));
+
+            // Floating displacement: radial push away from cursor + organic swirl & subtle upward lift
+            const baseAngle = Math.atan2(dy, dx);
+            const totalAngle = baseAngle + dot.angleVariance * factor;
+            const driftDistance = MAX_DISP * factor;
+
+            // Subtle vertical buoyancy (-1.2px * factor) provides an organic floating sensation
+            dot.targetDispX = Math.cos(totalAngle) * driftDistance;
+            dot.targetDispY = Math.sin(totalAngle) * driftDistance - 1.2 * factor;
+
             dot.targetRadius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * factor;
-            dot.intensity = factor;
+            dot.targetAmberWeight = factor > 0.12 ? (factor - 0.12) / 0.88 : 0;
+            dot.targetAlpha = BASE_ALPHA + (PEAK_ALPHA - BASE_ALPHA) * factor;
           } else {
+            dot.targetDispX = 0;
+            dot.targetDispY = 0;
             dot.targetRadius = BASE_RADIUS;
-            dot.intensity = 0;
+            dot.targetAmberWeight = 0;
+            dot.targetAlpha = BASE_ALPHA;
           }
         } else {
+          dot.targetDispX = 0;
+          dot.targetDispY = 0;
           dot.targetRadius = BASE_RADIUS;
-          dot.intensity = 0;
+          dot.targetAmberWeight = 0;
+          dot.targetAlpha = BASE_ALPHA;
         }
 
-        // Spring easing toward target radius
-        const delta = dot.targetRadius - dot.currentRadius;
-        if (Math.abs(delta) > 0.02) {
-          dot.currentRadius += delta * 0.18;
-          animatingDotsCount++;
+        // Fluid frame-rate-independent spring-lerp easing back to original coordinates
+        const dX = dot.targetDispX - dot.dispX;
+        if (Math.abs(dX) > 0.015) {
+          dot.dispX += dX * dispBlend;
+          activeParticles++;
+        } else {
+          dot.dispX = dot.targetDispX;
+        }
+
+        const dY = dot.targetDispY - dot.dispY;
+        if (Math.abs(dY) > 0.015) {
+          dot.dispY += dY * dispBlend;
+          activeParticles++;
+        } else {
+          dot.dispY = dot.targetDispY;
+        }
+
+        // Radius interpolation
+        const dR = dot.targetRadius - dot.currentRadius;
+        if (Math.abs(dR) > 0.008) {
+          dot.currentRadius += dR * visualBlend;
+          activeParticles++;
         } else {
           dot.currentRadius = dot.targetRadius;
         }
 
-        const intensity = dot.intensity;
-        const currentR = Math.round(baseR + (highlightR - baseR) * intensity);
-        const currentG = Math.round(baseG + (highlightG - baseG) * intensity);
-        const currentB = Math.round(baseB + (highlightB - baseB) * intensity);
-        const currentAlpha = 0.11 + intensity * 0.42;
+        // Amber weight interpolation
+        const dW = dot.targetAmberWeight - dot.amberWeight;
+        if (Math.abs(dW) > 0.008) {
+          dot.amberWeight += dW * visualBlend;
+          activeParticles++;
+        } else {
+          dot.amberWeight = dot.targetAmberWeight;
+        }
+
+        // Alpha interpolation
+        const dA = dot.targetAlpha - dot.currentAlpha;
+        if (Math.abs(dA) > 0.004) {
+          dot.currentAlpha += dA * visualBlend;
+          activeParticles++;
+        } else {
+          dot.currentAlpha = dot.targetAlpha;
+        }
+
+        // Color blending between Charcoal Base and Brand Amber
+        const w = dot.amberWeight;
+        const r = Math.round(BASE_R + (AMBER_R - BASE_R) * w);
+        const g = Math.round(BASE_G + (AMBER_G - BASE_G) * w);
+        const b = Math.round(BASE_B + (AMBER_B - BASE_B) * w);
+        const a = dot.currentAlpha;
+
+        // Render particle at floating coordinates (origin + displacement)
+        const renderX = dot.originX + dot.dispX;
+        const renderY = dot.originY + dot.dispY;
 
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dot.currentRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${currentR}, ${currentG}, ${currentB}, ${currentAlpha})`;
+        ctx.arc(renderX, renderY, dot.currentRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})`;
         ctx.fill();
       }
 
-      if (animatingDotsCount > 0 || isMouseOver) {
+      // Check whether to continue animation loop or sleep when idle
+      if (activeParticles > 0 || isPointerOver) {
         idleCounter = 0;
         animationFrameId = requestAnimationFrame(draw);
       } else {
         idleCounter++;
-        if (idleCounter < 20) {
+        if (idleCounter < 12) {
           animationFrameId = requestAnimationFrame(draw);
         } else {
           isAnimating = false;
@@ -176,9 +268,10 @@ export default function InteractiveDotGrid() {
     };
 
     const triggerFrame = () => {
-      if (!isAnimating) {
+      if (!isAnimating && !prefersReducedMotion && !isTouchOnly) {
         isAnimating = true;
         idleCounter = 0;
+        lastTime = performance.now();
         animationFrameId = requestAnimationFrame(draw);
       }
     };
@@ -186,8 +279,8 @@ export default function InteractiveDotGrid() {
     const handlePointerMove = (e: PointerEvent) => {
       targetMouseX = e.clientX;
       targetMouseY = e.clientY;
-      if (!isMouseOver) {
-        isMouseOver = true;
+      if (!isPointerOver) {
+        isPointerOver = true;
         mouseX = targetMouseX;
         mouseY = targetMouseY;
       }
@@ -195,36 +288,60 @@ export default function InteractiveDotGrid() {
     };
 
     const handlePointerLeave = () => {
-      isMouseOver = false;
+      isPointerOver = false;
       targetMouseX = -9999;
       targetMouseY = -9999;
       triggerFrame();
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isPointerOver = false;
+        targetMouseX = -9999;
+        targetMouseY = -9999;
+      } else {
+        triggerFrame();
+      }
+    };
+
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const handleResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        initGrid();
+      }, 100);
+    };
+
     initGrid();
 
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
-    window.addEventListener("resize", initGrid, { passive: true });
+    if (!prefersReducedMotion && !isTouchOnly) {
+      window.addEventListener("pointermove", handlePointerMove, { passive: true });
+      window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
+    }
+    window.addEventListener("resize", handleResize, { passive: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
-      window.removeEventListener("resize", initGrid);
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [pathname]);
+  }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0 select-none"
+      className="fixed inset-0 pointer-events-none select-none z-0"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         width: "100vw",
         height: "100vh",
+        backgroundColor: "#F8F5EF",
         pointerEvents: "none",
         zIndex: 0,
       }}

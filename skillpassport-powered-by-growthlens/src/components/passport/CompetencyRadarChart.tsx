@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { SkillItem, ProficiencyLevel } from "@/types/passport";
-import { Award, ShieldCheck, Info } from "lucide-react";
+import { Award, ShieldCheck, Info, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface CompetencyRadarChartProps {
   skills: SkillItem[];
@@ -29,22 +29,39 @@ const NUMERIC_TO_LABEL: Record<number, string> = {
 export default function CompetencyRadarChart({ skills }: CompetencyRadarChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // Group verified skills by category
-  const categories = Array.from(new Set(skills.map((s) => s.category || "General")));
+  // Graceful empty state: UI never breaks if skills array is empty
+  if (!skills || skills.length === 0) {
+    return (
+      <div className="p-8 rounded-2xl border-[1.5px] border-[#171717] bg-[#F8F5EF] text-center space-y-3 shadow-[2.5px_2.5px_0_#171717]">
+        <div className="w-12 h-12 rounded-full bg-[#FAF8F5] border-[1.5px] border-[#171717] flex items-center justify-center mx-auto shadow-[1.5px_1.5px_0_#171717]">
+          <Award className="w-6 h-6 text-[#E6AC70]" />
+        </div>
+        <h4 className="text-sm font-black uppercase tracking-wider text-[#171717]">No Competency Data Available</h4>
+        <p className="text-xs text-[#171717]/70 max-w-md mx-auto">
+          Add or verify skills in your Skill Passport to plot your multi-axis competency topology radar.
+        </p>
+      </div>
+    );
+  }
 
-  // Fallback to canonical categories if skills have few categories
-  const targetCategories =
-    categories.length >= 3
-      ? categories.slice(0, 6)
-      : [
-          "Backend Engineering",
-          "Cloud Infrastructure",
-          "Applied AI & ML",
-          "System Architecture",
-          "Languages & Runtime",
-        ];
+  // Extract distinct real categories from the actual skills dataset
+  const userCategories = Array.from(new Set(skills.map((s) => s.category).filter(Boolean)));
+  
+  // Standard taxonomy categories for topological balance if user has < 3 categories
+  const fallbackCategories = [
+    "Backend Engineering",
+    "Cloud Infrastructure",
+    "Applied AI & ML",
+    "System Architecture",
+    "Languages & Runtime",
+    "Data & Analytics",
+  ];
 
-  // Calculate score per category (0 to 5)
+  // Prioritize real user categories first; fill remaining slots up to 5 or 6 axes
+  const distinctCategories = Array.from(new Set([...userCategories, ...fallbackCategories]));
+  const targetCategories = distinctCategories.slice(0, Math.max(3, Math.min(6, distinctCategories.length)));
+
+  // Calculate real competency depth per category from actual skills
   const categoryData = targetCategories.map((cat) => {
     const catSkills = skills.filter(
       (s) => (s.category || "").toLowerCase() === cat.toLowerCase()
@@ -52,31 +69,45 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
     const verifiedSkills = catSkills.filter(
       (s) => s.verificationState === "verified" || (s as any).verified
     );
+    const candidateSkills = catSkills.filter(
+      (s) => s.verificationState === "candidate"
+    );
 
-    const scores = verifiedSkills.map(
+    const verifiedScores = verifiedSkills.map(
       (s) => PROFICIENCY_NUMERIC[s.verifiedProficiency] ?? 0
     );
-    const avgScore =
-      scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
-    // Composite depth: 70% max skill depth + 30% breadth
-    const composite = Math.min(5, maxScore * 0.7 + avgScore * 0.3);
+    // If no verified skills exist in this category yet, factor candidate claims with a standard calibration factor
+    const candidateScores = candidateSkills.map(
+      (s) => (PROFICIENCY_NUMERIC[s.estimatedProficiency] ?? 2) * 0.7
+    );
+    const combinedScores = [...verifiedScores, ...candidateScores];
+
+    const avgScore = combinedScores.length > 0
+      ? combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length
+      : 0;
+    const maxScore = verifiedScores.length > 0
+      ? Math.max(...verifiedScores)
+      : (candidateScores.length > 0 ? Math.max(...candidateScores) : 0);
+
+    // Composite depth calculation: 70% depth of strongest skill + 30% breadth
+    const composite = Math.min(5, Math.max(0, maxScore * 0.7 + avgScore * 0.3));
 
     return {
       category: cat,
       score: Math.round(composite * 10) / 10,
       verifiedCount: verifiedSkills.length,
+      candidateCount: candidateSkills.length,
       totalCount: catSkills.length,
-      topSkills: verifiedSkills.slice(0, 3).map((s) => s.canonicalName),
+      topSkills: (verifiedSkills.length > 0 ? verifiedSkills : catSkills).slice(0, 3).map((s) => s.canonicalName),
     };
   });
 
-  // SVG Geometry
-  const size = 320;
+  // SVG Geometry - Sized to 420x420 with ample clearance so labels never clip
+  const size = 420;
   const center = size / 2;
-  const radius = size * 0.36;
+  const radius = size * 0.33; // ~138px radius
   const totalAxes = targetCategories.length;
-  const angleStep = (Math.PI * 2) / totalAxes;
+  const angleStep = (Math.PI * 2) / Math.max(3, totalAxes);
 
   // Helper to convert polar to cartesian
   const getCoordinates = (axisIndex: number, valueRatio: number) => {
@@ -87,13 +118,13 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
     };
   };
 
-  // Generate web rings (levels 1 to 5)
+  // Concentric web rings (levels 1 to 5)
   const rings = [0.2, 0.4, 0.6, 0.8, 1.0];
 
   // Polygon points for candidate verified level
   const candidatePolygonPoints = categoryData
     .map((d, i) => {
-      const ratio = Math.max(0.1, d.score / 5.0);
+      const ratio = Math.max(0.08, d.score / 5.0);
       const pt = getCoordinates(i, ratio);
       return `${pt.x},${pt.y}`;
     })
@@ -107,42 +138,56 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
     })
     .join(" ");
 
-  const activeCategory = hoveredIndex !== null ? categoryData[hoveredIndex] : null;
+  // Helper to split category names into 2 lines for wrapping
+  const splitCategoryLabel = (label: string): [string, string] => {
+    const words = label.split(" ");
+    if (words.length <= 1) return [label, ""];
+    if (words.length === 2) return [words[0], words[1]];
+    if (words.length === 3) return [`${words[0]} ${words[1]}`, words[2]];
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  };
 
   return (
-    <div className="p-6 rounded-[24px] border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-6 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1C1C1C]/10 pb-4">
+    <div className="p-6 rounded-2xl border-[1.5px] border-[#171717] bg-[#F8F5EF] space-y-6 shadow-[2.5px_2.5px_0_#171717]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#171717]/10 pb-4">
         <div>
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1C1C1C]/60 block mb-1">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#171717]/60 block mb-1">
             Domain 2 · Competency Topology
           </span>
-          <h3 className="text-lg font-black text-[#1C1C1C] flex items-center gap-2">
-            <Award className="w-5 h-5 text-[#B07219]" />
+          <h3 className="text-lg font-black text-[#171717] flex items-center gap-2">
+            <Award className="w-5 h-5 text-[#E6AC70]" />
             Category Proficiency Radar
           </h3>
+          <p className="text-xs text-[#171717]/70 mt-0.5">
+            Verified competency depth evaluated against practitioner benchmark across core disciplines.
+          </p>
         </div>
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-[#1C1C1C]">
-            <span className="w-3 h-3 rounded-sm bg-[#DFE968] border border-[#1C1C1C]" />
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 text-xs font-bold">
+          <div className="flex items-center gap-1.5 text-[#171717]">
+            <span className="w-3.5 h-3.5 rounded-sm bg-[#DDEBE1] border-[1.5px] border-[#171717]" />
             <span>Verified Depth</span>
           </div>
-          <div className="flex items-center gap-1.5 font-bold text-[#1C1C1C]/60">
-            <span className="w-3 h-1 border-t-2 border-dashed border-[#1C1C1C]/50" />
-            <span>Practitioner Target</span>
+          <div className="flex items-center gap-1.5 text-[#171717]/80">
+            <span className="w-3.5 h-2 rounded-xs bg-[#DCE5F2]/40 border-t-2 border-dashed border-[#171717]" />
+            <span>Practitioner Target (3.0)</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         {/* SVG Radar Visual (7 cols) */}
         <div className="lg:col-span-7 flex justify-center relative">
           <svg
             width={size}
             height={size}
             viewBox={`0 0 ${size} ${size}`}
-            className="overflow-visible"
+            className="w-full max-w-[420px] h-auto select-none overflow-visible"
           >
-            {/* Background Web Rings */}
+            {/* Background Web Concentric Rings */}
             {rings.map((ringRatio, rIdx) => {
               const ringPoints = Array.from({ length: totalAxes })
                 .map((_, i) => {
@@ -152,14 +197,27 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
                 .join(" ");
 
               return (
-                <polygon
-                  key={rIdx}
-                  points={ringPoints}
-                  fill="none"
-                  stroke="#1C1C1C"
-                  strokeOpacity={0.12}
-                  strokeWidth={1}
-                />
+                <g key={rIdx}>
+                  <polygon
+                    points={ringPoints}
+                    fill={rIdx % 2 === 0 ? "#171717" : "none"}
+                    fillOpacity={rIdx % 2 === 0 ? 0.02 : 0}
+                    stroke="#171717"
+                    strokeOpacity={0.14}
+                    strokeWidth={1}
+                  />
+                  {/* Numeric score mark on top radial axis */}
+                  <text
+                    x={center + 5}
+                    y={center - radius * ringRatio + 3}
+                    fontSize="7.5"
+                    fontWeight="bold"
+                    fill="#171717"
+                    fillOpacity={0.4}
+                  >
+                    {Math.round(ringRatio * 5)}
+                  </text>
+                </g>
               );
             })}
 
@@ -173,36 +231,37 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
                   y1={center}
                   x2={pt.x}
                   y2={pt.y}
-                  stroke="#1C1C1C"
+                  stroke="#171717"
                   strokeOpacity={0.2}
                   strokeWidth={1}
                 />
               );
             })}
 
-            {/* Benchmark Level Polygon (Dashed Line) */}
+            {/* Benchmark Level Polygon (Practitioner Target Level 3.0 / 60%) */}
             <polygon
               points={benchmarkPolygonPoints}
-              fill="none"
-              stroke="#1C1C1C"
-              strokeOpacity={0.4}
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
+              fill="#DCE5F2"
+              fillOpacity={0.25}
+              stroke="#171717"
+              strokeOpacity={0.65}
+              strokeWidth={1.75}
+              strokeDasharray="5 4"
             />
 
-            {/* Candidate Verified Area Polygon */}
+            {/* Candidate Verified Area Polygon (Muted Green) */}
             <polygon
               points={candidatePolygonPoints}
-              fill="#DFE968"
-              fillOpacity={0.55}
-              stroke="#1C1C1C"
-              strokeWidth={2}
+              fill="#DDEBE1"
+              fillOpacity={0.65}
+              stroke="#171717"
+              strokeWidth={2.5}
               className="transition-all duration-300 drop-shadow-sm"
             />
 
             {/* Data Vertex Points */}
             {categoryData.map((d, i) => {
-              const ratio = Math.max(0.1, d.score / 5.0);
+              const ratio = Math.max(0.08, d.score / 5.0);
               const pt = getCoordinates(i, ratio);
               const isHovered = hoveredIndex === i;
 
@@ -216,75 +275,151 @@ export default function CompetencyRadarChart({ skills }: CompetencyRadarChartPro
                   <circle
                     cx={pt.x}
                     cy={pt.y}
-                    r={isHovered ? 6 : 4}
-                    fill={isHovered ? "#1C1C1C" : "#DFE968"}
-                    stroke="#1C1C1C"
+                    r={isHovered ? 6.5 : 4.5}
+                    fill={isHovered ? "#171717" : "#DDEBE1"}
+                    stroke="#171717"
                     strokeWidth={2}
                     className="transition-all"
                   />
+                  {isHovered && (
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r="10"
+                      fill="none"
+                      stroke="#171717"
+                      strokeWidth="1.5"
+                      strokeDasharray="2 2"
+                    />
+                  )}
                 </g>
               );
             })}
 
-            {/* Category Axis Text Labels */}
+            {/* Category Axis Two-Line Text Labels (Zero Truncation) */}
             {categoryData.map((d, i) => {
-              const labelPt = getCoordinates(i, 1.25);
+              const labelPt = getCoordinates(i, 1.28);
               const isHovered = hoveredIndex === i;
+              const [line1, line2] = splitCategoryLabel(d.category);
+
+              // Dynamic text-anchor based on angle
+              let textAnchor: "start" | "middle" | "end" = "middle";
+              let dx = 0;
+              if (labelPt.x > center + 15) {
+                textAnchor = "start";
+                dx = 6;
+              } else if (labelPt.x < center - 15) {
+                textAnchor = "end";
+                dx = -6;
+              }
 
               return (
-                <text
+                <g
                   key={i}
-                  x={labelPt.x}
-                  y={labelPt.y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className={`text-[10px] font-black transition-all cursor-pointer ${
-                    isHovered ? "fill-[#1C1C1C] font-extrabold text-[11px]" : "fill-[#1C1C1C]/75"
-                  }`}
+                  className="cursor-pointer"
                   onMouseEnter={() => setHoveredIndex(i)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
-                  {d.category.length > 18 ? d.category.slice(0, 16) + "…" : d.category}
-                </text>
+                  <text
+                    x={labelPt.x + dx}
+                    y={line2 ? labelPt.y - 6 : labelPt.y}
+                    textAnchor={textAnchor}
+                    className={`text-[9.5px] transition-all ${
+                      isHovered
+                        ? "fill-[#171717] font-black text-[10.5px]"
+                        : "fill-[#171717] font-bold"
+                    }`}
+                  >
+                    <tspan x={labelPt.x + dx} dy="0">
+                      {line1}
+                    </tspan>
+                    {line2 && (
+                      <tspan x={labelPt.x + dx} dy="12">
+                        {line2}
+                      </tspan>
+                    )}
+                  </text>
+                </g>
               );
             })}
           </svg>
         </div>
 
-        {/* Category Breakdown & Active Inspector (5 cols) */}
+        {/* Category Breakdown & Progress Indicators (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
           {categoryData.map((d, idx) => {
             const isSelected = hoveredIndex === idx;
-            const levelLabel = NUMERIC_TO_LABEL[Math.round(d.score)] || "Novice";
+            const levelLabel = NUMERIC_TO_LABEL[Math.round(d.score)] || "Not Established";
+            const isAboveTarget = d.score >= 3.0;
 
             return (
               <div
                 key={d.category}
                 onMouseEnter={() => setHoveredIndex(idx)}
                 onMouseLeave={() => setHoveredIndex(null)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-white border-[#1C1C1C] shadow-sm ring-1 ring-[#1C1C1C] -translate-y-0.5"
-                    : "bg-[#FBF1CF]/60 border-[#1C1C1C]/15 hover:bg-white/80"
+                    ? "bg-[#FAF8F5] border-[#171717] shadow-[2px_2px_0_#171717] -translate-y-0.5"
+                    : "bg-[#FAF8F5]/70 border-[#171717]/15 hover:bg-[#FAF8F5]"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#1C1C1C] truncate max-w-[170px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-black text-[#171717]">
                     {d.category}
                   </span>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#1C1C1C] text-[#FAF8F5]">
-                    {levelLabel} ({d.score}/5)
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-[#171717] ${
+                      isAboveTarget
+                        ? "bg-[#DDEBE1] text-[#171717]"
+                        : d.score > 0
+                        ? "bg-[#E6AC70] text-[#171717]"
+                        : "bg-[#FAF8F5] text-[#171717]/60"
+                    }`}
+                  >
+                    {levelLabel} ({d.score}/5.0)
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-[#1C1C1C]/70 mt-1">
-                  <span>{d.verifiedCount} verified capabilities</span>
-                  <span className="font-mono text-[10px] text-[#4A7A4E] font-bold">
-                    {d.verifiedCount > 0 ? "Corroborated" : "Unverified"}
+
+                {/* Micro Progress Bar with Practitioner Target Marker */}
+                <div className="mt-2 space-y-1">
+                  <div className="relative w-full h-2 rounded-full bg-[#171717]/10 overflow-hidden border border-[#171717]/20">
+                    <div
+                      className="h-full rounded-full bg-[#171717] transition-all duration-300"
+                      style={{ width: `${Math.min(100, Math.max(0, (d.score / 5.0) * 100))}%` }}
+                    />
+                    {/* Practitioner benchmark line at 60% */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-[#E6AC70] border-r border-[#171717]"
+                      style={{ left: "60%" }}
+                      title="Practitioner Target (3.0)"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-[#171717]/70 mt-2">
+                  <span>
+                    {d.verifiedCount > 0
+                      ? `${d.verifiedCount} verified capabilities`
+                      : d.candidateCount > 0
+                      ? `${d.candidateCount} candidate signals`
+                      : "0 recorded skills"}
+                  </span>
+                  <span
+                    className={`font-mono text-[10px] font-bold ${
+                      isAboveTarget
+                        ? "text-[#2D5A43]"
+                        : d.score > 0
+                        ? "text-[#B07219]"
+                        : "text-[#171717]/50"
+                    }`}
+                  >
+                    {isAboveTarget ? "Target Exceeded ✓" : d.score > 0 ? "Approaching Target" : "Pending Signals"}
                   </span>
                 </div>
+
                 {isSelected && d.topSkills.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-[#1C1C1C]/10 text-[10px] text-[#1C1C1C]/80 font-medium">
-                    Top Verified: {d.topSkills.join(", ")}
+                  <div className="mt-2 pt-2 border-t border-[#171717]/10 text-[10px] text-[#171717]/80 font-medium">
+                    Top Capabilities: {d.topSkills.join(", ")}
                   </div>
                 )}
               </div>

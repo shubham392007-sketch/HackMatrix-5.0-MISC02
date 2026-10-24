@@ -338,6 +338,14 @@ interface EvidenceContextType {
   setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobileSidebar: () => void;
 
+  // Desktop Sidebar Dynamic Push & Expansion State
+  desktopSidebarPinned: boolean;
+  setDesktopSidebarPinned: React.Dispatch<React.SetStateAction<boolean>>;
+  desktopSidebarHovered: boolean;
+  setDesktopSidebarHovered: (hovered: boolean) => void;
+  desktopSidebarExpanded: boolean;
+  toggleDesktopSidebarPinned: () => void;
+
   // Live Evidence Synchronization & Database Resilience
   refreshEvidenceData: (force?: boolean) => Promise<void>;
   isDatabaseUnavailable: boolean;
@@ -510,6 +518,50 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
   // Mobile Navigation Drawer State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const toggleMobileSidebar = () => setMobileSidebarOpen((prev) => !prev);
+
+  // Desktop Sidebar Dynamic Push & Expansion State
+  const [desktopSidebarPinned, setDesktopSidebarPinned] = useState<boolean>(false);
+  const [desktopSidebarHovered, setDesktopSidebarHoveredState] = useState<boolean>(false);
+  const sidebarHoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("skillpassport_sidebar_pinned");
+      if (stored === "true") {
+        setDesktopSidebarPinned(true);
+      }
+    }
+  }, []);
+
+  const toggleDesktopSidebarPinned = useCallback(() => {
+    setDesktopSidebarPinned((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("skillpassport_sidebar_pinned", String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const setDesktopSidebarHovered = useCallback((hovered: boolean) => {
+    if (sidebarHoverTimeoutRef.current) {
+      clearTimeout(sidebarHoverTimeoutRef.current);
+      sidebarHoverTimeoutRef.current = null;
+    }
+    if (hovered) {
+      // 120ms hover-intent dwell delay before expansion begins (prevents accidental trigger on fast sweeps)
+      sidebarHoverTimeoutRef.current = setTimeout(() => {
+        setDesktopSidebarHoveredState(true);
+      }, 120);
+    } else {
+      // 140ms exit delay before collapse begins (prevents accidental collapse when moving between items/edges)
+      sidebarHoverTimeoutRef.current = setTimeout(() => {
+        setDesktopSidebarHoveredState(false);
+      }, 140);
+    }
+  }, []);
+
+  const desktopSidebarExpanded = desktopSidebarPinned || desktopSidebarHovered;
 
   // Domain 3 AI State - Zero Demo Data, live database-driven
   const [currentRole, setDemoRole] = useState<DemoRole>("admin");
@@ -3625,6 +3677,14 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
         mobileSidebarOpen,
         setMobileSidebarOpen,
         toggleMobileSidebar,
+
+        // Desktop Sidebar Dynamic Push & Expansion State
+        desktopSidebarPinned,
+        setDesktopSidebarPinned,
+        desktopSidebarHovered,
+        setDesktopSidebarHovered,
+        desktopSidebarExpanded,
+        toggleDesktopSidebarPinned,
 
         // Live Evidence Synchronization
         refreshEvidenceData,

@@ -11,6 +11,9 @@ import {
   EyeOff,
   Lock,
   Mail,
+  ShieldCheck,
+  GitBranch,
+  Sparkles,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -113,9 +116,6 @@ function LoginForm() {
   return (
     <div className="flex-1 w-full max-w-lg mx-auto space-y-6">
       <div className="text-center lg:text-left space-y-1">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DFE968] border border-[#1C1C1C] text-[10px] font-black uppercase tracking-wider mb-2">
-          SECURE SUPABASE AUTHENTICATION
-        </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1C1C1C] tracking-tight">
           Welcome back
         </h1>
@@ -243,21 +243,66 @@ export default function LoginPage() {
             <LoginForm />
           </Suspense>
 
-          {/* Right Column: Organic Graphic Visual */}
-          <div className="hidden lg:flex flex-1 justify-center relative w-full h-[540px]">
-            <div
-              className="w-full max-w-md h-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] flex flex-col items-center justify-center p-8 text-center overflow-hidden shadow-[4px_4px_0_0_#1C1C1C]"
-              style={{ borderRadius: "45% 55% 45% 55% / 58% 42% 55% 45%" }}
-            >
-              <h2
-                className="text-5xl md:text-6xl lg:text-7xl text-[#1C1C1C] mb-3 font-normal tracking-tight"
-                style={{ fontFamily: "'Yellowtail', cursive", transform: "rotate(-4deg)" }}
-              >
-                SkillPassport
-              </h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1C1C1C]/80 max-w-[260px]">
-                Powered by GrowthLens • Verifiable Skills
-              </p>
+          {/* Right Column: Minimal Architectural Principle Showcase */}
+          <div className="hidden lg:flex flex-1 justify-center relative w-full">
+            <div className="w-full max-w-md bg-[#FAF8F5] border-2 border-[#1A1918] rounded-[28px] p-7 sm:p-8 flex flex-col justify-between shadow-[6px_6px_0px_#1A1918]">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A1918] text-[#FAF8F5] text-[10px] font-mono font-bold tracking-wider uppercase mb-6">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#DFE968]" />
+                  <span>GrowthLens Protocol</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1918] tracking-tight leading-tight mb-3">
+                  Engineering merit backed by verifiable code evidence.
+                </h2>
+
+                <p className="text-xs sm:text-sm font-medium text-[#1A1918]/70 leading-relaxed mb-8">
+                  SkillPassport transforms daily engineering artifacts into inspectable, tamper-evident competency signals without self-attestation.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-[#1A1918] text-[#1A1918] flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <GitBranch className="w-3.5 h-3.5 text-[#1A1918]" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-[#1A1918] uppercase tracking-wide">Deterministic Ingestion</h4>
+                      <p className="text-[11px] font-medium text-[#1A1918]/70 leading-snug">
+                        Claims are anchored to raw commit hashes, PR reviews, and author attribution.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-[#1A1918] text-[#1A1918] flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#1A1918]" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-[#1A1918] uppercase tracking-wide">Multi-Stage Verification</h4>
+                      <p className="text-[11px] font-medium text-[#1A1918]/70 leading-snug">
+                        Zero synthetic padding. Every capability is verified against proven work.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-[#1A1918] text-[#1A1918] flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#1A1918]" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-[#1A1918] uppercase tracking-wide">Auditable Passport</h4>
+                      <p className="text-[11px] font-medium text-[#1A1918]/70 leading-snug">
+                        Shareable candidate view with granular privacy and verifiable provenance proofs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 mt-8 border-t border-[#1A1918]/15 flex items-center justify-between text-[11px] font-mono text-[#1A1918]/60">
+                <span>SKILLPASSPORT</span>
+                <span>AUDITABLE PROVENANCE</span>
+              </div>
             </div>
           </div>
         </div>

@@ -62,13 +62,21 @@ html {
   overflow-y: auto;
   overflow-x: clip;
   overscroll-behavior-x: none;
-  background-color: #F5F2EB !important;
+  background-color: #F8F5EF !important;
   width: 100%;
   min-height: 100%;
 }
 
 body {
-  background-color: #F5F2EB !important;
+  background-color: #F8F5EF !important;
+  background-image: radial-gradient(
+    circle,
+    rgba(35, 31, 28, 0.22) 1.2px,
+    transparent 1.4px
+  ) !important;
+  background-size: 22px 22px !important;
+  background-position: 0 0 !important;
+  background-attachment: fixed !important;
   color: var(--color-ink);
   font-family: var(--font-primary);
   font-weight: 500;
@@ -80,6 +88,17 @@ body {
   margin: 0;
   padding: 0;
   position: relative;
+}
+
+.dashboard-background {
+  background-color: #F8F5EF !important;
+  background-image: radial-gradient(
+    circle,
+    rgba(35, 31, 28, 0.22) 1.2px,
+    transparent 1.4px
+  ) !important;
+  background-size: 22px 22px !important;
+  background-position: 0 0 !important;
 }
 
 /* ── Absolute Ban on Gradients Across Every Page ────────── */
@@ -205,10 +224,17 @@ main > div > div > [class*="space-y-"]:first-child {
   padding-top: 1.5rem;
 }
 
-/* Ensure consecutive cards never collide or overlap borders/shadows */
-:not(.grid):not([class*="grid-"]):not(.flex):not([class*="flex-"]) > .gl-card + .gl-card,
-:not(.grid):not([class*="grid-"]):not(.flex):not([class*="flex-"]) > * > .gl-card + .gl-card {
-  margin-top: 1.5rem !important;
+/* Ensure consecutive cards in non-grid/non-flex blocks have appropriate spacing */
+:not(.grid):not([class*="grid"]):not(.flex):not([class*="flex"]) > .gl-card + .gl-card {
+  margin-top: 1.5rem;
+}
+
+/* Guarantee that grid and flex children never receive unintended top margins */
+.grid > .gl-card,
+[class*="grid"] > .gl-card,
+.flex > .gl-card,
+[class*="flex"] > .gl-card {
+  margin-top: 0 !important;
 }
 
 /* ── Pill Button ────────────────────────────────────────── */
@@ -264,6 +290,47 @@ main > div > div > [class*="space-y-"]:first-child {
 .pill-btn-dark {
   background: #1A1918 !important;
   color: #FAF8F5 !important;
+}
+
+/* ── Floating Capsule Navigation Bar ────────────────────────── */
+.floating-capsule-nav {
+  transition: box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 220ms ease,
+              border-color 220ms ease;
+}
+
+.floating-capsule-nav .pill-btn {
+  height: 34px !important;
+  padding: 0 0.85rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  white-space: nowrap !important;
+  box-shadow: 1px 1px 0px #171717 !important;
+  letter-spacing: 0.06em !important;
+}
+
+.floating-capsule-nav .pill-btn:hover {
+  transform: translate(-0.5px, -0.5px) !important;
+  box-shadow: 1.5px 1.5px 0px #171717 !important;
+}
+
+.floating-capsule-nav .pill-btn:active {
+  transform: translate(0.5px, 0.5px) !important;
+  box-shadow: 0px 0px 0px #171717 !important;
+}
+
+@media (max-width: 640px) {
+  .header-action-group .pill-btn:not(:first-child) span {
+    display: none;
+  }
+  .header-action-group .pill-btn:not(:first-child) {
+    padding: 0 0.5rem !important;
+    width: 34px !important;
+    justify-content: center !important;
+  }
 }
 
 /* ── Pill Input ─────────────────────────────────────────── */
@@ -903,4 +970,14 @@ header nav a:hover {
   background: #FAF8F5 !important;
   border-color: #1A1918 !important;
   box-shadow: 4px 4px 0px #1A1918 !important;
+}
+
+/* ── Accessibility: Reduced Motion for Synchronized Sidebar & Dashboard ── */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  * {
+    --sidebar-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
