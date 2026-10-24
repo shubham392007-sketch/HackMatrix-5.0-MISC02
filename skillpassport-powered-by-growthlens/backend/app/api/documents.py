@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from backend.app.db.session import get_db
 from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.models.document import UploadedDocument, DocumentChunk
+from backend.app.models.connection import ConnectedSource
 from backend.app.models.evidence import EvidenceItem, EvidenceRelationship
 from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
 from backend.app.models.audit import ReviewAuditEvent
@@ -39,6 +40,8 @@ async def upload_document(
     file: UploadFile = File(...),
     category: str = Form("other"),
     title: Optional[str] = Form(None),
+    source_provider: Optional[str] = Form(None),
+    connection_id: Optional[str] = Form(None),
     user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -210,22 +213,51 @@ async def upload_document(
 
     # Create normalized EvidenceItem with honest initial values (no fake clamping or fabricated strength)
     now = datetime.now(timezone.utc)
+    ev_provider = source_provider if source_provider in ("leetcode", "hackerrank", "github", "jira") else "document_upload"
+    ev_source_type = "coding_platform_evidence" if source_provider in ("leetcode", "hackerrank") else "document"
+    ev_attribution = "self_reported" if source_provider in ("leetcode", "hackerrank") else "author"
+
+    # Check for connected source linkage
+    source_profile_url = None
+    connected_username = None
+    if source_provider in ("leetcode", "hackerrank"):
+        conn_query = db.query(ConnectedSource).filter(
+            ConnectedSource.owner_user_id == user.id,
+            ConnectedSource.provider == source_provider,
+            ConnectedSource.connection_status != "disconnected",
+        )
+        if connection_id:
+            try:
+                conn_query = conn_query.filter(ConnectedSource.id == uuid.UUID(connection_id))
+            except ValueError:
+                pass
+        matched_conn = conn_query.first()
+        if matched_conn:
+            connected_username = matched_conn.account_identity
+            source_profile_url = (matched_conn.connection_metadata or {}).get("profile_url")
+
+    desc = (
+        f"Supporting evidence for {source_provider.capitalize()} profile ({connected_username or 'User'}): {filename} ({extraction.get('page_count', 1)} pages)"
+        if source_provider in ("leetcode", "hackerrank")
+        else f"Uploaded {category.replace('_', ' ')}: {filename} ({extraction.get('page_count', 1)} pages, {extraction.get('word_count', 0)} words)"
+    )
+
     evidence_item = EvidenceItem(
         id=uuid.uuid4(),
         owner_user_id=user.id,
-        source_provider="document_upload",
-        source_type="document",
+        source_provider=ev_provider,
+        source_type=ev_source_type,
         external_record_id=str(doc_id),
-        source_url=storage_res["private_storage_key"],
+        source_url=source_profile_url or storage_res["private_storage_key"],
         source_name=filename,
         evidence_category=category,
         title=title or extraction.get("title", filename),
-        description=f"Uploaded {category.replace('_', ' ')}: {filename} ({extraction.get('page_count', 1)} pages, {extraction.get('word_count', 0)} words)",
+        description=desc,
         extracted_excerpt=extraction.get("excerpt", "")[:500],
         observed_timestamp=now,
         contributor_identity=user.email,
-        attribution_status="author",
-        project_name=title or filename,
+        attribution_status=ev_attribution,
+        project_name=title or (f"{source_provider.capitalize()} Evidence" if source_provider in ("leetcode", "hackerrank") else filename),
         evidence_strength="insufficient" if not is_verified else "medium",
         extraction_confidence=0.0,
         verification_status="insufficient_evidence" if not is_verified else "unreviewed",
@@ -241,6 +273,11 @@ async def upload_document(
             "ocr_pages_detected": extraction.get("ocr_pages_detected"),
             "ocr_pages_processed": extraction.get("ocr_pages_processed"),
             "ocr_error": extraction.get("ocr_error"),
+            "source_provider": ev_provider,
+            "profile_url": source_profile_url,
+            "account_identity": connected_username,
+            "user_provided_supporting_evidence": True,
+            "ownership_verified": False,
         },
         normalized_metadata={
             "category": category,
@@ -248,6 +285,8 @@ async def upload_document(
             "word_count": extraction.get("word_count", 0),
             "extraction_quality": extraction.get("extraction_quality"),
             "quality_reason": extraction.get("quality_reason"),
+            "source_provider": ev_provider,
+            "profile_url": source_profile_url,
         },
         content_hash=sha256,
     )
@@ -273,7 +312,7 @@ async def upload_document(
         db=db,
         evidence_item=evidence_item,
         content_text=full_content,
-        source_provider="document_upload",
+        source_provider=ev_provider,
         category=category,
         user_id=user.id,
     )
@@ -556,7 +595,7 @@ async def reprocess_document(
         ev_item = EvidenceItem(
             id=uuid.uuid4(),
             owner_user_id=user.id,
-            source_provider="document_upload",
+            source_provider=ev_provider,
             source_type="document",
             external_record_id=str(doc.id),
             source_url=doc.private_storage_key,
@@ -610,7 +649,7 @@ async def reprocess_document(
             db=db,
             evidence_item=ev_item,
             content_text=full_content,
-            source_provider="document_upload",
+            source_provider=ev_provider,
             category=doc.evidence_category,
             user_id=user.id,
         )

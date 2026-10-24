@@ -25,6 +25,7 @@ import {
   Cpu,
   Loader2,
   ExternalLink,
+  Award,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
 import ArtifactInspectorViewer from "@/components/evidence/ArtifactInspectorViewer";
@@ -110,6 +111,8 @@ export default function EvidenceDetailPage({
           const st = (detailItem.sourceType || "").toLowerCase();
           if (p === "jira" || st.startsWith("jira")) return "jira";
           if (p === "github" || st.startsWith("github")) return "github";
+          if (p === "leetcode" || st.includes("leetcode")) return "leetcode";
+          if (p === "hackerrank" || st.includes("hackerrank")) return "hackerrank";
           return (detailItem.sourceType || detailItem.provider || "document") as SourceType;
         })(),
         sourceReference: detailItem.sourceName || detailItem.sourceUrl || "Uploaded Document",
@@ -484,6 +487,57 @@ export default function EvidenceDetailPage({
                 </Link>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Coding Platform Provenance Contextual Panel (when evidence originates from LeetCode or HackerRank) */}
+        {(item.sourceType === "leetcode" || item.sourceType === "hackerrank") && (
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1C1C1C]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} Profile Reference • Coding Artifact Provenance
+                </h3>
+              </div>
+              <Link
+                href={`/app/evidence/sources/${item.sourceType}`}
+                className="text-xs font-bold underline text-[#1C1C1C] hover:opacity-75 inline-flex items-center gap-1"
+              >
+                <span>Manage {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} Profile</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <p className="text-xs text-[#1C1C1C]/75">
+              Supporting artifact linked to your registered {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} handle.
+              <span className="italic block mt-1 text-[#1C1C1C]/60">
+                Notice: Account ownership is self-asserted and unverified. Credential status is validated based on the uploaded document contents and cryptographic provenance.
+              </span>
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Platform</span>
+                <span className="font-bold text-[#1C1C1C] capitalize">{item.sourceType}</span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20 sm:col-span-2">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Profile Provenance</span>
+                {item.sourceUrl ? (
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[#4A7A4E] hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {item.sourceUrl}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-[#1C1C1C]/70">{item.sourceReference || "Linked Profile"}</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

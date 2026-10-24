@@ -564,8 +564,8 @@ def build_canonical_projection(
                 continue
             job_title = we.get("jobTitle") or we.get("job_title") or we.get("role") or ""
             org_name = we.get("organization") or we.get("company") or ""
-            desc = we.get("description") or we.get("summary") or ""
-            if not job_title and not org_name and not desc:
+            we_desc = we.get("description") or we.get("summary") or ""
+            if not job_title and not org_name and not we_desc:
                 continue
             if is_anonymous_template and org_name:
                 org_name = "[Confidential Organization]"
@@ -586,8 +586,8 @@ def build_canonical_projection(
                 "endDate": end_d,
                 "period": period,
                 "isCurrent": bool(we.get("isCurrent", we.get("is_current", False))),
-                "description": desc,
-                "summary": desc,
+                "description": we_desc,
+                "summary": we_desc,
                 "bullets": bullets,
                 "achievements": bullets,
                 "techStack": tech,
@@ -652,8 +652,8 @@ def build_canonical_projection(
             if not pr or not isinstance(pr, dict):
                 continue
             title = pr.get("title") or ""
-            desc = pr.get("description") or pr.get("summary") or ""
-            if not title and not desc:
+            pr_desc = pr.get("description") or pr.get("summary") or ""
+            if not title and not pr_desc:
                 continue
             proj_url = pr.get("projectUrl") or pr.get("project_url") or pr.get("url")
             highlights = pr.get("highlights") or [o for o in (pr.get("outcomes") or []) if o and str(o).strip()]
@@ -661,8 +661,8 @@ def build_canonical_projection(
             port_projects.append({
                 "id": str(pr.get("id") or uuid.uuid4()),
                 "title": title or "Project",
-                "description": desc,
-                "summary": desc,
+                "description": pr_desc,
+                "summary": pr_desc,
                 "role": pr.get("role"),
                 "techStack": tech,
                 "highlights": highlights,

@@ -33,6 +33,19 @@ export function SourceStatusBadge({ status }: { status: ConnectionStatus }) {
           SYNCING ···
         </span>
       );
+    case "profile_linked":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918] text-[#1A1918] shadow-[1px_1px_0_0_#1A1918]" title="Profile URL registered. Account ownership not cryptographically verified.">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+          PROFILE LINKED · UNVERIFIED
+        </span>
+      );
+    case "disconnected":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918]/30 text-[#1A1918]/50">
+          DISCONNECTED
+        </span>
+      );
     case "needs_attention":
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#C85A54]/15 border border-[#C85A54] text-[#C85A54]">

@@ -15,13 +15,18 @@ import {
   ArrowRight,
   ShieldCheck,
   Check,
+  Code2,
+  Terminal,
+  ExternalLink,
 } from "lucide-react";
 
 export default function ConnectedSourcesPage() {
   const { sources, initialLoading, isLoadingEvidence } = useEvidence();
   const isDataLoading = initialLoading || (isLoadingEvidence && sources.length === 0);
-  const githubSource = sources.find((s) => s.type === "github");
-  const jiraSource = sources.find((s) => s.type === "jira");
+  const githubSource = sources.find((s) => s.type === "github" || s.provider === "github");
+  const jiraSource = sources.find((s) => s.type === "jira" || s.provider === "jira");
+  const leetcodeSource = sources.find((s) => s.type === "leetcode" || s.provider === "leetcode");
+  const hackerrankSource = sources.find((s) => s.type === "hackerrank" || s.provider === "hackerrank");
 
   return (
     <div className="flex-1 flex flex-col">
@@ -133,6 +138,158 @@ export default function ConnectedSourcesPage() {
                 >
                   MANAGE JIRA PROJECTS <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Competitive Programming & Coding Platforms */}
+        <section className="space-y-4">
+          <div className="border-b border-[#1C1C1C]/15 pb-2">
+            <h2 className="text-xl font-black text-[#1C1C1C]">Competitive Programming &amp; Coding Platforms</h2>
+            <p className="text-xs font-medium text-[#1C1C1C]/75">
+              Connect algorithmic handles for profile attribution and attach certified contest rankings, badges, and problem-solving artifacts.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* LeetCode Card */}
+            <div className="gl-card p-6 flex flex-col justify-between bg-[#FBF6DF]">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FFE494] border border-[#1C1C1C] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1C1C1C]">
+                    <Code2 className="w-6 h-6 text-[#1C1C1C]" />
+                  </div>
+                  <SourceStatusBadge status={isDataLoading ? "syncing" : (leetcodeSource?.status || "not_connected")} />
+                </div>
+                <h3 className="text-xl font-black text-[#1C1C1C] mb-1">LeetCode</h3>
+                <p className="text-xs font-medium text-[#1C1C1C]/80 leading-relaxed mb-4">
+                  Link your verified public LeetCode handle to anchor algorithmic problem-solving evidence, contest percentiles, and upload solution artifacts.
+                </p>
+
+                <div className="p-3 bg-[#FBF1CF] rounded-xl border border-[#1C1C1C] text-xs font-mono mb-4 space-y-2">
+                  <div>
+                    <span className="block font-bold mb-1">Linked Profile:</span>
+                    {isDataLoading ? (
+                      <div className="h-4 w-36 bg-[#1C1C1C]/15 rounded animate-pulse" />
+                    ) : leetcodeSource?.accountIdentity || leetcodeSource?.profileUrl ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#4A7A4E] font-black break-all">
+                          {leetcodeSource.accountIdentity || leetcodeSource.profileUrl}
+                        </span>
+                        {leetcodeSource.profileUrl && (
+                          <a
+                            href={leetcodeSource.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1C1C1C]/60 hover:text-[#1C1C1C]"
+                            title="Open external LeetCode profile safely"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[#1C1C1C]/50">No LeetCode profile linked</span>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-[#1C1C1C]/15 text-[10px] text-[#1C1C1C]/70 font-sans">
+                    {leetcodeSource?.status === "profile_linked" ? (
+                      <span className="text-[#8A6A00] font-semibold">
+                        Profile linked for reference · Ownership unverified · Direct scraping prohibited by LeetCode ToS
+                      </span>
+                    ) : (
+                      <span>Sync unavailable: LeetCode ToS prohibits scraping. Attach verifiable credentials directly.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-[#1C1C1C]/10">
+                <Link
+                  href="/app/evidence/sources/leetcode"
+                  className="pill-btn pill-btn-primary flex-1 text-xs py-2.5 text-center"
+                >
+                  MANAGE LEETCODE PROFILE <ArrowRight className="w-3.5 h-3.5 inline ml-1" />
+                </Link>
+                {leetcodeSource && (
+                  <Link
+                    href="/app/evidence/upload?provider=leetcode"
+                    className="pill-btn pill-btn-secondary text-xs py-2.5 px-4"
+                  >
+                    ATTACH ARTIFACT
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* HackerRank Card */}
+            <div className="gl-card p-6 flex flex-col justify-between bg-[#FBF6DF]">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#98D8AA] border border-[#1C1C1C] flex items-center justify-center shadow-[1.5px_1.5px_0_0_#1C1C1C]">
+                    <Terminal className="w-6 h-6 text-[#1C1C1C]" />
+                  </div>
+                  <SourceStatusBadge status={isDataLoading ? "syncing" : (hackerrankSource?.status || "not_connected")} />
+                </div>
+                <h3 className="text-xl font-black text-[#1C1C1C] mb-1">HackerRank</h3>
+                <p className="text-xs font-medium text-[#1C1C1C]/80 leading-relaxed mb-4">
+                  Link your public HackerRank profile to reference domain badges, problem solving certifications, and contest participation history.
+                </p>
+
+                <div className="p-3 bg-[#FBF1CF] rounded-xl border border-[#1C1C1C] text-xs font-mono mb-4 space-y-2">
+                  <div>
+                    <span className="block font-bold mb-1">Linked Profile:</span>
+                    {isDataLoading ? (
+                      <div className="h-4 w-36 bg-[#1C1C1C]/15 rounded animate-pulse" />
+                    ) : hackerrankSource?.accountIdentity || hackerrankSource?.profileUrl ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#4A7A4E] font-black break-all">
+                          {hackerrankSource.accountIdentity || hackerrankSource.profileUrl}
+                        </span>
+                        {hackerrankSource.profileUrl && (
+                          <a
+                            href={hackerrankSource.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1C1C1C]/60 hover:text-[#1C1C1C]"
+                            title="Open external HackerRank profile safely"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[#1C1C1C]/50">No HackerRank profile linked</span>
+                    )}
+                  </div>
+                  <div className="pt-2 border-t border-[#1C1C1C]/15 text-[10px] text-[#1C1C1C]/70 font-sans">
+                    {hackerrankSource?.status === "profile_linked" ? (
+                      <span className="text-[#8A6A00] font-semibold">
+                        Profile linked for reference · Ownership unverified · Personal sync unavailable without enterprise API
+                      </span>
+                    ) : (
+                      <span>Sync unavailable: HackerRank requires enterprise API. Upload certificates and badges directly.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-[#1C1C1C]/10">
+                <Link
+                  href="/app/evidence/sources/hackerrank"
+                  className="pill-btn pill-btn-primary flex-1 text-xs py-2.5 text-center"
+                >
+                  MANAGE HACKERRANK PROFILE <ArrowRight className="w-3.5 h-3.5 inline ml-1" />
+                </Link>
+                {hackerrankSource && (
+                  <Link
+                    href="/app/evidence/upload?provider=hackerrank"
+                    className="pill-btn pill-btn-secondary text-xs py-2.5 px-4"
+                  >
+                    ATTACH ARTIFACT
+                  </Link>
+                )}
               </div>
             </div>
           </div>

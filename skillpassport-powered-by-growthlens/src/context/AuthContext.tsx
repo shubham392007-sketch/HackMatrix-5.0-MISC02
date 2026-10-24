@@ -80,12 +80,26 @@ async function fetchProfileMe(token: string, method: string = "GET", body?: any)
     // Direct backend connection failed, continue to fallback
   }
 
-  // Fallback to relative proxy
-  return fetch("/api/v1/profile/me", {
-    method,
-    headers,
-    body: bodyStr,
-  });
+  // Fallback to relative proxy with safe offline error handling
+  try {
+    return await fetch("/api/v1/profile/me", {
+      method,
+      headers,
+      body: bodyStr,
+    });
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        error: "Backend service unreachable",
+        detail: err?.message || "Connection refused",
+      }),
+      {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -123,7 +137,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         console.warn("Failed to fetch user profile:", resp.status);
-        if (resp.status === 401) {
+        if (resp.status === 503) {
+          // Backend temporarily unreachable (e.g. warming up or restarting), recover from cached profile
+          if (typeof window !== "undefined") {
+            try {
+              const cached = sessionStorage.getItem("sp_user_profile");
+              if (cached) {
+                setProfile(JSON.parse(cached));
+                return;
+              }
+            } catch {}
+          }
+          if (currentSession?.user) {
+            setProfile({
+              id: currentSession.user.id,
+              email: currentSession.user.email || "",
+              display_name: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split("@")[0] || "User",
+              headline: null,
+              current_role: "employee",
+              onboarding_status: "in_progress",
+              onboarding_current_step: 1,
+              onboarding_current_category: "resume",
+              github_skipped: false,
+              jira_skipped: false,
+              onboarding_completed_at: null,
+            });
+          }
+        } else if (resp.status === 401) {
           console.warn("User session is invalid or stale (401), signing out locally");
           try {
             await supabase.auth.signOut({ scope: "local" });

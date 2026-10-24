@@ -25,6 +25,8 @@ import {
   Sparkles,
   Loader2,
   Cpu,
+  Code2,
+  Terminal,
 } from "lucide-react";
 import { runWorkAnalysis } from "@/lib/evidenceApi";
 
@@ -274,6 +276,10 @@ export default function EvidenceCenterPage() {
                           <GitBranch className="w-5 h-5 text-[#1C1C1C]" />
                         ) : src.type === "jira" ? (
                           <Layers className="w-5 h-5 text-[#1C1C1C]" />
+                        ) : src.type === "leetcode" ? (
+                          <Code2 className="w-5 h-5 text-[#1C1C1C]" />
+                        ) : src.type === "hackerrank" ? (
+                          <Terminal className="w-5 h-5 text-[#1C1C1C]" />
                         ) : (
                           <FileCode className="w-5 h-5 text-[#1C1C1C]" />
                         )}
@@ -298,7 +304,7 @@ export default function EvidenceCenterPage() {
 
                   <div className="mt-5 pt-3 border-t border-[#1C1C1C]/10 flex gap-2">
                     <Link
-                      href={`/app/evidence/sources/${src.type === "github" ? "github" : src.type === "jira" ? "jira" : ""}`}
+                      href={`/app/evidence/sources/${src.type === "github" ? "github" : src.type === "jira" ? "jira" : src.type === "leetcode" ? "leetcode" : src.type === "hackerrank" ? "hackerrank" : ""}`}
                       className="flex-1 text-center py-2 text-xs font-black uppercase rounded-full border border-[#1C1C1C] bg-[#FBF1CF] hover:bg-[#DFE968] transition-all"
                     >
                       Configure

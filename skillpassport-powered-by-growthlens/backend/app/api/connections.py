@@ -29,6 +29,11 @@ from backend.app.integrations.github.readme_service import (
     get_repository_readme_response,
 )
 from backend.app.core.security import encrypt_credential, decrypt_credential
+from backend.app.integrations.coding_profiles import (
+    validate_and_normalize_leetcode_url,
+    validate_and_normalize_hackerrank_url,
+    ProfileValidationError,
+)
 from backend.app.ingestion.pipeline import queue_manager
 from backend.app.extraction.engine import extraction_engine
 from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
@@ -140,6 +145,11 @@ class JiraSyncRequest(BaseModel):
     project_key: Optional[str] = None
 
 
+class CodingProfileConnectRequest(BaseModel):
+    profile_url: str = Field(..., description="Public profile URL for the coding platform")
+
+
+
 @router.get("")
 def list_connected_sources(
     user: AuthenticatedUser = Depends(get_current_user),
@@ -197,17 +207,36 @@ def list_connected_sources(
                     "languages": sorted(list(distinct_langs)),
                 }
 
+        if s.provider == "github":
+            provider_name = f"GitHub ({s.account_identity})"
+        elif s.provider == "jira":
+            provider_name = f"Jira ({s.account_identity})"
+        elif s.provider == "leetcode":
+            provider_name = f"LeetCode ({s.account_identity})"
+        elif s.provider == "hackerrank":
+            provider_name = f"HackerRank ({s.account_identity})"
+        else:
+            provider_name = f"{s.provider.capitalize()} ({s.account_identity})"
+
+        profile_url = (s.connection_metadata or {}).get("profile_url") if s.connection_metadata else None
+        ownership_verified = (s.connection_metadata or {}).get("ownership_verified", False) if s.connection_metadata else False
+        supports_sync = s.provider in ("github", "jira")
+
         results.append({
             "id": str(s.id),
-            "name": f"GitHub ({s.account_identity})" if s.provider == "github" else f"Jira ({s.account_identity})",
+            "name": provider_name,
             "type": s.provider,
             "status": s.connection_status,
             "lastSync": s.last_sync_at.isoformat() if s.last_sync_at else "Never synced",
             "importedRecordsCount": record_count,
             "accountIdentity": s.account_identity,
+            "profileUrl": profile_url,
+            "ownershipVerified": ownership_verified,
+            "supportsSync": supports_sync,
             "permissions": s.granted_scopes or [],
             "selectedEntities": [r.name for r in s.selected_resources if r.is_selected],
             "languageSummary": language_summary,
+            "metadata": s.connection_metadata or {},
         })
 
     return {"sources": results, "total": len(results)}
@@ -2906,4 +2935,323 @@ async def trigger_jira_sync(
         "records_imported": imported,
         "records_updated": updated,
         "target_projects": target_projects,
+    }
+
+
+# ── LEETCODE & HACKERRANK CODING PROFILE CONNECTORS ─────────────────────────
+
+@router.get("/leetcode")
+def get_leetcode_profile(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieves current LeetCode profile connection and associated supporting evidence."""
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "leetcode",
+        ConnectedSource.connection_status != "disconnected",
+    ).first()
+
+    if not connection:
+        return {"connected": False, "source": None, "evidence": []}
+
+    evidence = db.query(EvidenceItem).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.source_provider == "leetcode",
+        EvidenceItem.is_deleted == False,
+    ).all()
+
+    evidence_list = [
+        {
+            "id": str(e.id),
+            "title": e.title,
+            "description": e.description,
+            "category": e.evidence_category,
+            "source_url": e.source_url,
+            "verification_status": e.verification_status,
+            "attribution_status": e.attribution_status,
+            "evidence_strength": e.evidence_strength,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "provenance": e.provenance or {},
+        }
+        for e in evidence
+    ]
+
+    metadata = connection.connection_metadata or {}
+    return {
+        "connected": True,
+        "source": {
+            "id": str(connection.id),
+            "provider": "leetcode",
+            "accountIdentity": connection.account_identity,
+            "profileUrl": metadata.get("profile_url", f"https://leetcode.com/u/{connection.account_identity}"),
+            "status": connection.connection_status,
+            "ownershipVerified": metadata.get("ownership_verified", False),
+            "supportsSync": False,
+            "registeredAt": metadata.get("registered_at"),
+            "importedRecordsCount": len(evidence_list),
+        },
+        "evidence": evidence_list,
+    }
+
+
+@router.post("/leetcode")
+def connect_leetcode_profile(
+    payload: CodingProfileConnectRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Validates and registers a genuine public LeetCode profile URL for the authenticated user.
+    Adheres strictly to LeetCode Terms of Service: no web scraping or unauthorized crawling.
+    Status is honestly reported as 'profile_linked' (ownership unverified).
+    """
+    try:
+        normalized_url, username = validate_and_normalize_leetcode_url(payload.profile_url)
+    except ProfileValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    now = datetime.now(timezone.utc)
+    metadata = {
+        "profile_url": normalized_url,
+        "username": username,
+        "ownership_verified": False,
+        "supports_sync": False,
+        "source_type": "profile_link",
+        "registered_at": now.isoformat(),
+        "note": "Public LeetCode profile link. In adherence to LeetCode ToS, automated scraping is not performed. Supporting documents/certificates can be uploaded to Evidence Vault.",
+    }
+
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "leetcode",
+    ).first()
+
+    if connection:
+        connection.account_identity = username
+        connection.connection_status = "profile_linked"
+        connection.connection_metadata = metadata
+        connection.disconnected_at = None
+        connection.encrypted_credentials = ""
+    else:
+        connection = ConnectedSource(
+            id=uuid.uuid4(),
+            owner_user_id=user.id,
+            provider="leetcode",
+            account_identity=username,
+            connection_status="profile_linked",
+            encrypted_credentials="",
+            credential_key_version="v1",
+            requested_scopes=[],
+            granted_scopes=[],
+            connection_metadata=metadata,
+        )
+        db.add(connection)
+
+    audit = ReviewAuditEvent(
+        id=uuid.uuid4(),
+        actor_user_id=user.id,
+        target_record_id=connection.id,
+        target_record_type="connected_source",
+        event_type="source_connected",
+        new_state="profile_linked",
+        reason_note=f"Registered LeetCode profile link {normalized_url} for user {user.id}",
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(connection)
+
+    return {
+        "id": str(connection.id),
+        "provider": "leetcode",
+        "username": username,
+        "profile_url": normalized_url,
+        "status": "profile_linked",
+        "ownership_verified": False,
+        "supports_sync": False,
+        "message": "LeetCode profile link registered successfully. Profile ownership is unverified.",
+    }
+
+
+@router.get("/hackerrank")
+def get_hackerrank_profile(
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieves current HackerRank profile connection and associated supporting evidence."""
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "hackerrank",
+        ConnectedSource.connection_status != "disconnected",
+    ).first()
+
+    if not connection:
+        return {"connected": False, "source": None, "evidence": []}
+
+    evidence = db.query(EvidenceItem).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.source_provider == "hackerrank",
+        EvidenceItem.is_deleted == False,
+    ).all()
+
+    evidence_list = [
+        {
+            "id": str(e.id),
+            "title": e.title,
+            "description": e.description,
+            "category": e.evidence_category,
+            "source_url": e.source_url,
+            "verification_status": e.verification_status,
+            "attribution_status": e.attribution_status,
+            "evidence_strength": e.evidence_strength,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "provenance": e.provenance or {},
+        }
+        for e in evidence
+    ]
+
+    metadata = connection.connection_metadata or {}
+    return {
+        "connected": True,
+        "source": {
+            "id": str(connection.id),
+            "provider": "hackerrank",
+            "accountIdentity": connection.account_identity,
+            "profileUrl": metadata.get("profile_url", f"https://www.hackerrank.com/profile/{connection.account_identity}"),
+            "status": connection.connection_status,
+            "ownershipVerified": metadata.get("ownership_verified", False),
+            "supportsSync": False,
+            "registeredAt": metadata.get("registered_at"),
+            "importedRecordsCount": len(evidence_list),
+        },
+        "evidence": evidence_list,
+    }
+
+
+@router.post("/hackerrank")
+def connect_hackerrank_profile(
+    payload: CodingProfileConnectRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Validates and registers a genuine public HackerRank profile URL for the authenticated user.
+    Adheres strictly to API availability: personal profile synchronization is not available without enterprise API credentials.
+    Status is honestly reported as 'profile_linked' (ownership unverified).
+    """
+    try:
+        normalized_url, username = validate_and_normalize_hackerrank_url(payload.profile_url)
+    except ProfileValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    now = datetime.now(timezone.utc)
+    metadata = {
+        "profile_url": normalized_url,
+        "username": username,
+        "ownership_verified": False,
+        "supports_sync": False,
+        "source_type": "profile_link",
+        "registered_at": now.isoformat(),
+        "note": "Public HackerRank profile link. Supporting certificates, assessment reports, and solution exports can be attached via Evidence Workspace.",
+    }
+
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.owner_user_id == user.id,
+        ConnectedSource.provider == "hackerrank",
+    ).first()
+
+    if connection:
+        connection.account_identity = username
+        connection.connection_status = "profile_linked"
+        connection.connection_metadata = metadata
+        connection.disconnected_at = None
+        connection.encrypted_credentials = ""
+    else:
+        connection = ConnectedSource(
+            id=uuid.uuid4(),
+            owner_user_id=user.id,
+            provider="hackerrank",
+            account_identity=username,
+            connection_status="profile_linked",
+            encrypted_credentials="",
+            credential_key_version="v1",
+            requested_scopes=[],
+            granted_scopes=[],
+            connection_metadata=metadata,
+        )
+        db.add(connection)
+
+    audit = ReviewAuditEvent(
+        id=uuid.uuid4(),
+        actor_user_id=user.id,
+        target_record_id=connection.id,
+        target_record_type="connected_source",
+        event_type="source_connected",
+        new_state="profile_linked",
+        reason_note=f"Registered HackerRank profile link {normalized_url} for user {user.id}",
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(connection)
+
+    return {
+        "id": str(connection.id),
+        "provider": "hackerrank",
+        "username": username,
+        "profile_url": normalized_url,
+        "status": "profile_linked",
+        "ownership_verified": False,
+        "supports_sync": False,
+        "message": "HackerRank profile link registered successfully. Profile ownership is unverified.",
+    }
+
+
+@router.get("/{connection_id}/evidence")
+def list_connection_evidence(
+    connection_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Lists all supporting evidence items associated with a connected source."""
+    try:
+        conn_uuid = uuid.UUID(connection_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid connection UUID")
+
+    connection = db.query(ConnectedSource).filter(
+        ConnectedSource.id == conn_uuid,
+        ConnectedSource.owner_user_id == user.id,
+    ).first()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connected source not found")
+
+    evidence = db.query(EvidenceItem).filter(
+        EvidenceItem.owner_user_id == user.id,
+        EvidenceItem.source_provider == connection.provider,
+        EvidenceItem.is_deleted == False,
+    ).all()
+
+    evidence_list = [
+        {
+            "id": str(e.id),
+            "title": e.title,
+            "description": e.description,
+            "category": e.evidence_category,
+            "source_url": e.source_url,
+            "verification_status": e.verification_status,
+            "attribution_status": e.attribution_status,
+            "evidence_strength": e.evidence_strength,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "provenance": e.provenance or {},
+        }
+        for e in evidence
+    ]
+
+    return {
+        "connection_id": str(connection.id),
+        "provider": connection.provider,
+        "total": len(evidence_list),
+        "items": evidence_list,
+        "evidence": evidence_list,
     }

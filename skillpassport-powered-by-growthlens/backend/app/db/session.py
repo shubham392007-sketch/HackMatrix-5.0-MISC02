@@ -88,6 +88,16 @@ def sync_cloud_supabase_to_local_sqlite(target_engine):
     if not supabase_key or not supabase_url:
         return
 
+    # Skip slow remote table fetching if local SQLite is already warm
+    try:
+        with target_engine.connect() as check_conn:
+            has_data = check_conn.execute(text("SELECT count(*) FROM user_profiles")).scalar()
+            if has_data and has_data > 0:
+                logger.debug("Local database already initialized with user records, skipping HTTPS cloud sync during startup.")
+                return
+    except Exception:
+        pass
+
     headers = {
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
@@ -163,7 +173,7 @@ def _init_resilient_engine():
                 pool_timeout=settings.db_pool_timeout,
                 pool_reset_on_return="rollback",
                 connect_args={
-                    "connect_timeout": 2,
+                    "connect_timeout": 1,
                     "keepalives": 1,
                     "keepalives_idle": 15,
                     "keepalives_interval": 5,

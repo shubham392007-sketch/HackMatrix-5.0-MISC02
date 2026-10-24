@@ -256,6 +256,29 @@ export default function UploadEvidencePage() {
     "document" | "certificate" | "resume" | "portfolio" | "research" | "other"
   >("document");
 
+  // Coding Profile / Source Connection Context
+  const [sourceProvider, setSourceProvider] = useState<string | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const prov = params.get("provider");
+      const cid = params.get("connection_id");
+      const cat = params.get("category");
+      if (prov) {
+        setSourceProvider(prov.toLowerCase());
+        if (prov.toLowerCase() === "leetcode" || prov.toLowerCase() === "hackerrank") {
+          setCategory("certificate");
+        }
+      }
+      if (cid) setConnectionId(cid);
+      if (cat && ["document", "certificate", "resume", "portfolio", "research", "other"].includes(cat)) {
+        setCategory(cat as any);
+      }
+    }
+  }, []);
+
   // Metadata Fields
   const [title, setTitle] = useState("");
   const [project, setProject] = useState("");
@@ -450,7 +473,13 @@ export default function UploadEvidencePage() {
           ? title.trim()
           : item.filename.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
 
-      const result = await uploadEvidenceDocument(item.file, category, docTitle);
+      const result = await uploadEvidenceDocument(
+        item.file,
+        category,
+        docTitle,
+        sourceProvider || undefined,
+        connectionId || undefined
+      );
 
       // 3. Map authoritative backend status
       const isAlreadyExists = result.status === "already_exists";
@@ -767,6 +796,31 @@ export default function UploadEvidencePage() {
       />
 
       <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+        {/* Source Provider Attribution Banner */}
+        {sourceProvider && (
+          <div className="p-4 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#DFE968] border border-[#1C1C1C] flex items-center justify-center font-black text-sm">
+                {sourceProvider === "leetcode" ? "LC" : sourceProvider === "hackerrank" ? "HR" : "SRC"}
+              </div>
+              <div>
+                <span className="block text-xs font-black uppercase text-[#1C1C1C]">
+                  Attaching Artifact to Connected Source: <span className="capitalize">{sourceProvider}</span>
+                </span>
+                <span className="text-[11px] text-[#1C1C1C]/75">
+                  Uploaded files will be linked with provenance to your {sourceProvider === "leetcode" ? "LeetCode" : "HackerRank"} connected profile.
+                </span>
+              </div>
+            </div>
+            <Link
+              href={`/app/evidence/sources/${sourceProvider}`}
+              className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 whitespace-nowrap"
+            >
+              Back to {sourceProvider === "leetcode" ? "LeetCode" : "HackerRank"}
+            </Link>
+          </div>
+        )}
+
         {/* Category Selector Tabs */}
         <section className="space-y-2">
           <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/60 block">

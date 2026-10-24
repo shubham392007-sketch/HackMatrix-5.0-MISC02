@@ -104,6 +104,8 @@ export default function EvidenceInspectorDetailPage({
           const st = (detailItem.sourceType || "").toLowerCase();
           if (p === "jira" || st.startsWith("jira")) return "jira";
           if (p === "github" || st.startsWith("github")) return "github";
+          if (p === "leetcode" || st.includes("leetcode")) return "leetcode";
+          if (p === "hackerrank" || st.includes("hackerrank")) return "hackerrank";
           return (detailItem.sourceType || detailItem.provider || "document") as SourceType;
         })(),
         sourceReference: detailItem.sourceName || detailItem.sourceUrl || "Uploaded Document",

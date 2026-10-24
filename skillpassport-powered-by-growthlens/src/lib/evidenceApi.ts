@@ -639,6 +639,62 @@ export async function triggerJiraSync(project_key?: string) {
   }
 }
 
+// Coding Profiles (LeetCode & HackerRank)
+export async function connectLeetCode(profile_url: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/leetcode`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ profile_url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to connect LeetCode profile" }));
+    throw new Error(err.detail || "Failed to connect LeetCode profile");
+  }
+  return res.json();
+}
+
+export async function getLeetCodeProfile() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/leetcode`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load LeetCode profile");
+  return res.json();
+}
+
+export async function connectHackerRank(profile_url: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/hackerrank`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ profile_url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to connect HackerRank profile" }));
+    throw new Error(err.detail || "Failed to connect HackerRank profile");
+  }
+  return res.json();
+}
+
+export async function getHackerRankProfile() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/hackerrank`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load HackerRank profile");
+  return res.json();
+}
+
+export async function listConnectionEvidence(connectionId: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/${connectionId}/evidence`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load connection evidence");
+  return res.json();
+}
+
 // Connected Sources Listing & Disconnect
 export async function listConnectedSources() {
   const headers = await getAuthHeaders();
@@ -659,12 +715,20 @@ export async function disconnectSource(connectionId: string) {
 }
 
 // Document Upload & Management
-export async function uploadEvidenceDocument(file: File, category: string = "other", title?: string) {
+export async function uploadEvidenceDocument(
+  file: File,
+  category: string = "other",
+  title?: string,
+  sourceProvider?: string,
+  connectionId?: string
+) {
   const headers = await getAuthHeaders();
   const formData = new FormData();
   formData.append("file", file);
   formData.append("category", category);
   if (title) formData.append("title", title);
+  if (sourceProvider) formData.append("source_provider", sourceProvider);
+  if (connectionId) formData.append("connection_id", connectionId);
 
   const res = await fetch(`${API_BASE}/documents/upload`, {
     method: "POST",

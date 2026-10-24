@@ -24,6 +24,8 @@ import {
   Loader2,
   Sparkles,
   Cpu,
+  Code2,
+  Terminal,
 } from "lucide-react";
 import { runWorkAnalysis, runSkillExtraction } from "@/lib/evidenceApi";
 
@@ -66,7 +68,9 @@ function EvidenceLibraryContent() {
       sourceFilter === "all" ||
       item.sourceType === sourceFilter ||
       (sourceFilter === "jira" && (item.sourceType === "jira" || (item.sourceType as string) === "jira_issue" || (item as any).provider === "jira")) ||
-      (sourceFilter === "github" && (item.sourceType === "github" || (item.sourceType as string).startsWith("github") || (item as any).provider === "github"));
+      (sourceFilter === "github" && (item.sourceType === "github" || (item.sourceType as string).startsWith("github") || (item as any).provider === "github")) ||
+      (sourceFilter === "leetcode" && (item.sourceType === "leetcode" || (item as any).provider === "leetcode" || (item as any).source_provider === "leetcode")) ||
+      (sourceFilter === "hackerrank" && (item.sourceType === "hackerrank" || (item as any).provider === "hackerrank" || (item as any).source_provider === "hackerrank"));
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -84,6 +88,12 @@ function EvidenceLibraryContent() {
     }
     if (t === "jira" || t.startsWith("jira")) {
       return <Layers className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "leetcode" || t.includes("leetcode")) {
+      return <Code2 className="w-4 h-4 text-[#1C1C1C]" />;
+    }
+    if (t === "hackerrank" || t.includes("hackerrank")) {
+      return <Terminal className="w-4 h-4 text-[#1C1C1C]" />;
     }
     if (t === "certificate") {
       return <Award className="w-4 h-4 text-[#1C1C1C]" />;
@@ -135,6 +145,8 @@ function EvidenceLibraryContent() {
               <option value="all">ALL SOURCES</option>
               <option value="github">GITHUB</option>
               <option value="jira">JIRA</option>
+              <option value="leetcode">LEETCODE</option>
+              <option value="hackerrank">HACKERRANK</option>
               <option value="document">PROJECT DOCS</option>
               <option value="certificate">CERTIFICATES</option>
               <option value="research">RESEARCH</option>
