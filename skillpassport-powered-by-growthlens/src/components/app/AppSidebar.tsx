@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
@@ -203,10 +203,66 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
   const [currentSearch, setCurrentSearch] = useState<string>("");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentSearch(window.location.search || "");
-    }
+    const updateSearch = () => {
+      if (typeof window !== "undefined") {
+        setCurrentSearch(window.location.search || "");
+      }
+    };
+    updateSearch();
+    window.addEventListener("popstate", updateSearch);
+    return () => window.removeEventListener("popstate", updateSearch);
   }, [pathname]);
+
+  // Flatten all items across all navigation categories
+  const allNavItems = useMemo(
+    () => WORKSPACE_NAV.flatMap((sec) => sec.items),
+    []
+  );
+
+  // Compute strictly single active href across the entire sidebar
+  const activeHref = useMemo(() => {
+    if (!pathname) return null;
+
+    // 1. Check exact query match (e.g. /app/passport/preview?view=recruiter)
+    const queryItem = allNavItems.find(
+      (item) =>
+        !item.external &&
+        item.href.includes("?") &&
+        pathname === item.href.split("?")[0] &&
+        currentSearch.includes(item.href.split("?")[1])
+    );
+    if (queryItem) {
+      return queryItem.href;
+    }
+
+    // 2. If viewing /app/passport/preview without view=recruiter query
+    if (pathname === "/app/passport/preview" && !currentSearch.includes("view=recruiter")) {
+      return "/app/passport/preview";
+    }
+
+    // 3. Exact pathname match against all non-external, non-query items
+    const exactItem = allNavItems.find(
+      (item) => !item.external && !item.href.includes("?") && item.href === pathname
+    );
+    if (exactItem) {
+      return exactItem.href;
+    }
+
+    // 4. Longest prefix match for sub-routes without dedicated nav entries
+    const prefixCandidates = allNavItems.filter(
+      (item) =>
+        !item.external &&
+        !item.href.includes("?") &&
+        pathname.startsWith(item.href + "/")
+    );
+    if (prefixCandidates.length > 0) {
+      // Pick the most specific (longest href) match
+      prefixCandidates.sort((a, b) => b.href.length - a.href.length);
+      return prefixCandidates[0].href;
+    }
+
+    return null;
+  }, [pathname, currentSearch, allNavItems]);
 
   // Clear navigating state when pathname updates
   useEffect(() => {
@@ -327,26 +383,7 @@ function SidebarContent({ onLinkClick, showCloseButton, onClose }: SidebarConten
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = (() => {
-                  if (item.external) return false;
-                  if (item.href.includes("?")) {
-                    const [itemBase, itemQuery] = item.href.split("?");
-                    if (pathname !== itemBase) return false;
-                    return currentSearch.includes(itemQuery);
-                  }
-                  if (item.href === "/app/passport/preview" && currentSearch.includes("view=recruiter")) {
-                    return false;
-                  }
-                  return (
-                    item.href === "/app/passport"
-                      ? pathname === "/app/passport"
-                      : item.href === "/app/evidence"
-                      ? pathname === "/app/evidence"
-                      : item.href === "/app/ai"
-                      ? pathname === "/app/ai"
-                      : pathname === item.href || pathname.startsWith(item.href + "/")
-                  );
-                })();
+                const isActive = item.href === activeHref;
 
                 const isNavigatingThis = navigatingHref === item.href && !isActive;
 
