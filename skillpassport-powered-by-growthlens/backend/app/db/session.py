@@ -35,6 +35,10 @@ def _init_fallback():
     global _use_fallback
     _use_fallback = True
     try:
+        circuit_breaker.reset()
+    except Exception:
+        pass
+    try:
         import backend.app.models  # ensure all models registered
         Base.metadata.create_all(bind=fallback_engine)
         logger.info(f"Local SQLite database ready at {sqlite_fallback_path}")
@@ -70,7 +74,27 @@ except Exception as e:
     engine = fallback_engine
     _init_fallback()
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+_PrimarySessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+class _ResilientSessionMaker:
+    """Dynamic session factory that transparently routes to SQLite fallback when primary is unavailable."""
+    def __call__(self, *args, **kwargs):
+        global _use_fallback
+        if _use_fallback:
+            return SessionFallback(*args, **kwargs)
+        try:
+            return _PrimarySessionLocal(*args, **kwargs)
+        except Exception as e:
+            logger.warning(f"Failed to create primary database session ({e}). Activating SQLite fallback.")
+            _init_fallback()
+            return SessionFallback(*args, **kwargs)
+
+    def __getattr__(self, name):
+        if _use_fallback:
+            return getattr(SessionFallback, name)
+        return getattr(_PrimarySessionLocal, name)
+
+SessionLocal = _ResilientSessionMaker()
 
 # Auto-test connection on module load
 if not _use_fallback and not settings.database_url.startswith("sqlite"):

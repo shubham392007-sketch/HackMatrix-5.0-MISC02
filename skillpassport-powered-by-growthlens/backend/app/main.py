@@ -104,9 +104,11 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        circuit_breaker.record_failure(exc)
+        from backend.app.db.session import _use_fallback
+        if not _use_fallback:
+            circuit_breaker.record_failure(exc)
         logger.error(
-            f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}"
+            f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"
         )
 
         is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
@@ -136,9 +138,11 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        circuit_breaker.record_failure(exc)
+        from backend.app.db.session import _use_fallback
+        if not _use_fallback:
+            circuit_breaker.record_failure(exc)
         logger.error(
-            f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}"
+            f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"
         )
         is_transient = is_transient_connection_error(exc) or is_connection_exhaustion_error(exc)
         msg = (
