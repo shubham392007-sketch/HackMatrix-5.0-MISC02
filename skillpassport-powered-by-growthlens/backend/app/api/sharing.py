@@ -259,12 +259,14 @@ def build_canonical_projection(
     comp_ids = list({m.competency_id for m in mappings if m.competency_id})
     tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all() if comp_ids else []
     tax_by_id = {t.id: t for t in tax_records}
+    has_explicit_skill_filter = ("selected_skill_ids" in permissions or "selectedSkillIds" in permissions)
     selected_skill_ids = permissions.get("selected_skill_ids") or permissions.get("selectedSkillIds") or []
     evidence_perms = permissions.get("selected_evidence_permissions") or permissions.get("selectedEvidencePermissions") or {}
     evidence_access_level = permissions.get("evidence_access_level") or permissions.get("evidenceAccessLevel") or "detail_inspection"
     allow_detail_default = (evidence_access_level in ("detail_inspection", "full_inspection", "detail"))
-    # Resolve selected skill IDs (handling UUIDs and canonical name slugs)
+    # Resolve selected skill IDs (handling UUIDs, canonical names, and slugs)
     active_selected_ids = set()
+    active_selected_names = set()
     if selected_skill_ids:
         for sid in selected_skill_ids:
             if not sid:
@@ -273,13 +275,15 @@ def build_canonical_projection(
             if _is_valid_uuid(sid_str):
                 active_selected_ids.add(sid_str)
             else:
-                # Match slug to taxonomy (e.g. 'skill-python' -> 'Python Programming')
-                slug = sid_str.lower().replace("skill-", "").replace("-", " ")
+                slug = sid_str.lower().replace("skill-", "").replace("-", " ").strip()
+                active_selected_names.add(slug)
                 for tid, t in tax_by_id.items():
-                    if slug in t.canonical_name.lower() or t.canonical_name.lower() in slug:
+                    cname = t.canonical_name.lower()
+                    if slug in cname or cname in slug or slug == cname:
                         active_selected_ids.add(str(tid))
-    # If selected_skill_ids was specified but matched nothing (e.g. invalid mock strings), fall back to all user skills
-    filter_by_selected = bool(active_selected_ids)
+
+    # STRICT RULE: If the caller explicitly passed selected_skill_ids, only include those skills.
+    filter_by_selected = has_explicit_skill_filter
     # Filter out mock keys from evidence_perms
     valid_ev_perms = {k: v for k, v in evidence_perms.items() if _is_valid_uuid(str(k))}
     skills_by_comp: Dict[str, Dict[str, Any]] = {}
@@ -289,8 +293,13 @@ def build_canonical_projection(
             continue
         tax_id_str = str(tax.id)
         # Check filter if active
-        if filter_by_selected and tax_id_str not in active_selected_ids:
-            continue
+        if filter_by_selected:
+            matches_selected = (
+                tax_id_str in active_selected_ids
+                or any(name in tax.canonical_name.lower() for name in active_selected_names)
+            )
+            if not matches_selected:
+                continue
         if tax_id_str not in skills_by_comp:
             skills_by_comp[tax_id_str] = {
                 "id": tax_id_str,
