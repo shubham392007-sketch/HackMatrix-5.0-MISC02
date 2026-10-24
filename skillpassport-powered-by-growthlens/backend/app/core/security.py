@@ -3,7 +3,8 @@ import time
 from cryptography.fernet import Fernet
 from typing import Optional
 import jwt
-from backend.app.core.config import get_settings
+import httpx
+from backend.app.core.config import get_settings, Settings
 from backend.app.core.logging import get_logger, mask_secret
 
 logger = get_logger("security")
@@ -17,7 +18,7 @@ def get_fernet() -> Fernet:
     try:
         return Fernet(key.encode() if isinstance(key, str) else key)
     except Exception as e:
-        logger.error(f"Failed to initialize Fernet with configured key: {e}")
+        logger.error(f"Failed to initialize Fernet with configured key: {e.__class__.__name__}")
         raise ValueError("Invalid CONNECTOR_CREDENTIAL_ENCRYPTION_KEY")
 
 
@@ -35,16 +36,14 @@ def decrypt_credential(ciphertext: str) -> str:
     try:
         return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
     except Exception as e:
-        logger.error(f"Failed to decrypt credential ciphertext: {e}")
+        logger.error(f"Failed to decrypt credential ciphertext: {e.__class__.__name__}")
         raise ValueError("Credential decryption failed")
 
-
-import time
-import httpx
 
 # In-memory token verification cache: token -> (user_payload, expire_timestamp)
 _TOKEN_CACHE: dict = {}
 _auth_http_client: Optional[httpx.Client] = None
+
 
 def get_auth_http_client() -> httpx.Client:
     global _auth_http_client
@@ -55,11 +54,48 @@ def get_auth_http_client() -> httpx.Client:
         )
     return _auth_http_client
 
+
+def validate_security_configuration(settings: Optional[Settings] = None) -> None:
+    """
+    Validates that runtime authentication and security settings meet required invariants.
+    Halts application startup in staging or production if required keys are missing or insecure.
+    In development/test, logs warnings for missing configuration without crashing.
+    """
+    if settings is None:
+        settings = get_settings()
+
+    env = (settings.app_env or os.environ.get("APP_ENV") or "development").strip().lower()
+
+    if env in ("production", "staging"):
+        missing = []
+        if not settings.supabase_url or not settings.supabase_url.strip().startswith("https://"):
+            missing.append("SUPABASE_URL (must be a valid https:// endpoint)")
+        if not settings.supabase_publishable_key or not settings.supabase_publishable_key.strip():
+            missing.append("SUPABASE_PUBLISHABLE_KEY")
+        if not settings.secret_key or settings.secret_key == "change-in-production-secret-key-32chars-min" or len(settings.secret_key) < 32:
+            missing.append("SECRET_KEY (must be at least 32 characters and cannot use default placeholder)")
+        if not settings.connector_credential_encryption_key or not settings.connector_credential_encryption_key.strip():
+            missing.append("CONNECTOR_CREDENTIAL_ENCRYPTION_KEY")
+
+        if missing:
+            msg = f"Fatal Security Configuration Error for APP_ENV='{env}': Missing or invalid {', '.join(missing)}."
+            logger.critical(msg)
+            raise RuntimeError(msg)
+        logger.info(f"Verified required security configuration for APP_ENV='{env}'.")
+    else:
+        if not settings.supabase_url or not settings.supabase_publishable_key:
+            logger.warning(
+                f"Running in {env} mode without full Supabase configuration (SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY). "
+                "Real JWT verification will fail closed."
+            )
+
+
 def verify_supabase_token(token: str) -> Optional[dict]:
     """
     Validates Supabase JWT access token cryptographically and via Supabase Auth API.
     Derives genuine user identity without trusting arbitrary request bodies.
-    Guarantees no demo tokens or synthetic identities in production.
+    Guarantees no demo tokens or synthetic identities in production or staging.
+    Fails closed if configuration is missing, invalid, or API call fails.
     """
     if not token:
         return None
@@ -67,9 +103,14 @@ def verify_supabase_token(token: str) -> Optional[dict]:
     settings = get_settings()
 
     # Dedicated synthetic test & local development token resolution
-    if (os.environ.get("APP_ENV") in ("test", "development") or settings.app_env in ("test", "development")) and (
-        token.startswith("test-token") or token.startswith("sp_demo_") or token == "sp_demo_user"
-    ):
+    # STRICT GUARD: Demo & synthetic test tokens are ONLY accepted when APP_ENV is explicitly 'development' or 'test'.
+    # In 'staging', 'production', or unconfigured environments, this shortcut is strictly blocked.
+    env_os = (os.environ.get("APP_ENV") or "").strip().lower()
+    env_settings = (settings.app_env or "").strip().lower()
+    is_production_or_staging = (env_os in ("production", "staging")) or (env_settings in ("production", "staging"))
+    is_explicit_test_or_dev = (env_os in ("test", "development")) or (env_settings in ("test", "development"))
+
+    if not is_production_or_staging and is_explicit_test_or_dev:
         if token.startswith("sp_demo_") or token == "sp_demo_user":
             return {
                 "sub": "00000000-0000-0000-0000-000000000001",
@@ -77,15 +118,16 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 "role": "authenticated",
                 "user_metadata": {"full_name": "Alex Chen"},
             }
-        test_uid = token.replace("test-token-", "")
-        if not test_uid or len(test_uid) != 36:
-            test_uid = "00000000-0000-0000-0000-000000000001"
-        return {
-            "sub": test_uid,
-            "email": f"test-{test_uid[:8]}@example.com",
-            "role": "authenticated",
-            "user_metadata": {"full_name": "Test User"},
-        }
+        if token.startswith("test-token-"):
+            test_uid = token.replace("test-token-", "")
+            if not test_uid or len(test_uid) != 36:
+                test_uid = "00000000-0000-0000-0000-000000000001"
+            return {
+                "sub": test_uid,
+                "email": f"test-{test_uid[:8]}@example.com",
+                "role": "authenticated",
+                "user_metadata": {"full_name": "Test User"},
+            }
 
     # Check memory cache first
     now = time.time()
@@ -103,18 +145,26 @@ def verify_supabase_token(token: str) -> Optional[dict]:
         if exp and now > exp:
             logger.warning("Supabase access token is expired")
             return None
-        
+
         user_id = unverified_payload.get("sub")
         if not user_id:
             logger.warning("Supabase token missing 'sub' claim")
             return None
     except Exception as e:
-        logger.warning(f"Failed to decode token structure: {e}")
+        logger.warning(f"Failed to decode token structure: {e.__class__.__name__}")
         return None
 
     # Cryptographic verification against Supabase Auth API
-    supabase_url = settings.supabase_url or "https://igsiwwztcxliwbuylshn.supabase.co"
-    anon_key = settings.supabase_publishable_key or "sb_publishable_YCS6fNh8EvPONKjFxnVb2Q_e8Uq4WVh"
+    # Strictly require explicit valid configuration; fail closed if missing
+    supabase_url = (settings.supabase_url or "").strip()
+    anon_key = (settings.supabase_publishable_key or "").strip()
+
+    if not supabase_url or not anon_key:
+        logger.error(
+            "Supabase authentication is unconfigured (missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY). "
+            "Rejecting token verification (fail closed)."
+        )
+        return None
 
     try:
         client = get_auth_http_client()
@@ -141,22 +191,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             return verified_payload
         else:
             logger.warning(f"Supabase auth verification rejected token: status={resp.status_code}")
-            # Fallback to valid unverified JWT if Supabase service temporarily unreachable but JWT not expired
-            if resp.status_code in (500, 502, 503, 504):
-                return {
-                    "sub": user_id,
-                    "email": unverified_payload.get("email", ""),
-                    "role": unverified_payload.get("role", "authenticated"),
-                    "user_metadata": unverified_payload.get("user_metadata", {}),
-                }
             return None
     except Exception as e:
-        logger.error(f"Error connecting to Supabase Auth API: {e}")
-        # If network error but JWT is well-formed and non-expired
-        return {
-            "sub": user_id,
-            "email": unverified_payload.get("email", ""),
-            "role": unverified_payload.get("role", "authenticated"),
-            "user_metadata": unverified_payload.get("user_metadata", {}),
-        }
-
+        logger.error(f"Error connecting to Supabase Auth API: {e.__class__.__name__}")
+        return None

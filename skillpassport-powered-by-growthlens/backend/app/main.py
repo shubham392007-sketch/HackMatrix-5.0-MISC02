@@ -16,6 +16,8 @@ logger = get_logger("main")
 async def lifespan(app: FastAPI):
     settings = get_settings()
     setup_logging(debug=(settings.app_env == "development"))
+    from backend.app.core.security import validate_security_configuration
+    validate_security_configuration(settings)
     logger.info(
         f"Starting {settings.app_name} [v{settings.app_version}] in {settings.app_env} mode"
     )
