@@ -806,7 +806,7 @@ def get_vault_artifact_detail(
                 "extracted_summary": ev.extracted_summary or doc.extraction_summary or ev.description,
                 "chunks": chunks,
                 "full_extracted_text": "\n\n".join(c["original_text"] for c in chunks) if chunks else (ev.extracted_excerpt or ev.description or doc.extraction_summary),
-                "user_metadata": {**(doc.user_metadata or {}), **(ev.metadata or {}), **(ev.normalized_metadata or {})},
+                "user_metadata": {**(doc.user_metadata if isinstance(getattr(doc, "user_metadata", None), dict) else {}), **(ev.normalized_metadata if isinstance(getattr(ev, "normalized_metadata", None), dict) else {})},
                 "provenance": {
                     "sha256": doc.sha256_hash or ev.content_hash,
                     "private_storage_key": doc.private_storage_key,
@@ -941,7 +941,7 @@ def get_vault_artifact_detail(
             "has_extracted_text": bool(ev.extracted_excerpt or ev.description),
             "extracted_summary": ev.extracted_summary or ev.description,
             "full_extracted_text": ev.extracted_excerpt or ev.description,
-            "user_metadata": {**(ev.metadata or {}), **(ev.normalized_metadata or {})},
+            "user_metadata": {**(ev.normalized_metadata if isinstance(getattr(ev, "normalized_metadata", None), dict) else {})},
             "provenance": {
                 "source_provider": ev.source_provider,
                 "source_name": ev.source_name,

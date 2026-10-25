@@ -6,7 +6,7 @@ import uuid
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import get_settings
@@ -97,6 +97,107 @@ class WorkAnalysisOutput(BaseModel):
     demonstrated_skills: List[DemonstratedSkillItem] = Field(default_factory=list)
     uncertainty_flags: List[UncertaintyFlagItem] = Field(default_factory=list)
     confidence_score: float = Field(default=0.85, ge=0.0, le=1.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_input(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        
+            
+        # 2. Confidence score normalization (e.g. 85 -> 0.85)
+        raw_conf = data.get("confidence_score")
+        if raw_conf is not None:
+            try:
+                conf = float(raw_conf)
+                if conf > 1.0:
+                    conf = conf / 100.0 if conf <= 100.0 else 0.85
+                data["confidence_score"] = max(0.05, min(0.99, conf))
+            except (ValueError, TypeError):
+                data["confidence_score"] = 0.85
+        else:
+            data["confidence_score"] = 0.85
+            
+        # 3. Normalize observed_facts
+        facts = data.get("observed_facts")
+        if isinstance(facts, list):
+            norm_facts = []
+            for f in facts:
+                if isinstance(f, str):
+                    norm_facts.append({"fact": f, "type": "artifact"})
+                elif isinstance(f, dict):
+                    norm_facts.append({
+                        "fact": str(f.get("fact") or f.get("description") or f.get("text") or ""),
+                        "type": str(f.get("type") or "artifact")
+                    })
+            data["observed_facts"] = norm_facts
+
+        # 4. Normalize claimed_information
+        claims = data.get("claimed_information")
+        if isinstance(claims, list):
+            norm_claims = []
+            for c in claims:
+                if isinstance(c, str):
+                    norm_claims.append({"claim": c, "source": "Artifact description"})
+                elif isinstance(c, dict):
+                    norm_claims.append({
+                        "claim": str(c.get("claim") or c.get("text") or ""),
+                        "source": str(c.get("source") or "Artifact description")
+                    })
+            data["claimed_information"] = norm_claims
+
+        # 5. Normalize inferred_attributes
+        attrs = data.get("inferred_attributes")
+        if isinstance(attrs, list):
+            norm_attrs = []
+            for a in attrs:
+                if isinstance(a, str):
+                    norm_attrs.append({"attribute": a, "supported_by": ""})
+                elif isinstance(a, dict):
+                    norm_attrs.append({
+                        "attribute": str(a.get("attribute") or a.get("name") or ""),
+                        "supported_by": str(a.get("supported_by") or "")
+                    })
+            data["inferred_attributes"] = norm_attrs
+
+        # 6. Normalize demonstrated_skills
+        skills = data.get("demonstrated_skills")
+        if isinstance(skills, list):
+            norm_skills = []
+            for s in skills:
+                if isinstance(s, str):
+                    norm_skills.append({"skill": s, "proficiency": "Intermediate", "justification": ""})
+                elif isinstance(s, dict):
+                    norm_skills.append({
+                        "skill": str(s.get("skill") or s.get("name") or ""),
+                        "proficiency": str(s.get("proficiency") or "Intermediate"),
+                        "justification": str(s.get("justification") or "")
+                    })
+            data["demonstrated_skills"] = norm_skills
+
+        # 7. Normalize uncertainty_flags
+        uncs = data.get("uncertainty_flags")
+        if isinstance(uncs, list):
+            norm_uncs = []
+            for u in uncs:
+                if isinstance(u, str):
+                    norm_uncs.append({"area": "Scope", "reason": u})
+                elif isinstance(u, dict):
+                    norm_uncs.append({
+                        "area": str(u.get("area") or "Scope"),
+                        "reason": str(u.get("reason") or u.get("explanation") or "")
+                    })
+            data["uncertainty_flags"] = norm_uncs
+
+        # 8. Normalize technical_tasks and technologies
+        for list_key in ("technical_tasks", "technologies"):
+            val = data.get(list_key)
+            if isinstance(val, list):
+                data[list_key] = [str(x) for x in val if x]
+            elif val is not None:
+                data[list_key] = [str(val)]
+
+        return data
 
 
 class WorkAnalyzerService:
@@ -239,9 +340,8 @@ class WorkAnalyzerService:
         )
 
         endpoint_netloc = self._sanitize_netloc(self.ollama_url)
-        # Keep interactive work analysis timeout bounded (40s) so it cleanly falls back
-        # to the deterministic rule engine before reverse proxies (Next.js / Nginx) drop connection
-        timeout_seconds = min(float(getattr(self.settings, "ollama_timeout_seconds", 40.0)), 40.0)
+        # Keep interactive work analysis timeout bounded (120s) so local LLM inference completes reliably
+        timeout_seconds = float(getattr(self.settings, "ollama_work_analysis_timeout_seconds", getattr(self.settings, "ollama_timeout_seconds", 120.0)))
 
         parsed_data = None
         fallback_used = False

@@ -1003,7 +1003,7 @@ async def _sync_single_github_repo_internal(
                 source_provider="github",
                 category="engineering",
                 user_id=user.id,
-                fast_mode=True,
+                fast_mode=False,
             )
         except Exception as e:
             logger.error(f"Error in consolidated repository extraction for {repo_full}: {e}")
