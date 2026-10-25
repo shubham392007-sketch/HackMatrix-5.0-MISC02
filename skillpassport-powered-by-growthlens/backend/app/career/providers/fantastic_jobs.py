@@ -46,6 +46,8 @@ class FantasticJobsAdapter(BaseJobSearchAdapter):
         location: Optional[str] = None,
         remote_only: bool = False,
         limit: int = 50,
+        role_families: Optional[List[str]] = None,
+        **kwargs,
     ) -> List[JobSearchResult]:
         if not self.is_configured():
             logger.warning("Fantastic.jobs API called but FANTASTIC_JOBS_API_KEY is not configured.")

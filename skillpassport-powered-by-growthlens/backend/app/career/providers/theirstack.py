@@ -125,6 +125,7 @@ class TheirStackAdapter(BaseJobSearchAdapter):
             headers = {
                 "Authorization": f"Bearer {current_key}",
                 "Content-Type": "application/json",
+                "Accept-Encoding": "gzip, deflate",
             }
             logger.info(
                 f"Calling TheirStack API (key {key_idx + 1}/{len(keys_to_try)}) "

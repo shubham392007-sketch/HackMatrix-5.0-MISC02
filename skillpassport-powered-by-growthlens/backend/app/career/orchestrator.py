@@ -106,11 +106,16 @@ class JobSearchOrchestrator:
             seen.add(primary_name)
 
         if self.settings.job_search_enable_fallback:
-            fallback_name = (self.settings.job_search_fallback_provider or "theirstack").lower()
+            fallback_name = (self.settings.job_search_fallback_provider or "jsearch").lower()
             fallback = self.adapters.get(fallback_name)
             if fallback and fallback.is_configured() and fallback_name not in seen:
                 cascade.append(fallback)
                 seen.add(fallback_name)
+
+            for name, adapter in self.adapters.items():
+                if name not in seen and adapter.is_configured():
+                    cascade.append(adapter)
+                    seen.add(name)
 
         return cascade
 
@@ -621,8 +626,8 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
                     retrieved_at=p.retrieved_at.isoformat() if p.retrieved_at else now.isoformat(),
                     organization_id=str(p.organization_id) if p.organization_id else None,
                     recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
-                    public_recruiter_name=p.public_recruiter_name,
-                    public_recruiter_email=p.public_recruiter_email,
+                    public_recruiter_name=p.public_recruiter_name if isinstance(p.public_recruiter_name, str) else None,
+                    public_recruiter_email=p.public_recruiter_email if isinstance(p.public_recruiter_email, str) else None,
                     raw_metadata=p.raw_source_metadata or {},
                     extracted_requirements=p.extracted_requirements or [],
                 )
@@ -758,8 +763,8 @@ Main entry point for cost-aware, security-prioritized job discovery across Mode 
                     retrieved_at=p.retrieved_at.isoformat(),
                     organization_id=str(p.organization_id) if p.organization_id else None,
                     recruiter_user_id=str(p.recruiter_user_id) if p.recruiter_user_id else None,
-                    public_recruiter_name=p.public_recruiter_name,
-                    public_recruiter_email=p.public_recruiter_email,
+                    public_recruiter_name=p.public_recruiter_name if isinstance(p.public_recruiter_name, str) else None,
+                    public_recruiter_email=p.public_recruiter_email if isinstance(p.public_recruiter_email, str) else None,
                     raw_metadata=p.raw_source_metadata or {},
                     extracted_requirements=p.extracted_requirements or [],
                     local_relevance_score=(p.raw_source_metadata or {}).get("local_relevance_score"),
