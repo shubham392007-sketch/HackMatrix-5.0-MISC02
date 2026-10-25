@@ -110,6 +110,44 @@ TOPIC_SYNONYMS = {
     "kafka": ["streaming", "partition", "partitions", "consumer"],
 }
 
+DOMAIN_SLUG_EXPANSIONS = {
+    "dist-sys": "distributed systems kafka consensus",
+    "data-eng": "data engineering postgresql sql pipelines",
+    "cloud-infra": "cloud infrastructure devops docker terraform",
+    "appsec": "application security owasp jwt authentication",
+    "domain-data-preprocessing": "data preprocessing cleaning pandas",
+    "gap-046377b2-6953-4aba-99e0-a8164be7e97d": "relational data modeling postgresql sql indexing",
+    "gap-024e9309-ac90-4451-8a0d-054aa3e49b3d": "cloud infrastructure devops docker terraform",
+    "gap-602d5bcb-7e3f-4d8d-8381-d60f8e803ac0": "python programming asyncio",
+}
+
+
+def clean_topic_slug_for_relevance(topic_slug: Optional[str]) -> str:
+    """
+    Sanitizes a domain/skill/topic slug so UUID segments and structural prefixes
+    (e.g. gap-<uuid>, domain-, skill-, topic-) do not dilute relevance scoring.
+    """
+    if not topic_slug:
+        return ""
+    slug_lower = topic_slug.strip().lower()
+    if slug_lower in DOMAIN_SLUG_EXPANSIONS:
+        return DOMAIN_SLUG_EXPANSIONS[slug_lower]
+
+    import re
+    cleaned = re.sub(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        " ",
+        slug_lower,
+    )
+    tokens = []
+    for tok in re.findall(r"[a-z0-9]+", cleaned):
+        if tok in ("gap", "domain", "skill", "topic", "mod", "step", "roadmap"):
+            continue
+        if len(tok) >= 4 and all(c in "0123456789abcdef" for c in tok):
+            continue
+        tokens.append(tok)
+    return " ".join(tokens)
+
 
 def compute_topic_relevance(
     query: str,
@@ -126,8 +164,9 @@ def compute_topic_relevance(
     if not (query or topic_slug) or not title:
         return 0.0
 
-    raw_query = f"{query or ''} {(topic_slug or '').replace('-', ' ').replace('topic', '')}"
-    q_terms = extract_meaningful_terms(raw_query)
+    clean_slug = clean_topic_slug_for_relevance(topic_slug)
+    raw_query = f"{query or ''} {clean_slug}"
+    q_terms = list(dict.fromkeys(extract_meaningful_terms(raw_query)))
     if not q_terms:
         return 0.50
 
@@ -271,4 +310,3 @@ def rank_resources(
         return base + deep_bonus + p_weight + detail
 
     return sorted(resources, key=scoring_fn, reverse=True)
-

@@ -11,6 +11,7 @@ import {
   getBackendAssessment,
   submitBackendAssessment,
   skipLearningStep,
+  getLearningResourceById,
 } from "@/lib/evidenceApi";
 import { INITIAL_STEP_PACKETS } from "@/data/learningMock";
 import {
@@ -228,12 +229,58 @@ export default function LearningStepDetailPage() {
     }
   }, [assessment, packetEnrichment, step, stepId]);
 
-  // Match recommended resources against verified catalogue
+  const [remoteStepResources, setRemoteStepResources] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMissingStepResources() {
+      if (!step) return;
+      const resourceIds = (step.recommended_resource_ids || []).filter(
+        (id) => id && !id.startsWith("res-tut-")
+      );
+      const missingIds = resourceIds.filter(
+        (id) => !resources.some((r) => r.id === id)
+      );
+      if (missingIds.length === 0) {
+        if (isMounted) setRemoteStepResources([]);
+        return;
+      }
+      const fetched = await Promise.all(
+        missingIds.map((id) => getLearningResourceById(id).catch(() => null))
+      );
+      if (isMounted) {
+        setRemoteStepResources(fetched.filter((item) => item && item.id));
+      }
+    }
+    loadMissingStepResources();
+    return () => {
+      isMounted = false;
+    };
+  }, [step, resources]);
+
+  // Match recommended resources against verified catalogue and backend DB
   const stepResources = useMemo(() => {
     if (!step) return [];
     const resourceIds = step.recommended_resource_ids || [];
-    return resources.filter((r) => resourceIds.includes(r.id));
-  }, [step, resources]);
+    const matched = [
+      ...resources.filter((r) => resourceIds.includes(r.id)),
+      ...remoteStepResources,
+    ];
+    if (matched.length > 0) return matched;
+
+    // Fallback to topic/domain-aligned verified resources when legacy step IDs (e.g. res-tut-1) are encountered
+    const stepText = `${step.topic_id || ""} ${step.title || ""} ${step.domain_id || ""} ${step.domain_title || ""}`.toLowerCase();
+    if (stepText.includes("sql") || stepText.includes("postgres") || stepText.includes("index") || stepText.includes("046377b2")) {
+      return resources.filter((r) => r.id === "res-yt-sql-indexing" || r.id === "res-topic-outlier-iqr-01");
+    }
+    if (stepText.includes("missing") || stepText.includes("imput")) {
+      return resources.filter((r) => r.id === "res-yt-missing-imputation" || r.id === "res-topic-outlier-winsorization-01");
+    }
+    if (stepText.includes("pipeline") || stepText.includes("leak")) {
+      return resources.filter((r) => r.id === "res-yt-pipeline-leakage" || r.id === "res-yt-feature-scaling");
+    }
+    return resources.slice(0, 2);
+  }, [step, resources, remoteStepResources]);
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
     if (submissionResult) return; // Locked after submission

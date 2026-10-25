@@ -168,7 +168,7 @@ class GitHubProviderAdapter(BaseResourceProvider):
 
                 next_token = str(page_num + 1) if len(items) >= limit else None
                 return ProviderSearchResult(
-                    resources=resources[:limit],
+                    resources=resources[:limit] if resources else self._fallback_curated(query, topic_slug, difficulty, limit),
                     provider=self.provider_name(),
                     status=ProviderStatus.SUCCESS if resources else ProviderStatus.EMPTY,
                     next_page_token=next_token,
@@ -221,6 +221,7 @@ class GitHubProviderAdapter(BaseResourceProvider):
                     learning_objective="Inspect production transformer algorithms and parameter validation.",
                     tags=["python", "scikit-learn", "imputation"],
                     license_type="BSD-3-Clause",
+                    validation_status="verified_available",
                     is_fallback=True,
                 )
             ],
@@ -242,6 +243,7 @@ class GitHubProviderAdapter(BaseResourceProvider):
                     learning_objective="Explore modern anomaly detection methods and empirical benchmarks.",
                     tags=["outliers", "anomaly-detection", "benchmark"],
                     license_type="BSD-2-Clause",
+                    validation_status="verified_available",
                     is_fallback=True,
                 )
             ],
@@ -263,9 +265,33 @@ class GitHubProviderAdapter(BaseResourceProvider):
                     learning_objective="Implement modular transformers that maintain strict train-test separation.",
                     tags=["scikit-learn", "pipeline", "leakage"],
                     license_type="MIT",
+                    validation_status="verified_available",
                     is_fallback=True,
                 )
             ],
         }
 
-        return curated_store.get(topic_slug, [])[:limit]
+        all_items: List[NormalizedLearningResource] = []
+        if topic_slug in curated_store:
+            all_items.extend(curated_store[topic_slug])
+
+        combined_text = f"{query} {topic_slug}".lower()
+        if "outlier" in combined_text or "iqr" in combined_text:
+            for item in curated_store["topic-outlier-iqr"]:
+                if item not in all_items:
+                    all_items.append(item)
+        if "missing" in combined_text or "imput" in combined_text:
+            for item in curated_store["topic-missing-values"]:
+                if item not in all_items:
+                    all_items.append(item)
+        if "leak" in combined_text or "pipeline" in combined_text:
+            for item in curated_store["topic-pipeline-leakage"]:
+                if item not in all_items:
+                    all_items.append(item)
+
+        for items in curated_store.values():
+            for item in items:
+                if item not in all_items:
+                    all_items.append(item)
+
+        return all_items[:limit]

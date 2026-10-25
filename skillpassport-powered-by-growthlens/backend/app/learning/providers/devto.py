@@ -54,14 +54,23 @@ class DevToProviderAdapter(BaseResourceProvider):
         """
         query_lower = query.lower()
         slug_lower = topic_slug.lower()
+        combined_hint = f"{query_lower} {slug_lower}"
 
         # Priority-ordered tag candidates: most specific first so we fetch from the
         # tightest tag that exists on DEV.to before falling back to broader ones.
-        if "pandas" in query_lower or "pandas" in slug_lower:
+        if "pandas" in combined_hint:
             selected_tag = "pandas"
-        elif "feature" in query_lower or "feature" in slug_lower:
+        elif "postgres" in combined_hint or "sql" in combined_hint or "relational" in combined_hint:
+            selected_tag = "postgres"
+        elif "docker" in combined_hint or "kubernetes" in combined_hint or "terraform" in combined_hint or "cloud" in combined_hint or "devops" in combined_hint:
+            selected_tag = "devops"
+        elif "distributed" in combined_hint or "kafka" in combined_hint or "dist-sys" in combined_hint:
+            selected_tag = "architecture"
+        elif "security" in combined_hint or "owasp" in combined_hint or "jwt" in combined_hint or "appsec" in combined_hint:
+            selected_tag = "security"
+        elif "feature" in combined_hint:
             selected_tag = "featureengineering"
-        elif "preprocessing" in query_lower or "preprocessing" in slug_lower or "datapreprocessing" in slug_lower:
+        elif "preprocessing" in combined_hint or "datapreprocessing" in combined_hint:
             selected_tag = "datapreprocessing"
         elif "model" in query_lower and "evaluat" in query_lower:
             selected_tag = "machinelearning"
@@ -69,9 +78,9 @@ class DevToProviderAdapter(BaseResourceProvider):
             selected_tag = "devops"
         elif "deep" in query_lower or "neural" in query_lower:
             selected_tag = "deeplearning"
-        elif "ml" in query_lower or "machine" in query_lower or "ml" in slug_lower:
+        elif "ml" in combined_hint or "machine" in query_lower:
             selected_tag = "machinelearning"
-        elif "data" in slug_lower:
+        elif "data" in combined_hint:
             selected_tag = "datascience"
         else:
             selected_tag = "python"
@@ -231,6 +240,8 @@ class DevToProviderAdapter(BaseResourceProvider):
                     associated_skills=["skill-python", "skill-data-preprocessing"],
                     learning_objective="Evaluate statistical preservation across imputation strategies.",
                     tags=["python", "pandas", "data-cleaning"],
+                    validation_status="verified_available",
+                    is_fallback=True,
                 )
             ],
             "topic-outlier-iqr": [
@@ -250,8 +261,29 @@ class DevToProviderAdapter(BaseResourceProvider):
                     associated_skills=["skill-machine-learning"],
                     learning_objective="Compare parametric vs non-parametric outlier rejection.",
                     tags=["machinelearning", "statistics", "python"],
+                    validation_status="verified_available",
+                    is_fallback=True,
                 )
             ],
         }
 
-        return curated_store.get(topic_slug, [])[:limit]
+        all_items: List[NormalizedLearningResource] = []
+        if topic_slug in curated_store:
+            all_items.extend(curated_store[topic_slug])
+
+        combined_text = f"{query} {topic_slug}".lower()
+        if "outlier" in combined_text or "iqr" in combined_text:
+            for item in curated_store["topic-outlier-iqr"]:
+                if item not in all_items:
+                    all_items.append(item)
+        if "missing" in combined_text or "imput" in combined_text:
+            for item in curated_store["topic-missing-values"]:
+                if item not in all_items:
+                    all_items.append(item)
+
+        for items in curated_store.values():
+            for item in items:
+                if item not in all_items:
+                    all_items.append(item)
+
+        return all_items[:limit]

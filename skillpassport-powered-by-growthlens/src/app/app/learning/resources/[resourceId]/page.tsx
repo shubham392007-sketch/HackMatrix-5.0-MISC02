@@ -26,7 +26,7 @@ export default function ResourceExplanationPage() {
   const params = useParams();
   const resourceId = params?.resourceId as string;
 
-  const { resources, activeRoadmap } = useEvidence();
+  const { resources, activeRoadmap, activeDomainId } = useEvidence();
 
   const [remoteResource, setRemoteResource] = useState<LearningResource | null>(null);
 
@@ -52,12 +52,36 @@ export default function ResourceExplanationPage() {
     );
   }, [resources, resourceId, remoteResource]);
 
+  if (!resource) {
+    return (
+      <div className="flex-1 flex flex-col">
+        <AppTopBar
+          title="Resource Not Found"
+          description="The requested learning resource could not be located."
+          badge="RESOURCE"
+        >
+          <Link
+            href="/app/learning/resources"
+            className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-2 px-3 text-ink flex items-center gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Resources
+          </Link>
+        </AppTopBar>
+      </div>
+    );
+  }
+
+  const conceptsCovered = Array.isArray(resource.concepts_covered) ? resource.concepts_covered : [];
+  const conceptsNotCovered = Array.isArray(resource.concepts_not_covered) ? resource.concepts_not_covered : [];
+  const roadmapPathId = activeRoadmap?.path_id || `roadmap-${activeDomainId || "domain-data-preprocessing"}`;
+
   return (
     <div className="flex-1 flex flex-col">
       <AppTopBar
         title={resource.title}
         description={`Provider: ${resource.provider} • Duration: ${resource.duration_minutes} min • Relevance: ${resource.relevance_score}%`}
-        badge={resource.resource_type.replace("_", " ").toUpperCase()}
+        badge={(resource.resource_type || "resource").replace("_", " ").toUpperCase()}
       >
         <Link
           href="/app/learning/resources"
@@ -76,7 +100,7 @@ export default function ResourceExplanationPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-sand/40 text-ink font-bold">
-                {resource.resource_type.replace("_", " ")}
+                {(resource.resource_type || "resource").replace("_", " ")}
               </span>
               <TopicDifficultyBadge difficulty={resource.difficulty} />
               <span className="text-[10px] font-mono text-ink-muted flex items-center gap-1">
@@ -133,7 +157,7 @@ export default function ResourceExplanationPage() {
               Roadmap Position
             </span>
             <p className="text-ink/80 leading-relaxed text-xs">
-              {resource.roadmap_position}
+              {resource.roadmap_position || "Verified Curated Reference"}
             </p>
           </div>
         </div>
@@ -146,7 +170,7 @@ export default function ResourceExplanationPage() {
               What This Resource Covers
             </span>
             <ul className="space-y-1 text-emerald-900 text-[11px]">
-              {resource.concepts_covered.map((concept, i) => (
+              {conceptsCovered.map((concept, i) => (
                 <li key={i} className="flex items-center gap-1.5">
                   <span className="font-bold text-emerald-700">&bull;</span>
                   <span>{concept}</span>
@@ -161,7 +185,7 @@ export default function ResourceExplanationPage() {
               What It Does NOT Cover (Out of Scope)
             </span>
             <ul className="space-y-1 text-red-900 text-[11px]">
-              {resource.concepts_not_covered.map((concept, i) => (
+              {conceptsNotCovered.map((concept, i) => (
                 <li key={i} className="flex items-center gap-1.5">
                   <span className="font-bold text-red-700">&bull;</span>
                   <span>{concept}</span>
@@ -174,7 +198,7 @@ export default function ResourceExplanationPage() {
         {/* Action Buttons */}
         <div className="pt-4 border-t border-ink/10 flex items-center justify-between gap-3 text-xs">
           <Link
-            href={`/app/learning/roadmaps/${activeRoadmap.path_id}`}
+            href={`/app/learning/roadmaps/${roadmapPathId}`}
             className="pill-btn bg-sand/20 hover:bg-sand/40 text-ink py-2 px-4 flex items-center gap-1"
           >
             <Map className="w-3.5 h-3.5" />
