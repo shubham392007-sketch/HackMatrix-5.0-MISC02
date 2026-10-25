@@ -121,7 +121,7 @@ function EvidenceLibraryContent() {
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-6 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
         {/* Search & Filter Controls */}
         <div className="p-4 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] flex flex-col md:flex-row items-center gap-4 justify-between shadow-[2px_2px_0_0_#1C1C1C]">
           <div className="relative w-full md:w-80">

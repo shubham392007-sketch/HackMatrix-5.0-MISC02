@@ -6,7 +6,9 @@
 import { supabase } from "@/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
+const API_BASE = typeof window !== "undefined"
+  ? "/api/v1"
+  : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
 // ==============================================================================
 // TYPES
@@ -126,6 +128,8 @@ export interface RecruiterDashboardOverview {
   };
   recent_shares: any[];
   recent_jobs: any[];
+  recent_candidates?: any[];
+  active_jobs?: any[];
 }
 
 // ==============================================================================
@@ -157,6 +161,46 @@ export function getStoredRecruiterUser(): any | null {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+
+export async function recruiterFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const headers = await getAuthHeaders();
+  const mergedHeaders: HeadersInit = {
+    ...headers,
+    ...(options.headers || {}),
+  };
+
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+  // In browser client components, prefer Next.js rewrite proxy first (same-origin, eliminates CORS errors)
+  if (typeof window !== "undefined") {
+    try {
+      const relRes = await fetch(`/api/v1${cleanEndpoint}`, {
+        ...options,
+        headers: mergedHeaders,
+      });
+      if (relRes.status !== 404 && relRes.status !== 502) {
+        return relRes;
+      }
+    } catch {
+      // relative failed, continue to direct
+    }
+  }
+
+  // Direct backend call
+  try {
+    return await fetch(`${API_BASE}${cleanEndpoint}`, {
+      ...options,
+      headers: mergedHeaders,
+    });
+  } catch {
+    // Fallback to relative proxy
+    return await fetch(`/api/v1${cleanEndpoint}`, {
+      ...options,
+      headers: mergedHeaders,
+    });
   }
 }
 
@@ -296,21 +340,19 @@ export async function logoutRecruiter(): Promise<void> {
 }
 
 export async function getCurrentRecruiterProfile(): Promise<RecruiterProfile> {
-  const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/recruiter/auth/me`, { headers });
-  const body = await res.json();
+  const res = await recruiterFetch("/recruiter/auth/me");
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body.detail || "Could not retrieve recruiter profile.");
+    throw new Error(body.detail || body.message || body.error?.message || "Could not retrieve recruiter profile.");
   }
   return body;
 }
 
 export async function getRecruiterDashboardOverview(): Promise<RecruiterDashboardOverview> {
-  const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/recruiter/dashboard/overview`, { headers });
-  const body = await res.json();
+  const res = await recruiterFetch("/recruiter/dashboard/overview");
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body.detail || "Could not load recruiter dashboard metrics.");
+    throw new Error(body.detail || body.message || body.error?.message || "Could not load recruiter dashboard metrics.");
   }
   return body;
 }
@@ -321,18 +363,17 @@ export async function listRecruiterJobs(params?: {
   limit?: number;
   offset?: number;
 }): Promise<{ total: number; offset: number; limit: number; jobs: RecruiterJob[] }> {
-  const headers = await getAuthHeaders();
   const sp = new URLSearchParams();
   if (params?.status) sp.set("status", params.status);
   if (params?.search) sp.set("search", params.search);
   if (params?.limit) sp.set("limit", String(params.limit));
   if (params?.offset) sp.set("offset", String(params.offset));
 
-  const url = `${API_BASE}/recruiter/jobs${sp.toString() ? `?${sp.toString()}` : ""}`;
-  const res = await fetch(url, { headers });
-  const body = await res.json();
+  const endpoint = `/recruiter/jobs${sp.toString() ? `?${sp.toString()}` : ""}`;
+  const res = await recruiterFetch(endpoint);
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body.detail || "Could not list organization job openings.");
+    throw new Error(body.detail || body.message || body.error?.message || "Could not list organization job openings.");
   }
   return body;
 }

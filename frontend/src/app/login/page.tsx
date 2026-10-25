@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import GlobalHeader from '@/components/layout/GlobalHeader';
-import { ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowRight, AlertCircle, Loader2, User, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 function LoginFormContent() {
@@ -13,6 +13,15 @@ function LoginFormContent() {
   const redirectUrl = searchParams.get('redirect');
   const { login } = useAuth();
 
+  const roleParam = searchParams.get('role');
+  const [selectedRole, setSelectedRole] = useState<'EMPLOYEE' | 'MANAGER'>(roleParam?.toUpperCase() === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE');
+
+  // Sync role if query param changes
+  useState(() => {
+    if (roleParam?.toUpperCase() === 'MANAGER') {
+      setSelectedRole('MANAGER');
+    }
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +50,7 @@ function LoginFormContent() {
       const { supabase } = await import('@/lib/supabase');
       const { data: { user } } = await supabase.auth.getUser();
       let profileCompleted = false;
-      let userRole = 'EMPLOYEE';
+      let userRole = selectedRole;
 
       if (user) {
         const { data: profileData } = await supabase
@@ -51,16 +60,20 @@ function LoginFormContent() {
           .maybeSingle();
         if (profileData) {
           profileCompleted = Boolean(profileData.onboarding_completed);
-          userRole = profileData.role || 'EMPLOYEE';
+          userRole = (profileData.role as 'EMPLOYEE' | 'MANAGER') || selectedRole;
         }
+      }
+
+      // Every user who logs in as Manager is treated as a Manager
+      if (selectedRole === 'MANAGER' || userRole === 'MANAGER') {
+        router.push(redirectUrl || '/manager/dashboard');
+        return;
       }
 
       if (!profileCompleted) {
         router.push('/onboarding');
       } else if (redirectUrl) {
         router.push(redirectUrl);
-      } else if (userRole === 'MANAGER') {
-        router.push('/manager/dashboard');
       } else {
         router.push('/employee/dashboard');
       }
@@ -90,6 +103,45 @@ function LoginFormContent() {
             )}
             
             <form onSubmit={handleLogin} className="space-y-5">
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <label className="block text-xs font-black uppercase tracking-wider ml-4 text-[#1C1C1C]">
+                  Sign In As
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole('EMPLOYEE');
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-[999px] border-[1.5px] transition-all cursor-pointer ${
+                      selectedRole === 'EMPLOYEE'
+                        ? 'bg-[#DFE968] border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] font-extrabold text-[#1C1C1C]'
+                        : 'bg-[#FBF6DF] border-gray-400 opacity-60 hover:opacity-100 font-bold text-gray-700'
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="text-xs uppercase tracking-wider">Employee</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole('MANAGER');
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-[999px] border-[1.5px] transition-all cursor-pointer ${
+                      selectedRole === 'MANAGER'
+                        ? 'bg-[#F6C8D6] border-[#1C1C1C] shadow-[3px_3px_0_0_#1C1C1C] font-extrabold text-[#1C1C1C]'
+                        : 'bg-[#FBF6DF] border-gray-400 opacity-60 hover:opacity-100 font-bold text-gray-700'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span className="text-xs uppercase tracking-wider">Manager</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-xs font-black uppercase tracking-wider ml-4">Work Email</label>
                 <input 

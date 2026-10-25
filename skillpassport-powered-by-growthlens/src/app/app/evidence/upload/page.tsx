@@ -796,7 +796,7 @@ export default function UploadEvidencePage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+<main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Source Provider Attribution Banner */}
         {sourceProvider && (
           <div className="p-4 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] shadow-[2px_2px_0_0_#1C1C1C] flex items-center justify-between gap-4">
@@ -821,6 +821,7 @@ export default function UploadEvidencePage() {
             </Link>
           </div>
         )}
+
 
         {/* Category Selector Tabs */}
         <section className="space-y-2">

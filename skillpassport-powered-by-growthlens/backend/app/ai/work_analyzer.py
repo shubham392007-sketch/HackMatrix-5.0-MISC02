@@ -239,7 +239,9 @@ class WorkAnalyzerService:
         )
 
         endpoint_netloc = self._sanitize_netloc(self.ollama_url)
-        timeout_seconds = float(getattr(self.settings, "ollama_timeout_seconds", 180.0))
+        # Keep interactive work analysis timeout bounded (40s) so it cleanly falls back
+        # to the deterministic rule engine before reverse proxies (Next.js / Nginx) drop connection
+        timeout_seconds = min(float(getattr(self.settings, "ollama_timeout_seconds", 40.0)), 40.0)
 
         parsed_data = None
         fallback_used = False
@@ -264,7 +266,7 @@ class WorkAnalyzerService:
                         "think": False,
                         "options": {
                             "temperature": 0.0,
-                            "num_predict": 2048,
+                            "num_predict": 1024,
                             "num_ctx": ctx_tokens,
                             "num_gpu": 99,
                             "num_thread": 8,

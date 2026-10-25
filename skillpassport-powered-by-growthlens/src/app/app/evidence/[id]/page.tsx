@@ -252,7 +252,7 @@ export default function EvidenceInspectorDetailPage({
         </div>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {reprocessMsg && (
           <div
             className={`p-4 rounded-xl border text-xs font-bold flex items-center gap-2 ${

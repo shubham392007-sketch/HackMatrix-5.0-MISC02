@@ -15,6 +15,7 @@ from backend.app.api.dependencies import get_current_user, AuthenticatedUser
 from backend.app.core.logging import get_logger
 from backend.app.models.recruiter import EmployerOrganization, OrganizationMembership
 from backend.app.models.user_profile import UserProfile
+from backend.app.api.recruiter_dependencies import resolve_or_create_recruiter_membership
 
 logger = get_logger("api.recruiter_auth")
 router = APIRouter(prefix="/recruiter/auth", tags=["Recruiter & Employer Authentication"])
@@ -338,10 +339,18 @@ def login_recruiter(req: RecruiterLoginRequest, db: Session = Depends(get_db)):
 
     # 3. Check active organization membership
     user_uuid = uuid.UUID(str(user.id)) if not isinstance(user.id, uuid.UUID) else user.id
-    membership = db.query(OrganizationMembership).filter(
-        OrganizationMembership.user_id == user_uuid,
-        OrganizationMembership.status == "active",
-    ).first()
+    meta_val = user.raw_user_meta_data or {}
+    if isinstance(meta_val, str):
+        try:
+            meta_val = json.loads(meta_val)
+        except Exception:
+            meta_val = {}
+    membership = resolve_or_create_recruiter_membership(
+        db=db,
+        user_id=user_uuid,
+        email=normalized_email,
+        meta=meta_val if isinstance(meta_val, dict) else {},
+    )
 
     if not membership:
         # Check if pending approval
@@ -352,11 +361,11 @@ def login_recruiter(req: RecruiterLoginRequest, db: Session = Depends(get_db)):
         if pending_membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your employer account is currently pending organization approval. You will be notified once activated.",
+                detail="Your manager/employer account is currently pending organization approval.",
             )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account does not have active recruiter or hiring manager privileges. Please register as an employer or sign in via candidate portal.",
+            detail="This account does not have active recruiter or hiring manager privileges. Please sign in via candidate portal or register as a manager.",
         )
 
     org = membership.organization
@@ -401,15 +410,17 @@ def get_current_recruiter_profile(
     and public contact settings.
     """
     user_uuid = uuid.UUID(user.id)
-    membership = db.query(OrganizationMembership).filter(
-        OrganizationMembership.user_id == user_uuid,
-        OrganizationMembership.status == "active",
-    ).first()
+    membership = resolve_or_create_recruiter_membership(
+        db=db,
+        user_id=user_uuid,
+        email=user.email,
+        meta=user.metadata,
+    )
 
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Authenticated user does not have an active employer membership.",
+            detail="Authenticated user does not have an active manager or employer membership.",
         )
 
     org = membership.organization

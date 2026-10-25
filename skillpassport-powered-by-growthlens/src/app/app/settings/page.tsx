@@ -106,7 +106,7 @@ export default function SettingsOverviewPage() {
         ]}
       />
 
-      <div className="p-6 lg:p-10 max-w-5xl space-y-8">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Navigation Quick Cards */}
         <div>
           <h2 className="text-base font-bold text-ink mb-3 flex items-center gap-2">

@@ -31,7 +31,7 @@ export default function IngestionRunsPage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-black text-[#1C1C1C]">Recent Pipeline Executions</h3>

@@ -75,8 +75,13 @@ function OnboardingContent() {
     if (!authLoading && !user) {
       router.replace('/login?redirect=/onboarding');
     }
+    // Managers do not participate in employee onboarding wizard
+    if (profile?.role === 'MANAGER') {
+      router.replace('/manager/dashboard');
+      return;
+    }
     if (profile?.onboarding_completed) {
-      router.replace(profile.role === 'MANAGER' ? '/manager/dashboard' : '/employee/dashboard');
+      router.replace('/employee/dashboard');
     }
     if (!fullName) {
       if (profile?.full_name) {

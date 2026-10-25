@@ -34,7 +34,9 @@ export default function RecruiterAuthGuard({
           if (isMounted) {
             setAuthStatus("unauthenticated");
             const redirectParam = pathname ? `?redirect=${encodeURIComponent(pathname)}` : "";
-            router.replace(`/recruiter/login${redirectParam}`);
+            setTimeout(() => {
+              router.replace(`/login${redirectParam}`);
+            }, 0);
           }
           return;
         }
@@ -61,7 +63,9 @@ export default function RecruiterAuthGuard({
       if (event === "SIGNED_OUT" || !session) {
         if (isMounted) {
           setAuthStatus("unauthenticated");
-          router.replace("/recruiter/login");
+          setTimeout(() => {
+            router.replace("/login");
+          }, 0);
         }
       }
     });
@@ -74,7 +78,7 @@ export default function RecruiterAuthGuard({
 
   const handleSignOutAndSwitch = async () => {
     await logoutRecruiter();
-    router.replace("/recruiter/login");
+    router.replace("/login");
   };
 
   // 1. Verification Loading Screen
@@ -103,10 +107,10 @@ export default function RecruiterAuthGuard({
             Please sign in to access candidate Skill Passports and manage job openings.
           </p>
           <Link
-            href={`/recruiter/login?redirect=${encodeURIComponent(pathname || "/recruiter/dashboard")}`}
+            href={`/login?redirect=${encodeURIComponent(pathname || "/recruiter/dashboard")}`}
             className="w-full py-2.5 rounded-full bg-[#1A1918] text-[#FAF8F5] text-xs font-bold flex items-center justify-center gap-2 hover:bg-stone-800 transition-colors shadow-[2px_2px_0_0_#1A1918]"
           >
-            <span>Go to Sign In</span>
+            <span>Sign In as Manager</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -139,11 +143,11 @@ export default function RecruiterAuthGuard({
             </Link>
             
             <Link
-              href="/recruiter/register"
+              href="/login?redirect=/recruiter/dashboard"
               className="w-full py-2.5 rounded-full bg-[#FAF8F5] border border-[#1A1918] text-[#1A1918] text-xs font-bold flex items-center justify-center gap-2 hover:bg-stone-100 transition-colors shadow-[1.5px_1.5px_0_0_#1A1918]"
             >
               <Building className="w-4 h-4" />
-              <span>Register an Employer Organization</span>
+              <span>Sign In as Manager</span>
             </Link>
 
             <button

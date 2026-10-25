@@ -206,21 +206,27 @@ async def run_work_analysis(
                 owner_user_id=owner_uuid,
             )
 
-            # Automatically extract and persist candidate competencies into evidence_competency_mappings
+            # Check if candidate skills already exist for this evidence item before re-extracting
+            cand_skills_count = db.query(EvidenceCompetencyMapping).filter(
+                EvidenceCompetencyMapping.evidence_id == ev_uuid,
+                EvidenceCompetencyMapping.owner_user_id == owner_uuid,
+            ).count()
+
             partial_failure = None
-            try:
-                await skill_extractor.extract_candidate_skills(
-                    db=db,
-                    evidence_id=ev_uuid,
-                    owner_user_id=owner_uuid,
-                )
-            except Exception as se_err:
-                logger.warning(f"Skill extraction during work analysis for {ev_id_str}: {se_err}")
-                partial_failure = {
-                    "stage": "candidate_skill_extraction",
-                    "error": str(se_err),
-                    "message": "Work artifact decomposed successfully, but candidate skill extraction encountered an error.",
-                }
+            if cand_skills_count == 0:
+                try:
+                    await skill_extractor.extract_candidate_skills(
+                        db=db,
+                        evidence_id=ev_uuid,
+                        owner_user_id=owner_uuid,
+                    )
+                except Exception as se_err:
+                    logger.warning(f"Skill extraction during work analysis for {ev_id_str}: {se_err}")
+                    partial_failure = {
+                        "stage": "candidate_skill_extraction",
+                        "error": str(se_err),
+                        "message": "Work artifact decomposed successfully, but candidate skill extraction encountered an error.",
+                    }
 
             # Populate demonstrated skills from evidence competency mappings for immediate response
             cand_skills = db.query(EvidenceCompetencyMapping, CompetencyTaxonomy).join(

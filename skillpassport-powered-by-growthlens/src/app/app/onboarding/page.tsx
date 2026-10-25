@@ -260,7 +260,9 @@ function OnboardingWizardContent() {
 
         // Resume or review routing
         if (p.onboarding_status === "completed" && !isExplicitReview) {
-          router.replace("/app/evidence");
+          setTimeout(() => {
+            router.replace("/app/evidence");
+          }, 0);
           return;
         } else if (p.onboarding_status === "completed" && isExplicitReview) {
           setCurrentStep(validRequestedStep ?? 5);
@@ -298,25 +300,48 @@ function OnboardingWizardContent() {
   }, [router, sources, user]);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
     if (!authLoading) {
       if (!isAuthenticated) {
-        router.replace("/login?redirect=/app/onboarding");
+        timer = setTimeout(() => {
+          router.replace("/login?redirect=/app/onboarding");
+        }, 0);
       } else if (!isEmailVerified) {
-        router.replace(
-          `/auth/verify-email?status=unverified${user?.email ? `&email=${encodeURIComponent(user.email)}` : ""}`
-        );
+        timer = setTimeout(() => {
+          router.replace(
+            `/auth/verify-email?status=unverified${user?.email ? `&email=${encodeURIComponent(user.email)}` : ""}`
+          );
+        }, 0);
       } else {
         loadState();
       }
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [authLoading, isAuthenticated, isEmailVerified, loadState, router, user?.email]);
 
   // Reactively respond to search parameter changes without full page reload
   useEffect(() => {
     if (loadingInitialState) return;
 
+    const activeRole = typeof window !== "undefined" ? sessionStorage.getItem("sp_active_role") : null;
+    const isManager =
+      profile?.current_role?.toLowerCase() === "manager" ||
+      activeRole === "manager" ||
+      (user?.user_metadata as any)?.role?.toLowerCase() === "manager";
+
+    if (isManager) {
+      setTimeout(() => {
+        router.replace("/recruiter/dashboard");
+      }, 0);
+      return;
+    }
+
     if (profile?.onboarding_status === "completed" && !isExplicitReview) {
-      router.replace("/app/evidence");
+      setTimeout(() => {
+        router.replace("/app/evidence");
+      }, 0);
       return;
     }
 

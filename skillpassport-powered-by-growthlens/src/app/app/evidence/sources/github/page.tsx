@@ -1426,29 +1426,35 @@ export default function GitHubSourceFlow() {
 
               {/* Bottom Multi-Select Action Bar */}
               {stagedToAdd.length > 0 && (
-                <div className="p-4 rounded-2xl bg-[#DFE968] border-[1.5px] border-[#1C1C1C] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
-                  <div>
-                    <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] block">
-                      {stagedToAdd.length} REPOSITORIES SELECTED FOR ADDITION
-                    </span>
-                    <span className="text-[11px] font-medium text-[#1C1C1C]/80">
-                      Click below to queue and process these repositories sequentially into Domain 1 evidence.
-                    </span>
+                <div className="sticky bottom-6 z-30 p-4 rounded-2xl bg-[#DFE968] border-2 border-[#1C1C1C] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[4px_4px_0_0_#1C1C1C] animate-in fade-in slide-in-from-bottom-3 duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#1C1C1C] text-[#DFE968] flex items-center justify-center font-black text-xs shrink-0 shadow-[1px_1px_0_0_#1C1C1C]">
+                      {stagedToAdd.length}
+                    </div>
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-[#1C1C1C] block">
+                        {stagedToAdd.length} {stagedToAdd.length === 1 ? "REPOSITORY" : "REPOSITORIES"} SELECTED FOR ADDITION
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#1C1C1C]/90">
+                        Click below to queue and process these repositories sequentially into Domain 1 evidence.
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => setStagedToAdd([])}
-                      className="pill-btn bg-white text-xs py-2 px-3 font-bold"
+                      className="pill-btn bg-white hover:bg-[#FAF8F5] text-[#1C1C1C] border-[1.5px] border-[#1C1C1C] text-xs py-2 px-3.5 font-bold shadow-[1.5px_1.5px_0_0_#1C1C1C]"
                     >
                       CANCEL
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmAddModalOpen(true)}
-                      className="pill-btn pill-btn-primary text-xs py-2 px-5 flex items-center gap-1.5"
+                      className="pill-btn pill-btn-primary text-xs py-2.5 px-5 flex items-center gap-1.5 shadow-[2px_2px_0_0_#1C1C1C]"
                     >
+                      <Plus className="w-4 h-4" />
                       <span>CONFIRM & ADD ({stagedToAdd.length}) →</span>
                     </button>
                   </div>

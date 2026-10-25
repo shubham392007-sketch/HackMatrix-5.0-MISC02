@@ -28,7 +28,6 @@ import {
   XCircle,
   X,
   Compass,
-  Briefcase,
   Menu,
 } from "lucide-react";
 
@@ -290,7 +289,7 @@ export default function AppTopBar({
         ref={headerRef}
         className="sticky top-3.5 sm:top-4 z-40 px-3.5 sm:px-6 lg:px-8 pointer-events-none print:hidden transition-all duration-300"
       >
-        <div className="max-w-[1400px] mx-auto w-full pointer-events-auto">
+        <div className="max-w-7xl mx-auto w-full pointer-events-auto">
           <div
             className={`floating-capsule-nav w-full flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-[#171717]/15 transition-all duration-200 select-none ${isScrolled
               ? "bg-[#FAF8F5]/95 backdrop-blur-md shadow-[0_12px_28px_-6px_rgba(23,23,23,0.12),0_2px_8px_-2px_rgba(23,23,23,0.06),1.5px_1.5px_0_0_#171717]"
@@ -683,14 +682,6 @@ export default function AppTopBar({
                         <Settings className="w-3.5 h-3.5 text-[#1A1918]/60" />
                         <span>Preferences & Settings</span>
                       </Link>
-                      <Link
-                        href="/recruiter/dashboard"
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#C04832] hover:bg-[#C04832]/10 font-bold transition-colors"
-                      >
-                        <Briefcase className="w-3.5 h-3.5" />
-                        <span>Recruiter Workspace &rarr;</span>
-                      </Link>
                     </div>
 
                     <div className="pt-1 border-t border-[#171717]/10">
@@ -717,7 +708,7 @@ export default function AppTopBar({
 
       {/* ── 2. Compact Editorial Page Heading Area (Scrolls Naturally) ── */}
       {description && (
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-1 print:hidden select-none">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-1 print:hidden select-none">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl lg:text-[26px] font-serif font-black text-[#171717] tracking-tight leading-tight">

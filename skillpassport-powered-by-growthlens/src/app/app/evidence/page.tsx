@@ -71,7 +71,7 @@ export default function EvidenceCenterPage() {
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-10 w-full max-w-[1400px] mx-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {profile?.onboarding_status && profile.onboarding_status !== "completed" && (
           <div className="p-4 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
             <div className="flex items-center gap-3">

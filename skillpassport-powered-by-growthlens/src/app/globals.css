@@ -70,15 +70,8 @@ html {
 }
 
 body {
-  background-color: #F8F5EF !important;
-  background-image: radial-gradient(
-    circle,
-    rgba(35, 31, 28, 0.22) 1.2px,
-    transparent 1.4px
-  ) !important;
-  background-size: 22px 22px !important;
-  background-position: 0 0 !important;
-  background-attachment: fixed !important;
+  background-color: transparent !important;
+  background-image: none !important;
   color: var(--color-ink);
   font-family: var(--font-primary);
   font-weight: 500;
@@ -93,14 +86,8 @@ body {
 }
 
 .dashboard-background {
-  background-color: #F8F5EF !important;
-  background-image: radial-gradient(
-    circle,
-    rgba(35, 31, 28, 0.22) 1.2px,
-    transparent 1.4px
-  ) !important;
-  background-size: 22px 22px !important;
-  background-position: 0 0 !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 /* ── Absolute Ban on Gradients Across Every Page ────────── */
@@ -217,13 +204,26 @@ body {
 .space-x-6 > :not([hidden]) ~ :not([hidden]) { margin-left: 1.5rem !important; }
 
 /* ── Workspace Page Roots Spacing & Card Collision Protection ───── */
-main > div > div > .max-w-7xl,
-main > div > div > .max-w-6xl,
-main > div > div > .max-w-5xl,
-main > div > div > [class*="space-y-"]:first-child {
-  padding-left: clamp(1rem, 2.5vw, 2.5rem);
-  padding-right: clamp(1rem, 2.5vw, 2.5rem);
-  padding-top: 1.5rem;
+/* ── Standardized Page Root Padding (4px/8px rhythm aligned with AppTopBar) ── */
+.gl-page-container {
+  flex: 1 1 0%;
+  width: 100%;
+  max-width: 80rem; /* max-w-7xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1rem 1rem 4rem 1rem;
+}
+@media (min-width: 640px) {
+  .gl-page-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .gl-page-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 /* Ensure consecutive cards in non-grid/non-flex blocks have appropriate spacing */

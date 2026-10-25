@@ -11,6 +11,7 @@ import React, { useEffect, useRef } from "react";
  * - Motion: Frame-rate-independent exponential decay numerical simulation (~480–550ms return)
  * - Ambient accent: Subtle amber tint (#E6AC70) and gentle size scale (up to 1.85px radius)
  * - Performance: High-DPR canvas, pointer-events: none, zero-CPU idle sleep when resting
+ * - Stacking: zIndex: 0 on top of the #F8F5EF base cream background and behind interactive page content (z >= 1)
  */
 export default function InteractiveDotGrid() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -26,12 +27,6 @@ export default function InteractiveDotGrid() {
     const prefersReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // Check for touch-only coarse pointer devices
-    const isTouchOnly =
-      typeof window !== "undefined" &&
-      window.matchMedia("(pointer: coarse)").matches &&
-      !window.matchMedia("(pointer: fine)").matches;
 
     let animationFrameId: number;
     let width = 0;
@@ -146,7 +141,7 @@ export default function InteractiveDotGrid() {
       let activeParticles = 0;
 
       // Smooth pointer tracking lerp
-      if (isPointerOver && !prefersReducedMotion && !isTouchOnly) {
+      if (isPointerOver && !prefersReducedMotion) {
         mouseX += (targetMouseX - mouseX) * pointerBlend;
         mouseY += (targetMouseY - mouseY) * pointerBlend;
       }
@@ -154,7 +149,7 @@ export default function InteractiveDotGrid() {
       for (let i = 0; i < dots.length; i++) {
         const dot = dots[i];
 
-        if (isPointerOver && !prefersReducedMotion && !isTouchOnly) {
+        if (isPointerOver && !prefersReducedMotion) {
           const dx = dot.originX - mouseX;
           const dy = dot.originY - mouseY;
           const distSq = dx * dx + dy * dy;
@@ -268,7 +263,7 @@ export default function InteractiveDotGrid() {
     };
 
     const triggerFrame = () => {
-      if (!isAnimating && !prefersReducedMotion && !isTouchOnly) {
+      if (!isAnimating && !prefersReducedMotion) {
         isAnimating = true;
         idleCounter = 0;
         lastTime = performance.now();
@@ -277,6 +272,19 @@ export default function InteractiveDotGrid() {
     };
 
     const handlePointerMove = (e: PointerEvent) => {
+      // Ignore touch gestures so mobile touch scrolling remains purely native
+      if (e.pointerType === "touch") return;
+      targetMouseX = e.clientX;
+      targetMouseY = e.clientY;
+      if (!isPointerOver) {
+        isPointerOver = true;
+        mouseX = targetMouseX;
+        mouseY = targetMouseY;
+      }
+      triggerFrame();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
       targetMouseX = e.clientX;
       targetMouseY = e.clientY;
       if (!isPointerOver) {
@@ -314,9 +322,10 @@ export default function InteractiveDotGrid() {
 
     initGrid();
 
-    if (!prefersReducedMotion && !isTouchOnly) {
+    if (!prefersReducedMotion) {
       window.addEventListener("pointermove", handlePointerMove, { passive: true });
       window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
     }
     window.addEventListener("resize", handleResize, { passive: true });
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -326,6 +335,7 @@ export default function InteractiveDotGrid() {
       if (resizeTimeout) clearTimeout(resizeTimeout);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
+      window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
@@ -334,7 +344,7 @@ export default function InteractiveDotGrid() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none select-none -z-10"
+      className="fixed inset-0 pointer-events-none select-none z-0"
       style={{
         position: "fixed",
         top: 0,
@@ -343,7 +353,7 @@ export default function InteractiveDotGrid() {
         height: "100vh",
         backgroundColor: "transparent",
         pointerEvents: "none",
-        zIndex: -10,
+        zIndex: 0,
       }}
       aria-hidden="true"
     />

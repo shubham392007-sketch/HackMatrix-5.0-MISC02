@@ -23,7 +23,7 @@ export default function ProtectedRoute({
     if (!loading) {
       if (!authenticated) {
         router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-      } else if (profile && !profile.onboarding_completed && pathname !== "/onboarding") {
+      } else if (profile && profile.role !== "MANAGER" && !profile.onboarding_completed && pathname !== "/onboarding") {
         router.replace("/onboarding");
       }
     }

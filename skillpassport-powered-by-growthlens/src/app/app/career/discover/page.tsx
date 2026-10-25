@@ -309,7 +309,7 @@ export default function DiscoverJobsPage() {
                   <code className="font-mono font-bold">FANTASTIC_JOBS_API_KEY</code>).
                 </p>
                 <div className="flex items-center gap-2 pt-1 text-[11px] font-mono text-amber-900 flex-wrap">
-                  {providerStatus.providers?.map((p) => (
+                  {providerStatus.providers?.map((p: any) => (
                     <span
                       key={p.provider}
                       className="inline-flex items-center gap-1 bg-white/70 px-2.5 py-1 rounded border border-amber-200"
@@ -683,7 +683,7 @@ export default function DiscoverJobsPage() {
             {/* Job Cards Grid */}
             {discoveryResult.jobs && discoveryResult.jobs.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
-                {discoveryResult.jobs.map((job) => {
+                {discoveryResult.jobs.map((job: NormalizedJob) => {
                   const isExtracting = extractingJobId === job.id;
 
                   return (

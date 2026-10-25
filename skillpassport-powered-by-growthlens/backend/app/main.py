@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.vercel\.app$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -104,8 +104,8 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        from backend.app.db.session import _use_fallback
-        if not _use_fallback:
+        from backend.app.db.session import engine
+        if engine.dialect.name != 'sqlite':
             circuit_breaker.record_failure(exc)
         logger.error(
             f"Unhandled database error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"
@@ -138,8 +138,8 @@ def create_app() -> FastAPI:
             is_transient_connection_error,
             is_connection_exhaustion_error,
         )
-        from backend.app.db.session import _use_fallback
-        if not _use_fallback:
+        from backend.app.db.session import engine
+        if engine.dialect.name != 'sqlite':
             circuit_breaker.record_failure(exc)
         logger.error(
             f"Unhandled PostgreSQL driver error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}"

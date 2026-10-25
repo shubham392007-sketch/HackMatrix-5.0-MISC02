@@ -11,15 +11,21 @@ export default function EvidenceOnboardingRedirect() {
   const { isAuthenticated, isLoading, profile } = useAuth();
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
     if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace("/login?redirect=/app/onboarding");
-      } else if (profile?.onboarding_status === "completed") {
-        router.replace("/app/evidence");
-      } else {
-        router.replace("/app/onboarding");
-      }
+      timer = setTimeout(() => {
+        if (!isAuthenticated) {
+          router.replace("/login?redirect=/app/onboarding");
+        } else if (profile?.onboarding_status === "completed") {
+          router.replace("/app/evidence");
+        } else {
+          router.replace("/app/onboarding");
+        }
+      }, 0);
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isLoading, isAuthenticated, profile, router]);
 
   return (

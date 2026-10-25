@@ -11,6 +11,11 @@ import {
   CareerReadinessAssessment,
   GapExplanation,
   GapExplanationsResponse,
+  ProviderStatusInfo,
+  JobProviderStatus,
+  NormalizedJob,
+  JobDiscoveryResponse,
+  JobDiscoveryParams,
 } from "@/types/career";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
@@ -79,97 +84,13 @@ async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Pr
 // TYPES
 // ==============================================================================
 
-export interface ProviderStatusInfo {
-  provider: string;
-  is_configured: boolean;
-  required_env_vars?: string[];
-  host?: string;
-  status_message?: string;
-}
-
-export interface JobProviderStatus {
-  any_configured: boolean;
-  primary_provider: string;
-  fallback_provider: string;
-  max_results_per_search: number;
-  cache_ttl_minutes: number;
-  fallback_enabled: boolean;
-  providers: ProviderStatusInfo[];
-}
-
-export interface NormalizedJob {
-  id: string;
-  provider: string;
-  provider_job_id: string;
-  title: string;
-  company_name: string;
-  company_domain?: string | null;
-  location_text?: string | null;
-  remote_status?: string | null;
-  employment_type?: string | null;
-  seniority?: string | null;
-  salary_min?: number | null;
-  salary_max?: number | null;
-  salary_currency?: string | null;
-  salary_period?: string | null;
-  description?: string;
-  job_url: string;
-  posted_at?: string | null;
-  retrieved_at?: string;
-  is_stale?: boolean;
-  extracted_competencies?: any[];
-  extracted_requirements?: any[];
-  organization_id?: string | null;
-  recruiter_user_id?: string | null;
-  public_recruiter_name?: string | null;
-  public_recruiter_email?: string | null;
-  status?: string | null;
-  local_relevance_score?: number | null;
-  relevance_reasons?: string[] | null;
-  match_summary?: {
-    score: number;
-    aligned_skills: string[];
-    gaps_count: number;
-  };
-}
-
-export interface JobDiscoveryResponse {
-  status: "success" | "no_results" | "not_configured" | "provider_error" | "rate_limited" | string;
-  notice?: string;
-  message?: string;
-  mode: string;
-  query?: string;
-  query_used?: string;
-  location?: string;
-  remote_only?: boolean;
-  provider_used?: string;
-  provider_selected?: string;
-  from_cache?: boolean;
-  cached?: boolean;
-  cache_age_seconds?: number;
-  total_results?: number;
-  total_returned?: number;
-  retrieved_at?: string;
-  primary_domain?: string;
-  role_families?: string[];
-  search_intent?: any;
-  ollama_latency_ms?: number;
-  provider_latency_ms?: number;
-  total_latency_ms?: number;
-  jobs: NormalizedJob[];
-  influencing_skills?: any[];
-}
-
-export interface JobDiscoveryParams {
-  mode: "mode_a_skills" | "mode_b_role" | "mode_c_recruiter";
-  query?: string;
-  location?: string;
-  country_code?: string;
-  remote_only?: boolean;
-  limit?: number;
-  selected_skill_ids?: string[];
-  selected_skills?: any[];
-}
+export type {
+  ProviderStatusInfo,
+  JobProviderStatus,
+  NormalizedJob,
+  JobDiscoveryResponse,
+  JobDiscoveryParams,
+};
 
 // ==============================================================================
 // CAREER API METHODS
@@ -369,7 +290,6 @@ export async function getSkillGaps(roleId: string): Promise<{
 }
 
 /**
-/**
  * 10b. Get Evidence-Grounded Gap Explanations via Ollama
  */
 export async function getGapExplanations(
@@ -504,7 +424,6 @@ export async function parseJobDescription(payload: {
   return res.json();
 }
 
-/**
 /**
  * 14b. Parse Job Description from URL (SSRF-safe)
  */

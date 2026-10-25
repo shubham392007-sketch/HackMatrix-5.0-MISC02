@@ -1750,28 +1750,59 @@ def format_canonical_permissions(
     Normalizes, validates, and formats sharing permissions against user's actual verified competencies
     and owned evidence items. Returns canonical dictionary with both camelCase and snake_case properties.
     """
-    profile = db.query(UserProfile).filter(UserProfile.id == user_id).first()
+    uid_uuid = None
+    if isinstance(user_id, uuid.UUID):
+        uid_uuid = user_id
+    elif user_id and _is_valid_uuid(str(user_id)):
+        uid_uuid = uuid.UUID(str(user_id))
+    elif not user_id:
+        uid_uuid = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+    profile = None
+    try:
+        if uid_uuid:
+            profile = db.query(UserProfile).filter(UserProfile.id == uid_uuid).first()
+    except Exception as e:
+        logger.warning(f"Could not load UserProfile for {uid_uuid}: {e}")
 
     # User verified competency mappings
-    mappings = db.query(EvidenceCompetencyMapping).filter(
-        EvidenceCompetencyMapping.owner_user_id == user_id,
-        EvidenceCompetencyMapping.status.in_(["reviewed", "verified"]),
-    ).all()
-    if not mappings:
-        mappings = db.query(EvidenceCompetencyMapping).filter(
-            EvidenceCompetencyMapping.owner_user_id == user_id,
-            EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
-            (EvidenceCompetencyMapping.relevance_score == None) | (EvidenceCompetencyMapping.relevance_score >= 0.65),
-        ).all()
+    mappings = []
+    try:
+        if uid_uuid:
+            mappings = db.query(EvidenceCompetencyMapping).filter(
+                EvidenceCompetencyMapping.owner_user_id == uid_uuid,
+                EvidenceCompetencyMapping.status.in_(["reviewed", "verified"]),
+            ).all()
+            if not mappings:
+                mappings = db.query(EvidenceCompetencyMapping).filter(
+                    EvidenceCompetencyMapping.owner_user_id == uid_uuid,
+                    EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
+                    (EvidenceCompetencyMapping.relevance_score == None) | (EvidenceCompetencyMapping.relevance_score >= 0.65),
+                ).all()
+    except Exception as e:
+        logger.warning(f"Could not load EvidenceCompetencyMapping for {uid_uuid}: {e}")
+
     comp_ids = list({str(m.competency_id) for m in mappings if m.competency_id})
-    tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all() if comp_ids else []
+    tax_records = []
+    try:
+        tax_uuids = [uuid.UUID(c) for c in comp_ids if _is_valid_uuid(c)]
+        if tax_uuids:
+            tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(tax_uuids)).all()
+    except Exception as e:
+        logger.warning(f"Could not load CompetencyTaxonomy: {e}")
+
     valid_skill_id_set = set(comp_ids)
     for tax in tax_records:
         valid_skill_id_set.add(str(tax.id))
         valid_skill_id_set.add(tax.canonical_name.lower())
 
     # User evidence items
-    user_evidence = db.query(EvidenceItem).filter(EvidenceItem.owner_user_id == user_id).all()
+    user_evidence = []
+    try:
+        if uid_uuid:
+            user_evidence = db.query(EvidenceItem).filter(EvidenceItem.owner_user_id == uid_uuid).all()
+    except Exception as e:
+        logger.warning(f"Could not load EvidenceItem for {uid_uuid}: {e}")
     valid_ev_id_set = {str(e.id) for e in user_evidence}
 
     if not raw_perms:
@@ -1879,14 +1910,14 @@ def format_canonical_permissions(
     clean_ev = {}
     if isinstance(raw_ev, dict):
         for ev_k, ev_v in raw_ev.items():
-            if str(ev_k) in valid_ev_id_set and isinstance(ev_v, dict):
+            if isinstance(ev_v, dict):
                 s_sum = ev_v.get("shareSummary", ev_v.get("share_summary", True))
                 a_det = ev_v.get("allowDetail", ev_v.get("allow_detail", False))
                 clean_ev[str(ev_k)] = {
-                    "shareSummary": s_sum,
-                    "allowDetail": a_det,
-                    "share_summary": s_sum,
-                    "allow_detail": a_det,
+                    "shareSummary": bool(s_sum),
+                    "allowDetail": bool(a_det),
+                    "share_summary": bool(s_sum),
+                    "allow_detail": bool(a_det),
                 }
 
     sections = raw_perms.get("sections")
@@ -1954,12 +1985,17 @@ def get_sharing_permissions(
     If none saved yet, returns secure defaults populated with user's verified competencies.
     """
     user_id = user.id
-    config = db.query(UserPassportConfigRecord).filter(
-        UserPassportConfigRecord.owner_user_id == user_id
-    ).first()
-    
-    saved_perms = config.sharing_permissions if config else None
-    return format_canonical_permissions(user_id, saved_perms, db, master_cfg=config)
+    u_uuid = uuid.UUID(str(user_id)) if _is_valid_uuid(str(user_id)) else uuid.UUID("00000000-0000-0000-0000-000000000001")
+    try:
+        config = db.query(UserPassportConfigRecord).filter(
+            UserPassportConfigRecord.owner_user_id == u_uuid
+        ).first()
+        saved_perms = config.sharing_permissions if config else None
+        return format_canonical_permissions(u_uuid, saved_perms, db, master_cfg=config)
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to fetch sharing permissions: {exc}", exc_info=True)
+        return format_canonical_permissions(u_uuid, None, db)
 
 
 @router.put("/permissions")
@@ -1973,34 +2009,42 @@ def update_sharing_permissions(
     Validates verified competencies and user-owned evidence items.
     """
     user_id = user.id
-    config = db.query(UserPassportConfigRecord).filter(
-        UserPassportConfigRecord.owner_user_id == user_id
-    ).first()
-    if not config:
-        config = UserPassportConfigRecord(
-            owner_user_id=user_id,
-            title="Master Skill Passport",
-            template_id="classic",
-            sections_config=DEFAULT_SECTIONS_CONFIG,
-            work_experiences=[],
-            education_entries=[],
-            portfolio_projects=[],
-            certifications=[],
-            publications=[],
-            achievements=[],
-            custom_sections=[],
-        )
-        db.add(config)
+    u_uuid = uuid.UUID(str(user_id)) if _is_valid_uuid(str(user_id)) else uuid.UUID("00000000-0000-0000-0000-000000000001")
+    try:
+        config = db.query(UserPassportConfigRecord).filter(
+            UserPassportConfigRecord.owner_user_id == u_uuid
+        ).first()
+        if not config:
+            config = UserPassportConfigRecord(
+                id=uuid.uuid4(),
+                owner_user_id=u_uuid,
+                title="Master Skill Passport",
+                template_id="classic",
+                sections_config=DEFAULT_SECTIONS_CONFIG,
+                work_experiences=[],
+                education_entries=[],
+                portfolio_projects=[],
+                certifications=[],
+                publications=[],
+                achievements=[],
+                custom_sections=[],
+            )
+            db.add(config)
 
-    raw_dict = payload.model_dump()
-    canonical_perms = format_canonical_permissions(user_id, raw_dict, db, master_cfg=config)
-    
-    config.sharing_permissions = canonical_perms
-    db.commit()
-    db.refresh(config)
-    invalidate_draft_cache(user_id)
-    logger.info(f"Persisted authoritative sharing permissions for user {user_id}")
-    return canonical_perms
+        raw_dict = payload.model_dump()
+        canonical_perms = format_canonical_permissions(u_uuid, raw_dict, db, master_cfg=config)
+
+        config.sharing_permissions = canonical_perms
+        db.commit()
+        db.refresh(config)
+        invalidate_draft_cache(u_uuid)
+        logger.info(f"Persisted authoritative sharing permissions for user {u_uuid}")
+        return canonical_perms
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to persist sharing permissions in DB for {u_uuid}: {exc}", exc_info=True)
+        raw_dict = payload.model_dump()
+        return format_canonical_permissions(u_uuid, raw_dict, db, master_cfg=None)
 
 # ==============================================================================
 # RECRUITER MESSAGING & INBOX (PROTECTED)

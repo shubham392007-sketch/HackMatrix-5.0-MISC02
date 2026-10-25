@@ -79,6 +79,7 @@ function LoginForm() {
         }
       }
 
+      let isManager = false;
       if (session?.access_token) {
         try {
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
@@ -100,6 +101,27 @@ function LoginForm() {
             if (typeof window !== "undefined") {
               sessionStorage.setItem("sp_user_profile", JSON.stringify(profileData));
             }
+
+            const currentRole = (profileData.current_role || "").toLowerCase();
+            const metaRole = (session?.user?.user_metadata?.role || "").toLowerCase();
+            isManager =
+              currentRole === "manager" ||
+              metaRole === "manager" ||
+              currentRole === "recruiter" ||
+              metaRole === "recruiter";
+
+            if (isManager) {
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("sp_active_role", "manager");
+              }
+              const managerTarget =
+                !rawRedirect || redirectTarget === "/app/evidence" || redirectTarget === "/app/onboarding" || redirectTarget === "/app/onboarding/"
+                  ? "/recruiter/dashboard"
+                  : redirectTarget;
+              router.push(managerTarget);
+              return;
+            }
+
             if (profileData.onboarding_status !== "completed") {
               router.push("/app/onboarding");
               return;
@@ -107,6 +129,21 @@ function LoginForm() {
           }
         } catch (e) {
           console.warn("Could not verify profile onboarding state:", e);
+        }
+      }
+
+      if (!isManager) {
+        const metaRole = (session?.user?.user_metadata?.role || "").toLowerCase();
+        if (metaRole === "manager" || metaRole === "recruiter") {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("sp_active_role", "manager");
+          }
+          const managerTarget =
+            !rawRedirect || redirectTarget === "/app/evidence" || redirectTarget === "/app/onboarding" || redirectTarget === "/app/onboarding/"
+              ? "/recruiter/dashboard"
+              : redirectTarget;
+          router.push(managerTarget);
+          return;
         }
       }
 

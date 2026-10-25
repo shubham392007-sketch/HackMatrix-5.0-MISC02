@@ -168,11 +168,11 @@ def _init_resilient_engine():
             pg_engine = create_engine(
                 settings.database_url,
                 pool_pre_ping=settings.db_pool_pre_ping,
-                pool_recycle=settings.db_pool_recycle,
-                pool_size=min(settings.db_pool_size, 5),
-                max_overflow=settings.db_max_overflow,
-                pool_timeout=settings.db_pool_timeout,
-                pool_reset_on_return="rollback",
+                pool_recycle=60,
+                pool_size=min(settings.db_pool_size, 20),
+                max_overflow=max(settings.db_max_overflow, 10),
+                pool_timeout=max(settings.db_pool_timeout, 30.0),
+                pool_reset_on_return=None,
                 connect_args={
                     "connect_timeout": 5,
                     "keepalives": 1,
@@ -184,6 +184,9 @@ def _init_resilient_engine():
             with pg_engine.connect() as conn:
                 conn.execute(text("SELECT 1;"))
             logger.info("Direct PostgreSQL connection established successfully.")
+            from backend.app.models.base import Base as ModelsBase
+            import backend.app.models
+            ModelsBase.metadata.create_all(bind=pg_engine, checkfirst=True)
             _remote_postgres_status = {
                 "status": "healthy",
                 "connected": True,
@@ -203,17 +206,19 @@ def _init_resilient_engine():
                 ),
                 "error": sanitized_err,
             }
-            if not settings.is_sqlite_fallback_allowed():
+            if (
+                settings.app_env in ("production", "staging")
+                or os.environ.get("RENDER")
+                or os.environ.get("APP_ENV") in ("production", "staging")
+                or not settings.is_sqlite_fallback_allowed()
+            ):
                 logger.critical(
-                    f"FATAL: Authoritative PostgreSQL connection failed in '{settings.app_env}' environment: {sanitized_err}. "
-                    "SQLite fallback is strictly prohibited in production and staging to prevent non-durable local writes."
+                    f"FATAL: Production database connection failed: {sanitized_err}"
                 )
                 raise RuntimeError(
-                    f"Database connection failed in '{settings.app_env}' environment: {sanitized_err}. "
-                    "Local SQLite fallback is disabled in production/staging to prevent data loss. "
-                    "Please verify your Supabase PostgreSQL connection string, network egress on port 5432/6543, "
-                    "or configure the Supabase Connection Pooler."
-                )
+                    f"Production PostgreSQL connection failed: {sanitized_err}. "
+                    "Silent SQLite fallback is disabled in production environments."
+                ) from pg_err
             logger.warning(
                 f"Direct PostgreSQL port 5432 / IPv6 unreachable ({sanitized_err}). "
                 f"Activating local SQLite fallback layer for '{settings.app_env}' mode. "
@@ -264,6 +269,7 @@ def _init_resilient_engine():
 
 
 engine = _init_resilient_engine()
+_use_fallback = (engine.dialect.name == 'sqlite')
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

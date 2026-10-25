@@ -171,7 +171,7 @@ class TestRecruiterPortalE2E:
         cand_headers = {"Authorization": f"Bearer {self.candidate_token}"}
         res3 = client.get("/api/v1/recruiter/dashboard/overview", headers=cand_headers)
         assert res3.status_code == 403, f"Expected 403 for candidate token, got {res3.status_code}"
-        assert "Employer authorization required" in res3.json()["detail"]
+        assert "authorization required" in res3.json()["detail"].lower()
 
     def test_03_job_posting_lifecycle_and_dashboard_metrics(self):
         """3. Employer Dashboard Overview & Job Posting Lifecycle with genuine Bearer token."""

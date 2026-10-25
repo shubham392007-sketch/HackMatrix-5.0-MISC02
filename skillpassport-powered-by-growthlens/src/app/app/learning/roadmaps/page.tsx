@@ -25,14 +25,18 @@ export default function RoadmapsIndexPage() {
         if (roadmaps.length > 0) {
           const inProgress = roadmaps.find((r) => r.status === "in_progress") || roadmaps[0];
           if (inProgress?.path_id) {
-            router.replace(`/app/learning/roadmaps/${inProgress.path_id}`);
+            setTimeout(() => {
+              router.replace(`/app/learning/roadmaps/${inProgress.path_id}`);
+            }, 0);
             return;
           }
         }
 
         // If no roadmaps in database, check context
         if (activeRoadmap?.path_id) {
-          router.replace(`/app/learning/roadmaps/${activeRoadmap.path_id}`);
+          setTimeout(() => {
+            router.replace(`/app/learning/roadmaps/${activeRoadmap.path_id}`);
+          }, 0);
           return;
         }
 

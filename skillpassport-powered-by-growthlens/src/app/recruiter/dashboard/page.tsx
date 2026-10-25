@@ -11,14 +11,12 @@ import {
   PlusCircle,
   ArrowRight,
   ShieldCheck,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
   RotateCw,
-  ExternalLink,
   ChevronRight,
-  Filter,
   Eye,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import {
   getRecruiterDashboardOverview,
@@ -65,349 +63,347 @@ export default function RecruiterDashboardPage() {
     unread_messages_count: 0,
   };
 
+  const recentCandidates: any[] = data?.recent_candidates || data?.recent_shares || [];
+  const activeJobs: any[] = data?.active_jobs || data?.recent_jobs || [];
+
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "new":
-        return "bg-blue-100 text-blue-800 border-blue-300";
+        return "bg-blue-50 text-blue-800 border-blue-300";
       case "reviewing":
-        return "bg-amber-100 text-amber-800 border-amber-300";
+        return "bg-amber-50 text-amber-800 border-amber-300";
       case "shortlisted":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
+        return "bg-emerald-50 text-emerald-800 border-emerald-300";
       case "interview":
-        return "bg-purple-100 text-purple-800 border-purple-300";
+        return "bg-purple-50 text-purple-800 border-purple-300";
       case "offer":
-        return "bg-green-100 text-green-900 border-green-400";
+        return "bg-green-50 text-green-900 border-green-400";
       case "rejected":
-        return "bg-stone-100 text-stone-600 border-stone-300";
+        return "bg-stone-50 text-stone-600 border-stone-300";
       default:
-        return "bg-sand/30 text-ink border-ink/20";
+        return "bg-[#FAF8F5] text-[#1C1C1C] border-[#1C1C1C]/20";
     }
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
-      {/* Top Welcome & Actions Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#1A1918]/15">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#1A1918] tracking-tight">
-              Recruiter Dashboard
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
+      {/* ── CLEAN PAGE HEADER ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#1C1C1C]/15">
+        <div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-black text-[#1C1C1C] tracking-tight">
+              Employer Dashboard
             </h1>
             {data?.organization?.is_verified && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-[11px] font-bold text-emerald-800">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Verified Employer
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#DFE968] text-[#1C1C1C] border border-[#1C1C1C] shadow-[1px_1px_0_0_#1C1C1C]">
+                Verified Organization
               </span>
             )}
           </div>
-          <p className="text-xs text-stone-600">
-            Managing candidate applications and job postings for{" "}
-            <strong className="text-[#1A1918]">{data?.organization?.name || "your organization"}</strong>
+          <p className="text-xs text-stone-600 mt-1">
+            Managing candidate applications, talent pipelines, and Mode C job postings for{" "}
+            <strong>{data?.organization?.name || "your organization"}</strong>.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <Link
             href="/recruiter/jobs/create"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1A1918] hover:bg-stone-800 text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] transition-transform active:translate-y-0.5"
+            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1.5 shadow-[2px_2px_0_0_#1C1C1C]"
           >
             <PlusCircle className="w-3.5 h-3.5" />
-            <span>Post New Job</span>
+            <span>POST NEW JOB</span>
           </Link>
-
           <Link
             href="/recruiter/candidates"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-stone-50 border border-[#1A1918] text-xs font-bold text-[#1A1918] shadow-[1.5px_1.5px_0_0_#1A1918]"
+            className="pill-btn pill-btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 shadow-[2px_2px_0_0_#1C1C1C]"
           >
             <Users className="w-3.5 h-3.5" />
-            <span>All Candidates</span>
+            <span>ALL CANDIDATES</span>
           </Link>
         </div>
       </div>
 
       {/* Error / DB Recovery Banner */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-start justify-between gap-3 text-xs text-amber-950">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-bold block">Live Database Connection Notice</span>
-              <p className="text-amber-800">{errorMessage}</p>
+        <div className="p-4 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] shadow-[3px_3px_0px_#1C1C1C] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 border border-[#1C1C1C] flex items-center justify-center shrink-0 shadow-[1px_1px_0_0_#1C1C1C]">
+              <RotateCw className="w-5 h-5 text-amber-800" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-[#1C1C1C]">Sync Notice</h4>
+              <p className="text-xs text-[#1C1C1C]/75">{errorMessage}</p>
             </div>
           </div>
           <button
             onClick={loadDashboard}
-            className="px-3 py-1.5 rounded-xl bg-white border border-amber-400 font-bold hover:bg-amber-100 shrink-0 flex items-center gap-1"
+            className="pill-btn pill-btn-primary text-xs py-2 px-4 whitespace-nowrap self-start sm:self-auto inline-flex items-center gap-1.5"
           >
             <RotateCw className="w-3.5 h-3.5" />
-            <span>Retry</span>
+            <span>RETRY SYNC</span>
           </button>
         </div>
       )}
 
-      {/* 4 Primary Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Active Openings */}
-        <Link
-          href="/recruiter/jobs"
-          className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] hover:-translate-y-0.5 transition-all space-y-2 block"
-        >
-          <div className="flex items-center justify-between text-stone-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Active Jobs</span>
-            <Briefcase className="w-4 h-4 text-[#1A1918]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-[#1A1918]">
-              {loading ? "..." : metrics.active_jobs_count}
+      {/* ── EDITORIAL METRICS ROW (Same as Evidence Center) ────────── */}
+      <section>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Active Jobs */}
+          <Link
+            href="/recruiter/jobs"
+            className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full hover:-translate-y-0.5 transition-all group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60">
+                ACTIVE JOBS
+              </span>
+              <Briefcase className="w-4 h-4 text-[#1C1C1C]/70 group-hover:text-[#1C1C1C]" />
+            </div>
+            {loading ? (
+              <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+            ) : (
+              <p className="text-3xl font-black text-[#1C1C1C]">{metrics.active_jobs_count}</p>
+            )}
+            <span className="text-[10px] font-bold text-[#1C1C1C]/70 mt-1 block font-mono">
+              of {metrics.total_jobs_count} total &bull; {metrics.draft_jobs_count} drafts
             </span>
-            <span className="text-[11px] text-stone-500 font-mono">
-              of {metrics.total_jobs_count} total
-            </span>
-          </div>
-          <p className="text-[11px] text-stone-600">
-            {metrics.draft_jobs_count} drafts &bull; {metrics.paused_jobs_count} paused
-          </p>
-        </Link>
+          </Link>
 
-        {/* Candidate Shares */}
-        <Link
-          href="/recruiter/candidates"
-          className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] hover:-translate-y-0.5 transition-all space-y-2 block"
-        >
-          <div className="flex items-center justify-between text-stone-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Candidate Passports</span>
-            <Users className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-[#1A1918]">
-              {loading ? "..." : metrics.candidate_shares_count}
-            </span>
-            <span className="text-[11px] text-emerald-700 font-bold font-mono">
-              {metrics.new_candidates_count} new
-            </span>
-          </div>
-          <p className="text-[11px] text-stone-600">
-            Direct candidate shares received
-          </p>
-        </Link>
-
-        {/* Pipeline Active */}
-        <Link
-          href="/recruiter/candidates?status=reviewing"
-          className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] hover:-translate-y-0.5 transition-all space-y-2 block"
-        >
-          <div className="flex items-center justify-between text-stone-500">
-            <span className="text-xs font-bold uppercase tracking-wider">In Review & Shortlisted</span>
-            <ShieldCheck className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-[#1A1918]">
-              {loading ? "..." : metrics.reviewing_candidates_count + metrics.shortlisted_candidates_count}
-            </span>
-            <span className="text-[11px] text-stone-500 font-mono">
-              {metrics.interview_candidates_count} interview
-            </span>
-          </div>
-          <p className="text-[11px] text-stone-600">
-            Candidates progressing in hiring pipeline
-          </p>
-        </Link>
-
-        {/* Unread Inbound Messages */}
-        <Link
-          href="/recruiter/inbox"
-          className="p-5 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] hover:-translate-y-0.5 transition-all space-y-2 block"
-        >
-          <div className="flex items-center justify-between text-stone-500">
-            <span className="text-xs font-bold uppercase tracking-wider">Inbox Messages</span>
-            <MessageSquare className="w-4 h-4 text-[#E0533C]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-[#1A1918]">
-              {loading ? "..." : metrics.unread_messages_count}
-            </span>
-            <span className="text-[11px] text-[#E0533C] font-bold font-mono">
-              unread
-            </span>
-          </div>
-          <p className="text-[11px] text-stone-600">
-            Two-way candidate communication threads
-          </p>
-        </Link>
-      </div>
-
-      {/* Grid: Recent Candidates & Active Jobs */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Recent Candidates (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h2 className="text-base font-black text-[#1A1918]">
-                Recent Candidate Submissions
-              </h2>
-              <p className="text-xs text-stone-600">
-                Candidates who shared their Skill Passport directly with your organization
+          {/* Candidate Passports */}
+          <Link
+            href="/recruiter/candidates"
+            className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#DFE968]/50 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full hover:-translate-y-0.5 transition-all group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60">
+                CANDIDATE PASSPORTS
+              </span>
+              <Users className="w-4 h-4 text-[#1C1C1C]/70 group-hover:text-[#1C1C1C]" />
+            </div>
+            {loading ? (
+              <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+            ) : (
+              <p className="text-3xl font-black text-[#1C1C1C]">
+                {metrics.candidate_shares_count}
               </p>
-            </div>
-            <Link
-              href="/recruiter/candidates"
-              className="text-xs font-bold text-[#1A1918] hover:underline flex items-center gap-1"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+            )}
+            <span className="text-[10px] font-bold text-[#4A7A4E] mt-1 block font-mono">
+              {metrics.new_candidates_count} new submissions
+            </span>
+          </Link>
 
-          {loading ? (
-            <div className="p-12 text-center text-xs text-stone-500 bg-white rounded-2xl border border-stone-200">
-              <RotateCw className="w-5 h-5 animate-spin mx-auto mb-2 text-stone-400" />
-              Loading candidate shares...
+          {/* In Review & Shortlisted */}
+          <Link
+            href="/recruiter/candidates?status=reviewing"
+            className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#F6BB84]/40 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full hover:-translate-y-0.5 transition-all group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60">
+                IN REVIEW &amp; PIPELINE
+              </span>
+              <ShieldCheck className="w-4 h-4 text-[#1C1C1C]/70 group-hover:text-[#1C1C1C]" />
             </div>
-          ) : data?.recent_shares && data.recent_shares.length > 0 ? (
-            <div className="space-y-3">
-              {data.recent_shares.map((share: any) => (
-                <div
-                  key={share.invitation_id}
-                  className="p-4 rounded-2xl bg-white border-2 border-[#1A1918] shadow-[2px_2px_0_0_#1A1918] hover:border-black transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-[#1A1918]">
-                        {share.candidate_name}
-                      </span>
-                      {!share.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-[#E0533C]" />
-                      )}
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
-                          share.pipeline_status
-                        )}`}
-                      >
-                        {share.pipeline_status}
-                      </span>
-                    </div>
+            {loading ? (
+              <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+            ) : (
+              <p className="text-3xl font-black text-[#1C1C1C]">
+                {metrics.reviewing_candidates_count + metrics.shortlisted_candidates_count}
+              </p>
+            )}
+            <span className="text-[10px] font-bold text-[#1C1C1C]/70 mt-1 block font-mono">
+              {metrics.shortlisted_candidates_count} shortlisted &bull; {metrics.interview_candidates_count} interview
+            </span>
+          </Link>
 
-                    <div className="text-xs text-stone-600 flex items-center gap-2 flex-wrap">
-                      <span>Applied to: <strong className="text-[#1A1918]">{share.job_title}</strong></span>
-                      <span className="text-stone-300">&bull;</span>
-                      <span className="text-stone-400 font-mono text-[10px]">
-                        {new Date(share.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {share.candidate_message && (
-                      <p className="text-[11px] text-stone-600 line-clamp-1 italic">
-                        &quot;{share.candidate_message}&quot;
-                      </p>
-                    )}
-                  </div>
-
-                  <Link
-                    href={`/recruiter/candidates/${share.invitation_id}`}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#DFE968] hover:bg-[#d6e05a] border border-[#1A1918] text-xs font-bold text-[#1A1918] shadow-[1px_1px_0_0_#1A1918] shrink-0"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Review Passport</span>
-                  </Link>
-                </div>
-              ))}
+          {/* Messages & Inquiries */}
+          <Link
+            href="/recruiter/inbox"
+            className="p-5 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#E5D7F8]/50 shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col justify-between h-full hover:-translate-y-0.5 transition-all group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black uppercase text-[#1C1C1C]/60">
+                DIRECT INBOX
+              </span>
+              <MessageSquare className="w-4 h-4 text-[#1C1C1C]/70 group-hover:text-[#1C1C1C]" />
             </div>
-          ) : (
-            <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 space-y-3">
-              <Users className="w-8 h-8 text-stone-400 mx-auto" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-[#1A1918]">No Candidate Submissions Yet</h4>
-                <p className="text-[11px] text-stone-600 max-w-sm mx-auto">
-                  When candidates discover your openings in Career Intelligence Mode C and share their Skill Passport, their verified credentials will appear here.
-                </p>
-              </div>
-            </div>
-          )}
+            {loading ? (
+              <div className="h-9 w-14 bg-[#1C1C1C]/15 rounded-md animate-pulse my-0.5" />
+            ) : (
+              <p className="text-3xl font-black text-[#1C1C1C]">
+                {metrics.unread_messages_count}
+              </p>
+            )}
+            <span className="text-[10px] font-bold text-[#1C1C1C]/70 mt-1 block font-mono">
+              Unread inquiries awaiting reply
+            </span>
+          </Link>
         </div>
+      </section>
 
-        {/* Right: Active Jobs (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h2 className="text-base font-black text-[#1A1918]">
-                Organization Jobs
-              </h2>
-              <p className="text-xs text-stone-600">
-                Published to Career Intelligence Mode C
-              </p>
-            </div>
-            <Link
-              href="/recruiter/jobs"
-              className="text-xs font-bold text-[#1A1918] hover:underline flex items-center gap-1"
-            >
-              <span>Manage</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="p-12 text-center text-xs text-stone-500 bg-white rounded-2xl border border-stone-200">
-              <RotateCw className="w-5 h-5 animate-spin mx-auto mb-2 text-stone-400" />
-              Loading job postings...
-            </div>
-          ) : data?.recent_jobs && data.recent_jobs.length > 0 ? (
-            <div className="space-y-3">
-              {data.recent_jobs.map((job: any) => (
-                <div
-                  key={job.id}
-                  className="p-4 rounded-2xl bg-white border border-[#1A1918]/20 hover:border-[#1A1918] transition-all space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <Link
-                        href={`/recruiter/jobs/${job.job_uuid}/edit`}
-                        className="text-xs font-bold text-[#1A1918] hover:underline block"
-                      >
-                        {job.title}
-                      </Link>
-                      <span className="text-[11px] text-stone-500">
-                        {job.location_text || "Remote"} &bull; {job.seniority || "Mid Level"}
-                      </span>
-                    </div>
-
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                        job.status === "published"
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                          : "bg-amber-50 text-amber-800 border-amber-300"
-                      }`}
-                    >
-                      {job.status}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100 font-mono">
-                    <span>{job.requirements_count} required skills</span>
-                    <span className="font-bold text-[#1A1918]">
-                      {job.applications_count} applicants
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 space-y-3">
-              <Briefcase className="w-8 h-8 text-stone-400 mx-auto" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-[#1A1918]">No Jobs Published Yet</h4>
-                <p className="text-[11px] text-stone-600 max-w-xs mx-auto">
-                  Post your first role opening to make it discoverable for verified candidates across Career Intelligence.
-                </p>
+      {/* ── MAIN WORKSPACE PANELS (Two Column Layout) ───────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Recent Candidate Submissions (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FAF8F5] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1C1C1C]/10">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  Recent Candidate Submissions
+                </h3>
               </div>
               <Link
-                href="/recruiter/jobs/create"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1A1918] text-xs font-bold text-white shadow"
+                href="/recruiter/candidates"
+                className="text-xs font-black text-[#1C1C1C] hover:underline flex items-center gap-1"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Create First Job</span>
+                <span>VIEW ALL</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-          )}
+
+            {loading ? (
+              <div className="p-12 text-center text-xs text-[#1C1C1C]/60">
+                <RotateCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#1C1C1C]/40" />
+                Loading candidate submissions...
+              </div>
+            ) : recentCandidates.length > 0 ? (
+              <div className="divide-y divide-[#1C1C1C]/10">
+                {recentCandidates.map((cand: any) => (
+                  <div
+                    key={cand.invitation_id}
+                    className="py-3.5 flex items-center justify-between gap-3 group"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          href={`/recruiter/candidates/${cand.invitation_id}`}
+                          className="text-sm font-black text-[#1C1C1C] hover:underline truncate"
+                        >
+                          {cand.candidate_name}
+                        </Link>
+                        {!cand.is_read && (
+                          <span className="w-2 h-2 rounded-full bg-[#E0533C]" title="New" />
+                        )}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                            cand.pipeline_status
+                          )}`}
+                        >
+                          {cand.pipeline_status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#1C1C1C]/65 truncate">
+                        <span>{cand.candidate_headline || "Candidate"}</span>
+                        <span className="mx-1.5 text-stone-300">&bull;</span>
+                        <span className="font-semibold text-[#1C1C1C]">{cand.job_title}</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/recruiter/candidates/${cand.invitation_id}`}
+                      className="pill-btn pill-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 shrink-0"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Review</span>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-white rounded-xl border border-[#1C1C1C]/15 space-y-2">
+                <Users className="w-8 h-8 text-[#1C1C1C]/30 mx-auto" />
+                <h4 className="text-xs font-bold text-[#1C1C1C]">No Candidate Shares Yet</h4>
+                <p className="text-[11px] text-[#1C1C1C]/60 max-w-xs mx-auto">
+                  When candidates submit their verified Skill Passports to your organization or Mode C jobs, they appear here.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Active Role Openings (5 cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FAF8F5] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1C1C1C]/10">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  Active Job Openings
+                </h3>
+              </div>
+              <Link
+                href="/recruiter/jobs"
+                className="text-xs font-black text-[#1C1C1C] hover:underline flex items-center gap-1"
+              >
+                <span>MANAGE</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="p-12 text-center text-xs text-[#1C1C1C]/60">
+                <RotateCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#1C1C1C]/40" />
+                Loading active jobs...
+              </div>
+            ) : activeJobs.length > 0 ? (
+              <div className="space-y-3">
+                {activeJobs.map((job: any) => (
+                  <div
+                    key={job.id}
+                    className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/15 hover:border-[#1C1C1C] transition-all space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/recruiter/jobs/${job.job_uuid}/edit`}
+                          className="text-xs font-black text-[#1C1C1C] hover:underline truncate block"
+                        >
+                          {job.title}
+                        </Link>
+                        <span className="text-[11px] text-[#1C1C1C]/60 font-medium">
+                          {job.location_text || "Remote"} &bull; {job.seniority}
+                        </span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 border ${
+                          job.status === "published"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                            : "bg-amber-50 text-amber-800 border-amber-300"
+                        }`}
+                      >
+                        {job.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-[#1C1C1C]/60 pt-1 border-t border-[#1C1C1C]/10 font-mono">
+                      <span>{job.requirements_count} required skills</span>
+                      <span className="font-bold text-[#1C1C1C]">
+                        {job.applications_count} applicants
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-white rounded-xl border border-[#1C1C1C]/15 space-y-3">
+                <Briefcase className="w-8 h-8 text-[#1C1C1C]/30 mx-auto" />
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-[#1C1C1C]">No Jobs Published Yet</h4>
+                  <p className="text-[11px] text-[#1C1C1C]/60 max-w-xs mx-auto">
+                    Post your first role opening to make it discoverable for verified candidates across Career Intelligence.
+                  </p>
+                </div>
+                <Link
+                  href="/recruiter/jobs/create"
+                  className="pill-btn pill-btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>CREATE FIRST JOB</span>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

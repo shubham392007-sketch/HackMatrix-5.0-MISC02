@@ -124,7 +124,7 @@ function NotificationsContent() {
         ]}
       />
 
-      <div className="p-6 lg:p-10 max-w-5xl space-y-6">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl w-full mx-auto pb-16">
         {/* Header Controls */}
         <div className="p-6 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ink/10">
@@ -326,7 +326,7 @@ export default function NotificationsPage() {
               { label: "Notifications" },
             ]}
           />
-          <div className="p-6 lg:p-10 max-w-5xl">
+          <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl w-full mx-auto pb-16">
             <div className="p-8 text-center text-xs text-ink/60 bg-white rounded-2xl border border-ink/10">
               Loading notifications...
             </div>
