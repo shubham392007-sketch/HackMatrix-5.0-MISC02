@@ -98,9 +98,9 @@ def _init_resilient_engine():
                 settings.database_url,
                 pool_pre_ping=settings.db_pool_pre_ping,
                 pool_recycle=60,
-                pool_size=min(settings.db_pool_size, 8),
-                max_overflow=settings.db_max_overflow,
-                pool_timeout=settings.db_pool_timeout,
+                pool_size=min(settings.db_pool_size, 20),
+                max_overflow=max(settings.db_max_overflow, 10),
+                pool_timeout=max(settings.db_pool_timeout, 30.0),
                 pool_reset_on_return=None,
                 connect_args={
                     "connect_timeout": 5,
@@ -113,8 +113,21 @@ def _init_resilient_engine():
             with pg_engine.connect() as conn:
                 conn.execute(text("SELECT 1;"))
             logger.info("Direct PostgreSQL connection established successfully.")
+            from backend.app.models.base import Base as ModelsBase
+            import backend.app.models
+            ModelsBase.metadata.create_all(bind=pg_engine, checkfirst=True)
             return pg_engine
         except Exception as pg_err:
+            if (
+                settings.app_env in ("production", "staging")
+                or os.environ.get("RENDER")
+                or os.environ.get("APP_ENV") in ("production", "staging")
+            ):
+                logger.critical(f"FATAL: Production database connection failed: {pg_err}")
+                raise RuntimeError(
+                    f"Production PostgreSQL connection failed: {pg_err}. "
+                    "Silent SQLite fallback is disabled in production environments."
+                ) from pg_err
             logger.warning(
                 f"Direct PostgreSQL port 5432 / IPv6 unreachable ({pg_err}). "
                 "Activating high-availability local database layer with cloud PostgREST synchronization."
@@ -152,6 +165,7 @@ def _init_resilient_engine():
 
 
 engine = _init_resilient_engine()
+_use_fallback = (engine.dialect.name == 'sqlite')
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

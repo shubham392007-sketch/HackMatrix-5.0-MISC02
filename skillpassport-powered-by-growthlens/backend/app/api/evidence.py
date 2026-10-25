@@ -359,13 +359,26 @@ def delete_evidence_item(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid evidence UUID")
 
+    try:
+        u_uuid = uuid.UUID(str(user.id))
+    except ValueError:
+        u_uuid = user.id
+
     item = db.query(EvidenceItem).filter(
         EvidenceItem.id == e_uuid,
-        EvidenceItem.owner_user_id == user.id,
+        or_(
+            EvidenceItem.owner_user_id == u_uuid,
+            EvidenceItem.owner_user_id == str(user.id),
+        ),
     ).first()
 
     if not item:
-        raise HTTPException(status_code=404, detail="Evidence item not found")
+        logger.info(f"Evidence item {evidence_id} already deleted or not found for user {user.id}")
+        return {
+            "status": "deleted",
+            "evidence_id": evidence_id,
+            "message": "Evidence record is already deleted or not found.",
+        }
 
     title = item.title
     item_content_hash = item.content_hash

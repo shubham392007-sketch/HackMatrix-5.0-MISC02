@@ -72,10 +72,26 @@ def list_recruiter_candidates(
     org_id = ctx.org_id
     user_id = ctx.user_id
 
+    user_email_clean = (ctx.user.email or "").strip().lower()
+    contact_email_clean = (ctx.membership.public_contact_email or "").strip().lower()
+
+    # Automatically claim any pending invitations matching recruiter email
+    pending = db.query(CandidateShareInvitation).filter(
+        CandidateShareInvitation.organization_id.is_(None),
+        func.lower(CandidateShareInvitation.recruiter_email).in_([user_email_clean, contact_email_clean])
+    ).all()
+    for pinv in pending:
+        pinv.organization_id = org_id
+        pinv.recruiter_user_id = user_id
+        pinv.delivery_status = "delivered"
+    if pending:
+        db.commit()
+
     q = db.query(CandidateShareInvitation).filter(
         (CandidateShareInvitation.organization_id == org_id)
         | (CandidateShareInvitation.recruiter_user_id == user_id)
-        | (CandidateShareInvitation.recruiter_email == ctx.user.email)
+        | (func.lower(CandidateShareInvitation.recruiter_email) == user_email_clean)
+        | (func.lower(CandidateShareInvitation.recruiter_email) == contact_email_clean)
     )
 
     if pipeline_status and pipeline_status.lower() != "all":
@@ -274,7 +290,7 @@ def get_candidate_passport_detail(
     candidate_identity = {
         "display_name": (prof.display_name if prof else "Candidate") if show_name else "Verified Professional",
         "headline": (prof.headline or prof.current_role or "Software Engineer") if (prof and show_headline) else "Skill Passport Holder",
-        "summary": (prof.bio if prof else "") if show_summary else "",
+        "summary": ((getattr(prof, "professional_summary", None) or getattr(prof, "bio", "")) if prof else "") if show_summary else "",
         "contact_email": prof.email if (prof and show_contact) else "",
         "contact_phone": getattr(prof, "phone_number", "") if (prof and show_contact) else "",
         "is_anonymous": not show_name,
@@ -323,7 +339,7 @@ def get_candidate_passport_detail(
                         "id": str(ev.id),
                         "title": ev.title,
                         "source_type": ev.source_type,
-                        "content_summary": ev.content_text[:300] if ev.content_text else "",
+                        "content_summary": (getattr(ev, 'extracted_excerpt', None) or getattr(ev, 'description', ''))[:300],
                         "verification_status": ev.verification_status,
                         "created_at": ev.created_at.isoformat(),
                     })
@@ -340,7 +356,7 @@ def get_candidate_passport_detail(
             "competency_id": str(comp.id),
             "canonical_name": comp.canonical_name,
             "category": comp.category,
-            "level": m.demonstrated_level or "Practitioner",
+            "level": (getattr(m, 'proficiency_level', None) or getattr(m, 'demonstrated_level', None) or "Practitioner"),
             "score": m.relevance_score or 0.85,
             "status": m.status,
             "evidence_count": len(ev_items_projected),
