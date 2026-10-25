@@ -84,6 +84,9 @@ export interface AuthorizedEvidenceItem {
   extractedExcerpt?: string;
   sourceReference?: string;
   sourceUrl?: string;
+  externalUrl?: string;
+  documentUrl?: string;
+  fileUrl?: string;
   provenance?: Record<string, any>;
 }
 

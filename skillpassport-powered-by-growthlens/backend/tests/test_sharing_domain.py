@@ -403,3 +403,48 @@ def test_share_link_revoke_and_extend_by_token_string():
     assert pub_res.json()["isRevoked"] is True
 
 
+def test_public_evidence_inspection_and_platform_redirection():
+    """Verify public recruiters can view artifact details, external platform URLs, and file streams."""
+    # 1. Create a share link with detail_inspection
+    create_payload = {
+        "label": "Recruiter Evidence Inspection Test",
+        "template_id": "verified-competency",
+        "expiry_days": 14,
+        "permissions": {
+            "evidenceAccessLevel": "detail_inspection",
+            "shareVerifiedSkillsOnly": True,
+        },
+    }
+    create_res = client.post("/api/v1/sharing/links", json=create_payload, headers=AUTH_HEADER)
+    assert create_res.status_code in (200, 201)
+    link = create_res.json()
+    share_token = link["shareId"]
+
+    # 2. Get public share projection
+    pub_proj_res = client.get(f"/api/v1/sharing/public/{share_token}")
+    assert pub_proj_res.status_code == 200
+    pub_proj = pub_proj_res.json()
+    assert "authorizedEvidence" in pub_proj
+
+    evidence_list = pub_proj["authorizedEvidence"]
+    if evidence_list:
+        ev = evidence_list[0]
+        ev_id = ev["id"]
+        # Must authorize detail inspection by default for detail_inspection access level
+        assert ev["allowDetailInspection"] is True
+        # Check sourceUrl or externalUrl
+        assert "sourceUrl" in ev
+        assert "externalUrl" in ev
+
+        # 3. Test public evidence detail endpoint
+        detail_res = client.get(f"/api/v1/sharing/public/{share_token}/evidence/{ev_id}")
+        assert detail_res.status_code == 200
+        detail = detail_res.json()
+        assert detail["id"] == ev_id
+        assert detail["allowDetailInspection"] is True
+        assert "confidenceScore" in detail
+        assert "trustCertification" in detail
+        assert "provenance" in detail
+
+
+

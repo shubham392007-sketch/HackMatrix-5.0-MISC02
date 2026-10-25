@@ -270,7 +270,7 @@ export default function SharePassportWizardPage() {
 
   const toggleEvidenceDetail = (evId: string) => {
     setSelectedEvidencePerms((prev) => {
-      const current = prev[evId] || { shareSummary: true, allowDetail: false };
+      const current = prev[evId] || { shareSummary: true, allowDetail: true };
       return {
         ...prev,
         [evId]: { ...current, allowDetail: !current.allowDetail },
@@ -295,7 +295,14 @@ export default function SharePassportWizardPage() {
       selectedSkillIds: selectedSkills,
       selectedCustomSkillIds: draftPermissions.selectedCustomSkillIds || [],
       evidenceAccessLevel: "detail_inspection",
-      selectedEvidencePermissions: selectedEvidencePerms,
+      selectedEvidencePermissions: (() => {
+        const enriched: Record<string, { shareSummary: boolean; allowDetail: boolean }> = {};
+        relevantEvidenceItems.forEach((ev: EvidenceItem) => {
+          const p = selectedEvidencePerms[ev.id];
+          enriched[ev.id] = p ? p : { shareSummary: true, allowDetail: true };
+        });
+        return { ...enriched, ...selectedEvidencePerms };
+      })(),
       includeRoleAlignment,
       targetRoleId,
       expiryDays,
@@ -617,7 +624,7 @@ export default function SharePassportWizardPage() {
                 </div>
               ) : (
                 relevantEvidenceItems.map((ev: EvidenceItem) => {
-                  const perm = selectedEvidencePerms[ev.id] || { shareSummary: true, allowDetail: false };
+                  const perm = selectedEvidencePerms[ev.id] || { shareSummary: true, allowDetail: true };
                   const backedSkillNames = evidenceToSelectedSkillsMap.get(ev.id) || [];
                   return (
                     <div

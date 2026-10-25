@@ -35,7 +35,7 @@ from backend.app.core.security import (
 # Task 1: Frontend Proxy Destination Selection (Algorithm Validation)
 # ==============================================================================
 
-def resolve_backend_proxy_target(env: dict) -> string_url:
+def resolve_backend_proxy_target(env: dict) -> str:
     """Python parity implementation of next.config.ts getBackendProxyTarget() algorithm."""
     raw_target = (
         env.get("BACKEND_INTERNAL_URL") or

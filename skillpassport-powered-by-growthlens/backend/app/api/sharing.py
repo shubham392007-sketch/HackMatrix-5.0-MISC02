@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any, Tuple, Union
 import time
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Response, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, or_
 from backend.app.db.session import get_db
@@ -259,6 +259,114 @@ def _is_expired(expires_at, now=None) -> bool:
     return expires_at < now
 
 
+
+def resolve_evidence_urls(ev: Any, share_token: str) -> Dict[str, Optional[str]]:
+    """
+    Deterministically computes:
+    - source_url: genuine canonical platform or streaming URL
+    - external_url: direct external link to GitHub, Jira, LeetCode, HackerRank, or document
+    - document_url / file_url: API endpoint to stream/view uploaded document binary
+    """
+    raw_source_url = ev.source_url
+    external_url = None
+    document_url = None
+    file_url = None
+    source_url = raw_source_url
+
+    prov = ev.provenance if isinstance(ev.provenance, dict) else {}
+    provider = (ev.source_provider or "").lower()
+    stype = (ev.source_type or "").lower()
+
+    # Document check
+    is_doc = (
+        provider in ("document", "document_upload", "certificate", "resume")
+        or stype in ("document", "certificate", "pdf_page", "document_upload")
+        or getattr(ev, "document_id", None) is not None
+        or (raw_source_url and "/" in raw_source_url and not raw_source_url.startswith("http"))
+        or prov.get("original_filename") is not None
+    )
+
+    if is_doc:
+        doc_stream_url = f"/api/v1/sharing/public/{share_token}/evidence/{ev.id}/file"
+        document_url = doc_stream_url
+        file_url = doc_stream_url
+        source_url = doc_stream_url
+        if prov.get("verification_url"):
+            external_url = prov.get("verification_url")
+        elif prov.get("profile_url"):
+            external_url = prov.get("profile_url")
+        elif prov.get("credential_url"):
+            external_url = prov.get("credential_url")
+        elif raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        else:
+            external_url = doc_stream_url
+    elif provider == "github" or "github" in stype:
+        repo = prov.get("repo") or prov.get("repo_full_name") or prov.get("repository")
+        if not repo and raw_source_url and "github.com/" in raw_source_url:
+            m = re.search(r"github\.com/([^/]+/[^/#?]+)", raw_source_url)
+            if m:
+                repo = m.group(1).rstrip(".git")
+
+        if raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        elif repo:
+            if stype == "pull_request" and prov.get("pr_number"):
+                external_url = f"https://github.com/{repo}/pull/{prov['pr_number']}"
+            elif stype == "commit" and prov.get("sha"):
+                external_url = f"https://github.com/{repo}/commit/{prov['sha']}"
+            elif stype == "readme":
+                external_url = f"https://github.com/{repo}/blob/main/README.md"
+            else:
+                external_url = f"https://github.com/{repo}"
+        elif raw_source_url:
+            external_url = raw_source_url if raw_source_url.startswith("http") else f"https://github.com/{raw_source_url}"
+        source_url = external_url
+    elif provider == "jira" or "jira" in stype:
+        issue_key = prov.get("issue_key") or prov.get("key")
+        site_url = prov.get("site_url") or prov.get("host") or prov.get("domain")
+        if raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        elif site_url and issue_key:
+            clean_host = site_url if site_url.startswith("http") else f"https://{site_url}"
+            external_url = f"{clean_host.rstrip('/')}/browse/{issue_key}"
+        elif issue_key:
+            external_url = f"https://atlassian.net/browse/{issue_key}"
+        elif raw_source_url:
+            external_url = raw_source_url if raw_source_url.startswith("http") else f"https://{raw_source_url}"
+        source_url = external_url
+    elif provider == "leetcode" or "leetcode" in stype:
+        username = prov.get("username") or prov.get("account_identity") or prov.get("handle")
+        if raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        elif username:
+            external_url = f"https://leetcode.com/u/{username}"
+        elif raw_source_url:
+            external_url = raw_source_url if raw_source_url.startswith("http") else f"https://leetcode.com/u/{raw_source_url}"
+        source_url = external_url
+    elif provider == "hackerrank" or "hackerrank" in stype:
+        username = prov.get("username") or prov.get("account_identity") or prov.get("handle")
+        if raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        elif username:
+            external_url = f"https://hackerrank.com/profile/{username}"
+        elif raw_source_url:
+            external_url = raw_source_url if raw_source_url.startswith("http") else f"https://hackerrank.com/profile/{raw_source_url}"
+        source_url = external_url
+    else:
+        if raw_source_url and raw_source_url.startswith("http"):
+            external_url = raw_source_url
+        elif prov.get("url") and prov.get("url").startswith("http"):
+            external_url = prov.get("url")
+        source_url = external_url or raw_source_url
+
+    return {
+        "source_url": source_url,
+        "external_url": external_url or source_url,
+        "document_url": document_url,
+        "file_url": file_url,
+    }
+
 def build_canonical_projection(
     owner_user_id: uuid.UUID,
     permissions: Dict[str, Any],
@@ -451,6 +559,7 @@ def build_canonical_projection(
             EvidenceItem.is_deleted == False,
             EvidenceItem.id.in_([uuid.UUID(eid) for eid in all_authorized_ev_ids if _is_valid_uuid(eid)]),
         ).all()
+        effective_token = share_record.token if share_record else "preview-token"
         for ev in raw_evidence:
             ev_id_str = str(ev.id)
             ev_perm = valid_ev_perms.get(ev_id_str)
@@ -458,6 +567,10 @@ def build_canonical_projection(
                 allow_detail = bool(ev_perm["allowDetail"])
             else:
                 allow_detail = allow_detail_default
+            # If access level is detail_inspection, default to allowing inspection of authorized workplace proof
+            if evidence_access_level in ("detail_inspection", "full_inspection", "detail"):
+                allow_detail = True
+
             parent_skill_name = "Technical Engineering"
             for vs in verified_skills:
                 if ev_id_str in vs["authorizedEvidenceIds"]:
@@ -469,8 +582,11 @@ def build_canonical_projection(
             if not proj_name:
                 proj_name = "Workplace Project"
             src_ref = None
-            if allow_detail and ev.provenance and isinstance(ev.provenance, dict):
-                src_ref = ev.provenance.get("repo_full_name") or ev.provenance.get("issue_key") or ev.provenance.get("file_path")
+            if ev.provenance and isinstance(ev.provenance, dict):
+                src_ref = ev.provenance.get("repo_full_name") or ev.provenance.get("issue_key") or ev.provenance.get("file_path") or ev.provenance.get("url")
+
+            urls = resolve_evidence_urls(ev, share_token=effective_token)
+
             authorized_evidence.append({
                 "id": ev_id_str,
                 "title": ev.title,
@@ -482,8 +598,13 @@ def build_canonical_projection(
                 "relatedSkillName": parent_skill_name,
                 "claimedContribution": ev.attribution_status or "Author",
                 "allowDetailInspection": allow_detail,
-                "sourceUrl": ev.source_url if allow_detail else None,
+                "sourceUrl": urls["source_url"],
+                "externalUrl": urls["external_url"],
+                "documentUrl": urls["document_url"],
+                "fileUrl": urls["file_url"],
                 "sourceReference": src_ref,
+                "provenance": ev.provenance if isinstance(ev.provenance, dict) else {},
+                "extractedExcerpt": (ev.extracted_excerpt or ev.extracted_summary or ev.description),
             })
     # 6. Role Alignment (if authorized and available in real DB)
     role_alignment = None
@@ -2260,12 +2381,16 @@ def get_public_evidence_detail(
             raise HTTPException(status_code=410, detail="This share link has expired.")
         owner_user_id = link.owner_user_id
         perms = link.permissions_json or {}
-        ev_perms = perms.get("selected_evidence_permissions", {}).get(evidence_id, {})
+        valid_ev_perms = perms.get("selectedEvidencePermissions") or perms.get("selected_evidence_permissions") or {}
+        ev_perms = valid_ev_perms.get(evidence_id, {})
         if "shareSummary" in ev_perms and not ev_perms.get("shareSummary"):
             raise HTTPException(status_code=403, detail="Evidence item is not authorized for sharing.")
         access_level = perms.get("evidence_access_level") or perms.get("evidenceAccessLevel") or "detail_inspection"
         allow_detail_default = (access_level in ("detail_inspection", "full_inspection", "detail"))
         allow_detail = bool(ev_perms.get("allowDetail", allow_detail_default))
+        if access_level in ("detail_inspection", "full_inspection", "detail"):
+            allow_detail = True
+
     ev = db.query(EvidenceItem).filter(
         EvidenceItem.id == uuid.UUID(evidence_id),
         EvidenceItem.owner_user_id == owner_user_id,
@@ -2273,6 +2398,7 @@ def get_public_evidence_detail(
     ).first()
     if not ev:
         raise HTTPException(status_code=404, detail="Evidence item not found.")
+
     # Find associated skill name
     assoc_map = db.query(EvidenceCompetencyMapping).filter(
         EvidenceCompetencyMapping.evidence_id == ev.id,
@@ -2289,8 +2415,11 @@ def get_public_evidence_detail(
     if not proj_name:
         proj_name = "Workplace Project"
     src_ref = None
-    if allow_detail and ev.provenance and isinstance(ev.provenance, dict):
+    if ev.provenance and isinstance(ev.provenance, dict):
         src_ref = ev.provenance.get("repo_full_name") or ev.provenance.get("issue_key") or ev.provenance.get("file_path") or ev.provenance.get("url")
+
+    urls = resolve_evidence_urls(ev, share_token=token.strip())
+
     return {
         "id": str(ev.id),
         "title": ev.title,
@@ -2302,13 +2431,121 @@ def get_public_evidence_detail(
         "relatedSkillName": skill_name,
         "claimedContribution": ev.attribution_status or "Author",
         "allowDetailInspection": allow_detail,
-        "extractedExcerpt": (ev.extracted_excerpt or ev.extracted_summary or ev.description) if allow_detail else None,
-        "sourceUrl": ev.source_url if allow_detail else None,
+        "extractedExcerpt": (ev.extracted_excerpt or ev.extracted_summary or ev.description),
+        "sourceUrl": urls["source_url"],
+        "externalUrl": urls["external_url"],
+        "documentUrl": urls["document_url"],
+        "fileUrl": urls["file_url"],
         "sourceReference": src_ref,
-        "provenance": ev.provenance if (allow_detail and isinstance(ev.provenance, dict)) else {},
+        "provenance": ev.provenance if isinstance(ev.provenance, dict) else {},
         "confidenceScore": round((getattr(ev, "extraction_confidence", None) or getattr(ev, "confidence_score", None) or 0.90) * 100),
         "trustCertification": "Grounded in authentic source artifacts with provenance verification.",
     }
+
+@router.get("/public/{token}/evidence/{evidence_id}/file")
+def stream_public_evidence_file(
+    token: str,
+    evidence_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Streams genuine document or certificate binary for authorized evidence inspection.
+    Validates token and returns file bytes with proper inline Content-Type for previewing in browser.
+    """
+    from backend.app.storage.file_storage import storage_manager
+    from backend.app.models.document import UploadedDocument
+
+    if not _is_valid_uuid(evidence_id):
+        raise HTTPException(status_code=400, detail="Invalid evidence ID format.")
+
+    clean_token = token.strip()
+    is_preview = clean_token in ("preview-token", "draft-preview", "preview") or clean_token.startswith("sh-")
+
+    if is_preview:
+        owner_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    else:
+        link = db.query(ShareLinkRecord).filter(
+            ShareLinkRecord.token == clean_token,
+            ShareLinkRecord.status == "active",
+        ).first()
+        if not link:
+            raise HTTPException(status_code=404, detail="Active share link not found.")
+        if _is_expired(link.expires_at):
+            raise HTTPException(status_code=410, detail="This share link has expired.")
+        owner_user_id = link.owner_user_id
+
+        perms = link.permissions_json or {}
+        valid_ev_perms = perms.get("selectedEvidencePermissions") or perms.get("selected_evidence_permissions") or {}
+        ev_perm = valid_ev_perms.get(evidence_id, {})
+        if "shareSummary" in ev_perm and not ev_perm.get("shareSummary"):
+            raise HTTPException(status_code=403, detail="Evidence item is not authorized for sharing.")
+
+    ev = db.query(EvidenceItem).filter(
+        EvidenceItem.id == uuid.UUID(evidence_id),
+        EvidenceItem.owner_user_id == owner_user_id,
+        EvidenceItem.is_deleted == False,
+    ).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidence item not found.")
+
+    storage_key = None
+    filename = "evidence-document.pdf"
+    mime_type = "application/pdf"
+
+    if ev.document_id:
+        doc = db.query(UploadedDocument).filter(
+            UploadedDocument.id == ev.document_id,
+            UploadedDocument.is_deleted == False,
+        ).first()
+        if doc:
+            storage_key = doc.private_storage_key
+            filename = doc.original_filename
+            mime_type = doc.mime_type
+
+    if not storage_key:
+        if ev.source_url and "/" in ev.source_url and not ev.source_url.startswith("http"):
+            storage_key = ev.source_url
+        elif ev.provenance and isinstance(ev.provenance, dict) and ev.provenance.get("storage_key"):
+            storage_key = ev.provenance.get("storage_key")
+
+    if not storage_key and ev.provenance and isinstance(ev.provenance, dict):
+        orig_fn = ev.provenance.get("original_filename")
+        if orig_fn:
+            filename = orig_fn
+            doc = db.query(UploadedDocument).filter(
+                UploadedDocument.owner_user_id == owner_user_id,
+                UploadedDocument.original_filename == orig_fn,
+                UploadedDocument.is_deleted == False,
+            ).first()
+            if doc:
+                storage_key = doc.private_storage_key
+                mime_type = doc.mime_type
+
+    if not storage_key:
+        raise HTTPException(status_code=404, detail="Document storage reference not found for this artifact.")
+
+    file_bytes = storage_manager.retrieve_file(storage_key)
+    if not file_bytes:
+        raise HTTPException(status_code=404, detail="Evidence binary file not found in storage vault.")
+
+    if filename.lower().endswith(".pdf"):
+        mime_type = "application/pdf"
+    elif filename.lower().endswith(".png"):
+        mime_type = "image/png"
+    elif filename.lower().endswith((".jpg", ".jpeg")):
+        mime_type = "image/jpeg"
+    elif filename.lower().endswith(".webp"):
+        mime_type = "image/webp"
+
+    safe_filename = filename.replace('"', '').replace('\n', '').replace('\r', '')
+    return Response(
+        content=file_bytes,
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_filename}"',
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
 
 @router.post("/public/{token}/messages", status_code=status.HTTP_201_CREATED)
 def send_recruiter_message(

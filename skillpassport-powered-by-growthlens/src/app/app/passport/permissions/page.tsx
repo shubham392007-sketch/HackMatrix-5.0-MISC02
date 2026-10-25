@@ -234,10 +234,12 @@ export default function SharingPermissionsPage() {
     const allowedEvIds = new Set(Array.from(evidenceToSelectedSkillsMap.keys()));
     const cleanedEvidencePermissions: Record<string, { shareSummary: boolean; allowDetail: boolean }> = {};
 
+    const defaultAllowDetail = localConfig.evidenceAccessLevel !== "summary_only";
     allowedEvIds.forEach((evId) => {
-      cleanedEvidencePermissions[evId] = localConfig.selectedEvidencePermissions[evId] || {
+      const existing = localConfig.selectedEvidencePermissions[evId];
+      cleanedEvidencePermissions[evId] = existing || {
         shareSummary: true,
-        allowDetail: false,
+        allowDetail: defaultAllowDetail,
       };
     });
 

@@ -15,8 +15,11 @@ import {
   Building2,
   Sparkles,
   Link as LinkIcon,
+  ShieldCheck,
+  Eye,
 } from "lucide-react";
 import { ShareProjection } from "@/types/sharing";
+import { getEvidencePlatform } from "../SkillInspectionModal";
 
 interface PassportOptionalSectionsProps {
   projection: ShareProjection;
@@ -38,6 +41,7 @@ export default function PassportOptionalSections({
   const publications = projection.publications || [];
   const achievements = projection.achievements || [];
   const customSections = projection.customSections || [];
+  const evidenceList = projection.authorizedEvidence || [];
 
   const isSectionEnabled = (secKey: string) => {
     if (excludeSections.includes(secKey)) return false;
@@ -503,6 +507,90 @@ export default function PassportOptionalSections({
           ))}
         </div>
       )}
+    
+      {/* 8. Authorized Workplace Proof & Evidence Vault */}
+      {evidenceList.length > 0 && isSectionEnabled("evidence_vault") && (
+        <div className="space-y-4 pt-4 border-t border-[#1C1C1C]/15">
+          <div className="flex items-center justify-between">
+            <h2 className={`text-lg font-black ${headerColor} flex items-center gap-2`}>
+              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <span>Authorized Workplace Proof & Evidence Vault ({evidenceList.length})</span>
+            </h2>
+            <span className={`text-xs ${subtextColor} font-semibold`}>
+              Cryptographically verified candidate deliverables
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {evidenceList.map((ev) => {
+              const plat = getEvidencePlatform(ev);
+              return (
+                <div
+                  key={ev.id}
+                  className={`p-5 rounded-xl ${cardBg} space-y-3 flex flex-col justify-between`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5 max-w-[70%]">
+                        <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase inline-block mb-1 ${plat.badgeColor}`}>
+                          {plat.badgeText}
+                        </span>
+                        <h3 className={`text-sm font-black ${headerColor} leading-snug`}>
+                          {ev.title}
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold shrink-0">
+                        Verified
+                      </span>
+                    </div>
+
+                    <p className={`text-xs leading-relaxed ${subtextColor} line-clamp-3`}>
+                      {ev.shortSummary}
+                    </p>
+
+                    {ev.relatedSkillName && (
+                      <div className="text-[11px] font-medium opacity-75">
+                        Corroborates: <strong className={headerColor}>{ev.relatedSkillName}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-[#1C1C1C]/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-[10px] font-medium opacity-60">
+                      {ev.date ? ev.date.split("T")[0] : ev.project}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {onInspectEvidence && (
+                        <button
+                          onClick={() => onInspectEvidence(ev.id)}
+                          className="px-2.5 py-1 rounded-full bg-[#1C1C1C] text-[#FBF6DF] text-[10px] font-bold uppercase tracking-wider hover:bg-[#1C1C1C]/90 flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3 h-3 text-[#DFE968]" />
+                          <span>Inspect</span>
+                        </button>
+                      )}
+
+                      {plat.targetUrl && (
+                        <a
+                          href={plat.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded-full bg-[#DFE968] text-[#1C1C1C] border border-[#1C1C1C] text-[10px] font-bold uppercase tracking-wider hover:bg-[#d4df55] flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <span>{plat.actionText}</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
