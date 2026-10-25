@@ -19,11 +19,13 @@ import {
   Mail,
   Loader2,
   ShieldAlert,
+  HelpCircle,
 } from "lucide-react";
 import { sharingApi } from "@/lib/sharingApi";
 import { ShareProjection } from "@/types/sharing";
 import TemplateDispatcher from "@/components/passport/templates/TemplateDispatcher";
 import RecruiterMessageModal from "@/components/passport/RecruiterMessageModal";
+import SharingHelpDrawer from "@/components/app/SharingHelpDrawer";
 
 interface PageProps {
   params: Promise<{ shareId: string }>;
@@ -37,6 +39,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [contactOpen, setContactOpen] = useState<boolean>(false);
+  const [helpOpen, setHelpOpen] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadPublicPassport() {
@@ -249,6 +252,18 @@ export default function RecruiterPassportPage({ params }: PageProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Help & Guidance Button */}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5] cursor-pointer"
+              title="Product Help & Conceptual Guidance"
+              aria-label="Product Help & Conceptual Guidance"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-[#1A1918]/70" />
+              <span className="hidden sm:inline font-medium text-[#1A1918]">Help &amp; Guidance</span>
+            </button>
+
             <button
               onClick={handleCopyLink}
               className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5]"
@@ -333,6 +348,13 @@ export default function RecruiterPassportPage({ params }: PageProps) {
           onClose={() => setContactOpen(false)}
         />
       )}
+
+      {/* Product Help & Conceptual Guidance Drawer */}
+      <SharingHelpDrawer
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        currentPathname={`/p/${shareId}`}
+      />
     </div>
   );
 }

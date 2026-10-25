@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import SharingHelpDrawer from "@/components/app/SharingHelpDrawer";
 import {
   Briefcase,
   Users,
@@ -16,6 +17,7 @@ import {
   Menu,
   X,
   ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import {
   getStoredRecruiterUser,
@@ -32,6 +34,7 @@ export default function RecruiterTopBar() {
   const [profile, setProfile] = useState<RecruiterProfile | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -150,6 +153,17 @@ export default function RecruiterTopBar() {
               <ExternalLink className="w-3 h-3" />
             </Link>
 
+            {/* Help Button */}
+            <button
+              type="button"
+              onClick={() => setIsHelpOpen(true)}
+              className="p-1.5 rounded-full bg-white border border-[#1A1918] text-[#1A1918] hover:bg-[#1A1918] hover:text-[#FAF8F5] transition-all shadow-[1.5px_1.5px_0_0_#1A1918] flex items-center justify-center cursor-pointer"
+              title="Product Help & Conceptual Guidance"
+              aria-label="Product Help & Conceptual Guidance"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -255,6 +269,12 @@ export default function RecruiterTopBar() {
           </div>
         )}
       </div>
+
+      <SharingHelpDrawer
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        currentPathname={pathname || ""}
+      />
     </header>
   );
 }

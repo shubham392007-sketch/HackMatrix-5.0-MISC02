@@ -10,6 +10,9 @@ import AIHelpDrawer from "@/components/app/AIHelpDrawer";
 import GovernanceHelpDrawer from "@/components/app/GovernanceHelpDrawer";
 import SkillHelpDrawer from "@/components/app/SkillHelpDrawer";
 import SettingsHelpDrawer from "@/components/app/SettingsHelpDrawer";
+import CareerHelpDrawer from "@/components/app/CareerHelpDrawer";
+import LearningHelpDrawer from "@/components/app/LearningHelpDrawer";
+import SharingHelpDrawer from "@/components/app/SharingHelpDrawer";
 import {
   ArrowLeft,
   Bell,
@@ -109,7 +112,18 @@ export default function AppTopBar({
   const profileRef = useRef<HTMLDivElement>(null);
 
   const isEvidenceWorkspace = pathname?.startsWith("/app/evidence") ?? false;
-  const isSkillPassport = pathname?.startsWith("/app/passport") ?? false;
+  const isSharingDomain =
+    (pathname?.startsWith("/app/passport/sharing") ||
+      pathname?.startsWith("/app/passport/builder") ||
+      pathname?.startsWith("/app/passport/permissions") ||
+      pathname?.startsWith("/app/passport/preview") ||
+      pathname?.startsWith("/app/passport/export") ||
+      pathname?.startsWith("/app/passport/share") ||
+      pathname?.startsWith("/app/passport/messages") ||
+      pathname?.startsWith("/app/passport/access") ||
+      pathname?.startsWith("/recruiter")) ??
+    false;
+  const isSkillPassport = !isSharingDomain && (pathname?.startsWith("/app/passport") ?? false);
   const isGovernanceWorkspace =
     pathname?.startsWith("/app/ai/guard") ||
     pathname?.startsWith("/app/ai/validation") ||
@@ -121,6 +135,8 @@ export default function AppTopBar({
     pathname?.startsWith("/app/ai/confidence") ||
     pathname?.startsWith("/app/governance");
   const isAIIntelligence = !isGovernanceWorkspace && (pathname?.startsWith("/app/ai") ?? false);
+  const isCareerIntelligence = pathname?.startsWith("/app/career") ?? false;
+  const isLearningIntelligence = pathname?.startsWith("/app/learning") ?? false;
   const isSettingsWorkspace =
     (pathname?.startsWith("/app/settings") ||
       pathname?.startsWith("/app/notifications") ||
@@ -794,7 +810,31 @@ export default function AppTopBar({
         />
       )}
 
-      {!isEvidenceWorkspace && !isGovernanceWorkspace && !isSkillPassport && !isSettingsWorkspace && (
+      {isCareerIntelligence && (
+        <CareerHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {isLearningIntelligence && (
+        <LearningHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {isSharingDomain && (
+        <SharingHelpDrawer
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+          currentPathname={pathname || ""}
+        />
+      )}
+
+      {!isEvidenceWorkspace && !isGovernanceWorkspace && !isSkillPassport && !isSettingsWorkspace && !isCareerIntelligence && !isLearningIntelligence && !isSharingDomain && (
         <AIHelpDrawer
           isOpen={isHelpOpen}
           onClose={() => setIsHelpOpen(false)}
