@@ -1017,7 +1017,11 @@ export async function runSkillExtraction(evidenceIds: string[]) {
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({ evidence_ids: evidenceIds }),
   });
-  if (!res.ok) throw new Error("Failed to run skill extraction");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const msg = err.detail || err.error?.message || err.message || `Failed to run skill extraction (${res.status})`;
+    throw new Error(msg);
+  }
   return res.json();
 }
 
