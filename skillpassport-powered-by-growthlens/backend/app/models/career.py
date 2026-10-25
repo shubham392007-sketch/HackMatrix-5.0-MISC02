@@ -155,3 +155,14 @@ class JobSearchCacheRecord(Base, TimestampMixin):
     influencing_skills: Mapped[List[str]] = mapped_column(JSONB, default=list, nullable=False)
     
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+    @property
+    def expires_at_utc(self) -> datetime:
+        """
+        Returns guaranteed UTC-aware datetime even when SQLite returns naive datetime objects.
+        """
+        if self.expires_at is None:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if self.expires_at.tzinfo is None:
+            return self.expires_at.replace(tzinfo=timezone.utc)
+        return self.expires_at.astimezone(timezone.utc)
