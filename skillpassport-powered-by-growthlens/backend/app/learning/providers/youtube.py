@@ -71,6 +71,13 @@ class YouTubeProviderAdapter(BaseResourceProvider):
     def api_key(self) -> str:
         if self._api_key:
             return self._api_key
+        try:
+            from backend.app.core.config import get_settings
+            cfg_key = get_settings().youtube_api_key
+            if cfg_key:
+                return cfg_key
+        except Exception:
+            pass
         key = os.environ.get("YOUTUBE_API_KEY", "")
         if not key:
             try:

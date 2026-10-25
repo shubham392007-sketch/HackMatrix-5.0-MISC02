@@ -160,6 +160,9 @@ class Settings(BaseSettings):
     job_search_enable_fallback: bool = Field(default=True, description="Whether to allow fallback to secondary provider on eligible failures")
     job_search_monthly_budget: float = Field(default=0.0, description="Optional monthly budget cap (0.0 = unlimited/unknown)")
 
+    # Learning Intelligence & Curated Resources
+    youtube_api_key: str = Field(default="", description="YouTube Data API v3 Key for curated video resources and availability verification")
+
     @property
     def theirstack_keys(self) -> List[str]:
         keys: List[str] = []
