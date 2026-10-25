@@ -15,6 +15,7 @@ from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMa
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.career import UserTargetRoleRecord, RoleMatchSnapshotRecord, JobPostingRecord
 from backend.app.models.recruiter import CandidateShareInvitation, OrganizationMembership
+from backend.app.models.ai_governance import VerificationDecision
 from backend.app.models.sharing import (
     ShareLinkRecord,
     UserCustomSkill,
