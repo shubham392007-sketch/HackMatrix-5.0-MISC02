@@ -59,7 +59,11 @@ export default function SignupPage() {
         setConfirmationSent(true);
         setLoading(false);
       } else {
-        router.push('/onboarding?confirmed=true');
+        if (role === 'MANAGER') {
+          router.push('/manager/dashboard');
+        } else {
+          router.push('/onboarding?confirmed=true');
+        }
       }
     } catch {
       setErrorMessage("A network error occurred during registration. Please try again.");
@@ -82,7 +86,11 @@ export default function SignupPage() {
         setVerifyingOtp(false);
         return;
       }
-      router.push('/onboarding?confirmed=true');
+      if (role === 'MANAGER') {
+        router.push('/manager/dashboard');
+      } else {
+        router.push('/onboarding?confirmed=true');
+      }
     } catch {
       setOtpError("Could not verify code. Please try again.");
       setVerifyingOtp(false);

@@ -98,10 +98,12 @@ function CallbackContent() {
 
         // Redirect after short confirmation feedback
         setTimeout(() => {
-          if (!onboardingCompleted) {
+          if (role === 'MANAGER') {
+            router.replace('/manager/dashboard');
+          } else if (!onboardingCompleted) {
             router.replace('/onboarding?confirmed=true');
           } else {
-            router.replace(role === 'MANAGER' ? '/manager/dashboard' : '/employee/dashboard');
+            router.replace('/employee/dashboard');
           }
         }, 1200);
 
