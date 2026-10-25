@@ -37,6 +37,8 @@ import {
   Compass,
   Globe,
   Briefcase,
+  Building,
+  Users,
   Scale,
   AlertTriangle,
   Target,
@@ -97,7 +99,6 @@ export const WORKSPACE_NAV: NavSection[] = [
     category: "Evidence Workspace",
     items: [
       { label: "Evidence Center", href: "/app/evidence", icon: Database },
-      { label: "Onboarding Wizard", href: "/app/onboarding?mode=review", icon: Sparkles },
       { label: "Connected Sources", href: "/app/evidence/sources", icon: GitBranch },
       { label: "Upload Work & Docs", href: "/app/evidence/upload", icon: UploadCloud },
       { label: "Evidence Library", href: "/app/evidence/library", icon: Library },

@@ -243,7 +243,7 @@ export default function ProfileSettingsPage() {
         ]}
       />
 
-      <div className="p-6 lg:p-10 max-w-5xl space-y-8">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Architectural Security Notice */}
         <div className="p-5 rounded-2xl bg-[#DFE968]/20 border-2 border-[#DFE968] flex items-start gap-3.5 shadow-sm">
           <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />

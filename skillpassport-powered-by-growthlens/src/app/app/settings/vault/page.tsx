@@ -168,7 +168,7 @@ export default function EvidenceVaultPage() {
         </div>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-7xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {/* Section 4.1: Summary Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-5 rounded-2xl bg-white border border-[#1C1C1C]/15 shadow-sm space-y-1">

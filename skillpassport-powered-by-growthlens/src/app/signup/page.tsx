@@ -18,16 +18,25 @@ import {
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signUp, resendVerificationEmail } = useAuth();
 
   const [role, setRole] = useState<"employee" | "manager">("employee");
+
+  useEffect(() => {
+    const roleParam = searchParams.get("role");
+    if (roleParam === "manager" || roleParam === "recruiter") {
+      setRole("manager");
+    }
+  }, [searchParams]);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -108,8 +117,15 @@ export default function SignupPage() {
         setResendCooldown(60);
         setLoading(false);
       } else {
-        // In environments where email confirmation is turned off, continue to onboarding
-        router.push("/app/onboarding");
+        // Route managers directly to recruiter dashboard, employees to onboarding
+        if (role === "manager") {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("sp_active_role", "manager");
+          }
+          router.push("/recruiter/dashboard");
+        } else {
+          router.push("/app/onboarding");
+        }
       }
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred during registration.");
@@ -433,5 +449,20 @@ export default function SignupPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-[#1C1C1C] animate-spin" />
+        </div>
+      }
+    >
+      <SignupPageContent />
+    </Suspense>
   );
 }

@@ -70,7 +70,7 @@ export default function PassportOverviewPage() {
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-10 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {/* 8.1 Compact Profile Summary Banner */}
         <div className="p-5 md:p-6 rounded-2xl border-[1.5px] border-[#171717] bg-[#FAF8F5] shadow-[2.5px_2.5px_0_#171717] flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
           <div className="flex items-start sm:items-center gap-4 min-w-0">

@@ -767,7 +767,7 @@ export default function UploadEvidencePage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Category Selector Tabs */}
         <section className="space-y-2">
           <label className="text-xs font-black uppercase tracking-wider text-[#1C1C1C]/60 block">

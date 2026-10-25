@@ -39,7 +39,7 @@ export default function ConnectedSourcesPage() {
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-10 max-w-[1400px]">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
         {/* Account Integrations */}
         <section className="space-y-4">
           <div className="border-b border-[#1C1C1C]/15 pb-2">

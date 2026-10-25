@@ -42,7 +42,7 @@ export default function WorkAnalysisPage({
         </Link>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Illustrative AI Disclaimer */}
         <div className="p-4 rounded-2xl bg-[#DFE968]/40 border-[1.5px] border-[#1C1C1C] flex items-center justify-between shadow-[2px_2px_0_0_#1C1C1C]">
           <div className="flex items-center gap-2.5 text-xs font-bold text-[#1C1C1C]">

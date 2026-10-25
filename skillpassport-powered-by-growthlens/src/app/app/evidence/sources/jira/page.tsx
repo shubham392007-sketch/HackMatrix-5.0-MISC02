@@ -273,7 +273,7 @@ export default function JiraSourceFlow() {
         backLabel="Connected Sources"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-4xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Security & Credentials Banner */}
         <div className="p-5 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
           <ShieldCheck className="w-5 h-5 text-[#4A7A4E] shrink-0 mt-0.5" />

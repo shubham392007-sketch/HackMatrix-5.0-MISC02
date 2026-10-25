@@ -16,7 +16,7 @@ export default function PermissionsPage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-4xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Privacy by Design Card */}
         <div className="p-6 rounded-[28px] border-[1.5px] border-[#1C1C1C] bg-[#DFE968]/30 space-y-3 shadow-[3px_3px_0_0_#1C1C1C]">
           <div className="flex items-center gap-2">

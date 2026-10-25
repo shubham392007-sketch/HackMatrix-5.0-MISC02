@@ -18,24 +18,34 @@ export default function AppAuthGuard({
   const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
     if (!isLoading && !profileError) {
       if (!isAuthenticated) {
         const target = pathname
           ? `/login?redirect=${encodeURIComponent(pathname)}`
           : "/login?redirect=/app/evidence";
-        router.replace(target);
+        timer = setTimeout(() => {
+          router.replace(target);
+        }, 0);
       } else if (!isEmailVerified) {
         // Enforce email verification before any app workspace or onboarding access
         const emailQuery = user?.email ? `&email=${encodeURIComponent(user.email)}` : "";
-        router.replace(`/auth/verify-email?status=unverified${emailQuery}`);
+        timer = setTimeout(() => {
+          router.replace(`/auth/verify-email?status=unverified${emailQuery}`);
+        }, 0);
       } else {
         // If user is authenticated, verified, and profile is loaded with incomplete onboarding, guide to onboarding wizard
         const isOnboardingRoute = pathname === "/app/onboarding" || pathname === "/app/evidence/onboarding";
         if (profile && profile.onboarding_status !== "completed" && !isOnboardingRoute) {
-          router.replace("/app/onboarding");
+          timer = setTimeout(() => {
+            router.replace("/app/onboarding");
+          }, 0);
         }
       }
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isLoading, profileError, isAuthenticated, isEmailVerified, user, profile, pathname, router]);
 
   // Loading state while verifying Supabase session and user profile
@@ -142,6 +152,28 @@ export default function AppAuthGuard({
             >
               Sign In to Continue
             </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated screen
+  if (!isAuthenticated) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-[#1C1C1C]"
+        style={{
+          background: "transparent",
+        }}
+      >
+        <div className="relative flex items-center justify-center max-w-sm w-full mx-4">
+          <div className="absolute -inset-2 bg-[#000000]/5 rounded-3xl blur-xl pointer-events-none" />
+          <div className="relative p-8 rounded-3xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[5px_5px_0_0_#1C1C1C] flex flex-col items-center justify-center w-full overflow-hidden">
+            <LoadingAnimation size="md" className="relative z-10" />
+            <p className="mt-4 text-xs font-black tracking-widest uppercase text-[#1C1C1C]/70">
+              REDIRECTING TO LOGIN ···
+            </p>
           </div>
         </div>
       </div>
