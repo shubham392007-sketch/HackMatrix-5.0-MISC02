@@ -205,9 +205,9 @@ export default function RoleMatchOverviewPage() {
 
         {/* Detailed Breakdown List */}
         <div className="space-y-3 pt-2">
-          {filteredMatches.map((m) => (
+          {filteredMatches.map((m, idx) => (
             <div
-              key={m.skill_id}
+              key={`${m.skill_id}-${m.requirement_type || ''}-${idx}`}
               className="p-4 rounded-2xl border border-ink/15 bg-white hover:bg-sand/10 transition-all space-y-3 text-xs"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

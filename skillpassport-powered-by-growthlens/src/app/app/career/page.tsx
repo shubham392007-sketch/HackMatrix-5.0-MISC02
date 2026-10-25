@@ -181,9 +181,9 @@ export default function RoleIntelligenceOverviewPage() {
               </div>
 
               <div className="divide-y divide-ink/10 border border-ink/10 rounded-2xl overflow-hidden bg-sand/5">
-                {activeMatch.competency_matches.map((item) => (
+                {activeMatch.competency_matches.map((item, idx) => (
                   <div
-                    key={item.skill_id}
+                    key={`${item.skill_id}-${item.requirement_type || ''}-${idx}`}
                     className="p-3.5 bg-white/70 flex items-center justify-between gap-3 text-xs hover:bg-white transition-all"
                   >
                     <div className="space-y-0.5 min-w-0">

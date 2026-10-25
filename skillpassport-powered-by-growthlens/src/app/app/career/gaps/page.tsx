@@ -236,9 +236,9 @@ export default function CareerGapsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredGaps.map((gap) => (
+          {filteredGaps.map((gap, idx) => (
             <div
-              key={gap.gap_id}
+              key={`${gap.gap_id}-${idx}`}
               className="gl-card p-5 space-y-4 hover:shadow-md transition-shadow border-ink/10 flex flex-col justify-between"
             >
               <div className="space-y-3">

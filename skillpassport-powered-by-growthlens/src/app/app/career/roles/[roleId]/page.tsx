@@ -120,9 +120,9 @@ export default function RoleDemandDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {coreRequirements.map((comp) => (
+          {coreRequirements.map((comp, idx) => (
             <div
-              key={comp.skill_id}
+              key={`${comp.skill_id}-${idx}`}
               className="gl-card p-5 bg-white border border-red-200 space-y-3"
             >
               <div className="flex items-start justify-between gap-2">
@@ -188,9 +188,9 @@ export default function RoleDemandDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {supportingRequirements.map((comp) => (
+            {supportingRequirements.map((comp, idx) => (
               <div
-                key={comp.skill_id}
+                key={`${comp.skill_id}-${idx}`}
                 className="gl-card p-5 bg-white border border-sky-200 space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -241,9 +241,9 @@ export default function RoleDemandDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {preferredRequirements.map((comp) => (
+            {preferredRequirements.map((comp, idx) => (
               <div
-                key={comp.skill_id}
+                key={`${comp.skill_id}-${idx}`}
                 className="gl-card p-5 bg-white border border-purple-200 space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">

@@ -128,11 +128,11 @@ export default function RoleExplanationExplorerPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-          {activeRole.competencies.map((comp) => {
+          {activeRole.competencies.map((comp, idx) => {
             const isSelected = comp.skill_id === selectedSkillId;
             return (
               <button
-                key={comp.skill_id}
+                key={`${comp.skill_id}-${idx}`}
                 onClick={() => setSelectedSkillId(comp.skill_id)}
                 className={`px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isSelected

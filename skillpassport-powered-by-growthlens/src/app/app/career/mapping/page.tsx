@@ -205,11 +205,11 @@ export default function RoleSkillMappingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/10 font-sans">
-              {filteredCompetencies.map((comp) => {
+              {filteredCompetencies.map((comp, idx) => {
                 const isEditing = editingSkillId === comp.skill_id;
 
                 return (
-                  <tr key={comp.skill_id} className="hover:bg-sand/10 transition-all">
+                  <tr key={`${comp.skill_id}-${idx}`} className="hover:bg-sand/10 transition-all">
                     <td className="py-3.5 px-3 font-medium text-ink">
                       <div>{comp.canonical_name}</div>
                       {comp.source_span && (

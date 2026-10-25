@@ -297,7 +297,7 @@ export default function GapPrioritizationPage() {
 
           return (
             <div
-              key={gap.gap_id}
+              key={`${gap.gap_id}-${index}`}
               className={`gl-card p-5 md:p-6 transition-all border-ink/15 space-y-4 ${
                 index === 0
                   ? "bg-[#FAF8F5] border-lime-400"

@@ -309,9 +309,9 @@ export default function TargetRolesCataloguePage() {
 
                   {/* Competency badges */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {(role.competencies || []).slice(0, 5).map((comp) => (
+                    {(role.competencies || []).slice(0, 5).map((comp, idx) => (
                       <span
-                        key={comp.skill_id}
+                        key={`${comp.skill_id}-${idx}`}
                         className="text-[11px] px-2 py-0.5 rounded-md bg-sand/30 border border-ink/10 text-ink font-mono"
                       >
                         {comp.canonical_name} ({comp.expected_level})

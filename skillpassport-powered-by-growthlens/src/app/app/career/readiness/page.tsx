@@ -199,9 +199,9 @@ export default function CareerReadinessPage() {
           </div>
 
           <div className="space-y-3">
-            {activeReadiness.critical_blockers.map((blocker) => (
+            {activeReadiness.critical_blockers.map((blocker, idx) => (
               <div
-                key={blocker.skill_id}
+                key={`${blocker.skill_id}-${idx}`}
                 className="p-4 rounded-2xl bg-white border border-red-200/80 space-y-2 text-xs"
               >
                 <div className="flex items-start justify-between gap-2">
