@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from datetime import datetime, timezone
 import uuid
 import json
@@ -36,6 +36,7 @@ from backend.app.integrations.coding_profiles import (
 )
 from backend.app.ingestion.pipeline import queue_manager
 from backend.app.extraction.engine import extraction_engine
+from backend.app.ai.extractor import compute_dynamic_confidence_score
 from backend.app.models.taxonomy import EvidenceCompetencyMapping, CompetencyTaxonomy
 from backend.app.ai.work_analyzer import work_analyzer
 from backend.app.ai.output_validator import output_validator
@@ -43,6 +44,7 @@ from backend.app.models.ai_governance import WorkAnalysisResult, AIAnalysisRun
 from backend.app.rag.chroma import chroma_store
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
+from backend.app.core.exceptions import ConnectorAuthError
 import httpx
 import time
 
