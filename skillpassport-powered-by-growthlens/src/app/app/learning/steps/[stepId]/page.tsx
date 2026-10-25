@@ -434,45 +434,48 @@ export default function LearningStepDetailPage() {
           {/* Left Column (2 spans): Structured Step Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Header Title Card */}
-            <div className="gl-card p-6 md:p-8 space-y-4 border-ink/15 bg-white">
-              <div className="space-y-2">
-                <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-sand/40 text-ink font-bold">
+            <div className="gl-card p-6 md:p-8 space-y-5 border-ink/15 bg-white">
+              <div className="space-y-3">
+                <span className="text-xs font-mono uppercase px-3 py-1 rounded-full bg-sand/60 border border-ink/20 text-ink font-bold tracking-wider inline-block">
                   Step {step.sequence_order || 1} &bull; {step.difficulty || "Intermediate"}
                 </span>
-                <h1 className="text-2xl md:text-3xl font-bold text-ink">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
                   {safeTitle}
                 </h1>
-                <p className="text-xs md:text-sm text-ink-muted leading-relaxed">
-                  <strong>Measurable Outcome:</strong> {safeObjective}
-                </p>
+                <div className="p-3.5 rounded-xl bg-sand/30 border border-ink/10 text-xs sm:text-sm text-ink leading-relaxed">
+                  <strong className="text-ink font-bold uppercase tracking-wider text-[11px] block text-ink/70 mb-0.5">
+                    Measurable Outcome
+                  </strong>
+                  <span className="text-ink font-medium leading-relaxed">{safeObjective}</span>
+                </div>
               </div>
 
               {/* Why This Step Matters */}
               {step.recommendation_reason && (
-                <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-2 text-xs">
+                <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3 text-xs shadow-xs">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="font-bold text-amber-950 flex items-center gap-1.5">
-                      <Target className="w-4 h-4 text-amber-800" />
+                    <span className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-1.5">
+                      <Target className="w-4 h-4 text-amber-900 shrink-0" />
                       Connection to Diagnosed Skill Gap
                     </span>
                     <button
                       onClick={() => setIsProvenanceOpen(true)}
-                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 bg-white hover:bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors shadow-xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-white hover:bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-300 transition-colors shadow-xs"
                     >
-                      <BrainCircuit className="w-3.5 h-3.5 text-indigo-600" />
+                      <BrainCircuit className="w-3.5 h-3.5 text-indigo-700" />
                       Why is this skill lagging? (Audit Evidence)
                     </button>
                   </div>
-                  <p className="text-amber-900/90 leading-relaxed text-[11px]">
+                  <p className="text-amber-950 text-xs sm:text-[13px] leading-relaxed font-normal">
                     {step.recommendation_reason}
                   </p>
-                  <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-amber-950/80 flex-wrap gap-2">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Briefcase className="w-3 h-3 text-indigo-700" />
+                  <div className="pt-2.5 border-t border-amber-200 flex items-center justify-between text-xs text-amber-950 font-medium flex-wrap gap-2">
+                    <span className="flex items-center gap-1.5 font-mono text-xs text-indigo-950 font-bold">
+                      <Briefcase className="w-3.5 h-3.5 text-indigo-800 shrink-0" />
                       Role Requirement Source: {activeRoadmap?.target_role_title || "Target Role Alignment"} &bull; Verified Benchmark
                     </span>
-                    <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-semibold">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px] px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-950 border border-emerald-400 font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                       Authenticity Verified &bull; Strict Citation Guard
                     </span>
                   </div>
@@ -509,7 +512,7 @@ export default function LearningStepDetailPage() {
                         </span>
                       )}
 
-                      <span className="text-[11px] font-mono text-ink-muted">
+                      <span className="text-xs font-mono text-ink font-semibold">
                         Status: {packetEnrichment.generation_status || "verified"}
                       </span>
                     </div>
@@ -524,7 +527,7 @@ export default function LearningStepDetailPage() {
                     </button>
                   </div>
 
-                  <div className="text-[11px] text-ink-muted leading-relaxed">
+                  <div className="text-xs text-ink/90 leading-relaxed font-normal">
                     {packetEnrichment.generation_method === "curated_catalogue" ? (
                       <span>
                         Standardized curriculum authored by subject-matter experts. Not generated by an LLM.
@@ -547,7 +550,7 @@ export default function LearningStepDetailPage() {
                       <BookOpen className="w-4 h-4 text-ink" />
                       Concept Foundations
                     </h2>
-                    <p className="text-xs md:text-sm text-ink/80 leading-relaxed">
+                    <p className="text-xs md:text-sm text-ink leading-relaxed font-normal">
                       {packetEnrichment.what_is_it}
                     </p>
                   </div>
@@ -557,7 +560,7 @@ export default function LearningStepDetailPage() {
                       <Lightbulb className="w-4 h-4 text-ink" />
                       When to Apply
                     </h3>
-                    <p className="text-xs text-ink/80 leading-relaxed">
+                    <p className="text-xs md:text-sm text-ink leading-relaxed font-normal">
                       {packetEnrichment.why_and_when}
                     </p>
                   </div>
@@ -569,7 +572,7 @@ export default function LearningStepDetailPage() {
                       <Code2 className="w-4 h-4 text-ink" />
                       Worked Example: {packetEnrichment.worked_example.title}
                     </h2>
-                    <p className="text-xs text-ink/80 leading-relaxed">
+                    <p className="text-xs md:text-sm text-ink leading-relaxed font-normal">
                       {packetEnrichment.worked_example.explanation}
                     </p>
 
@@ -915,16 +918,16 @@ export default function LearningStepDetailPage() {
                   current={isCompleted ? (step.target_mastery || 80) : (step.current_mastery || 0)}
                   target={step.target_mastery || 80}
                 />
-                <span className="text-[11px] text-ink-muted block text-right font-mono">
+                <span className="text-xs text-ink font-bold block text-right font-mono">
                   Target: {step.target_mastery || 80}%
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-sand/20 border border-ink/10 space-y-1.5 text-xs">
-                <span className="text-[10px] font-mono uppercase text-ink-muted block font-bold">
+              <div className="p-3.5 rounded-xl bg-sand/30 border border-ink/15 space-y-2 text-xs">
+                <span className="text-xs font-mono uppercase text-ink block font-extrabold tracking-wide">
                   Step Criteria
                 </span>
-                <ul className="space-y-1.5 text-ink/80 text-[11px]">
+                <ul className="space-y-2 text-ink text-xs font-medium">
                   <li className="flex items-center gap-1.5">
                     <CheckCircle2 className={`w-3.5 h-3.5 ${isCompleted ? "text-emerald-600" : "text-ink/30"}`} />
                     <span>Review learning material</span>

@@ -723,7 +723,7 @@ export default function AppTopBar({
                 </span>
               )}
             </div>
-            <p className="text-xs sm:text-[13px] font-medium text-[#171717]/75 max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm font-medium text-[#171717] max-w-3xl leading-relaxed">
               {description}
             </p>
           </div>
