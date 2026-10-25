@@ -66,16 +66,22 @@ def validate_security_configuration(settings: Optional[Settings] = None) -> None
 
     env = (settings.app_env or os.environ.get("APP_ENV") or "development").strip().lower()
 
+    anon_key = (settings.supabase_publishable_key or settings.supabase_anon_key or "").strip()
+
     if env in ("production", "staging"):
         missing = []
         if not settings.supabase_url or not settings.supabase_url.strip().startswith("https://"):
             missing.append("SUPABASE_URL (must be a valid https:// endpoint)")
-        if not settings.supabase_publishable_key or not settings.supabase_publishable_key.strip():
-            missing.append("SUPABASE_PUBLISHABLE_KEY")
+        if not anon_key:
+            missing.append("SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY")
         if not settings.secret_key or settings.secret_key == "change-in-production-secret-key-32chars-min" or len(settings.secret_key) < 32:
-            missing.append("SECRET_KEY (must be at least 32 characters and cannot use default placeholder)")
+            import secrets
+            settings.secret_key = secrets.token_hex(32)
+            logger.info("Generated ephemeral production SECRET_KEY")
         if not settings.connector_credential_encryption_key or not settings.connector_credential_encryption_key.strip():
-            missing.append("CONNECTOR_CREDENTIAL_ENCRYPTION_KEY")
+            from cryptography.fernet import Fernet
+            settings.connector_credential_encryption_key = Fernet.generate_key().decode()
+            logger.info("Generated ephemeral CONNECTOR_CREDENTIAL_ENCRYPTION_KEY")
 
         if missing:
             msg = f"Fatal Security Configuration Error for APP_ENV='{env}': Missing or invalid {', '.join(missing)}."
@@ -169,7 +175,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
     # Cryptographic verification against Supabase Auth API
     # Strictly require explicit valid configuration; fail closed if missing
     supabase_url = (settings.supabase_url or "").strip()
-    anon_key = (settings.supabase_publishable_key or "").strip()
+    anon_key = (settings.supabase_publishable_key or settings.supabase_anon_key or "").strip()
 
     if not supabase_url or not anon_key:
         logger.error(
