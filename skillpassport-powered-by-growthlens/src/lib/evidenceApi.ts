@@ -6,9 +6,7 @@
 import { supabase } from "@/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
-const API_BASE = typeof window !== "undefined"
-  ? "/api/v1"
-  : `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
+const API_BASE = `${BACKEND_URL.replace(/\/$/, "")}/api/v1`;
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
@@ -76,21 +74,60 @@ export class DatabaseUnavailableError extends Error {
 
 async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const method = (init?.method || "GET").toUpperCase();
-  let response: Response;
-  if (method !== "GET") {
-    response = await _nativeFetch(input, init);
-  } else {
-    const key = typeof input === "string" ? input : input.toString();
-    if (inFlightRequests.has(key)) {
-      const pending = inFlightRequests.get(key)!;
-      return pending.then((res) => res.clone());
-    }
+  let currentTarget = input;
+  let response: Response | undefined;
+  let lastError: any = null;
 
-    const promise = _nativeFetch(input, init).finally(() => {
-      inFlightRequests.delete(key);
-    });
-    inFlightRequests.set(key, promise);
-    response = await promise;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (method !== "GET") {
+        response = await _nativeFetch(currentTarget, init);
+      } else {
+        const key = typeof currentTarget === "string" ? currentTarget : currentTarget.toString();
+        if (inFlightRequests.has(key)) {
+          const pending = inFlightRequests.get(key)!;
+          return pending.then((res) => res.clone());
+        }
+
+        const promise = _nativeFetch(currentTarget, init).finally(() => {
+          inFlightRequests.delete(key);
+        });
+        inFlightRequests.set(key, promise);
+        response = await promise;
+      }
+
+      // If Next.js dev server proxy returned Bad Gateway / Service Unavailable proxy error, try fallback route
+      if ((response.status === 502 || response.status === 504) && attempt === 0 && typeof currentTarget === "string") {
+        if (currentTarget.startsWith(API_BASE)) {
+          currentTarget = currentTarget.replace(API_BASE, "/api/v1");
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
+        } else if (currentTarget.startsWith("/api/v1")) {
+          currentTarget = currentTarget.replace("/api/v1", API_BASE);
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
+        }
+      }
+
+      break;
+    } catch (err: any) {
+      lastError = err;
+      if (attempt === 0 && typeof currentTarget === "string") {
+        // Swap route between direct backend and Next.js proxy rewrite on network connection reset
+        if (currentTarget.startsWith(API_BASE)) {
+          currentTarget = currentTarget.replace(API_BASE, "/api/v1");
+        } else if (currentTarget.startsWith("/api/v1")) {
+          currentTarget = currentTarget.replace("/api/v1", API_BASE);
+        }
+        await new Promise((r) => setTimeout(r, 200));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error("Failed to execute request");
   }
 
   if (response.status === 401) {
@@ -570,6 +607,9 @@ export async function listJiraProjects() {
       headers,
     });
     if (!res.ok) {
+      if (res.status === 404) {
+        return { projects: [], total: 0 };
+      }
       if (res.status === 503) {
         throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
       }
@@ -955,7 +995,11 @@ export async function runWorkAnalysis(evidenceIds: string[]) {
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({ evidence_ids: evidenceIds }),
   });
-  if (!res.ok) throw new Error("Failed to run work analysis");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const msg = err.detail || err.error?.message || err.message || `Failed to run work analysis (${res.status})`;
+    throw new Error(msg);
+  }
   return res.json();
 }
 

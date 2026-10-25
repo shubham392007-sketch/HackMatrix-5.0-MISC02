@@ -1003,7 +1003,7 @@ async def _sync_single_github_repo_internal(
                 source_provider="github",
                 category="engineering",
                 user_id=user.id,
-                fast_mode=False,
+                fast_mode=True,
             )
         except Exception as e:
             logger.error(f"Error in consolidated repository extraction for {repo_full}: {e}")
@@ -1240,24 +1240,41 @@ async def refresh_repository_languages(
         )
 
     # Resolve resource
+    decoded_id = urllib.parse.unquote(repository_id).strip()
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
     if not resource:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Selected repository {repository_id} not found",
+        # Create SelectedResource on the fly if user is refreshing an accessible repository
+        resource = SelectedResource(
+            id=uuid.uuid4(),
+            connection_id=connection.id,
+            external_resource_id=decoded_id,
+            name=decoded_id,
+            resource_type="repository",
+            is_selected=True,
+            sync_status="active",
         )
+        db.add(resource)
+        db.commit()
 
     pat = decrypt_credential(connection.encrypted_credentials)
     client = GitHubClient(pat)
@@ -1272,10 +1289,15 @@ async def refresh_repository_languages(
 
     data = get_repository_languages_response(db, user.id, str(resource.id))
     if not data:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve language snapshot after refresh",
-        )
+        data = {
+            "repository_id": str(resource.id),
+            "repository_name": resource.name or resource.external_resource_id,
+            "sync_status": snap.sync_status if snap else "synced",
+            "total_bytes": 0,
+            "retrieval_timestamp": datetime.now(timezone.utc).isoformat(),
+            "languages": [],
+            "error_summary": None,
+        }
     return data
 
 
@@ -1935,20 +1957,29 @@ async def analyze_repository_evidence(
         )
 
     # Resolve resource or repo_full
+    decoded_id = urllib.parse.unquote(repository_id).strip()
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
-    repo_full = resource.external_resource_id if resource else repository_id
+    repo_full = resource.external_resource_id if resource else decoded_id
     repo_name = repo_full.split("/")[-1] if "/" in repo_full else repo_full
 
     # Find existing evidence items for this repository
@@ -1957,7 +1988,9 @@ async def analyze_repository_evidence(
         EvidenceItem.source_provider == "github",
         or_(
             EvidenceItem.source_name == repo_full,
+            EvidenceItem.source_name == decoded_id,
             EvidenceItem.project_name == repo_name,
+            EvidenceItem.source_name.ilike(f"%/{repo_name}"),
         ),
         EvidenceItem.is_deleted == False,
     ).order_by(EvidenceItem.observed_timestamp.desc()).all()

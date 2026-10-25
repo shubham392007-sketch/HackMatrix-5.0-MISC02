@@ -1,7 +1,9 @@
 import uuid
+import urllib.parse
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from backend.app.models.connection import ConnectedSource, SelectedResource
 from backend.app.models.evidence import EvidenceItem
@@ -240,24 +242,33 @@ def get_repository_readme_response(
         return None
 
     # Resolve resource
+    decoded_id = urllib.parse.unquote(str(repository_id)).strip()
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_id)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).filter(
             SelectedResource.id == res_uuid,
             SelectedResource.connection_id == connection.id,
         ).first()
-    except ValueError:
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
         resource = db.query(SelectedResource).filter(
-            SelectedResource.external_resource_id == repository_id,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_id)
+            | (SelectedResource.name == repository_id)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             SelectedResource.connection_id == connection.id,
         ).first()
 
     if not resource:
-        if "/" in repository_id:
+        if "/" in decoded_id or "/" in repository_id:
             return {
-                "repository_id": repository_id,
-                "repository_name": repository_id,
+                "repository_id": str(repository_id),
+                "repository_name": decoded_id,
                 "sync_status": "not_synced",
                 "readme_path": "README.md",
                 "blob_sha": None,

@@ -56,8 +56,10 @@ export default function JiraSourceFlow() {
   const isJiraConnected = Boolean(currentSource || optimisticConnected || projects.length > 0);
 
   useEffect(() => {
-    loadProjects(false);
-  }, [currentSource?.id]);
+    if (currentSource?.id || optimisticConnected) {
+      loadProjects(false);
+    }
+  }, [currentSource?.id, optimisticConnected]);
 
   const loadProjects = async (showNotification = false) => {
     setLoadingProjects(true);
