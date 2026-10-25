@@ -150,28 +150,28 @@ export default function CreateJobPage() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl w-full mx-auto space-y-6">
-      {/* Top Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#1A1918]/15">
-        <div className="space-y-1">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl w-full mx-auto space-y-6 pb-16">
+      {/* ── CLEAN PAGE HEADER ────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-4 border-b border-[#1C1C1C]/15">
+        <div>
           <Link
             href="/recruiter/jobs"
-            className="text-xs font-bold text-stone-600 hover:text-black flex items-center gap-1.5"
+            className="text-xs font-bold text-stone-600 hover:text-black flex items-center gap-1.5 mb-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Job Openings</span>
           </Link>
-          <h1 className="text-2xl font-black text-[#1A1918] tracking-tight">
-            Post a Verified Job Opening
+          <h1 className="text-2xl font-black text-[#1C1C1C] tracking-tight">
+            Post New Job Opening
           </h1>
-          <p className="text-xs text-stone-600">
+          <p className="text-xs text-stone-600 mt-1">
             Published openings appear immediately in Career Intelligence Mode C for candidates to discover and match.
           </p>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 flex items-start gap-2.5 text-xs text-rose-900">
+        <div className="p-4 rounded-2xl bg-rose-50 border-[1.5px] border-rose-300 flex items-start gap-2.5 text-xs text-rose-950 shadow-[2px_2px_0_0_#e11d48]">
           <AlertCircle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold block">Submission Error</span>
@@ -183,13 +183,13 @@ export default function CreateJobPage() {
       {/* Main Form Cards */}
       <div className="space-y-6">
         {/* Card 1: Job Essentials */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
-          <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+          <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
             1. Role Details
           </h2>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
               Job Title *
             </label>
             <input
@@ -198,19 +198,19 @@ export default function CreateJobPage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Senior Machine Learning Engineer"
               required
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2.5 text-xs text-[#1A1918] placeholder:text-stone-400 focus:outline-none focus:border-[#1A1918]"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2.5 text-xs text-[#1C1C1C] placeholder:text-stone-400 focus:outline-none focus:border-[#1C1C1C]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Seniority Level
               </label>
               <select
                 value={seniority}
                 onChange={(e) => setSeniority(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="Entry Level">Entry Level</option>
                 <option value="Mid Level">Mid Level</option>
@@ -221,13 +221,13 @@ export default function CreateJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Workplace Mode
               </label>
               <select
                 value={remoteStatus}
                 onChange={(e) => setRemoteStatus(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="remote">Remote</option>
                 <option value="hybrid">Hybrid</option>
@@ -236,13 +236,13 @@ export default function CreateJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Employment Type
               </label>
               <select
                 value={employmentType}
                 onChange={(e) => setEmploymentType(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="full_time">Full-Time</option>
                 <option value="part_time">Part-Time</option>
@@ -253,7 +253,7 @@ export default function CreateJobPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
               Location / Region
             </label>
             <input
@@ -261,12 +261,12 @@ export default function CreateJobPage() {
               value={locationText}
               onChange={(e) => setLocationText(e.target.value)}
               placeholder="e.g. San Francisco, CA or Worldwide Remote"
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2 text-xs text-[#1A1918] placeholder:text-stone-400 focus:outline-none focus:border-[#1A1918]"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2 text-xs text-[#1C1C1C] placeholder:text-stone-400 focus:outline-none focus:border-[#1C1C1C]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
               Job Description & Responsibilities *
             </label>
             <textarea
@@ -275,20 +275,20 @@ export default function CreateJobPage() {
               rows={6}
               placeholder="Outline the mission, primary responsibilities, key projects, and team culture..."
               required
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2.5 text-xs text-[#1A1918] placeholder:text-stone-400 focus:outline-none focus:border-[#1A1918] font-sans"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2.5 text-xs text-[#1C1C1C] placeholder:text-stone-400 focus:outline-none focus:border-[#1C1C1C] font-sans"
             />
           </div>
         </div>
 
         {/* Card 2: Compensation Range */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
-          <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+          <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
             2. Compensation (Optional)
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Minimum Pay
               </label>
               <input
@@ -296,12 +296,12 @@ export default function CreateJobPage() {
                 value={salaryMin}
                 onChange={(e) => setSalaryMin(e.target.value)}
                 placeholder="120000"
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Maximum Pay
               </label>
               <input
@@ -309,18 +309,18 @@ export default function CreateJobPage() {
                 value={salaryMax}
                 onChange={(e) => setSalaryMax(e.target.value)}
                 placeholder="165000"
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Currency
               </label>
               <select
                 value={salaryCurrency}
                 onChange={(e) => setSalaryCurrency(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
@@ -331,13 +331,13 @@ export default function CreateJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Period
               </label>
               <select
                 value={salaryPeriod}
                 onChange={(e) => setSalaryPeriod(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="yearly">Per Year</option>
                 <option value="monthly">Per Month</option>
@@ -348,9 +348,9 @@ export default function CreateJobPage() {
         </div>
 
         {/* Card 3: Structured Taxonomy Requirements */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
           <div className="space-y-1">
-            <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
+            <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
               3. Structured Skill Taxonomy Requirements
             </h2>
             <p className="text-xs text-stone-600">
@@ -363,12 +363,12 @@ export default function CreateJobPage() {
             {requirements.map((req, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-2xl bg-sand/20 border border-stone-200 flex items-center justify-between gap-3 text-xs"
+                className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/15 flex items-center justify-between gap-3 text-xs"
               >
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-black text-[#1A1918]">{req.name}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-white border border-stone-300">
+                    <span className="font-black text-[#1C1C1C]">{req.name}</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-stone-100 border border-stone-300">
                       {req.importance}
                     </span>
                     <span className="text-[11px] text-stone-600">
@@ -385,7 +385,7 @@ export default function CreateJobPage() {
                 <button
                   type="button"
                   onClick={() => handleRemoveRequirement(idx)}
-                  className="p-1 text-stone-400 hover:text-rose-600"
+                  className="p-1 text-stone-400 hover:text-rose-600 transition-colors"
                   title="Remove requirement"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -395,21 +395,21 @@ export default function CreateJobPage() {
           </div>
 
           {/* Add New Requirement Bar */}
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-stone-300 space-y-3">
-            <span className="text-xs font-bold text-[#1A1918] block">Add Skill Requirement:</span>
+          <div className="p-4 rounded-xl bg-stone-100/70 border border-[#1C1C1C]/15 space-y-3">
+            <span className="text-xs font-bold text-[#1C1C1C] block">Add Skill Requirement:</span>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <input
                 type="text"
                 value={newSkillName}
                 onChange={(e) => setNewSkillName(e.target.value)}
                 placeholder="Skill name (e.g. React)"
-                className="bg-white border border-[#1A1918]/25 rounded-xl px-3 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-3 py-1.5 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               />
 
               <select
                 value={newSkillImportance}
                 onChange={(e) => setNewSkillImportance(e.target.value)}
-                className="bg-white border border-[#1A1918]/25 rounded-xl px-2 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-2 py-1.5 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="required">Required</option>
                 <option value="preferred">Preferred</option>
@@ -419,7 +419,7 @@ export default function CreateJobPage() {
               <select
                 value={newSkillLevel}
                 onChange={(e) => setNewSkillLevel(e.target.value)}
-                className="bg-white border border-[#1A1918]/25 rounded-xl px-2 py-1.5 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-2 py-1.5 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
               >
                 <option value="Foundational">Foundational</option>
                 <option value="Working">Working</option>
@@ -431,7 +431,7 @@ export default function CreateJobPage() {
               <button
                 type="button"
                 onClick={handleAddRequirement}
-                className="px-3 py-1.5 rounded-xl bg-[#1A1918] text-white text-xs font-bold hover:bg-stone-800 flex items-center justify-center gap-1"
+                className="pill-btn pill-btn-primary px-3 py-1.5 text-xs flex items-center justify-center gap-1 shadow-[1px_1px_0_0_#1C1C1C]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Skill</span>
@@ -441,9 +441,9 @@ export default function CreateJobPage() {
         </div>
 
         {/* Card 4: Recruiter Public Contact Details */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
           <div className="space-y-1">
-            <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
+            <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
               4. Recruiter Contact Details
             </h2>
             <p className="text-xs text-stone-600">
@@ -453,7 +453,7 @@ export default function CreateJobPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Recruiter Name
               </label>
               <div className="relative">
@@ -463,13 +463,13 @@ export default function CreateJobPage() {
                   value={publicRecruiterName}
                   onChange={(e) => setPublicRecruiterName(e.target.value)}
                   placeholder="e.g. Sarah Connor"
-                  className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl pl-9 pr-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                  className="w-full bg-[#FAF8F5] border border-[#1C1C1C]/25 rounded-xl pl-9 pr-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Contact Work Email
               </label>
               <div className="relative">
@@ -479,7 +479,7 @@ export default function CreateJobPage() {
                   value={publicRecruiterEmail}
                   onChange={(e) => setPublicRecruiterEmail(e.target.value)}
                   placeholder="sarah@company.com"
-                  className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl pl-9 pr-3 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+                  className="w-full bg-[#FAF8F5] border border-[#1C1C1C]/25 rounded-xl pl-9 pr-3 py-2 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
                 />
               </div>
             </div>
@@ -487,7 +487,7 @@ export default function CreateJobPage() {
         </div>
 
         {/* Submission Action Bar */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-stone-600 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Ready to publish to Career Intelligence Mode C</span>
@@ -498,7 +498,7 @@ export default function CreateJobPage() {
               type="button"
               disabled={isLoading}
               onClick={() => handleSubmit("draft")}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-full bg-white hover:bg-stone-100 border border-[#1A1918] text-xs font-bold text-[#1A1918] shadow-[1px_1px_0_0_#1A1918]"
+              className="pill-btn pill-btn-secondary flex-1 sm:flex-none px-4 py-2 text-xs shadow-[1.5px_1.5px_0_0_#1C1C1C]"
             >
               Save as Draft
             </button>
@@ -507,7 +507,7 @@ export default function CreateJobPage() {
               type="button"
               disabled={isLoading}
               onClick={() => handleSubmit("published")}
-              className="flex-1 sm:flex-none px-6 py-2.5 rounded-full bg-[#1A1918] hover:bg-stone-800 border-2 border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center justify-center gap-2 disabled:opacity-50"
+              className="pill-btn pill-btn-primary flex-1 sm:flex-none px-6 py-2 text-xs shadow-[2px_2px_0_0_#1C1C1C] flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>

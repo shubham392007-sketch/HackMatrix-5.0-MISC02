@@ -72,7 +72,7 @@ export default function EditJobPage() {
         setRemoteStatus(job.remote_status || "remote");
         setLocationText(job.location_text || "");
         setDescription(job.description || "");
-        setStatus(job.status as any || "published");
+        setStatus((job.status as any) || "published");
 
         if (job.salary_min) setSalaryMin(String(job.salary_min));
         if (job.salary_max) setSalaryMax(String(job.salary_max));
@@ -99,23 +99,20 @@ export default function EditJobPage() {
       ...prev,
       {
         name: newSkillName.trim(),
+        category: "Technical",
         importance: newSkillImportance,
         expected_level: newSkillLevel,
+        expected_level_numeric: 3,
       },
     ]);
     setNewSkillName("");
   };
 
-  const handleRemoveRequirement = (index: number) => {
-    setRequirements((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveRequirement = (idx: number) => {
+    setRequirements((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !description.trim()) {
-      setErrorMessage("Please enter both a job title and description.");
-      return;
-    }
-
     setSaving(true);
     setErrorMessage(null);
 
@@ -132,27 +129,16 @@ export default function EditJobPage() {
         salary_max: salaryMax ? parseFloat(salaryMax) : undefined,
         salary_currency: salaryCurrency,
         salary_period: salaryPeriod,
-        extracted_requirements: requirements,
         public_recruiter_name: publicRecruiterName.trim() || undefined,
         public_recruiter_email: publicRecruiterEmail.trim() || undefined,
+        extracted_requirements: requirements,
       });
 
       router.push("/recruiter/jobs");
     } catch (err: any) {
-      console.error("Job update failed:", err);
       setErrorMessage(err.message || "Failed to update job posting.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to close or delete this job opening?")) return;
-    try {
-      await deleteOrCloseJob(jobId);
-      router.push("/recruiter/jobs");
-    } catch (err: any) {
-      alert(err.message || "Could not delete or close job.");
     }
   };
 
@@ -160,90 +146,86 @@ export default function EditJobPage() {
     return (
       <div className="flex-1 p-16 text-center text-xs text-stone-500">
         <RotateCw className="w-6 h-6 animate-spin mx-auto mb-2 text-stone-400" />
-        Loading job opening...
+        Loading job opening details...
       </div>
     );
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl w-full mx-auto space-y-6">
-      <div className="flex items-center justify-between pb-4 border-b border-[#1A1918]/15">
-        <div className="space-y-1">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl w-full mx-auto space-y-6 pb-16">
+      {/* ── CLEAN PAGE HEADER ────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-4 border-b border-[#1C1C1C]/15">
+        <div>
           <Link
             href="/recruiter/jobs"
-            className="text-xs font-bold text-stone-600 hover:text-black flex items-center gap-1.5"
+            className="text-xs font-bold text-stone-600 hover:text-black flex items-center gap-1.5 mb-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Job Openings</span>
           </Link>
-          <h1 className="text-2xl font-black text-[#1A1918] tracking-tight">
+          <h1 className="text-2xl font-black text-[#1C1C1C] tracking-tight">
             Edit Job Opening
           </h1>
+          <p className="text-xs text-stone-600 mt-1">
+            Update role parameters, compensation brackets, and verified skills taxonomy requirements.
+          </p>
         </div>
-
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="px-3.5 py-1.5 rounded-full border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-bold"
-        >
-          Close or Delete Opening
-        </button>
       </div>
 
       {errorMessage && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 flex items-start gap-2.5 text-xs text-rose-900">
+        <div className="p-4 rounded-2xl bg-rose-50 border-[1.5px] border-rose-300 flex items-start gap-2.5 text-xs text-rose-950 shadow-[2px_2px_0_0_#e11d48]">
           <AlertCircle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
-            <span className="font-bold block">Error</span>
+            <span className="font-bold block">Update Error</span>
             <p>{errorMessage}</p>
           </div>
         </div>
       )}
 
       <div className="space-y-6">
-        {/* Card 1: Essentials */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
-              1. Role Details
-            </h2>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-stone-600">Status:</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="bg-[#FAF8F5] border border-[#1A1918]/30 rounded-xl px-2.5 py-1 text-xs font-bold text-[#1A1918]"
-              >
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="paused">Paused</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-          </div>
+        {/* Card 1: Role Details */}
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+          <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
+            1. Role Essentials
+          </h2>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
               Job Title *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              required
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2 text-xs text-[#1A1918] focus:outline-none focus:border-[#1A1918]"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2.5 text-xs text-[#1C1C1C] focus:outline-none focus:border-[#1C1C1C]"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
-                Seniority
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C] font-bold"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="paused">Paused</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+                Seniority Level
               </label>
               <select
                 value={seniority}
                 onChange={(e) => setSeniority(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               >
                 <option value="Entry Level">Entry Level</option>
                 <option value="Mid Level">Mid Level</option>
@@ -254,13 +236,13 @@ export default function EditJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
-                Workplace Mode
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+                Workplace
               </label>
               <select
                 value={remoteStatus}
                 onChange={(e) => setRemoteStatus(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               >
                 <option value="remote">Remote</option>
                 <option value="hybrid">Hybrid</option>
@@ -269,13 +251,13 @@ export default function EditJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Employment Type
               </label>
               <select
                 value={employmentType}
                 onChange={(e) => setEmploymentType(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               >
                 <option value="full_time">Full-Time</option>
                 <option value="part_time">Part-Time</option>
@@ -286,69 +268,69 @@ export default function EditJobPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
               Location
             </label>
             <input
               type="text"
               value={locationText}
               onChange={(e) => setLocationText(e.target.value)}
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2 text-xs text-[#1A1918]"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2 text-xs text-[#1C1C1C]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
-              Job Description *
+            <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+              Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={6}
-              required
-              className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-4 py-2 text-xs text-[#1A1918] font-sans"
+              className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-4 py-2 text-xs text-[#1C1C1C]"
             />
           </div>
         </div>
 
         {/* Card 2: Compensation */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
-          <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
-            2. Compensation Range
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+          <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
+            2. Compensation
           </h2>
+
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
-                Min Pay
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+                Minimum Pay
               </label>
               <input
                 type="number"
                 value={salaryMin}
                 onChange={(e) => setSalaryMin(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
-                Max Pay
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
+                Maximum Pay
               </label>
               <input
                 type="number"
                 value={salaryMax}
                 onChange={(e) => setSalaryMax(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Currency
               </label>
               <select
                 value={salaryCurrency}
                 onChange={(e) => setSalaryCurrency(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               >
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
@@ -358,13 +340,13 @@ export default function EditJobPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#1A1918] mb-1.5">
+              <label className="block text-xs font-bold text-[#1C1C1C] mb-1.5">
                 Period
               </label>
               <select
                 value={salaryPeriod}
                 onChange={(e) => setSalaryPeriod(e.target.value)}
-                className="w-full bg-[#FAF8F5] border border-[#1A1918]/25 rounded-xl px-3 py-2 text-xs text-[#1A1918]"
+                className="w-full bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C]/25 rounded-xl px-3 py-2 text-xs text-[#1C1C1C]"
               >
                 <option value="yearly">Per Year</option>
                 <option value="monthly">Per Month</option>
@@ -375,8 +357,8 @@ export default function EditJobPage() {
         </div>
 
         {/* Card 3: Requirements */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] space-y-4">
-          <h2 className="text-sm font-black text-[#1A1918] uppercase tracking-wider">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] space-y-4">
+          <h2 className="text-sm font-black text-[#1C1C1C] uppercase tracking-wider">
             3. Skill Requirements ({requirements.length})
           </h2>
 
@@ -384,11 +366,11 @@ export default function EditJobPage() {
             {requirements.map((req, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-2xl bg-sand/20 border border-stone-200 flex items-center justify-between text-xs"
+                className="p-3.5 rounded-xl bg-white border border-[#1C1C1C]/15 flex items-center justify-between text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#1A1918]">{req.name}</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-white border">
+                  <span className="font-bold text-[#1C1C1C]">{req.name}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-stone-100 border border-stone-300">
                     {req.importance}
                   </span>
                   <span className="text-stone-500 text-[11px]">Level: {req.expected_level}</span>
@@ -396,7 +378,7 @@ export default function EditJobPage() {
                 <button
                   type="button"
                   onClick={() => handleRemoveRequirement(idx)}
-                  className="p-1 text-stone-400 hover:text-rose-600"
+                  className="p-1 text-stone-400 hover:text-rose-600 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -404,20 +386,20 @@ export default function EditJobPage() {
             ))}
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-stone-300 space-y-2">
-            <span className="text-xs font-bold text-[#1A1918] block">Add Skill:</span>
+          <div className="p-4 rounded-xl bg-stone-100/70 border border-[#1C1C1C]/15 space-y-2">
+            <span className="text-xs font-bold text-[#1C1C1C] block">Add Skill:</span>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <input
                 type="text"
                 value={newSkillName}
                 onChange={(e) => setNewSkillName(e.target.value)}
                 placeholder="Skill name"
-                className="bg-white border rounded-xl px-3 py-1.5 text-xs text-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-3 py-1.5 text-xs text-[#1C1C1C]"
               />
               <select
                 value={newSkillImportance}
                 onChange={(e) => setNewSkillImportance(e.target.value)}
-                className="bg-white border rounded-xl px-2 py-1.5 text-xs text-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-2 py-1.5 text-xs text-[#1C1C1C]"
               >
                 <option value="required">Required</option>
                 <option value="preferred">Preferred</option>
@@ -426,7 +408,7 @@ export default function EditJobPage() {
               <select
                 value={newSkillLevel}
                 onChange={(e) => setNewSkillLevel(e.target.value)}
-                className="bg-white border rounded-xl px-2 py-1.5 text-xs text-[#1A1918]"
+                className="bg-white border border-[#1C1C1C]/25 rounded-xl px-2 py-1.5 text-xs text-[#1C1C1C]"
               >
                 <option value="Foundational">Foundational</option>
                 <option value="Working">Working</option>
@@ -437,7 +419,7 @@ export default function EditJobPage() {
               <button
                 type="button"
                 onClick={handleAddRequirement}
-                className="px-3 py-1.5 rounded-xl bg-[#1A1918] text-white text-xs font-bold hover:bg-stone-800"
+                className="pill-btn pill-btn-primary px-3 py-1.5 text-xs font-bold"
               >
                 Add Skill
               </button>
@@ -446,10 +428,10 @@ export default function EditJobPage() {
         </div>
 
         {/* Action Bar */}
-        <div className="p-6 rounded-3xl bg-white border-2 border-[#1A1918] shadow-[3px_3px_0_0_#1A1918] flex items-center justify-end gap-3">
+        <div className="p-6 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1C1C1C] shadow-[2.5px_2.5px_0_0_#1C1C1C] flex items-center justify-end gap-3">
           <Link
             href="/recruiter/jobs"
-            className="px-4 py-2 rounded-full border border-stone-300 text-xs font-bold text-stone-700 hover:bg-stone-50"
+            className="pill-btn pill-btn-secondary px-4 py-2 text-xs shadow-[1.5px_1.5px_0_0_#1C1C1C]"
           >
             Cancel
           </Link>
@@ -457,7 +439,7 @@ export default function EditJobPage() {
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-2 rounded-full bg-[#1A1918] hover:bg-stone-800 border-2 border-[#1A1918] text-xs font-black uppercase tracking-wider text-[#FAF8F5] shadow-[2px_2px_0_0_#1A1918] flex items-center gap-2"
+            className="pill-btn pill-btn-primary px-6 py-2 text-xs shadow-[2px_2px_0_0_#1C1C1C] flex items-center gap-2"
           >
             {saving ? (
               <>
