@@ -96,7 +96,6 @@ import {
   saveCatalogueRoleToTargets as saveCatalogueRoleToTargetsApi,
   getUserTargetRole,
   setUserTargetRole as apiSetUserTargetRole,
-  listRoles as listCareerRoles,
 } from "@/lib/careerApi";
 import { learningCache } from "@/lib/learningCache";
 import {
@@ -1266,25 +1265,37 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (Array.isArray(valItems)) {
-        const mappedVals: OutputValidationRecord[] = valItems.map((v: any) => ({
-          run_id: v.run_id,
-          output_type: v.target_type === "skill_extraction" ? "skill_extraction" : "work_analysis",
-          status: v.final_status === "valid" ? "valid" : "validation_failed",
-          schema_version: "v1.0",
-          model_version: "qwen3:8b",
-          prompt_version: "v1.0",
-          timestamp: v.created_at || "Recently",
-          issues: (v.error_messages || []).map((err: string) => ({
-            field: "output",
-            severity: "error",
-            message: err,
-          })),
-          retryable: true,
-          received_payload_summary: {
-            schema_valid: v.schema_valid,
-            missing_fields: (v.missing_fields || []).length,
-          },
-        }));
+        const mappedVals: OutputValidationRecord[] = valItems.map((v: any) => {
+          const rawErrors = Array.isArray(v.error_messages)
+            ? v.error_messages
+            : typeof v.error_messages === "string" && v.error_messages
+            ? [v.error_messages]
+            : [];
+          const rawMissing = Array.isArray(v.missing_fields)
+            ? v.missing_fields
+            : typeof v.missing_fields === "string" && v.missing_fields
+            ? [v.missing_fields]
+            : [];
+          return {
+            run_id: v.run_id,
+            output_type: v.target_type === "skill_extraction" ? "skill_extraction" : "work_analysis",
+            status: v.final_status === "valid" ? "valid" : "validation_failed",
+            schema_version: "v1.0",
+            model_version: "qwen3:8b",
+            prompt_version: "v1.0",
+            timestamp: v.created_at || "Recently",
+            issues: rawErrors.map((err: any) => ({
+              field: "output",
+              severity: "error",
+              message: typeof err === "string" ? err : JSON.stringify(err),
+            })),
+            retryable: true,
+            received_payload_summary: {
+              schema_valid: v.schema_valid,
+              missing_fields: rawMissing.length,
+            },
+          };
+        });
         setValidationRecords(mappedVals);
       }
 
@@ -2220,14 +2231,20 @@ export function EvidenceProvider({ children }: { children: React.ReactNode }) {
       addToast("Evidence Removed", "Evidence record and associated vector indexes removed.", "info");
       refreshEvidenceData(true).catch((err) => console.warn("Background refresh after delete:", err));
     } catch (err: any) {
-      console.error("Backend delete failed, rolling back local state:", err);
-      setEvidenceItems(previousItems);
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(previousItems));
+      const isNotFound = err.message?.toLowerCase().includes("not found");
+      if (isNotFound) {
+        console.warn("Evidence item already deleted on backend, keeping local removal:", id);
+        addToast("Evidence Removed", "Evidence record was already removed from database.", "info");
+      } else {
+        console.error("Backend delete failed, rolling back local state:", err);
+        setEvidenceItems(previousItems);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_live_evidence_cache", JSON.stringify(previousItems));
+        }
+        saveState(previousItems, sources, ingestionRuns, skills, historyEvents);
+        addToast("Delete Failed", err.message || "Failed to remove evidence from database.", "error");
+        throw err;
       }
-      saveState(previousItems, sources, ingestionRuns, skills, historyEvents);
-      addToast("Delete Failed", err.message || "Failed to remove evidence from database.", "error");
-      throw err;
     }
   };
 

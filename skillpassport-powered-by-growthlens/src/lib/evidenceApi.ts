@@ -832,6 +832,10 @@ export async function deleteEvidenceItem(evidenceId: string) {
     headers,
   });
   if (!res.ok) {
+    if (res.status === 404) {
+      // Idempotent client delete: resource is already removed on the server
+      return { status: "deleted", evidence_id: evidenceId, message: "Evidence item already removed" };
+    }
     const err = await res.json().catch(() => ({ detail: "Failed to delete evidence item" }));
     throw new Error(err.detail || "Failed to delete evidence item");
   }
@@ -891,7 +895,11 @@ export async function runWorkAnalysis(evidenceIds: string[]) {
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({ evidence_ids: evidenceIds }),
   });
-  if (!res.ok) throw new Error("Failed to run work analysis");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const message = errData.detail || errData.error?.message || errData.message || `Work analysis failed (HTTP ${res.status})`;
+    throw new Error(message);
+  }
   return res.json();
 }
 
