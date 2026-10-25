@@ -8,6 +8,7 @@ import AgentationProvider from "@/components/layout/AgentationProvider";
 import InteractiveDotGrid from "@/components/layout/InteractiveDotGrid";
 import { EvidenceProvider } from "@/context/EvidenceContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { GeminiVoiceProvider } from "@/components/voice/GeminiVoiceModule";
 
 const poppins = Poppins({
   variable: "--font-primary",
@@ -51,7 +52,9 @@ export default function RootLayout({
         <GlobalPageTransitionLoader />
         <AuthProvider>
           <EvidenceProvider>
-            <PageTransition>{children}</PageTransition>
+            <GeminiVoiceProvider>
+              <PageTransition>{children}</PageTransition>
+            </GeminiVoiceProvider>
           </EvidenceProvider>
         </AuthProvider>
         <AgentationProvider />

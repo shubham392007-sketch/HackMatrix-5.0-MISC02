@@ -29,7 +29,10 @@ import {
   X,
   Compass,
   Menu,
+  Mic,
+  Radio,
 } from "lucide-react";
+import { useGeminiVoice } from "@/components/voice/GeminiVoiceModule";
 
 export interface BreadcrumbItem {
   label: string;
@@ -77,6 +80,7 @@ export default function AppTopBar({
     toggleMobileSidebar,
   } = useEvidence();
   const { user: authUser, profile: authProfile, signOut } = useAuth();
+  const { toggleOpen: toggleVoiceOpen, status: voiceStatus } = useGeminiVoice();
 
   const realDisplayName =
     authProfile?.display_name ||
@@ -390,6 +394,25 @@ export default function AppTopBar({
                   {children}
                 </div>
               )}
+
+              {/* Gemini Live Voice Copilot Trigger */}
+              <button
+                type="button"
+                onClick={toggleVoiceOpen}
+                title="Gemini Live Voice Copilot (Full Project Context)"
+                aria-label="Gemini Live Voice Copilot"
+                className={`w-8 sm:w-8.5 h-8 sm:h-8.5 rounded-full border flex items-center justify-center shadow-[1px_1px_0_0_#171717] transition-all cursor-pointer shrink-0 active:translate-x-0.5 active:translate-y-0.5 ${
+                  voiceStatus === "connected" || voiceStatus === "speaking" || voiceStatus === "thinking"
+                    ? "bg-[#DFE968] border-[#171717] text-[#171717]"
+                    : "bg-[#FAF8F5] border-[#171717]/25 hover:border-[#171717] hover:bg-[#EAE5D9]/60 text-[#171717]"
+                }`}
+              >
+                {voiceStatus === "connected" || voiceStatus === "speaking" || voiceStatus === "thinking" ? (
+                  <Radio className="w-4 h-4 text-[#171717] animate-pulse" />
+                ) : (
+                  <Mic className="w-4 h-4 text-[#171717]/80" />
+                )}
+              </button>
 
               {/* Contextual Help Icon */}
               <button
