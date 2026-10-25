@@ -19,7 +19,7 @@ export default function EvidenceOnboardingRedirect() {
         } else if (profile?.onboarding_status === "completed") {
           router.replace("/app/evidence");
         } else {
-          router.replace("/app/onboarding");
+          router.replace("/app/evidence");
         }
       }, 0);
     }

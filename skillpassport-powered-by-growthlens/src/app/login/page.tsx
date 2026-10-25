@@ -121,11 +121,6 @@ function LoginForm() {
               router.push(managerTarget);
               return;
             }
-
-            if (profileData.onboarding_status !== "completed") {
-              router.push("/app/onboarding");
-              return;
-            }
           }
         } catch (e) {
           console.warn("Could not verify profile onboarding state:", e);

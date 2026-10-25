@@ -32,15 +32,8 @@ export default function AppAuthGuard({
         const emailQuery = user?.email ? `&email=${encodeURIComponent(user.email)}` : "";
         timer = setTimeout(() => {
           router.replace(`/auth/verify-email?status=unverified${emailQuery}`);
-        }, 0);
-      } else {
-        // If user is authenticated, verified, and profile is loaded with incomplete onboarding, guide to onboarding wizard
-        const isOnboardingRoute = pathname === "/app/onboarding" || pathname === "/app/evidence/onboarding";
-        if (profile && profile.onboarding_status !== "completed" && !isOnboardingRoute) {
-          timer = setTimeout(() => {
-            router.replace("/app/onboarding");
-          }, 0);
-        }
+        }, 0);      } else {
+        // Onboarding guard turned off - users access workspace directly
       }
     }
     return () => {

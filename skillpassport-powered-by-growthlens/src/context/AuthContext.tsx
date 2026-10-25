@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               display_name: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split("@")[0] || "User",
               headline: null,
               current_role: "employee",
-              onboarding_status: "in_progress",
+              onboarding_status: "completed",
               onboarding_current_step: 1,
               onboarding_current_category: "resume",
               github_skipped: false,
@@ -307,7 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const trimmedName = displayName?.trim() || normalizedEmail.split("@")[0];
       const callbackOrigin = typeof window !== "undefined" ? window.location.origin : "";
       const redirectTo = callbackOrigin
-        ? `${callbackOrigin}/auth/callback?next=/app/onboarding`
+        ? `${callbackOrigin}/auth/callback?next=/app/evidence`
         : undefined;
 
       let { data, error } = await supabase.auth.signUp({
@@ -421,7 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const normalizedEmail = email.trim().toLowerCase();
       const callbackOrigin = typeof window !== "undefined" ? window.location.origin : "";
       const redirectTo = callbackOrigin
-        ? `${callbackOrigin}/auth/callback?next=/app/onboarding`
+        ? `${callbackOrigin}/auth/callback?next=/app/evidence`
         : undefined;
 
       const { error } = await supabase.auth.resend({

@@ -44,7 +44,7 @@ class UserProfile(Base, TimestampMixin):
     # Onboarding workflow state
     onboarding_status: Mapped[str] = mapped_column(
         String(50),
-        default="not_started",
+        default="completed",
         nullable=False,
     )  # 'not_started', 'in_progress', 'completed'
     
