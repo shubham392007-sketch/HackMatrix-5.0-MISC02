@@ -153,7 +153,7 @@ export default function ProficiencyAssessmentPage({ params }: PageProps) {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Current Level Summary Card */}
-      <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
+      <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">

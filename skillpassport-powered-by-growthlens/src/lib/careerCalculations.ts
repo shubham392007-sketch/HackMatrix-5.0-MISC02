@@ -12,6 +12,7 @@ import {
   GapClassification,
   CareerReadinessAssessment,
   GapPriorityInputs,
+  ConfidenceRationale,
 } from "@/types/career";
 
 export function proficiencyToNumeric(level: ProficiencyLevel | string | undefined): number {
@@ -201,6 +202,94 @@ export function classifyCompetencyGap(
   };
 }
 
+
+export function buildConfidenceRationale(
+  comp: RoleCompetency,
+  userSkill: any,
+  currentNumeric: number,
+  expectedNumeric: number,
+  currentProf: ProficiencyLevel,
+  vState: string,
+  rawConfidence: number,
+  matchStatus: string,
+  evidenceIds: string[]
+): ConfidenceRationale {
+  const cName = comp.canonical_name;
+  const expectedLevel = comp.expected_level;
+  const scorePercent = rawConfidence <= 1.0 ? Math.round(rawConfidence * 100) : Math.round(rawConfidence);
+  const normalizedScore = rawConfidence <= 1.0 ? rawConfidence : rawConfidence / 100;
+
+  const supportingFactors: string[] = [];
+  const evidenceLimitations: string[] = [];
+  const uncertaintyNotes: string[] = [];
+  let scoreMeaning = "";
+  let summary = "";
+
+  if (!userSkill || currentNumeric === 0) {
+    scoreMeaning = "Confidence reflects the complete absence of attributable engineering artifacts in connected sources.";
+    summary = `Assigned 0% confidence because no attributable code commits, pull requests, technical documents, or repository files were found in your connected sources for ${cName}.`;
+    evidenceLimitations.push(`No verifiable engineering artifacts currently demonstrate ${cName} in your Skill Passport.`);
+    uncertaintyNotes.push("An evidence gap indicates that relevant work has not yet been ingested or connected; it does not serve as proof that you lack this competency.");
+  } else {
+    scoreMeaning = "Confidence reflects the relevance, cryptographic attribution, and verification standing of source artifacts supporting this competency claim.";
+
+    if (evidenceIds.length > 0) {
+      supportingFactors.push(`Directly supported by ${evidenceIds.length} attributable work artifact(s) in Evidence Workspace.`);
+    }
+    if (currentNumeric > 0) {
+      supportingFactors.push(`Demonstrated capability established at ${currentProf} level (numeric ${currentNumeric}/5).`);
+    }
+    if (vState === "verified") {
+      supportingFactors.push("Cleared 7-point Trust & Governance verification with confirmed code authorship and zero open conflicts.");
+    }
+
+    if (currentNumeric < expectedNumeric) {
+      const dist = expectedNumeric - currentNumeric;
+      evidenceLimitations.push(`Proficiency shortfall: currently supported at ${currentProf} (numeric ${currentNumeric}/5) against target role expectation of ${expectedLevel} (numeric ${expectedNumeric}/5), representing a ${dist}-level depth gap.`);
+    }
+
+    if (vState === "candidate") {
+      evidenceLimitations.push("Capability claim is currently in 'candidate' review state and has not yet cleared independent verification.");
+      uncertaintyNotes.push("Candidate skills receive a fractional verification weight in effective coverage until reviewed.");
+    } else if (vState === "conflicting") {
+      evidenceLimitations.push("Open attribution conflict or contradictory source signals detected in Trust Center.");
+      uncertaintyNotes.push("Confidence is discounted until the conflicting source claims are resolved.");
+    } else if (vState === "insufficient_evidence") {
+      evidenceLimitations.push("Extracted mention lacks sufficient corroborating code implementation examples.");
+    }
+
+    if (evidenceIds.length < 2) {
+      evidenceLimitations.push("Single-source evidence: evaluation relies on one artifact without cross-source validation.");
+    }
+
+    if (vState === "verified" && currentNumeric >= expectedNumeric) {
+      summary = `Assigned high confidence (${scorePercent}%) because ${cName} at ${currentProf} level is directly backed by ${evidenceIds.length || 1} verified engineering artifact(s) passing all Trust & Governance integrity checks.`;
+    } else if (vState === "verified" && currentNumeric < expectedNumeric) {
+      const dist = expectedNumeric - currentNumeric;
+      summary = `Assigned ${scorePercent}% confidence reflecting high certainty in your demonstrated ${currentProf} capabilities, while noting a ${dist}-level depth gap relative to the target role's ${expectedLevel} requirement.`;
+    } else if (vState === "candidate") {
+      summary = `Assigned moderate confidence (${scorePercent}%) because work evidence was extracted for ${cName}, but remains in candidate status awaiting peer or automated verification clearance.`;
+    } else if (vState === "conflicting") {
+      summary = `Assigned discounted confidence (${scorePercent}%) due to conflicting evidence attribution flagged in Trust Center.`;
+    } else {
+      summary = `Assigned ${scorePercent}% confidence based on available evidence signals for ${cName} at ${currentProf} level.`;
+    }
+
+    uncertaintyNotes.push("Skill gaps represent areas where formal proof has not yet been recorded under the current evaluation policy, not a conclusion of candidate inability.");
+  }
+
+  return {
+    score: Math.round(normalizedScore * 100) / 100,
+    score_percent: scorePercent,
+    score_meaning: scoreMeaning,
+    summary,
+    supporting_factors: supportingFactors,
+    evidence_limitations: evidenceLimitations,
+    uncertainty_notes: uncertaintyNotes,
+    is_verified: vState === "verified",
+  };
+}
+
 export function evaluateRoleMatch(
   role: RoleDemandModel,
   userSkills: SkillItem[]
@@ -259,6 +348,20 @@ export function evaluateRoleMatch(
       matchStatus = "missing_weak";
     }
 
+    const rawConf = userSkill?.confidence || (currentNumeric > 0 ? 80 : 0);
+    const evIds = userSkill?.evidenceIds || [];
+    const rationale = buildConfidenceRationale(
+      comp,
+      userSkill,
+      currentNumeric,
+      expectedNumeric,
+      currentProf,
+      vState,
+      rawConf,
+      matchStatus,
+      evIds
+    );
+
     return {
       skill_id: comp.skill_id,
       canonical_name: comp.canonical_name,
@@ -269,9 +372,11 @@ export function evaluateRoleMatch(
       current_proficiency: currentProf,
       current_proficiency_numeric: currentNumeric,
       verification_status: vState,
-      confidence: userSkill?.confidence || (currentNumeric > 0 ? 80 : 0),
-      evidence_strength: userSkill?.evidenceStrength || (userSkill?.evidenceIds?.length ? "medium" : "none"),
-      evidence_ids: userSkill?.evidenceIds || [],
+      confidence: rawConf,
+      confidence_explanation: rationale.summary,
+      confidence_rationale: rationale,
+      evidence_strength: userSkill?.evidenceStrength || (evIds.length ? "medium" : "none"),
+      evidence_ids: evIds,
       raw_coverage: Math.round(rawCoverage * 1000) / 1000,
       effective_coverage: Math.round(effectiveCoverage * 1000) / 1000,
       gap_type: gapType,
@@ -442,6 +547,9 @@ export function extractGapRecords(
       source_references: sourceRefs,
       provenance: provText,
       authenticity_status: comp.verification_status === "verified" ? "verified" : "authentic_benchmark",
+      confidence: comp.confidence,
+      confidence_explanation: comp.confidence_explanation,
+      confidence_rationale: comp.confidence_rationale,
     });
   });
 

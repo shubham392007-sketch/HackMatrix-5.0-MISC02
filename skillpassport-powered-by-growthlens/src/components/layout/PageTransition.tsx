@@ -20,7 +20,7 @@ export default function PageTransition({
   }, [pathname]);
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-0">
+    <div className="w-full flex-1 flex flex-col min-h-0 relative z-[1]">
       {children}
     </div>
   );

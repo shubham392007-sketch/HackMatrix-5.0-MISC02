@@ -10,22 +10,24 @@
        url('https://fonts.gstatic.com/s/yellowtail/v25/OZpGg_pnoDtINPfRIlLotlw.ttf') format('truetype');
 }
 
-/* ── GrowthLens Moonwood Design Tokens ──────────────────── */
+/* ── Executive Press Design Tokens ──────────────────────── */
 @theme inline {
-  /* Brand & Surface */
-  --color-lime: #DFE968;
-  --color-cream: #FBF1CF;
-  --color-blush: #F6C8D6;
-  --color-peach: #F3A878;
-  --color-cta: #F6BB84;
-  --color-ink: #1C1C1C;
-  --color-card: #FBF6DF;
+  /* Brand & Surface - Executive Press */
+  --color-lime: #E0A96D;
+  --color-cream: #F5F2EB;
+  --color-blush: #EAE5D9;
+  --color-peach: #D8CEBC;
+  --color-cta: #000000;
+  --color-cta-text: #FAF8F5;
+  --color-ink: #1A1918;
   --color-paper: #FAF8F5;
+  --color-card: #FAF8F5;
+  --color-navy: #000000;
   --color-sand: #F5EFE6;
 
   /* Semantic Trends */
-  --color-improving: #4A7A4E;
-  --color-stagnating: #1C1C1C;
+  --color-improving: #2D5A43;
+  --color-stagnating: #1A1918;
   --color-declining: #C85A54;
   --color-insufficient: #767676;
 
@@ -42,8 +44,14 @@
 
 /* ── Global Styles ─────────────────────────────────────── */
 :root {
-  --bg-gradient: linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%);
-  background-color: #FBF1CF;
+  --bg-canvas: #F5F2EB;
+  --color-ink: #1A1918;
+  --color-paper: #FAF8F5;
+  --color-card: #FAF8F5;
+  --color-cta: #000000;
+  --color-cta-text: #FAF8F5;
+  --color-navy: #000000;
+  background-color: #F5F2EB;
 }
 
 *,
@@ -57,21 +65,14 @@ html {
   overflow-y: auto;
   overflow-x: clip;
   overscroll-behavior-x: none;
-  background: var(--bg-gradient);
-  background-color: #FBF1CF;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #F8F5EF !important;
   width: 100%;
   min-height: 100%;
 }
 
 body {
-  background: var(--bg-gradient);
-  background-color: #FBF1CF;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: transparent !important;
+  background-image: none !important;
   color: var(--color-ink);
   font-family: var(--font-primary);
   font-weight: 500;
@@ -84,6 +85,21 @@ body {
   padding: 0;
   position: relative;
 }
+
+.dashboard-background {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* ── Absolute Ban on Gradients Across Every Page ────────── */
+[class*="bg-gradient-"],
+[class*="from-"],
+[class*="to-"],
+[class*="via-"] {
+  background-image: none !important;
+}
+
+
 
 /* ── Organic Shape Utility ──────────────────────────────── */
 .organic-shape {
@@ -121,14 +137,43 @@ body {
   border: 1.5px solid var(--color-ink);
   border-radius: var(--radius-card);
   box-shadow: 3px 3px 0px var(--color-ink);
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   isolation: isolate;
 }
 
 .gl-card:hover {
   transform: translateY(-2px);
-  box-shadow: 5px 5px 0px var(--color-ink);
+  box-shadow: 4px 4px 0px var(--color-ink);
+}
+
+/* ── Two-Tier Surface & Border Helpers ──────────────────── */
+.border-ink-subtle {
+  border-color: rgba(26, 25, 24, 0.12) !important;
+}
+
+.bg-well {
+  background-color: #EAE5D9 !important;
+}
+
+.bg-ivory {
+  background-color: #FAF8F5 !important;
+}
+
+.bg-linen {
+  background-color: #F5F2EB !important;
+}
+
+.shadow-press {
+  box-shadow: 2px 2px 0px var(--color-ink);
+}
+
+.shadow-press-sm {
+  box-shadow: 1.5px 1.5px 0px var(--color-ink);
+}
+
+.shadow-press-lg {
+  box-shadow: 3px 3px 0px var(--color-ink);
 }
 
 /* ── Spacing Utilities & Margin Preservation (Tailwind v4 compatibility) ── */
@@ -160,19 +205,39 @@ body {
 .space-x-6 > :not([hidden]) ~ :not([hidden]) { margin-left: 1.5rem !important; }
 
 /* ── Workspace Page Roots Spacing & Card Collision Protection ───── */
-main > div > div > .max-w-7xl,
-main > div > div > .max-w-6xl,
-main > div > div > .max-w-5xl,
-main > div > div > [class*="space-y-"]:first-child {
-  padding-left: clamp(1rem, 2.5vw, 2.5rem);
-  padding-right: clamp(1rem, 2.5vw, 2.5rem);
-  padding-top: 1.5rem;
+/* ── Standardized Page Root Padding (4px/8px rhythm aligned with AppTopBar) ── */
+.gl-page-container {
+  flex: 1 1 0%;
+  width: 100%;
+  max-width: 80rem; /* max-w-7xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1rem 1rem 4rem 1rem;
+}
+@media (min-width: 640px) {
+  .gl-page-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .gl-page-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
-/* Ensure consecutive cards never collide or overlap borders/shadows */
-:not(.grid):not([class*="grid-"]):not(.flex):not([class*="flex-"]) > .gl-card + .gl-card,
-:not(.grid):not([class*="grid-"]):not(.flex):not([class*="flex-"]) > * > .gl-card + .gl-card {
-  margin-top: 1.5rem !important;
+/* Ensure consecutive cards in non-grid/non-flex blocks have appropriate spacing */
+:not(.grid):not([class*="grid"]):not(.flex):not([class*="flex"]) > .gl-card + .gl-card {
+  margin-top: 1.5rem;
+}
+
+/* Guarantee that grid and flex children never receive unintended top margins */
+.grid > .gl-card,
+[class*="grid"] > .gl-card,
+.flex > .gl-card,
+[class*="flex"] > .gl-card {
+  margin-top: 0 !important;
 }
 
 /* ── Pill Button ────────────────────────────────────────── */
@@ -190,37 +255,85 @@ main > div > div > [class*="space-y-"]:first-child {
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 2px 2px 0px var(--color-ink);
-  transition: transform 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 120ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms ease-out;
 }
 
 .pill-btn:hover {
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
   box-shadow: 3px 3px 0px var(--color-ink);
 }
 
 .pill-btn:active {
-  transform: translateY(1px);
-  box-shadow: 1px 1px 0px var(--color-ink);
+  transform: translate(1.5px, 1.5px);
+  box-shadow: 0.5px 0.5px 0px var(--color-ink);
 }
 
 .pill-btn-primary {
-  background: var(--color-cta);
-  color: var(--color-ink);
+  background: #000000 !important;
+  color: #FAF8F5 !important;
+  border-color: #1A1918 !important;
+}
+
+.pill-btn-primary:hover {
+  background: #1A1918 !important;
 }
 
 .pill-btn-secondary {
-  background: #FBF1CF;
-  color: var(--color-ink);
+  background: #FAF8F5 !important;
+  color: #1A1918 !important;
+  border-color: #1A1918 !important;
 }
 
 .pill-btn-lime {
-  background: var(--color-lime);
-  color: var(--color-ink);
+  background: #E0A96D !important;
+  color: #1A1918 !important;
+  border-color: #1A1918 !important;
 }
 
 .pill-btn-dark {
-  background: var(--color-ink);
-  color: #FBF1CF;
+  background: #1A1918 !important;
+  color: #FAF8F5 !important;
+}
+
+/* ── Floating Capsule Navigation Bar ────────────────────────── */
+.floating-capsule-nav {
+  transition: box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 220ms ease,
+              border-color 220ms ease;
+}
+
+.floating-capsule-nav .pill-btn {
+  height: 34px !important;
+  padding: 0 0.85rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  white-space: nowrap !important;
+  box-shadow: 1px 1px 0px #171717 !important;
+  letter-spacing: 0.06em !important;
+}
+
+.floating-capsule-nav .pill-btn:hover {
+  transform: translate(-0.5px, -0.5px) !important;
+  box-shadow: 1.5px 1.5px 0px #171717 !important;
+}
+
+.floating-capsule-nav .pill-btn:active {
+  transform: translate(0.5px, 0.5px) !important;
+  box-shadow: 0px 0px 0px #171717 !important;
+}
+
+@media (max-width: 640px) {
+  .header-action-group .pill-btn:not(:first-child) span {
+    display: none;
+  }
+  .header-action-group .pill-btn:not(:first-child) {
+    padding: 0 0.5rem !important;
+    width: 34px !important;
+    justify-content: center !important;
+  }
 }
 
 /* ── Pill Input ─────────────────────────────────────────── */
@@ -300,7 +413,7 @@ main > div > div > [class*="space-y-"]:first-child {
   min-height: 490px;
   height: auto;
   border-radius: 36px;
-  background: linear-gradient(135deg, #F6C8D6 0%, #F6BB84 55%, #F3A878 100%);
+  background: #FAF8F5;
   border: 1.5px solid var(--color-ink);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   transform-style: preserve-3d;
@@ -314,24 +427,25 @@ main > div > div > [class*="space-y-"]:first-child {
   inset: 6px;
   border-radius: 32px;
   border-top-right-radius: 70px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(251, 246, 223, 0.22) 100%);
-  transform: translate3d(0px, 0px, 12px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.05) 100%);
+  transform: translate3d(0px, 0px, 4px);
   border-left: 1.5px solid rgba(255, 255, 255, 0.9);
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.9);
   border-top: 1px solid rgba(255, 255, 255, 0.45);
   border-right: 1px solid rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   pointer-events: none;
+  z-index: 1;
 }
 
 .content.dev-content {
   position: relative;
   transform-style: preserve-3d;
-  transform: translate3d(0, 0, 16px);
+  transform: translate3d(0, 0, 24px);
   transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  z-index: 25;
+  z-index: 30;
 }
 
 /* ── 3D Corner Telescoping Logo / Bubble Cluster (Scaled to fit corner without covering name) ── */
@@ -471,7 +585,11 @@ main > div > div > [class*="space-y-"]:first-child {
   }
 
   .parent:hover .card.dev-card-surface .glass.dev-glass {
-    transform: translate3d(0px, 0px, 18px);
+    transform: translate3d(0px, 0px, 8px);
+  }
+
+  .parent:hover .card.dev-card-surface .content.dev-content {
+    transform: translate3d(0px, 0px, 28px);
   }
 
   .parent:hover .card.dev-card-surface .logo .circle2 {
@@ -761,4 +879,113 @@ header nav a:hover {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(28, 28, 28, 0.45);
+}
+
+/* ── Executive Press Compatibility Overrides for Legacy Arbitrary Hex Classes ── */
+.bg-\[\#DFE968\] {
+  background-color: #000000 !important;
+  color: #FAF8F5 !important;
+}
+.bg-\[\#DFE968\] svg {
+  color: #FAF8F5 !important;
+}
+.hover\:bg-\[\#DFE968\]:hover {
+  background-color: #1A1918 !important;
+  color: #FAF8F5 !important;
+}
+.bg-\[\#DFE968\]\/30,
+.bg-\[\#DFE968\]\/40,
+.bg-\[\#DFE968\]\/50 {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #000000 !important;
+}
+.bg-\[\#FBF1CF\] {
+  background-color: #F5F2EB !important;
+}
+.bg-\[\#FBF6DF\] {
+  background-color: #FAF8F5 !important;
+}
+.bg-\[\#F6C8D6\] {
+  background-color: #EAE5D9 !important;
+}
+.bg-\[\#F3A878\] {
+  background-color: #D8CEBC !important;
+}
+.bg-\[\#F6BB84\] {
+  background-color: #E0A96D !important;
+  color: #1A1918 !important;
+}
+.border-\[\#1C1C1C\] {
+  border-color: #1A1918 !important;
+}
+.text-\[\#1C1C1C\] {
+  color: #1A1918;
+}
+[class*="shadow-"][class*="#1C1C1C"] {
+  --tw-shadow-color: #1A1918 !important;
+}
+
+/* ── Compound Dark Contrast Protection ── */
+.bg-\[\#000000\],
+.bg-black,
+.bg-\[\#1A1918\],
+.bg-navy,
+.bg-\[\#DFE968\],
+.bg-\[\#000000\].text-\[\#1C1C1C\],
+.bg-black.text-\[\#1C1C1C\],
+.bg-\[\#1A1918\].text-\[\#1C1C1C\],
+.bg-navy.text-\[\#1C1C1C\],
+.bg-\[\#DFE968\].text-\[\#1C1C1C\],
+.bg-\[\#000000\].text-\[\#1A1918\],
+.bg-black.text-\[\#1A1918\],
+.bg-\[\#1A1918\].text-\[\#1A1918\],
+.bg-navy.text-\[\#1A1918\],
+.bg-\[\#DFE968\].text-\[\#1A1918\],
+.bg-\[\#000000\].text-black,
+.bg-black.text-black,
+.bg-\[\#1A1918\].text-black,
+.bg-navy.text-black,
+.bg-\[\#DFE968\].text-black {
+  color: #FAF8F5 !important;
+}
+
+.bg-\[\#000000\] svg,
+.bg-black svg,
+.bg-\[\#1A1918\] svg,
+.bg-navy svg,
+.bg-\[\#DFE968\] svg {
+  color: #FAF8F5 !important;
+  stroke: #FAF8F5 !important;
+}
+
+/* ── Pitch Black Utility Helpers (formerly Navy) ── */
+.bg-navy {
+  background-color: #000000 !important;
+  color: #FAF8F5 !important;
+}
+.text-navy {
+  color: #000000 !important;
+}
+.border-navy {
+  border-color: #000000 !important;
+}
+.badge-navy {
+  background-color: #000000 !important;
+  color: #FAF8F5 !important;
+  border: 1px solid #1A1918 !important;
+}
+.hero-3d-card {
+  background: #FAF8F5 !important;
+  border-color: #1A1918 !important;
+  box-shadow: 4px 4px 0px #1A1918 !important;
+}
+
+/* ── Accessibility: Reduced Motion for Synchronized Sidebar & Dashboard ── */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  * {
+    --sidebar-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -748,24 +748,37 @@ def synthesize_gap_blueprint(
         if gid.replace("gap-", "") == clean_id.replace("gap-", ""):
             return bp
 
-    # Domain alias normalization
+    # Domain alias normalization checking both ID and canonical name
     id_lower = clean_id.lower()
-    if any(k in id_lower for k in ("docker", "container", "containerization")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-docker"]
-    if any(k in id_lower for k in ("postgres", "postgresql", "sql-modeling", "rdbms")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-postgresql"]
-    if any(k in id_lower for k in ("fastapi", "asgi", "starlette")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-fastapi"]
-    if any(k in id_lower for k in ("api-integration", "rest-client", "http-resilience", "microservice-api")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-api-integration"]
-    if any(k in id_lower for k in ("system-architecture", "distributed", "consensus", "partitioning")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-system-architecture"]
-    if any(k in id_lower for k in ("machine-learning", "scikit", "xgboost", "model-training")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-machine-learning"]
-    if any(k in id_lower for k in ("cloud", "devops", "aws", "infrastructure", "ci-cd")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-cloud-devops"]
-    if any(k in id_lower for k in ("appsec", "security", "owasp", "oauth", "jwt")):
-        return CAREER_GAP_BLUEPRINTS["gap-skill-appsec"]
+    name_lower = (canonical_name or "").lower()
+
+    def matches(*keys):
+        return any(k in id_lower or k in name_lower for k in keys)
+
+    matched_bp = None
+    if matches("docker", "container", "containerization"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-docker"]
+    elif matches("postgres", "postgresql", "sql", "relational", "rdbms", "database"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-postgresql"]
+    elif matches("fastapi", "asgi", "starlette"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-fastapi"]
+    elif matches("api-integration", "rest-client", "http-resilience", "microservice", "api integration"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-api-integration"]
+    elif matches("system-architecture", "distributed", "consensus", "partitioning", "system architecture"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-system-architecture"]
+    elif matches("machine-learning", "machine learning", "scikit", "xgboost", "model-training", "deep learning"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-machine-learning"]
+    elif matches("cloud", "devops", "aws", "infrastructure", "ci-cd", "kubernetes"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-cloud-devops"]
+    elif matches("appsec", "security", "owasp", "oauth", "jwt"):
+        matched_bp = CAREER_GAP_BLUEPRINTS["gap-skill-appsec"]
+
+    if matched_bp:
+        res = dict(matched_bp)
+        res["domain_id"] = domain_id
+        if canonical_name:
+            res["title"] = canonical_name
+        return res
 
     # Deterministic synthesis for custom or arbitrary skills
     target_mastery = 85 if expected_level in ("Practitioner", "Advanced", "Expert") else 75

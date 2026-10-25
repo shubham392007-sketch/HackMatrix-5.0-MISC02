@@ -6,7 +6,8 @@ Returns explicit provider statuses and partial results (Section 8 Reliability).
 """
 
 import asyncio
-from typing import List, Optional, Dict
+import time
+from typing import List, Optional, Dict, Tuple
 from backend.app.core.logging import get_logger
 from backend.app.learning.providers.base import (
     BaseResourceProvider,
@@ -43,6 +44,12 @@ class ResourceAggregator:
             GitHubProviderAdapter(),
             FreeCodeCampProviderAdapter(),
         ]
+        self._search_cache: Dict[str, Tuple[float, AggregationResult]] = {}
+        self.cache_ttl_seconds: int = 300
+
+    def invalidate_cache(self) -> None:
+        self._search_cache.clear()
+        logger.info("[ResourceAggregatorCache] In-memory cache cleared")
 
     def register_provider(self, provider: BaseResourceProvider) -> None:
         self.providers.append(provider)
@@ -52,8 +59,8 @@ class ResourceAggregator:
         query: str,
         skill_ids: Optional[List[str]] = None,
         level: str = "intermediate",
-        limit_per_provider: int = 3,
-        total_limit: int = 10,
+        limit_per_provider: int = 6,
+        total_limit: int = 24,
     ) -> AggregationResult:
         """
         Convenience wrapper supporting skill_ids list and query parameters.
@@ -72,13 +79,23 @@ class ResourceAggregator:
         query: str,
         topic_slug: str,
         difficulty: str = "Intermediate",
-        limit_per_provider: int = 3,
-        total_limit: int = 8,
+        limit_per_provider: int = 6,
+        total_limit: int = 24,
     ) -> AggregationResult:
         """
         Executes parallel calls to all registered providers with error isolation.
         Returns AggregationResult containing ranked resources and provider statuses.
+        Uses in-memory cache to guarantee fast response for repeated queries.
         """
+        cache_key = f"{query.strip().lower()}::{topic_slug.strip().lower()}::{difficulty.lower()}::{limit_per_provider}::{total_limit}"
+        if cache_key in self._search_cache:
+            ts, cached_res = self._search_cache[cache_key]
+            if time.time() - ts < self.cache_ttl_seconds:
+                logger.debug(f"[ResourceAggregatorCache] HIT for '{cache_key}'")
+                return cached_res
+            else:
+                del self._search_cache[cache_key]
+
         active_providers = [p for p in self.providers if p.is_available()]
         if not active_providers:
             logger.warning("No active resource providers found.")
@@ -91,13 +108,24 @@ class ResourceAggregator:
 
         async def safe_fetch(p: BaseResourceProvider) -> ProviderSearchResult:
             try:
-                res = await p.fetch_resources(
-                    query=query,
-                    topic_slug=topic_slug,
-                    difficulty=difficulty,
-                    limit=limit_per_provider,
+                res = await asyncio.wait_for(
+                    p.fetch_resources(
+                        query=query,
+                        topic_slug=topic_slug,
+                        difficulty=difficulty,
+                        limit=limit_per_provider,
+                    ),
+                    timeout=3.5,
                 )
                 return res
+            except asyncio.TimeoutError:
+                logger.warning(f"Provider '{p.provider_name()}' timed out after 3.5s")
+                return ProviderSearchResult(
+                    resources=[],
+                    provider=p.provider_name(),
+                    status=ProviderStatus.ERROR,
+                    error_message="Provider timed out",
+                )
             except Exception as e:
                 logger.error(f"Provider '{p.provider_name()}' crashed during fetch: {e}", exc_info=True)
                 return ProviderSearchResult(
@@ -162,9 +190,11 @@ class ResourceAggregator:
         ranked = rank_resources(deduped)
         final_resources = ranked[:total_limit]
 
-        return AggregationResult(
+        result = AggregationResult(
             resources=final_resources,
             provider_statuses=statuses,
             total_found=len(final_resources),
             warnings=warnings,
         )
+        self._search_cache[cache_key] = (time.time(), result)
+        return result

@@ -1,0 +1,41 @@
+# Secrets & environment
+.env*
+*.env
+*.pem
+*.key
+*.cert
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache & test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node & frontend build artifacts
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+
+# Databases & vector stores & datasets
+chroma_data/
+misc02_dataset/
+derived_data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs & temp files
+*.log
+temp_*.txt
+*.pdf

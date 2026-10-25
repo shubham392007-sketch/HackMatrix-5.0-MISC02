@@ -856,3 +856,105 @@ def test_dependency_graph_validation_and_topological_ordering():
     is_bad_aligned, bad_p_errs = verify_pedagogical_alignment(bad_pedagogy)
     assert is_bad_aligned is False
 
+
+def test_evaluation_snapshot_linkage_to_learning_roadmap(client, test_db_session):
+    """
+    Verifies Milestone C requirement R8:
+    1. RoleMatchSnapshotRecord stores gaps_data, readiness_data, priorities_data, handoff_data.
+    2. CareerIntelligenceDbAdapter retrieves the snapshot and extracts upstream gap triggers.
+    3. LearningRoadmap generated for user explicitly populates upstream_snapshot_id and upstream_snapshot_version.
+    """
+    from backend.app.models.career import RoleMatchSnapshotRecord
+    from backend.app.api.dependencies import get_current_user, AuthenticatedUser
+    from sqlalchemy import text
+
+    test_user_id = "00000000-0000-0000-0000-000000000001"
+    user_uuid = uuid.UUID(test_user_id)
+    snapshot_uuid = uuid.uuid4()
+
+    # Create evaluation match snapshot with complete structured columns
+    gaps_payload = [
+        {
+            "skill_id": "skill-distributed-systems",
+            "canonical_name": "Distributed Systems",
+            "gap_type": "depth_gap",
+            "current_level": "Foundation",
+            "required_level": "Practitioner",
+            "priority_score": 92.0,
+            "priority_rank": 1,
+        }
+    ]
+    readiness_payload = {"readiness_tier": "Moderate Alignment", "readiness_index": 72.0}
+    priorities_payload = gaps_payload
+    handoff_payload = [{"skill_id": "skill-distributed-systems", "suggested_action": "take_course"}]
+
+    snapshot = RoleMatchSnapshotRecord(
+        id=snapshot_uuid,
+        owner_user_id=user_uuid,
+        role_id="role-senior-backend",
+        role_version="v2026.1",
+        capability_state_version="v1.0",
+        matching_policy_version="v2026.1",
+        overall_match_score=78.5,
+        required_coverage_score=80.0,
+        supporting_coverage_score=75.0,
+        readiness_index=72.0,
+        match_summary={"role_id": "role-senior-backend", "gaps": gaps_payload},
+        gaps_data=gaps_payload,
+        readiness_data=readiness_payload,
+        priorities_data=priorities_payload,
+        handoff_data=handoff_payload,
+    )
+    test_db_session.add(snapshot)
+    test_db_session.commit()
+
+    # 1. Verify adapter fetches the snapshot
+    adapter = CareerIntelligenceDbAdapter()
+    fetched_snapshot = adapter.get_latest_role_match_snapshot(test_db_session, test_user_id, "role-senior-backend")
+    assert fetched_snapshot is not None
+    assert fetched_snapshot["snapshot_id"] == str(snapshot_uuid)
+    assert fetched_snapshot["role_version"] == "v2026.1"
+    assert len(fetched_snapshot["gaps_data"]) == 1
+    assert fetched_snapshot["gaps_data"][0]["canonical_name"] == "Distributed Systems"
+
+    # 2. Verify upstream triggers read from gaps_data
+    triggers = adapter.fetch_upstream_triggers(test_db_session, test_user_id, "role-senior-backend")
+    assert len(triggers) >= 1
+    assert any("Distributed Systems" in t.competency.canonical_name for t in triggers)
+
+    # 3. Authenticate and generate roadmap
+    def override_get_current_user():
+        return AuthenticatedUser(user_id=test_user_id, email="test@example.com")
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    # Mock aggregator so this test does not make external HTTP network calls
+    mock_aggregator = MagicMock()
+    mock_search_res = MagicMock()
+    mock_search_res.resources = []
+    mock_aggregator.search_all = AsyncMock(return_value=mock_search_res)
+
+    with patch("backend.app.learning.router.aggregator", mock_aggregator):
+        resp = client.post(
+            "/api/v1/learning/roadmaps/generate",
+            json={
+                "domain_id": "dist-sys",
+                "target_role_id": "role-senior-backend",
+                "force_regenerate": True,
+            },
+        )
+    assert resp.status_code == 200, f"Roadmap generation failed: {resp.text}"
+    data = resp.json()
+
+    assert data["upstream_snapshot_id"] == str(snapshot_uuid)
+    assert data["upstream_snapshot_version"] == "v2026.1"
+
+    # Verify persisted in database
+    db_roadmap = (
+        test_db_session.query(LearningRoadmap)
+        .filter(LearningRoadmap.owner_user_id == user_uuid, LearningRoadmap.path_id == data["path_id"])
+        .first()
+    )
+    assert db_roadmap is not None
+    assert db_roadmap.upstream_snapshot_id == snapshot_uuid
+    assert db_roadmap.upstream_snapshot_version == "v2026.1"

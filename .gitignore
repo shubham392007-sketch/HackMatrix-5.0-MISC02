@@ -64,3 +64,7 @@ temp_full_prompt.txt
 skillpassport-powered-by-growthlens/backend/data/
 
 graphify-out/
+
+master_prompt_builder.txt
+prompt_8_full.txt
+scratch/

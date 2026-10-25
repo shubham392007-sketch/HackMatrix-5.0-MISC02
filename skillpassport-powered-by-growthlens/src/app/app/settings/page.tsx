@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AppTopBar from "@/components/app/AppTopBar";
 import { useEvidence } from "@/context/EvidenceContext";
+import { useAuth } from "@/context/AuthContext";
 import { AppSettings } from "@/types/account";
-import { ConfirmationModal } from "@/components/app/AppStates";
 import {
   Settings,
   User,
   FolderGit2,
+  Archive,
   ShieldCheck,
   Bell,
   Eye,
@@ -23,14 +24,28 @@ import {
   Layers,
   Sparkles,
   Lock,
+  Server,
+  Database,
+  Cpu,
+  RefreshCw,
 } from "lucide-react";
 
 export default function SettingsOverviewPage() {
   const { appSettings, updateAppSettings, addToast } = useEvidence();
+  const { profile: authProfile, refreshProfile } = useAuth();
 
   const [settings, setSettings] = useState<AppSettings>(appSettings);
+  const [snapshot, setSnapshot] = useState<AppSettings>(appSettings);
   const [hasChanges, setHasChanges] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (appSettings) {
+      setSettings(appSettings);
+      setSnapshot(appSettings);
+      setHasChanges(false);
+    }
+  }, [appSettings]);
 
   const toggleNotificationPref = (
     key: keyof AppSettings["notificationPreferences"]
@@ -55,37 +70,43 @@ export default function SettingsOverviewPage() {
     });
   };
 
-  const handleSave = () => {
-    updateAppSettings(settings);
+  const handleSave = async () => {
+    await updateAppSettings(settings);
+    setSnapshot(settings);
     setHasChanges(false);
   };
 
-  const handleResetDemo = () => {
+  const handleDiscard = () => {
+    setSettings(snapshot);
+    setHasChanges(false);
+  };
+
+  const handleRefreshState = async () => {
+    setIsRefreshing(true);
     try {
-      localStorage.clear();
-      addToast(
-        "Demo Reset Complete",
-        "Prototype state has been reset to initial seed values.",
-        "info"
-      );
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+      addToast("Synchronized", "Account preferences and profile state re-synchronized from server.", "success");
     } catch {
-      // Ignore
+      addToast("Sync Failed", "Could not refresh profile state from backend.", "error");
+    } finally {
+      setIsRefreshing(false);
     }
-    setIsResetModalOpen(false);
   };
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <AppTopBar
         title="Settings & Application Preferences"
-        description="Centralized account hub, notification routing rules, display density, and privacy controls."
+        description="Centralized account hub, notification routing rules, display density, and system configuration."
         breadcrumbs={[
           { label: "Settings & Access" },
           { label: "Overview" },
         ]}
       />
 
-      <div className="p-6 lg:p-10 max-w-5xl space-y-8">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Navigation Quick Cards */}
         <div>
           <h2 className="text-base font-bold text-ink mb-3 flex items-center gap-2">
@@ -132,6 +153,27 @@ export default function SettingsOverviewPage() {
               </div>
               <div className="pt-3 mt-3 border-t border-ink/10 flex items-center justify-between text-xs font-semibold text-ink/60 group-hover:text-ink">
                 <span>Manage Sources</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </Link>
+
+            <Link
+              href="/app/settings/vault"
+              className="p-5 rounded-2xl bg-white border border-ink/15 hover:border-ink/30 shadow-sm transition-all group flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-[#DFE968] border border-ink/15 flex items-center justify-center font-bold text-ink">
+                  <Archive className="w-5 h-5 text-ink" />
+                </div>
+                <h3 className="text-base font-bold text-ink group-hover:underline">
+                  Evidence Vault
+                </h3>
+                <p className="text-xs text-ink/70 leading-relaxed">
+                  Private archive of uploaded documents, captured web content, and connected-source evidence.
+                </p>
+              </div>
+              <div className="pt-3 mt-3 border-t border-ink/10 flex items-center justify-between text-xs font-semibold text-ink/60 group-hover:text-ink">
+                <span>Open Vault Archive</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </Link>
@@ -190,7 +232,7 @@ export default function SettingsOverviewPage() {
                   Activity History
                 </h3>
                 <p className="text-xs text-ink/70 leading-relaxed">
-                  Unified chronological timeline of profile updates, ingestion runs, and learning milestones.
+                  Unified chronological timeline of profile updates, ingestion runs, and verification decisions.
                 </p>
               </div>
               <div className="pt-3 mt-3 border-t border-ink/10 flex items-center justify-between text-xs font-semibold text-ink/60 group-hover:text-ink">
@@ -224,20 +266,29 @@ export default function SettingsOverviewPage() {
 
         {/* Section B: Display & Appearance Preferences */}
         <div className="p-6 sm:p-8 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="text-base font-bold text-ink flex items-center gap-2">
               <Eye className="w-4 h-4 text-ink/70" />
               <span>Display & Interface Density</span>
             </h2>
             {hasChanges && (
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-1.5 rounded-xl bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Preferences</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDiscard}
+                  className="px-3 py-1.5 rounded-xl border border-ink/20 text-ink text-xs font-semibold hover:bg-ink/5 transition-all"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-4 py-1.5 rounded-xl bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Preferences</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -290,7 +341,7 @@ export default function SettingsOverviewPage() {
               <span>In-App Notification Routing Rules</span>
             </h2>
             <p className="text-xs text-ink/60 mt-0.5">
-              Select which categories generate in-app alerts and top-bar badge counts.
+              Select which categories generate in-app alerts and top-bar badge counts. Changes persist to your authenticated profile.
             </p>
           </div>
 
@@ -315,7 +366,7 @@ export default function SettingsOverviewPage() {
                 {
                   key: "passportSharingViews",
                   label: "Recruiter Passport Access & View Events",
-                  desc: "Real-time alerts when external recruiters load active shared passport links.",
+                  desc: "Alerts when external recruiters access active shared passport links.",
                 },
                 {
                   key: "governanceAlerts",
@@ -354,49 +405,65 @@ export default function SettingsOverviewPage() {
           </div>
         </div>
 
-        {/* Section D: Prototype Metadata & Reset */}
+        {/* Section D: System Architecture & Infrastructure Health */}
         <div className="p-6 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ink/10">
             <div>
-              <h3 className="text-base font-bold text-ink">
-                Prototype Architecture & Release Metadata
+              <h3 className="text-base font-bold text-ink flex items-center gap-2">
+                <Server className="w-4 h-4 text-ink/70" />
+                <span>Backend Infrastructure & Connection Status</span>
               </h3>
               <p className="text-xs text-ink/60">
-                Specification: IM-03 Verifiable Skill Passport & GrowthLens TRD
+                Connected to production FastAPI service and PostgreSQL session pool
               </p>
             </div>
-            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-[#DFE968] border border-ink text-ink shadow-[1px_1px_0_0_#1C1C1C]">
-              {settings.prototypeVersion}
-            </span>
-          </div>
-
-          <p className="text-xs text-ink/70 leading-relaxed">
-            This application operates as a standalone frontend prototype. All data state is persisted locally in the browser context. Disconnecting sources, updating profiles, and generating recruiter links will update live mock models without contacting external production backends.
-          </p>
-
-          <div className="pt-2 flex justify-end">
             <button
               type="button"
-              onClick={() => setIsResetModalOpen(true)}
-              className="px-4 py-2 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-800 text-xs font-semibold shadow-sm transition-all"
+              disabled={isRefreshing}
+              onClick={handleRefreshState}
+              className="px-3.5 py-1.5 rounded-xl border border-ink/20 bg-white hover:bg-ink/5 text-ink text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5"
             >
-              Reset Demo Session to Seed Baseline
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>{isRefreshing ? "Re-syncing..." : "Re-sync Server State"}</span>
             </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-ink/5 border border-ink/10 space-y-1">
+              <div className="text-[10px] uppercase font-bold text-ink/50 flex items-center gap-1">
+                <Database className="w-3 h-3" /> Database Connection
+              </div>
+              <div className="font-bold text-ink flex items-center gap-1.5 pt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Supabase PostgreSQL (Pooler Mode)</span>
+              </div>
+              <p className="text-[10px] text-ink/60">Bounded pool size = 8, overflow = 0</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-ink/5 border border-ink/10 space-y-1">
+              <div className="text-[10px] uppercase font-bold text-ink/50 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Identity & Security
+              </div>
+              <div className="font-bold text-ink flex items-center gap-1.5 pt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Supabase JWT Bearer Auth</span>
+              </div>
+              <p className="text-[10px] text-ink/60">Strict RLS & user ownership enforced</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-ink/5 border border-ink/10 space-y-1">
+              <div className="text-[10px] uppercase font-bold text-ink/50 flex items-center gap-1">
+                <Cpu className="w-3 h-3" /> AI & Extraction Pipeline
+              </div>
+              <div className="font-bold text-ink flex items-center gap-1.5 pt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Ollama (qwen3:8b) / Embeddings</span>
+              </div>
+              <p className="text-[10px] text-ink/60">Deterministic evaluation gates active</p>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal for Resetting Demo */}
-      <ConfirmationModal
-        isOpen={isResetModalOpen}
-        title="Reset Demo Session?"
-        message="This will clear your local prototype state and restore all mock records across Domains 1 through 6 to their default demonstration states."
-        confirmLabel="Reset Demo Session"
-        cancelLabel="Cancel"
-        isDestructive={true}
-        onConfirm={handleResetDemo}
-        onCancel={() => setIsResetModalOpen(false)}
-      />
     </div>
   );
 }

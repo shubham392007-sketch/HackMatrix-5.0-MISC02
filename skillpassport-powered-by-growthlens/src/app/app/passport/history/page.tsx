@@ -18,6 +18,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileText,
+  X,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 
@@ -95,7 +98,7 @@ export default function SkillHistoryPage() {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto pb-16">
 
       {/* Trust & Audit Standards */}
-      <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EBE5DC] flex items-start gap-3">
+      <div className="p-4 rounded-2xl bg-[#FAF8F5] border-[1.5px] border-[#1A1918] flex items-start gap-3 shadow-[2px_2px_0_0_#1A1918]">
         <ShieldCheck className="w-5 h-5 text-[#2E6941] flex-shrink-0 mt-0.5" />
         <div className="text-xs text-[#5A5550] leading-relaxed">
           <strong className="text-[#1F1E1D]">Cryptographic Audit Integrity:</strong> Every transition in your Skill Passport is logged with actor identification, timestamp, preceding state, and substantiating rationale. Nothing is silently mutated or erased.
@@ -103,45 +106,75 @@ export default function SkillHistoryPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="gl-card p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C827A]" />
+      <div className="gl-card p-5 space-y-4 border-[1.5px] border-[#1A1918] bg-[#FAF8F5] shadow-[3px_3px_0_0_#1A1918]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0 flex items-center">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1A1918]/50 pointer-events-none z-10" />
             <input
               type="text"
               placeholder="Search audit trail by competency name, reason, or change..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pill-input pl-10 text-xs w-full"
+              className="w-full h-10 pl-10 pr-9 rounded-full border-[1.5px] border-[#1A1918] bg-white text-xs text-[#1A1918] placeholder:text-[#1A1918]/45 font-medium shadow-[2px_2px_0_0_#1A1918] focus:outline-none focus:ring-2 focus:ring-[#E6AC70]/40 transition-all"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#1A1918]/50 hover:text-[#1A1918] transition-colors"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={selectedEventType}
-              onChange={(e) => setSelectedEventType(e.target.value)}
-              className="pill-input text-xs py-2 px-3 pr-8 bg-white cursor-pointer"
-            >
-              <option value="all">All Event Types</option>
-              <option value="verified_state_changed">Verification Updated</option>
-              <option value="evidence_linked">Evidence Linked</option>
-              <option value="candidate_extracted">Candidate Extracted</option>
-              <option value="mapping_corrected">Mapping Corrected</option>
-              <option value="conflict_flagged">Conflict Flagged</option>
-            </select>
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+            <div className="relative">
+              <select
+                value={selectedEventType}
+                onChange={(e) => setSelectedEventType(e.target.value)}
+                className="h-10 pl-3.5 pr-8 rounded-full border-[1.5px] border-[#1A1918] bg-white text-xs font-semibold text-[#1A1918] shadow-[2px_2px_0_0_#1A1918] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E6AC70]/40 appearance-none transition-all"
+              >
+                <option value="all">All Event Types</option>
+                <option value="verified_state_changed">Verification Updated</option>
+                <option value="evidence_linked">Evidence Linked</option>
+                <option value="candidate_extracted">Candidate Extracted</option>
+                <option value="mapping_corrected">Mapping Corrected</option>
+                <option value="conflict_flagged">Conflict Flagged</option>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-[#1A1918]/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
 
-            <select
-              value={selectedActor}
-              onChange={(e) => setSelectedActor(e.target.value)}
-              className="pill-input text-xs py-2 px-3 pr-8 bg-white cursor-pointer"
-            >
-              {availableActors.map((act) => (
-                <option key={act} value={act}>
-                  {act === "all" ? "All Actors" : act}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedActor}
+                onChange={(e) => setSelectedActor(e.target.value)}
+                className="h-10 pl-3.5 pr-8 rounded-full border-[1.5px] border-[#1A1918] bg-white text-xs font-semibold text-[#1A1918] shadow-[2px_2px_0_0_#1A1918] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E6AC70]/40 appearance-none transition-all"
+              >
+                {availableActors.map((act) => (
+                  <option key={act} value={act}>
+                    {act === "all" ? "All Actors" : act}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-[#1A1918]/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
 
+            {(search || selectedEventType !== "all" || selectedActor !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedEventType("all");
+                  setSelectedActor("all");
+                }}
+                className="h-10 px-3.5 rounded-full border-[1.5px] border-[#1A1918] bg-[#FAF8F5] text-[#1A1918] text-xs font-bold hover:bg-[#1A1918]/5 transition-all shadow-[2px_2px_0_0_#1A1918] flex items-center gap-1.5 shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -175,10 +208,10 @@ export default function SkillHistoryPage() {
               return (
                 <div key={ev.id} className="relative group">
                   {/* Timeline Node Dot */}
-                  <div className="absolute -left-6 sm:-left-8 top-4 w-3 h-3 rounded-full bg-white border-2 border-[#1F1E1D] group-hover:scale-125 transition-transform" />
+                  <div className="absolute -left-[18px] sm:-left-[22px] top-5 w-3 h-3 rounded-full bg-white border-2 border-[#1A1918] group-hover:scale-125 transition-transform shadow-sm" />
 
                   {/* Event Card */}
-                  <div className="gl-card p-5 space-y-3 border-[#E4DDD3] hover:shadow-sm transition-shadow">
+                  <div className="gl-card p-5 space-y-3 border-[1.5px] border-[#1A1918] bg-[#FAF8F5] shadow-[3px_3px_0_0_#1A1918] hover:shadow-[4px_4px_0_0_#1A1918] transition-all">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span
@@ -201,7 +234,7 @@ export default function SkillHistoryPage() {
                     </div>
 
                     {/* Transition Details */}
-                    <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EBE5DC] text-xs space-y-1">
+                    <div className="p-3 rounded-xl bg-white border border-[#1A1918]/20 text-xs space-y-1 shadow-[1px_1px_0_0_#1A1918]">
                       {ev.previousValue && (
                         <div className="text-[#8C827A] flex items-center gap-2">
                           <span>Previous:</span>

@@ -27,8 +27,6 @@ const managerNav = [
   { label: "TEAM TRAJECTORY", href: "/manager/trajectory" },
   { label: "TEAM GROWTH", href: "/manager/growth" },
   { label: "TEAM HEATMAP", href: "/manager/heatmap" },
-  { label: "SKILLS", href: "/employee/skills" },
-  { label: "INTELLIGENCE", href: "/employee/narrative" },
 ];
 
 
@@ -39,7 +37,7 @@ export default function GlobalHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = authenticated
-    ? (!profile?.onboarding_completed
+    ? (role !== "MANAGER" && !profile?.onboarding_completed
         ? [{ label: "SETUP PROFILE & INTEGRATIONS", href: "/onboarding" }]
         : (role === "MANAGER" ? managerNav : employeeNav))
     : publicNav;
@@ -56,7 +54,7 @@ export default function GlobalHeader() {
         <Link
           href={
             authenticated
-              ? (!profile?.onboarding_completed
+              ? (role !== "MANAGER" && !profile?.onboarding_completed
                   ? "/onboarding"
                   : (role === "MANAGER" ? "/manager/dashboard" : "/employee/dashboard"))
               : "/"
@@ -100,7 +98,7 @@ export default function GlobalHeader() {
             <div className="flex items-center gap-3">
               {/* User Identity Pill - Clickable link to Profile */}
               <Link
-                href="/employee/profile"
+                href={role === "MANAGER" ? "/manager/dashboard" : "/employee/profile"}
                 className="flex items-center gap-2 bg-[#FBF6DF] border-[1.5px] border-[#1C1C1C] rounded-full px-3 py-1 shadow-[2px_2px_0_0_#1C1C1C] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1C1C1C] transition-all cursor-pointer group"
                 title="View & Edit Profile / Integrations"
               >
@@ -117,15 +115,7 @@ export default function GlobalHeader() {
                 </div>
               </Link>
 
-              {/* View Switcher if Manager */}
-              {role === "MANAGER" && (
-                <Link
-                  href={pathname.startsWith("/manager") ? "/employee/dashboard" : "/manager/dashboard"}
-                  className="bg-[#DFE968] border border-[#1C1C1C] text-[#1C1C1C] text-[10px] font-black tracking-[0.08em] uppercase px-3.5 py-2 rounded-full hover:opacity-90 transition-all shadow-[2px_2px_0_0_#1C1C1C]"
-                >
-                  {pathname.startsWith("/manager") ? "LEARNER VIEW" : "MANAGER VIEW"}
-                </Link>
-              )}
+              
 
               {/* Logout button */}
               <button

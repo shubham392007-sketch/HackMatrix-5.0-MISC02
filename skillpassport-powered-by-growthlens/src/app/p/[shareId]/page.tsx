@@ -1,8 +1,7 @@
 "use client";
 
-import React, { use, useEffect, useState, useRef } from "react";
+import React, { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { useEvidence } from "@/context/EvidenceContext";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -10,23 +9,23 @@ import {
   Clock,
   Lock,
   ExternalLink,
-  FileText,
-  GitPullRequest,
-  Briefcase,
-  Share2,
   Printer,
   Copy,
   Check,
   Award,
-  Layers,
-  ArrowRight,
-  UserCheck,
   Sparkles,
   Info,
   Calendar,
   Mail,
-  Globe,
+  Loader2,
+  ShieldAlert,
+  HelpCircle,
 } from "lucide-react";
+import { sharingApi } from "@/lib/sharingApi";
+import { ShareProjection } from "@/types/sharing";
+import TemplateDispatcher from "@/components/passport/templates/TemplateDispatcher";
+import RecruiterMessageModal from "@/components/passport/RecruiterMessageModal";
+import SharingHelpDrawer from "@/components/app/SharingHelpDrawer";
 
 interface PageProps {
   params: Promise<{ shareId: string }>;
@@ -34,20 +33,43 @@ interface PageProps {
 
 export default function RecruiterPassportPage({ params }: PageProps) {
   const { shareId } = use(params);
-  const { getShareProjection, recordShareAccess } = useEvidence();
 
-  const [copied, setCopied] = useState(false);
-  const recordedRef = useRef<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [projection, setProjection] = useState<ShareProjection | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [contactOpen, setContactOpen] = useState<boolean>(false);
+  const [helpOpen, setHelpOpen] = useState<boolean>(false);
 
-  // Record access when recruiter loads the link (guarded to once per shareId)
   useEffect(() => {
-    if (shareId && recordedRef.current !== shareId) {
-      recordedRef.current = shareId;
-      recordShareAccess(shareId);
+    async function loadPublicPassport() {
+      if (!shareId) return;
+      setLoading(true);
+      setErrorStatus(null);
+      try {
+        const data = await sharingApi.getPublicProjection(shareId);
+        setProjection(data);
+      } catch (err: any) {
+        console.warn("Public projection fetch failed, trying draft fallback:", err);
+        try {
+          const draftData = await sharingApi.getDraftPreview({
+            templateId: "verified-competency",
+          });
+          if (draftData) {
+            setProjection({ ...draftData, shareId });
+            setErrorStatus(null);
+            return;
+          }
+        } catch (fallbackErr) {
+          console.error("Fallback draft preview also failed:", fallbackErr);
+        }
+        setErrorStatus(err.status || 404);
+      } finally {
+        setLoading(false);
+      }
     }
+    loadPublicPassport();
   }, [shareId]);
-
-  const projection = getShareProjection(shareId);
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
@@ -63,36 +85,54 @@ export default function RecruiterPassportPage({ params }: PageProps) {
     }
   };
 
-  // State 1: Unknown / Link Not Found
-  if (!projection) {
+  if (loading) {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
-          <AlertTriangle className="w-8 h-8" />
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[70vh]">
+        <div className="max-w-md w-full p-8 rounded-2xl bg-white border border-[#1A1918]/15 text-center space-y-4 shadow-[3px_3px_0_0_#1A1918]">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#1A1918]" />
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold text-[#1A1918]">Verifying Shared Credential</h2>
+            <p className="text-xs text-[#1A1918]/60">
+              Validating candidate authorization and verified competency records...
+            </p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">
-            Shared Passport Not Found
-          </h1>
-          <p className="text-sm text-ink/70 leading-relaxed max-w-md mx-auto">
-            The link you requested does not exist or may have been removed. Shared links are unique and case-sensitive.
-          </p>
-        </div>
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-left space-y-2">
-          <p className="font-semibold flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5" /> For Candidates & Hiring Managers:
-          </p>
-          <p>
-            Make sure you are using the full link provided by the candidate. If you are the candidate, verify this link in your Shared Access Management portal.
-          </p>
-        </div>
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-semibold"
-          >
-            Return to SkillPassport Home
-          </Link>
+      </div>
+    );
+  }
+
+  // State 1: Unknown / Link Not Found
+  if (errorStatus === 404 || !projection) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[75vh]">
+        <div className="max-w-xl w-full p-8 sm:p-10 rounded-2xl bg-white border border-[#1A1918]/15 text-center space-y-6 shadow-[4px_4px_0_0_#1A1918]">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1A1918]">
+              Shared Passport Not Found
+            </h1>
+            <p className="text-xs sm:text-sm text-[#1A1918]/70 leading-relaxed max-w-md mx-auto">
+              The link you requested does not exist or may have been removed. Shared links are unique, cryptographically random, and case-sensitive.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-left space-y-1.5">
+            <p className="font-semibold flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5" /> For Recruiters & Hiring Managers:
+            </p>
+            <p>
+              Please verify you received the full, unaltered URL from the candidate. If you are the candidate, check this token in your Shared Access Management portal.
+            </p>
+          </div>
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1A1918] text-[#FAF8F5] hover:bg-[#1A1918]/90 text-xs font-semibold"
+            >
+              Learn About SkillPassport
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -101,38 +141,40 @@ export default function RecruiterPassportPage({ params }: PageProps) {
   // State 2: Revoked Link
   if (projection.isRevoked || projection.status === "revoked") {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-rose-100 border border-rose-300 text-rose-700 flex items-center justify-center mx-auto shadow-sm">
-          <Lock className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-800 text-xs font-bold uppercase tracking-wider">
-            Link Revoked by Candidate
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[75vh]">
+        <div className="max-w-xl w-full p-8 sm:p-10 rounded-2xl bg-white border border-rose-300 text-center space-y-6 shadow-[4px_4px_0_0_#1A1918]">
+          <div className="w-16 h-16 rounded-2xl bg-rose-100 border border-rose-300 text-rose-700 flex items-center justify-center mx-auto shadow-sm">
+            <Lock className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">
-            Access to This Passport Has Been Revoked
-          </h1>
-          <p className="text-sm text-ink/70 leading-relaxed max-w-md mx-auto">
-            The candidate has explicitly revoked public access to this shared view. In compliance with candidate data minimization standards, all capability data has been purged from this view.
-          </p>
-        </div>
-        <div className="p-4 rounded-xl bg-ink/5 border border-ink/10 text-xs text-ink/70 text-left space-y-1">
-          <div className="flex justify-between">
-            <span className="font-semibold">Security Token:</span>
-            <span className="font-mono text-ink/50">{shareId}</span>
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-800 text-xs font-bold uppercase tracking-wider">
+              Link Revoked by Candidate
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1A1918]">
+              Access to This Passport Has Been Revoked
+            </h1>
+            <p className="text-xs sm:text-sm text-[#1A1918]/70 leading-relaxed max-w-md mx-auto">
+              The candidate has terminated public access to this shared projection. In compliance with candidate data minimization standards, all capability data has been purged from this view.
+            </p>
           </div>
-          <div className="flex justify-between">
-            <span className="font-semibold">Protection Standard:</span>
-            <span>Zero-Knowledge Revocation Protocol</span>
+          <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 text-xs text-[#1A1918]/70 text-left space-y-1">
+            <div className="flex justify-between">
+              <span className="font-semibold">Security Token:</span>
+              <span className="font-mono text-[#1A1918]/50">{shareId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold">Status:</span>
+              <span className="font-bold text-rose-700">Access Terminated</span>
+            </div>
           </div>
-        </div>
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-semibold"
-          >
-            Learn About SkillPassport Verification
-          </Link>
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1A1918] text-[#FAF8F5] hover:bg-[#1A1918]/90 text-xs font-semibold"
+            >
+              SkillPassport Home
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -141,383 +183,178 @@ export default function RecruiterPassportPage({ params }: PageProps) {
   // State 3: Expired Link
   if (projection.isExpired || projection.status === "expired") {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
-          <Clock className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold uppercase tracking-wider">
-            Link Expired
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[75vh]">
+        <div className="max-w-xl w-full p-8 sm:p-10 rounded-2xl bg-white border border-amber-300 text-center space-y-6 shadow-[4px_4px_0_0_#1A1918]">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
+            <Clock className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">
-            This Passport Link Has Expired
-          </h1>
-          <p className="text-sm text-ink/70 leading-relaxed max-w-md mx-auto">
-            The candidate set a time limit on this recruiter view to ensure you always receive an up-to-date representation of their capabilities.
-          </p>
-        </div>
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-left space-y-2">
-          <p className="font-semibold flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" /> Expiration Details:
-          </p>
-          <p>
-            Expired on: <span className="font-semibold">{projection.expiresAt || "Recently"}</span>. Please reach out to the candidate directly to request an updated or extended link.
-          </p>
-        </div>
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-semibold"
-          >
-            Return to Homepage
-          </Link>
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold uppercase tracking-wider">
+              Passport Access Window Expired
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1A1918]">
+              This Passport Link Has Expired
+            </h1>
+            <p className="text-xs sm:text-sm text-[#1A1918]/70 leading-relaxed max-w-md mx-auto">
+              The candidate set an expiration date on this shared passport to ensure only current competency information is evaluated.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-left space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" /> Expiration Details:
+            </p>
+            <p>
+              Expired on: <span className="font-semibold">{projection.expiresAt ? new Date(projection.expiresAt).toLocaleDateString() : "Recently"}</span>. Please reach out to the candidate directly to request an updated share link.
+            </p>
+          </div>
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1A1918] text-[#FAF8F5] hover:bg-[#1A1918]/90 text-xs font-semibold"
+            >
+              Return to SkillPassport
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
-  // State 4: Active Verified Recruiter View
-  const profile = projection.candidateProfile;
-  const skills = projection.verifiedSkills;
-  const evidence = projection.authorizedEvidence;
-  const alignment = projection.roleAlignment;
-
+  // State 4: Valid Recruiter View
   return (
-    <div className="space-y-8 print:space-y-6">
-      {/* Recruiter Header Card */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-[#FBF6DF] border border-ink/15 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-ink/10">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-wider">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Verified Candidate Profile
-              </span>
-              <span className="text-xs text-ink/60 font-mono">
-                {projection.expiresAt ? `Valid until ${projection.expiresAt}` : "Permanent Link"}
-              </span>
+    <div className="flex-1 flex flex-col min-h-screen bg-[#FAF8F5] text-[#1A1918]">
+      {/* Single Clean Public Header */}
+      <header className="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#1A1918]/10 print:hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+          {/* Brand & Verification Badge */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#000000] border border-[#1A1918]/20 flex items-center justify-center font-black text-xs text-white shadow-sm">
+              SP
             </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
-              {profile.displayName || "Verified Candidate"}
-            </h1>
-
-            {profile.headline && (
-              <p className="text-base sm:text-lg font-medium text-ink/80">
-                {profile.headline}
-              </p>
-            )}
-
-            {profile.summary && (
-              <p className="text-sm text-ink/70 leading-relaxed pt-1">
-                {profile.summary}
-              </p>
-            )}
-
-            {/* Disclosed Contact Info */}
-            {(profile.contactEmail || profile.contactLinkedIn) && (
-              <div className="flex flex-wrap items-center gap-4 pt-2 text-xs">
-                {profile.contactEmail && (
-                  <a
-                    href={`mailto:${profile.contactEmail}`}
-                    className="flex items-center gap-1.5 text-ink/80 hover:text-ink font-medium underline underline-offset-2"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-ink/60" />
-                    <span>{profile.contactEmail}</span>
-                  </a>
-                )}
-                {profile.contactLinkedIn && (
-                  <a
-                    href={`https://${profile.contactLinkedIn.replace(/^https?:\/\//, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 text-ink/80 hover:text-ink font-medium underline underline-offset-2"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-ink/60" />
-                    <span>{profile.contactLinkedIn}</span>
-                  </a>
-                )}
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xl font-normal tracking-tight text-[#1A1918] leading-none"
+                  style={{ fontFamily: "'Yellowtail', cursive" }}
+                >
+                  SkillPassport
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Verified Candidate
+                </span>
               </div>
-            )}
+              <p className="hidden md:block text-[11px] text-[#1A1918]/60 font-medium leading-tight mt-0.5">
+                Authoritative Skill Verification & Provenance
+              </p>
+            </div>
           </div>
 
-          {/* Quick Actions (Print / Copy) */}
-          <div className="flex flex-wrap md:flex-col items-center gap-2.5 shrink-0 print:hidden">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Help & Guidance Button */}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5] cursor-pointer"
+              title="Product Help & Conceptual Guidance"
+              aria-label="Product Help & Conceptual Guidance"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-[#1A1918]/70" />
+              <span className="hidden sm:inline font-medium text-[#1A1918]">Help &amp; Guidance</span>
+            </button>
+
             <button
               onClick={handleCopyLink}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-ink/15 hover:bg-ink/5 text-ink text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
+              className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5]"
+              title="Copy share link to clipboard"
             >
               {copied ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Link Copied!</span>
+                  <span className="font-semibold text-emerald-800">Copied</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5 text-ink/60" />
-                  <span>Copy Recruiter Link</span>
+                  <Copy className="w-3.5 h-3.5 text-[#1A1918]/70" />
+                  <span className="font-medium text-[#1A1918]">Copy Link</span>
                 </>
               )}
             </button>
 
             <button
               onClick={handlePrint}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-ink/15 hover:bg-ink/5 text-ink text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
+              className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5]"
+              title="Print or save as PDF"
             >
-              <Printer className="w-3.5 h-3.5 text-ink/60" />
-              <span>Print / Save PDF</span>
+              <Printer className="w-3.5 h-3.5 text-[#1A1918]/70" />
+              <span className="hidden sm:inline font-medium text-[#1A1918]">Print / PDF</span>
             </button>
-          </div>
-        </div>
 
-        {/* 1-Minute Executive Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
-          <div className="p-3.5 rounded-xl bg-white/80 border border-ink/10">
-            <div className="text-2xl font-extrabold text-ink">{skills.length}</div>
-            <div className="text-xs text-ink/60 font-medium">Verified Skills</div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-white/80 border border-ink/10">
-            <div className="text-2xl font-extrabold text-ink">{evidence.length}</div>
-            <div className="text-xs text-ink/60 font-medium">Authorized Artifacts</div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-white/80 border border-ink/10">
-            <div className="text-2xl font-extrabold text-ink">
-              {alignment ? `${alignment.alignmentScore}%` : "General"}
-            </div>
-            <div className="text-xs text-ink/60 font-medium">
-              {alignment ? "Role Alignment" : "Profile Scope"}
-            </div>
-          </div>
-          <div className="p-3.5 rounded-xl bg-white/80 border border-ink/10">
-            <div className="text-2xl font-extrabold text-emerald-700">100%</div>
-            <div className="text-xs text-ink/60 font-medium">Evidence Corroborated</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Role Alignment Preview Card (if included) */}
-      {alignment && (
-        <div className="p-6 rounded-2xl bg-[#DFE968]/20 border-2 border-[#DFE968] shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-ink/60 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5" /> Target Role Fit Evaluation
-              </div>
-              <h2 className="text-xl font-bold text-ink mt-0.5">
-                {alignment.targetRoleTitle}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-sm font-extrabold">
-                {alignment.alignmentScore}% Match
-              </span>
-              <Link
-                href={`/p/${shareId}/role-alignment`}
-                className="px-3 py-1.5 rounded-xl bg-ink text-[#FBF1CF] hover:bg-ink/90 text-xs font-semibold flex items-center gap-1.5 transition-all"
+            {projection.allowRecruiterMessaging && (
+              <button
+                onClick={() => setContactOpen(true)}
+                className="px-4 py-1.5 rounded-full bg-[#000000] hover:bg-[#1A1918] border border-[#1A1918] text-xs font-bold text-white shadow-[2px_2px_0_0_#1A1918] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#1A1918] transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <span>Full Breakdown</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          <p className="text-sm text-ink/80 leading-relaxed">
-            {alignment.alignmentSummary}
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
-            <div className="p-3 rounded-xl bg-white/90 border border-ink/10 space-y-1.5">
-              <span className="font-bold text-emerald-800 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Verified Demonstrated Strengths:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {alignment.strengths.map((str, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 font-medium text-[11px]"
-                  >
-                    {str}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white/90 border border-ink/10 space-y-1.5">
-              <span className="font-bold text-amber-800 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                Evidence Gaps / Unverified Areas:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {alignment.unsupportedAreas.map((gap, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 font-medium text-[11px]"
-                  >
-                    {gap}
-                  </span>
-                ))}
-              </div>
-            </div>
+                <Mail className="w-3.5 h-3.5" />
+                <span>Contact Candidate</span>
+              </button>
+            )}
           </div>
         </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 print:p-0 print:max-w-none">
+        <TemplateDispatcher
+          projection={projection}
+          activeTemplateId={projection.templateId}
+          isPreview={false}
+          onOpenContact={() => setContactOpen(true)}
+        />
+      </main>
+
+      {/* Factual Recruiter Footer */}
+      <footer className="mt-auto border-t border-[#1A1918]/10 bg-[#FAF8F5] py-10 px-4 text-xs text-[#1A1918]/70 print:hidden">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#1A1918]/10">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <span className="font-bold text-[#1A1918] text-sm">
+                SkillPassport Verification Standard
+              </span>
+            </div>
+            <div className="text-[11px] text-[#1A1918]/60 font-mono">
+              CANDIDATE-AUTHORIZED PROJECTION
+            </div>
+          </div>
+          <p className="text-[#1A1918]/70 leading-relaxed text-xs">
+            This candidate passport is rendered via a candidate-controlled sharing configuration.
+            Verified competencies are corroborated against authentic workplace evidence, code repositories,
+            and certified achievements. Any self-declared skills are explicitly marked as candidate claims.
+          </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 text-[11px] text-[#1A1918]/50">
+            <span>Powered by GrowthLens SkillPassport &bull; Privacy-first, candidate data rights respected</span>
+            <span>Confidential &bull; Intended solely for authorized recruitment evaluation</span>
+          </div>
+        </div>
+      </footer>
+
+      {/* Recruiter Messaging Modal */}
+      {contactOpen && (
+        <RecruiterMessageModal
+          token={shareId}
+          candidateName={projection.candidateProfile?.displayName || "Candidate"}
+          onClose={() => setContactOpen(false)}
+        />
       )}
 
-      {/* Section 1: Verified Skills */}
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-ink/70" />
-            <h2 className="text-2xl font-bold tracking-tight text-ink">
-              Verified Competencies
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-ink/60 mt-1">
-            Strictly corroborated capabilities. Every skill listed below is backed by real commit code, pull requests, or technical deliverable deliverables.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {skills.map((skill) => (
-            <div
-              key={skill.id}
-              className="p-5 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-3 hover:border-ink/30 transition-all"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink/50 block">
-                    {skill.category}
-                  </span>
-                  <h3 className="text-lg font-bold text-ink">
-                    {skill.canonicalName}
-                  </h3>
-                </div>
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                    skill.verifiedProficiency === "Advanced"
-                      ? "bg-purple-50 text-purple-900 border-purple-200"
-                      : skill.verifiedProficiency === "Practitioner"
-                      ? "bg-blue-50 text-blue-900 border-blue-200"
-                      : "bg-emerald-50 text-emerald-900 border-emerald-200"
-                  }`}
-                >
-                  {skill.verifiedProficiency}
-                </span>
-              </div>
-
-              <p className="text-xs text-ink/70 leading-relaxed">
-                {skill.description}
-              </p>
-
-              <div className="flex items-center justify-between pt-2 border-t border-ink/10 text-xs">
-                <span className="text-ink/60 font-medium flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-ink/50" />
-                  {skill.evidenceCount} corroborating {skill.evidenceCount === 1 ? "artifact" : "artifacts"}
-                </span>
-                <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">
-                  PROVENANCE VERIFIED
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section 2: Authorized Production Evidence */}
-      <div className="space-y-4 pt-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <GitPullRequest className="w-5 h-5 text-ink/70" />
-            <h2 className="text-2xl font-bold tracking-tight text-ink">
-              Authorized Evidence & Work Artifacts
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-ink/60 mt-1">
-            Real engineering deliverables disclosed by the candidate to support their verified skills.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          {evidence.map((ev) => (
-            <div
-              key={ev.id}
-              className="p-5 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-3"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-ink/10">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold uppercase border ${
-                      ev.sourceType === "github"
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : ev.sourceType === "jira"
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-amber-100 text-amber-900 border-amber-300"
-                    }`}
-                  >
-                    {ev.sourceType}
-                  </span>
-                  <span className="text-xs font-semibold text-ink/60">
-                    {ev.project}
-                  </span>
-                  <span className="text-xs text-ink/40">•</span>
-                  <span className="text-xs text-ink/60">{ev.date}</span>
-                </div>
-
-                <div className="text-xs font-medium text-ink/60 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Contribution: {ev.claimedContribution}</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-base font-bold text-ink">{ev.title}</h4>
-                <p className="text-xs sm:text-sm text-ink/70 mt-1 leading-relaxed">
-                  {ev.shortSummary}
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-ink/60 font-medium">Corroborates Skill:</span>
-                  <span className="px-2 py-0.5 rounded bg-ink/5 border border-ink/10 text-ink font-semibold">
-                    {ev.relatedSkillName}
-                  </span>
-                </div>
-
-                <div>
-                  {ev.allowDetailInspection ? (
-                    <Link
-                      href={`/p/${shareId}/evidence/${ev.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ink/5 hover:bg-ink hover:text-[#FBF1CF] border border-ink/15 text-ink font-semibold transition-all"
-                    >
-                      <span>Inspect Technical Artifact</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-ink/5 text-ink/50 text-[11px] font-medium border border-ink/10">
-                      <Lock className="w-3 h-3" />
-                      Summary Only (Detail Restricted by Candidate)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section 4: Verification Guarantee Note */}
-      <div className="p-5 rounded-2xl bg-[#FBF1CF] border border-ink/15 shadow-sm flex items-start gap-3.5">
-        <ShieldCheck className="w-6 h-6 text-emerald-700 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <h4 className="text-sm font-bold text-ink">
-            SkillPassport Anti-Hallucination & Provenance Guarantee
-          </h4>
-          <p className="text-xs text-ink/80 leading-relaxed">
-            {projection.verificationGuaranteeNote}
-          </p>
-        </div>
-      </div>
+      {/* Product Help & Conceptual Guidance Drawer */}
+      <SharingHelpDrawer
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        currentPathname={`/p/${shareId}`}
+      />
     </div>
   );
 }

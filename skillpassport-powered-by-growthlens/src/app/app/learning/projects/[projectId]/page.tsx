@@ -51,12 +51,10 @@ export default function MiniProjectDetailPage() {
 
   // Form inputs
   const [repoUrl, setRepoUrl] = useState<string>(
-    localFallback.submitted_attempt?.github_repo_url ||
-      "https://github.com/alexrivera/outlier-treatment-pipeline"
+    localFallback.submitted_attempt?.github_repo_url || ""
   );
   const [notes, setNotes] = useState<string>(
-    localFallback.submitted_attempt?.summary_notes ||
-      "Implemented modular components adhering strictly to problem specifications. Unit tests assert boundary conditions and verified clean isolation."
+    localFallback.submitted_attempt?.summary_notes || ""
   );
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

@@ -24,8 +24,11 @@ import {
   RefreshCw,
   Cpu,
   Loader2,
+  ExternalLink,
+  Award,
 } from "lucide-react";
 import RepositoryLanguageBar from "@/components/evidence/RepositoryLanguageBar";
+import ArtifactInspectorViewer from "@/components/evidence/ArtifactInspectorViewer";
 import {
   reprocessUploadedDocument,
   runWorkAnalysis,
@@ -103,7 +106,15 @@ export default function EvidenceDetailPage({
         externalRecordId: detailItem.externalRecordId || detailItem.external_record_id,
         title: detailItem.title || "Untitled Evidence",
         description: detailItem.description || "",
-        sourceType: (detailItem.sourceType || detailItem.provider || "document") as SourceType,
+        sourceType: (() => {
+          const p = (detailItem.provider || "").toLowerCase();
+          const st = (detailItem.sourceType || "").toLowerCase();
+          if (p === "jira" || st.startsWith("jira")) return "jira";
+          if (p === "github" || st.startsWith("github")) return "github";
+          if (p === "leetcode" || st.includes("leetcode")) return "leetcode";
+          if (p === "hackerrank" || st.includes("hackerrank")) return "hackerrank";
+          return (detailItem.sourceType || detailItem.provider || "document") as SourceType;
+        })(),
         sourceReference: detailItem.sourceName || detailItem.sourceUrl || "Uploaded Document",
         sourceUrl: detailItem.sourceUrl,
         project: detailItem.projectName || detailItem.sourceName || "General",
@@ -322,13 +333,13 @@ export default function EvidenceDetailPage({
         </div>
       </AppTopBar>
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {reprocessMsg && (
           <div
             className={`p-4 rounded-xl border text-xs font-bold flex items-center gap-2 ${
               reprocessMsg.error
-                ? "bg-[#F6C8D6] border-[#1C1C1C] text-[#C85A54]"
-                : "bg-[#DFE968] border-[#1C1C1C] text-[#1C1C1C]"
+                ? "bg-[#EAE5D9] border-[#1A1918] text-[#C85A54]"
+                : "bg-[#000000] border-[#1A1918] text-[#FAF8F5]"
             }`}
           >
             {reprocessMsg.error ? (
@@ -339,6 +350,13 @@ export default function EvidenceDetailPage({
             <span>{reprocessMsg.text}</span>
           </div>
         )}
+
+        {/* Embedded Full Artifact Inspector */}
+        <ArtifactInspectorViewer
+          evidenceItem={item}
+          artifactId={item.id}
+          mode="page"
+        />
 
         {/* A. Evidence Overview & Status Bar */}
         {(() => {
@@ -357,8 +375,8 @@ export default function EvidenceDetailPage({
                   <ProcessingStatusBadge status={item.processingStatus} />
                   <EvidenceStrengthBadge strength={item.evidenceStrength} />
                   {isOllamaAnalyzed ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
-                      <Cpu className="w-3 h-3 text-[#1C1C1C]" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border border-[#1A1918] bg-[#000000] text-[#FAF8F5]">
+                      <Cpu className="w-3 h-3 text-[#FAF8F5]" />
                       {analysis.model_name || "qwen3:8b"}
                     </span>
                   ) : isRuleBased ? (
@@ -485,6 +503,129 @@ export default function EvidenceDetailPage({
           </div>
         )}
 
+        {/* Coding Platform Provenance Contextual Panel (when evidence originates from LeetCode or HackerRank) */}
+        {(item.sourceType === "leetcode" || item.sourceType === "hackerrank") && (
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1C1C1C]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} Profile Reference • Coding Artifact Provenance
+                </h3>
+              </div>
+              <Link
+                href={`/app/evidence/sources/${item.sourceType}`}
+                className="text-xs font-bold underline text-[#1C1C1C] hover:opacity-75 inline-flex items-center gap-1"
+              >
+                <span>Manage {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} Profile</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <p className="text-xs text-[#1C1C1C]/75">
+              Supporting artifact linked to your registered {item.sourceType === "leetcode" ? "LeetCode" : "HackerRank"} handle.
+              <span className="italic block mt-1 text-[#1C1C1C]/60">
+                Notice: Account ownership is self-asserted and unverified. Credential status is validated based on the uploaded document contents and cryptographic provenance.
+              </span>
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Platform</span>
+                <span className="font-bold text-[#1C1C1C] capitalize">{item.sourceType}</span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20 sm:col-span-2">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Profile Provenance</span>
+                {item.sourceUrl ? (
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[#4A7A4E] hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    {item.sourceUrl}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-[#1C1C1C]/70">{item.sourceReference || "Linked Profile"}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Jira Work Item Contextual Panel (when evidence originates from Jira) */}
+        {item.sourceType === "jira" && (
+          <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-3 shadow-[2.5px_2.5px_0_0_#1C1C1C]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1C1C1C]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#1C1C1C]" />
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#1C1C1C]">
+                  Jira Work Item Details • Tracked Project Artifact
+                </h3>
+              </div>
+              {item.sourceUrl && (
+                <a
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-bold underline text-[#1C1C1C] hover:opacity-75 inline-flex items-center gap-1"
+                >
+                  <span>Open in Jira Cloud</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+
+            <p className="text-xs text-[#1C1C1C]/75">
+              Verified work item synchronized from Jira project <span className="font-mono font-bold text-[#1C1C1C]">{item.project || "Jira"}</span>.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs">
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Project Key</span>
+                <span className="font-mono font-black text-[#1C1C1C] text-sm">
+                  {item.project || (item.normalizedMetadata as any)?.project || "—"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Issue Key</span>
+                <span className="font-mono font-black text-[#1C1C1C] text-sm">
+                  {item.externalRecordId || (item.normalizedMetadata as any)?.issue_key || "—"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Issue Type</span>
+                <span className="font-bold text-[#1C1C1C]">
+                  {(item.normalizedMetadata as any)?.issue_type || "Task"}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/70 rounded-xl border border-[#1C1C1C]/20">
+                <span className="text-[10px] uppercase font-bold text-[#1C1C1C]/60 block">Workflow Status</span>
+                <span className="font-bold text-[#4A7A4E]">
+                  {(item.normalizedMetadata as any)?.status || "Completed"}
+                </span>
+              </div>
+            </div>
+
+            {((item.normalizedMetadata as any)?.components?.length > 0 || (item.normalizedMetadata as any)?.labels?.length > 0) && (
+              <div className="pt-2 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[11px] font-bold text-[#1C1C1C]/70 mr-1">Tags & Components:</span>
+                {((item.normalizedMetadata as any)?.components || []).map((c: string) => (
+                  <span key={c} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#DFE968] border border-[#1C1C1C]">
+                    Component: {c}
+                  </span>
+                ))}
+                {((item.normalizedMetadata as any)?.labels || []).map((lbl: string) => (
+                  <span key={lbl} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-[#1C1C1C]/40">
+                    #{lbl}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* D. Contribution Attribution & Human Review Action */}
         <div className="p-6 rounded-2xl border-[1.5px] border-[#1C1C1C] bg-[#FBF6DF] space-y-4">
           <div className="flex items-center justify-between">
@@ -514,7 +655,7 @@ export default function EvidenceDetailPage({
               Extracted Candidate Skills ({resolvedCandidateSkills.length})
             </h3>
             {resolvedCandidateSkills.length > 0 && (
-              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#DFE968] text-[#1C1C1C]">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-[#1C1C1C] bg-[#000000] text-[#FAF8F5] border-[#1A1918]">
                 {resolvedCandidateSkills.length} Evidence-Grounded
               </span>
             )}
@@ -562,7 +703,7 @@ export default function EvidenceDetailPage({
                   >
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#DFE968] border border-[#1C1C1C]">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-[#000000] text-[#FAF8F5] border border-[#1A1918]">
                           {sk.category || "Competency"}
                         </span>
                         <h4 className="text-sm font-black text-[#1C1C1C]">{sk.name}</h4>

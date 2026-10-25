@@ -73,8 +73,37 @@ class CareerIntelligenceDbAdapter:
     Operates strictly within the authenticated user's scope.
     """
 
-    def __init__(self, query_timeout_seconds: int = 5):
+    def __init__(self, query_timeout_seconds: int = 5, cache_ttl_seconds: int = 120):
         self.query_timeout_seconds = query_timeout_seconds
+        self.cache_ttl_seconds = cache_ttl_seconds
+        self._cache: Dict[str, Any] = {}
+
+    def _cache_key(self, user_id: str, target_role_id: Optional[str]) -> str:
+        return f"{user_id}::{target_role_id or 'default'}"
+
+    def get_cached_triggers(self, user_id: str, target_role_id: Optional[str]) -> Optional[List[UpstreamGapTrigger]]:
+        import time
+        k = self._cache_key(user_id, target_role_id)
+        if k in self._cache:
+            ts, triggers = self._cache[k]
+            if time.time() - ts < self.cache_ttl_seconds:
+                logger.debug(f"[UpstreamAdapterCache] HIT for key {k}")
+                return triggers
+            else:
+                del self._cache[k]
+        return None
+
+    def set_cached_triggers(self, user_id: str, target_role_id: Optional[str], triggers: List[UpstreamGapTrigger]) -> None:
+        import time
+        k = self._cache_key(user_id, target_role_id)
+        self._cache[k] = (time.time(), triggers)
+
+    def invalidate_cache(self, user_id: str) -> None:
+        prefix = f"{user_id}::"
+        to_del = [k for k in self._cache if k.startswith(prefix)]
+        for k in to_del:
+            del self._cache[k]
+        logger.info(f"[UpstreamAdapterCache] Invalidated {len(to_del)} cache entries for user {user_id}")
 
     def _has_table(self, db: Session, table_name: str) -> bool:
         try:
@@ -82,6 +111,16 @@ class CareerIntelligenceDbAdapter:
             return inspect(db.get_bind()).has_table(table_name)
         except Exception:
             return False
+
+    def _is_sqlite(self, db: Session) -> bool:
+        try:
+            bind = getattr(db, "bind", None) or (db.get_bind() if hasattr(db, "get_bind") else None)
+            return bind is not None and getattr(bind, "dialect", None) is not None and bind.dialect.name == "sqlite"
+        except Exception:
+            return False
+
+    def _bind_owner_id(self, db: Session, owner_uuid: uuid.UUID) -> Any:
+        return str(owner_uuid) if self._is_sqlite(db) else owner_uuid
 
     def _safe_user_uuid(self, user_id: str) -> uuid.UUID:
         try:
@@ -96,54 +135,31 @@ class CareerIntelligenceDbAdapter:
         Read-only, bounded to authenticated user.
         """
         owner_uuid = self._safe_user_uuid(user_id)
-        bind_owner_id = str(owner_uuid) if (db.bind and db.bind.dialect.name == "sqlite") else owner_uuid
+        bind_owner_id = self._bind_owner_id(db, owner_uuid)
+        params_target: Dict[str, Any] = {"owner_id": bind_owner_id, "owner_hex": owner_uuid.hex}
         if self._has_table(db, "user_target_roles"):
             try:
                 stmt = text(
                     """
                     SELECT id, target_role_id, target_role_version, role_title, selected_at
                     FROM user_target_roles
-                    WHERE owner_user_id = :owner_id
+                    WHERE (owner_user_id = :owner_id OR owner_user_id = :owner_hex)
                     ORDER BY selected_at DESC NULLS LAST, created_at DESC
                     LIMIT 1
                     """
                 )
-                row = db.execute(stmt, {"owner_id": bind_owner_id}).fetchone()
-                if row:
+                row = db.execute(stmt, params_target).fetchone()
+                if row and row[1]:
                     return {
                         "id": str(row[0]),
-                        "target_role_id": row[1] or "role-senior-backend",
-                        "target_role_version": row[2] or "v1.0",
-                        "role_title": row[3] or "Senior Backend & Distributed Systems Engineer",
+                        "target_role_id": row[1],
+                        "target_role_version": row[2] or "v2026.1",
+                        "role_title": row[3] or row[1].replace("role-", "").replace("-", " ").title(),
                         "selected_at": row[4],
                     }
             except Exception as e:
                 db.rollback()
-                logger.warning(f"user_target_roles query exception (table may be empty or evolving): {e}")
-
-        # Fallback to user_profiles table if user_target_roles has no record
-        if self._has_table(db, "user_profiles"):
-            try:
-                profile_stmt = text(
-                    """
-                    SELECT job_title, professional_goal
-                    FROM user_profiles
-                    WHERE id = :owner_id
-                    LIMIT 1
-                    """
-                )
-                p_row = db.execute(profile_stmt, {"owner_id": bind_owner_id}).fetchone()
-                if p_row and (p_row[0] or p_row[1]):
-                    return {
-                        "id": str(owner_uuid),
-                        "target_role_id": "role-custom-goal",
-                        "target_role_version": "v1.0",
-                        "role_title": p_row[1] or p_row[0] or "Target Engineering Role",
-                        "selected_at": None,
-                    }
-            except Exception as e:
-                db.rollback()
-                logger.debug(f"user_profiles fallback check: {e}")
+                logger.warning(f"user_target_roles query exception: {e}")
 
         return None
 
@@ -155,7 +171,7 @@ class CareerIntelligenceDbAdapter:
         Returns parsed snapshot data with gaps_data, readiness_data, priorities_data.
         """
         owner_uuid = self._safe_user_uuid(user_id)
-        bind_owner_id = str(owner_uuid) if (db.bind and db.bind.dialect.name == "sqlite") else owner_uuid
+        bind_owner_id = self._bind_owner_id(db, owner_uuid)
         if not self._has_table(db, "role_match_snapshots"):
             return None
 
@@ -166,14 +182,78 @@ class CareerIntelligenceDbAdapter:
                        readiness_index, match_summary, gaps_data, priorities_data, handoff_data,
                        calculated_at
                 FROM role_match_snapshots
-                WHERE owner_user_id = :owner_id
+                WHERE (owner_user_id = :owner_id OR owner_user_id = :owner_hex)
             """
-            params: Dict[str, Any] = {"owner_id": bind_owner_id}
+            params: Dict[str, Any] = {
+                "owner_id": bind_owner_id,
+                "owner_hex": owner_uuid.hex,
+            }
             if role_id:
                 query += " AND role_id = :role_id"
                 params["role_id"] = role_id
             query += " ORDER BY calculated_at DESC NULLS LAST, created_at DESC LIMIT 1"
 
+            row = db.execute(text(query), params).fetchone()
+            if not row:
+                return None
+
+            snapshot_raw_id = row[0]
+            try:
+                canonical_snapshot_id = str(uuid.UUID(str(snapshot_raw_id)))
+            except Exception:
+                canonical_snapshot_id = str(snapshot_raw_id)
+
+            return {
+                "snapshot_id": canonical_snapshot_id,
+                "role_id": row[1] or "role-senior-backend",
+                "role_version": row[2] or "v1.0",
+                "capability_state_version": row[3] or "v1.0",
+                "overall_match_score": float(row[4] or 0.0),
+                "required_coverage_score": float(row[5] or 0.0),
+                "supporting_coverage_score": float(row[6] or 0.0),
+                "readiness_index": float(row[7] or 0.0),
+                "match_summary": _parse_json_field(row[8], {}),
+                "gaps_data": _parse_json_field(row[9], []),
+                "priorities_data": _parse_json_field(row[10], []),
+                "handoff_data": _parse_json_field(row[11], {}),
+                "calculated_at": row[12],
+            }
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Error querying role_match_snapshots: {e}")
+            return None
+
+    def get_snapshot_by_id(
+        self, db: Session, user_id: str, snapshot_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetches a specific role match snapshot by ID for the authenticated user.
+        Guarantees exact evaluation association across refreshes and sessions.
+        """
+        owner_uuid = self._safe_user_uuid(user_id)
+        bind_owner_id = self._bind_owner_id(db, owner_uuid)
+        if not self._has_table(db, "role_match_snapshots"):
+            return None
+
+        try:
+            target_uuid = self._safe_user_uuid(snapshot_id)
+            bind_snap_id = str(target_uuid) if self._is_sqlite(db) else target_uuid
+            query = """
+                SELECT id, role_id, role_version, capability_state_version,
+                       overall_match_score, required_coverage_score, supporting_coverage_score,
+                       readiness_index, match_summary, gaps_data, priorities_data, handoff_data,
+                       calculated_at
+                FROM role_match_snapshots
+                WHERE (owner_user_id = :owner_id OR owner_user_id = :owner_hex)
+                  AND (id = :snap_id OR id = :snap_hex)
+                LIMIT 1
+            """
+            params = {
+                "owner_id": bind_owner_id,
+                "owner_hex": owner_uuid.hex,
+                "snap_id": bind_snap_id,
+                "snap_hex": target_uuid.hex,
+            }
             row = db.execute(text(query), params).fetchone()
             if not row:
                 return None
@@ -195,8 +275,9 @@ class CareerIntelligenceDbAdapter:
             }
         except Exception as e:
             db.rollback()
-            logger.warning(f"Error querying role_match_snapshots: {e}")
+            logger.warning(f"Error querying role_match_snapshots by id: {e}")
             return None
+
 
     def map_skill_to_canonical_taxonomy(
         self, db: Session, raw_skill_name: str
@@ -244,7 +325,7 @@ class CareerIntelligenceDbAdapter:
         return None
 
     def fetch_upstream_triggers(
-        self, db: Session, user_id: str, target_role_id: Optional[str] = None
+        self, db: Session, user_id: str, target_role_id: Optional[str] = None, force_refresh: bool = False
     ) -> List[UpstreamGapTrigger]:
         """
         Primary ingestion method:
@@ -253,12 +334,20 @@ class CareerIntelligenceDbAdapter:
         3. If no snapshot exists yet, queries user's actual Skill Intelligence mappings
            from competency_taxonomy + evidence_competency_mappings to construct deterministic triggers.
         """
+        if not force_refresh:
+            cached = self.get_cached_triggers(user_id, target_role_id)
+            if cached is not None:
+                return cached
+
         owner_uuid = self._safe_user_uuid(user_id)
         triggers: List[UpstreamGapTrigger] = []
 
         # 1. Attempt reading Career Intelligence snapshot
         snapshot = self.get_latest_role_match_snapshot(db, user_id, target_role_id)
-        if snapshot and snapshot.get("gaps_data"):
+        raw_gaps = []
+        if snapshot:
+            raw_gaps = snapshot.get("gaps_data") or snapshot.get("match_summary", {}).get("gaps", [])
+        if snapshot and raw_gaps:
             role_ctx = RoleContext(
                 role_id=snapshot.get("role_id", "role-senior-backend"),
                 role_title=snapshot.get("match_summary", {}).get("role_title", "Senior Distributed Systems Engineer"),
@@ -267,7 +356,6 @@ class CareerIntelligenceDbAdapter:
                 role_version=snapshot.get("role_version", "v1.0"),
             )
 
-            raw_gaps = snapshot["gaps_data"]
             for idx, g in enumerate(raw_gaps):
                 raw_skill_name = g.get("canonical_name") or g.get("skill_id", f"skill-{idx}")
                 canonical_comp = self.map_skill_to_canonical_taxonomy(db, raw_skill_name)
@@ -360,6 +448,7 @@ class CareerIntelligenceDbAdapter:
                 )
                 triggers.append(trigger)
 
+            self.set_cached_triggers(user_id, target_role_id, triggers)
             return triggers
 
         # 2. Resilient Database Fallback:
@@ -372,18 +461,16 @@ class CareerIntelligenceDbAdapter:
             .all()
         )
 
-        target_role = self.get_user_target_role(db, user_id) or {
-            "target_role_id": "role-senior-backend",
-            "target_role_version": "v1.0",
-            "role_title": "Senior Distributed Systems Engineer",
-        }
+        target_role = self.get_user_target_role(db, user_id)
+        if not target_role and not mappings:
+            return []
 
         role_ctx = RoleContext(
-            role_id=target_role.get("target_role_id", "role-senior-backend"),
-            role_title=target_role.get("role_title", "Senior Distributed Systems Engineer"),
+            role_id=(target_role.get("target_role_id") if target_role else "role-default"),
+            role_title=(target_role.get("role_title") if target_role else "Software Engineer"),
             seniority="Senior Level",
-            context_domain="Distributed Systems",
-            role_version=target_role.get("target_role_version", "v1.0"),
+            context_domain="Engineering",
+            role_version=(target_role.get("target_role_version") if target_role else "v1.0"),
         )
 
         for idx, (cmap, comp) in enumerate(mappings):
@@ -460,6 +547,7 @@ class CareerIntelligenceDbAdapter:
             )
             triggers.append(trigger)
 
+        self.set_cached_triggers(user_id, target_role_id, triggers)
         return triggers
 
     def has_new_upstream_snapshot(

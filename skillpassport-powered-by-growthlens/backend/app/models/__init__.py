@@ -22,6 +22,26 @@ from backend.app.models.ai_governance import (
     HumanReviewTask,
     AIEvaluationSuiteRun,
 )
+from backend.app.models.sharing import (
+    ShareLinkRecord,
+    ShareAccessEvent,
+    RecruiterMessage,
+    UserCustomSkill,
+    UserNotification,
+    UserPassportConfigRecord,
+)
+from backend.app.models.career import (
+    JobPostingRecord,
+    RoleDemandModelRecord,
+    UserTargetRoleRecord,
+    RoleMatchSnapshotRecord,
+    JobSearchCacheRecord,
+)
+from backend.app.models.recruiter import (
+    EmployerOrganization,
+    OrganizationMembership,
+    CandidateShareInvitation,
+)
 from backend.app.models.learning import (
     LearningRoadmap,
     LearningStep,
@@ -31,6 +51,8 @@ from backend.app.models.learning import (
     LearningAssessment,
     LearningAssessmentModel,
     LearningRoadmapModel,
+    LearningProjectSubmission,
+    LearningProjectSubmissionModel,
     SkillGapAssessmentRecord,
     SkillGapAssessmentModel,
     LearningStepPacketRecord,
@@ -39,13 +61,6 @@ from backend.app.models.learning import (
     LearningMiniProjectModel,
     LearningActivityRecord,
     LearningActivityModel,
-)
-from backend.app.models.career import (
-    JobPostingRecord,
-    RoleDemandModelRecord,
-    UserTargetRoleRecord,
-    RoleMatchSnapshotRecord,
-    JobSearchCacheRecord,
 )
 
 __all__ = [
@@ -79,6 +94,9 @@ __all__ = [
     "PromptInjectionFinding",
     "HumanReviewTask",
     "AIEvaluationSuiteRun",
+    "EmployerOrganization",
+    "OrganizationMembership",
+    "CandidateShareInvitation",
     "LearningRoadmap",
     "LearningStep",
     "LearningResourceItem",
@@ -87,6 +105,8 @@ __all__ = [
     "LearningAssessment",
     "LearningAssessmentModel",
     "LearningRoadmapModel",
+    "LearningProjectSubmission",
+    "LearningProjectSubmissionModel",
     "SkillGapAssessmentRecord",
     "SkillGapAssessmentModel",
     "LearningStepPacketRecord",
@@ -95,9 +115,4 @@ __all__ = [
     "LearningMiniProjectModel",
     "LearningActivityRecord",
     "LearningActivityModel",
-    "JobPostingRecord",
-    "RoleDemandModelRecord",
-    "UserTargetRoleRecord",
-    "RoleMatchSnapshotRecord",
-    "JobSearchCacheRecord",
 ]

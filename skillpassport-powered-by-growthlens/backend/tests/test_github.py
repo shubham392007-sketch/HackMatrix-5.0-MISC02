@@ -43,3 +43,41 @@ def test_github_test_endpoint_validation():
     )
     # Fails Pydantic validation (min_length=10)
     assert response.status_code == 422
+
+
+def test_github_repository_sync_status_endpoint():
+    """Verify GET /api/v1/connections/github/repositories/{id}/sync-status executes without NameError."""
+    from backend.app.db.session import SessionLocal
+    from backend.app.models.connection import ConnectedSource
+    from backend.app.api.dependencies import get_current_user, AuthenticatedUser
+    import uuid
+
+    mock_user_id = str(uuid.uuid4())
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        user_id=mock_user_id,
+        email="test_sync_status@growthlens.dev",
+        role="authenticated",
+    )
+
+    db = SessionLocal()
+    try:
+        conn = ConnectedSource(
+            owner_user_id=mock_user_id,
+            provider="github",
+            connection_status="connected",
+            account_identity="test-github-user",
+            encrypted_credentials="dummy",
+        )
+        db.add(conn)
+        db.commit()
+
+        response = client.get("/api/v1/connections/github/repositories/test-owner/test-repo/sync-status")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert "repository_name" in data
+    finally:
+        db.query(ConnectedSource).filter(ConnectedSource.owner_user_id == mock_user_id).delete()
+        db.commit()
+        db.close()
+        app.dependency_overrides.pop(get_current_user, None)

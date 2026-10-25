@@ -74,21 +74,69 @@ export class DatabaseUnavailableError extends Error {
 
 async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const method = (init?.method || "GET").toUpperCase();
-  let response: Response;
-  if (method !== "GET") {
-    response = await _nativeFetch(input, init);
-  } else {
-    const key = typeof input === "string" ? input : input.toString();
-    if (inFlightRequests.has(key)) {
-      const pending = inFlightRequests.get(key)!;
-      return pending.then((res) => res.clone());
-    }
+  let currentTarget = input;
+  let response: Response | undefined;
+  let lastError: any = null;
 
-    const promise = _nativeFetch(input, init).finally(() => {
-      inFlightRequests.delete(key);
-    });
-    inFlightRequests.set(key, promise);
-    response = await promise;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (method !== "GET") {
+        response = await _nativeFetch(currentTarget, init);
+      } else {
+        const key = typeof currentTarget === "string" ? currentTarget : currentTarget.toString();
+        if (inFlightRequests.has(key)) {
+          const pending = inFlightRequests.get(key)!;
+          return pending.then((res) => res.clone());
+        }
+
+        const promise = _nativeFetch(currentTarget, init).finally(() => {
+          inFlightRequests.delete(key);
+        });
+        inFlightRequests.set(key, promise);
+        response = await promise;
+      }
+
+      // If Next.js dev server proxy returned Bad Gateway / Service Unavailable proxy error, try fallback route
+      if ((response.status === 502 || response.status === 504) && attempt === 0 && typeof currentTarget === "string") {
+        if (currentTarget.startsWith(API_BASE)) {
+          currentTarget = currentTarget.replace(API_BASE, "/api/v1");
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
+        } else if (currentTarget.startsWith("/api/v1")) {
+          currentTarget = currentTarget.replace("/api/v1", API_BASE);
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
+        }
+      }
+
+      break;
+    } catch (err: any) {
+      lastError = err;
+      if (attempt === 0 && typeof currentTarget === "string") {
+        // Swap route between direct backend and Next.js proxy rewrite on network connection reset
+        if (currentTarget.startsWith(API_BASE)) {
+          currentTarget = currentTarget.replace(API_BASE, "/api/v1");
+        } else if (currentTarget.startsWith("/api/v1")) {
+          currentTarget = currentTarget.replace("/api/v1", API_BASE);
+        }
+        await new Promise((r) => setTimeout(r, 200));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error("Failed to execute request");
+  }
+
+  if (response.status === 401) {
+    invalidateAuthTokenCache();
+    if (typeof window !== "undefined") {
+      try {
+        supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      } catch {}
+    }
   }
 
   if (response.status === 503) {
@@ -128,14 +176,22 @@ export async function getMyProfile() {
 
 export async function updateMyProfile(updates: {
   display_name?: string;
+  preferred_name?: string;
   headline?: string;
   current_role?: string;
   job_title?: string;
   specialization?: string;
   department_or_team?: string;
+  location?: string;
+  work_preference?: string;
   experience_level?: string;
   professional_goal?: string;
   professional_summary?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  privacy_preferences?: Record<string, any>;
+  app_settings?: Record<string, any>;
   onboarding_status?: string;
   onboarding_current_step?: number;
   onboarding_current_category?: string;
@@ -423,17 +479,51 @@ export interface GitHubDiagnosticResponse {
   checks: DiagnosticCheckItem[];
 }
 
-export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+export async function getGitHubRepositorySyncStatus(repositoryIdOrFullName: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/github/repositories/${repositoryIdOrFullName}/sync`, {
-    method: "POST",
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+  const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync-status`, {
     headers,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
-    throw new Error(err.detail || "Repository sync failed");
+    const err = await res.json().catch(() => ({ detail: "Failed to get repository sync status" }));
+    throw new Error(err.detail || "Failed to get repository sync status");
   }
   return res.json();
+}
+
+export async function syncSingleGitHubRepository(repositoryIdOrFullName: string) {
+  const headers = await getAuthHeaders();
+  const encoded = encodeURIComponent(repositoryIdOrFullName);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const res = await fetch(`${API_BASE}/connections/github/repositories/${encoded}/sync`, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Repository sync failed" }));
+      throw new Error(err.detail || "Repository sync failed");
+    }
+    return await res.json();
+  } catch (err: any) {
+    // If the network or browser interrupted the fetch (e.g. Failed to fetch or connection dropped),
+    // check if the backend has finished or is processing the sync!
+    try {
+      await new Promise((r) => setTimeout(r, 1200));
+      const statusOutcome = await getGitHubRepositorySyncStatus(repositoryIdOrFullName);
+      if (statusOutcome && (statusOutcome.status === "completed" || (statusOutcome.candidate_skills_count && statusOutcome.candidate_skills_count > 0))) {
+        return statusOutcome;
+      }
+    } catch (statusErr) {
+      // Ignore status query error and rethrow original error
+    }
+    throw err;
+  }
 }
 
 export async function analyzeGitHubRepository(repositoryIdOrFullName: string, limit: number = 5) {
@@ -462,39 +552,78 @@ export async function getGitHubDiagnostic(): Promise<GitHubDiagnosticResponse> {
 // Jira Connector APIs
 export async function testJiraCredentials(site_url: string, email: string, api_token: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/test`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ site_url, email, api_token }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Jira validation failed" }));
-    throw new Error(err.detail || "Invalid Jira credentials");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/test`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ site_url, email, api_token }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Jira validation failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function connectJira(site_url: string, email: string, api_token: string, selected_projects: string[] = []) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ site_url, email, api_token, selected_projects }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to connect Jira" }));
-    throw new Error(err.detail || "Jira connection failed");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ site_url, email, api_token, selected_projects }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Failed to connect Jira (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function listJiraProjects() {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/projects`, {
-    headers,
-  });
-  if (!res.ok) throw new Error("Failed to load Jira projects");
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/projects`, {
+      headers,
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { projects: [], total: 0 };
+      }
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Failed to load Jira projects (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
+  }
 }
 
 export async function updateSelectedJiraProjects(projects: any[]) {
@@ -502,25 +631,107 @@ export async function updateSelectedJiraProjects(projects: any[]) {
   const formatted = projects.map((p) =>
     typeof p === "string" ? { key: p, name: p, selected: true } : p
   );
-  const res = await fetch(`${API_BASE}/connections/jira/projects`, {
-    method: "PUT",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ projects: formatted }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to update projects" }));
-    throw new Error(err.detail || "Project update failed");
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/projects`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ projects: formatted }),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Project update failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
   }
-  return res.json();
 }
 
 export async function triggerJiraSync(project_key?: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/connections/jira/sync`, {
+  try {
+    const res = await fetch(`${API_BASE}/connections/jira/sync`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(project_key ? { project_key } : {}),
+    });
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Database or backend service is temporarily recovering from high load. Please try again shortly.");
+      }
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = err.detail || err.error?.message || err.message || `Jira synchronization failed (${res.status})`;
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && err.message?.includes("fetch")) {
+      throw new Error("Cannot reach the SkillPassport backend server. Please check that the local server is running at http://127.0.0.1:8001.");
+    }
+    throw err;
+  }
+}
+
+// Coding Profiles (LeetCode & HackerRank)
+export async function connectLeetCode(profile_url: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/leetcode`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify(project_key ? { project_key } : {}),
+    body: JSON.stringify({ profile_url }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to connect LeetCode profile" }));
+    throw new Error(err.detail || "Failed to connect LeetCode profile");
+  }
+  return res.json();
+}
+
+export async function getLeetCodeProfile() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/leetcode`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load LeetCode profile");
+  return res.json();
+}
+
+export async function connectHackerRank(profile_url: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/hackerrank`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ profile_url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to connect HackerRank profile" }));
+    throw new Error(err.detail || "Failed to connect HackerRank profile");
+  }
+  return res.json();
+}
+
+export async function getHackerRankProfile() {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/hackerrank`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load HackerRank profile");
+  return res.json();
+}
+
+export async function listConnectionEvidence(connectionId: string) {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/connections/${connectionId}/evidence`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to load connection evidence");
   return res.json();
 }
 
@@ -544,12 +755,20 @@ export async function disconnectSource(connectionId: string) {
 }
 
 // Document Upload & Management
-export async function uploadEvidenceDocument(file: File, category: string = "other", title?: string) {
+export async function uploadEvidenceDocument(
+  file: File,
+  category: string = "other",
+  title?: string,
+  sourceProvider?: string,
+  connectionId?: string
+) {
   const headers = await getAuthHeaders();
   const formData = new FormData();
   formData.append("file", file);
   formData.append("category", category);
   if (title) formData.append("title", title);
+  if (sourceProvider) formData.append("source_provider", sourceProvider);
+  if (connectionId) formData.append("connection_id", connectionId);
 
   const res = await fetch(`${API_BASE}/documents/upload`, {
     method: "POST",
@@ -717,6 +936,10 @@ export async function deleteEvidenceItem(evidenceId: string) {
     headers,
   });
   if (!res.ok) {
+    if (res.status === 404) {
+      // Idempotent client delete: resource is already removed on the server
+      return { status: "deleted", evidence_id: evidenceId, message: "Evidence item already removed" };
+    }
     const err = await res.json().catch(() => ({ detail: "Failed to delete evidence item" }));
     throw new Error(err.detail || "Failed to delete evidence item");
   }
@@ -776,7 +999,11 @@ export async function runWorkAnalysis(evidenceIds: string[]) {
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({ evidence_ids: evidenceIds }),
   });
-  if (!res.ok) throw new Error("Failed to run work analysis");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = errData.detail || errData.error?.message || errData.message || `Work analysis failed (HTTP ${res.status})`;
+    throw new Error(message);
+  }
   return res.json();
 }
 
@@ -794,7 +1021,11 @@ export async function runSkillExtraction(evidenceIds: string[]) {
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({ evidence_ids: evidenceIds }),
   });
-  if (!res.ok) throw new Error("Failed to run skill extraction");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const msg = err.detail || err.error?.message || err.message || `Failed to run skill extraction (${res.status})`;
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -1031,16 +1262,25 @@ export async function listPassportCandidates(): Promise<{
   return res.json();
 }
 
+export interface CandidateReviewResponse {
+  decision_id: string;
+  mapping_id: string;
+  previous_state: string;
+  verification_state: string;
+  rationale: string;
+  created_at?: string | null;
+  skill_name?: string | null;
+  category?: string | null;
+  proficiency_level?: string | null;
+  confidence_score?: number | null;
+  evidence_id?: string | null;
+}
+
 export async function reviewPassportCandidate(
   mappingId: string,
   action: "verify" | "reject" | "flag_insufficient",
   rationale: string
-): Promise<{
-  success: boolean;
-  decision_id: string;
-  status: string;
-  message: string;
-}> {
+): Promise<CandidateReviewResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/passport/candidates/${mappingId}/review`, {
     method: "POST",
@@ -1083,14 +1323,18 @@ export async function listPassportHistory(): Promise<{
 // DOMAIN 5: LEARN & GROW ENGINE API CLIENT
 // ==============================================================================
 
-export async function getLearningPriorities(): Promise<{
+export async function getLearningPriorities(targetRoleId?: string): Promise<{
   user_id: string;
   count: number;
   confidence_review_threshold: number;
   priorities: any[];
+  target_role_title?: string;
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetchWithDedupe(`${API_BASE}/learning/priorities`, { headers });
+  const url = targetRoleId
+    ? `${API_BASE}/learning/priorities?target_role_id=${encodeURIComponent(targetRoleId)}`
+    : `${API_BASE}/learning/priorities`;
+  const res = await fetchWithDedupe(url, { headers });
   if (!res.ok) throw new Error("Failed to load learning priorities");
   return res.json();
 }
@@ -1110,18 +1354,40 @@ export async function refreshCareerGaps(): Promise<{
   return res.json();
 }
 
-export async function listDomainBlueprints(): Promise<{ blueprints: any[] }> {
+// In-memory cache for domain blueprints
+const _blueprintCache = new Map<string, { data: any; ts: number }>();
+const BLUEPRINT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
+
+export async function listDomainBlueprints(force: boolean = false): Promise<{ blueprints: any[] }> {
+  const cacheKey = "__list_all__";
+  if (!force) {
+    const cached = _blueprintCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < BLUEPRINT_CACHE_TTL) {
+      return cached.data;
+    }
+  }
   const headers = await getAuthHeaders();
   const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints`, { headers });
   if (!res.ok) throw new Error("Failed to load domain blueprints");
-  return res.json();
+  const data = await res.json();
+  _blueprintCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
 }
 
-export async function getDomainBlueprint(domainId: string): Promise<any> {
+export async function getDomainBlueprint(domainId: string, force: boolean = false): Promise<any> {
+  const cacheKey = `domain_${domainId}`;
+  if (!force) {
+    const cached = _blueprintCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < BLUEPRINT_CACHE_TTL) {
+      return cached.data;
+    }
+  }
   const headers = await getAuthHeaders();
   const res = await fetchWithDedupe(`${API_BASE}/learning/blueprints/${domainId}`, { headers });
   if (!res.ok) throw new Error(`Failed to load blueprint for domain ${domainId}`);
-  return res.json();
+  const data = await res.json();
+  _blueprintCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
 }
 
 export async function getDiagnosticQuestions(domainId: string): Promise<{
@@ -1159,7 +1425,7 @@ export async function searchCuratedResources(
   query: string,
   skillId?: string,
   level: string = "intermediate",
-  limit: number = 5
+  limit: number = 6
 ): Promise<{
   query: string;
   count: number;
@@ -1241,6 +1507,15 @@ export async function getRoadmapByPathId(pathId: string): Promise<any> {
   return res.json();
 }
 
+export async function deleteLearningRoadmap(pathId: string): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/roadmaps/${encodeURIComponent(pathId)}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to delete roadmap");
+  return res.json();
+}
 export async function submitLearningAttempt(payload: {
   step_id: string;
   roadmap_id?: string;
@@ -1280,9 +1555,12 @@ export async function getLearningMasteryTelemetry(): Promise<{
   return res.json();
 }
 
-export async function getLearningOverview(): Promise<any> {
+export async function getLearningOverview(targetRoleId?: string): Promise<any> {
   const headers = await getAuthHeaders();
-  const res = await fetchWithDedupe(`${API_BASE}/learning/overview`, { headers });
+  const url = targetRoleId
+    ? `${API_BASE}/learning/overview?target_role_id=${encodeURIComponent(targetRoleId)}`
+    : `${API_BASE}/learning/overview`;
+  const res = await fetchWithDedupe(url, { headers });
   if (!res.ok) throw new Error("Failed to load learning overview");
   return res.json();
 }
@@ -1328,7 +1606,8 @@ export async function getBackendAssessment(assessmentId: string): Promise<any> {
 
 export async function submitBackendAssessment(
   assessmentId: string,
-  answers: Record<string, number>
+  answers: Record<string, number>,
+  isSkipped: boolean = false
 ): Promise<any> {
   const headers = await getAuthHeaders();
   const res = await fetch(
@@ -1336,7 +1615,7 @@ export async function submitBackendAssessment(
     {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, is_skipped: isSkipped }),
     }
   );
   if (!res.ok) {
@@ -1446,6 +1725,8 @@ export async function submitProjectToBackend(payload: {
   }
   return res.json();
 }
+
+export const submitMiniProjectApi = submitProjectToBackend;
 
 export async function getProjectSubmission(projectId: string): Promise<any> {
   const headers = await getAuthHeaders();
@@ -1602,6 +1883,43 @@ export async function markStepComplete(
   return res.json();
 }
 
+export async function skipLearningStep(
+  stepId: string,
+  payload?: { roadmap_id?: string; notes?: string }
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/skip`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to skip step (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function resumeLearningStep(
+  stepId: string,
+  payload?: { roadmap_id?: string; notes?: string }
+): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/learning/steps/${encodeURIComponent(stepId)}/resume`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.detail || `Failed to resume step (${res.status})`);
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
 export async function getLearningHistory(params?: {
   limit?: number;
   offset?: number;

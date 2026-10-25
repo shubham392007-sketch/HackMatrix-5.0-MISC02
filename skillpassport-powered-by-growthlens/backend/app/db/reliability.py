@@ -127,8 +127,8 @@ class DatabaseCircuitBreaker:
 
     def __init__(
         self,
-        failure_threshold: int = 5,
-        recovery_timeout_seconds: float = 15.0,
+        failure_threshold: int = 15,
+        recovery_timeout_seconds: float = 3.0,
     ):
         self._lock = threading.Lock()
         self._failure_threshold = failure_threshold
@@ -227,11 +227,11 @@ from backend.app.core.config import get_settings
 
 try:
     _settings = get_settings()
-    _threshold = getattr(_settings, "db_circuit_breaker_threshold", 5)
-    _recovery_timeout = getattr(_settings, "db_circuit_breaker_recovery_seconds", 15.0)
+    _threshold = getattr(_settings, "db_circuit_breaker_threshold", 15)
+    _recovery_timeout = getattr(_settings, "db_circuit_breaker_recovery_seconds", 4.0)
 except Exception:
-    _threshold = 5
-    _recovery_timeout = 15.0
+    _threshold = 15
+    _recovery_timeout = 4.0
 
 # Process-wide singleton circuit breaker
 circuit_breaker = DatabaseCircuitBreaker(

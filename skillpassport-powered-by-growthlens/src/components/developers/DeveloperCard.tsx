@@ -224,7 +224,7 @@ export default function DeveloperCard({ developer, index = 0 }: DeveloperCardPro
               <button
                 onClick={copyEmail}
                 type="button"
-                className="p-1 px-2 rounded-lg border border-[#1C1C1C] bg-white text-[#1C1C1C] hover:bg-[#DFE968] active:scale-95 transition-all shrink-0 flex items-center gap-1 text-[9px] font-extrabold shadow-[1px_1px_0px_#1C1C1C] cursor-pointer relative z-30 select-none"
+                className="p-1 px-2 rounded-lg border border-[#1C1C1C] bg-white text-[#1C1C1C] hover:bg-[#000000] hover:text-[#FAF8F5] active:scale-95 transition-all shrink-0 flex items-center gap-1 text-[9px] font-extrabold shadow-[1px_1px_0px_#1C1C1C] cursor-pointer relative z-30 select-none"
                 title="Copy email to clipboard"
                 aria-label={`Copy email for ${developer.name}`}
               >
@@ -270,7 +270,7 @@ export default function DeveloperCard({ developer, index = 0 }: DeveloperCardPro
             {/* Primary Action Button — strictly bounded inside card */}
             <a
               href={`mailto:${developer.email}?subject=Connecting%20via%20GrowthLens&body=Hello%20${encodeURIComponent(developer.name)},%0A%0AI%20came%20across%20GrowthLens%20and%20wanted%20to%20connect%20regarding...`}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-full border-[1.5px] border-[#1C1C1C] bg-[#1C1C1C] text-[#FBF1CF] text-[10.5px] font-black tracking-wider uppercase shadow-[1.5px_1.5px_0px_#1C1C1C] hover:bg-[#DFE968] hover:text-[#1C1C1C] transition-all focus-visible:outline-2 focus-visible:outline-[#1C1C1C]"
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-full border-[1.5px] border-[#1C1C1C] bg-[#000000] text-[#FAF8F5] text-[10.5px] font-black tracking-wider uppercase shadow-[1.5px_1.5px_0px_#1A1918] hover:bg-[#FAF8F5] hover:text-[#1A1918] transition-all focus-visible:outline-2 focus-visible:outline-[#1C1C1C]"
             >
               <span>CONNECT VIA EMAIL</span>
               <ArrowUpRight className="w-3.5 h-3.5" />

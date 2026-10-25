@@ -26,6 +26,7 @@ import {
   X,
   ChevronRight,
   Bookmark,
+  Send,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 import { TargetRoleSelectorBar } from "@/components/app/CareerBadges";
@@ -47,7 +48,7 @@ export default function DiscoverJobsPage() {
   const { skills, initialLoading, setSelectedRoleId, saveCustomRole } = useEvidence();
 
   // Mode Selection: "mode_a_skills" vs "mode_b_role"
-  const [mode, setMode] = useState<"mode_a_skills" | "mode_b_role">("mode_a_skills");
+  const [mode, setMode] = useState<"mode_a_skills" | "mode_b_role" | "mode_c_recruiter">("mode_a_skills");
 
   // Inputs
   const [roleQuery, setRoleQuery] = useState("");
@@ -311,7 +312,7 @@ export default function DiscoverJobsPage() {
                   <code className="font-mono font-bold">FANTASTIC_JOBS_API_KEY</code>).
                 </p>
                 <div className="flex items-center gap-2 pt-1 text-[11px] font-mono text-amber-900 flex-wrap">
-                  {providerStatus.providers?.map((p) => (
+                  {providerStatus.providers?.map((p: any) => (
                     <span
                       key={p.provider}
                       className="inline-flex items-center gap-1 bg-white/70 px-2.5 py-1 rounded border border-amber-200"
@@ -366,11 +367,11 @@ export default function DiscoverJobsPage() {
                 Step 1: Choose Discovery Mode
               </span>
               <span className="text-[11px] font-mono text-ink-muted">
-                {mode === "mode_a_skills" ? "Profile Driven" : "Exploratory Search"}
+                {mode === "mode_a_skills" ? "Profile Driven" : mode === "mode_b_role" ? "Exploratory Search" : "Direct Recruiter Openings"}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -422,6 +423,32 @@ export default function DiscoverJobsPage() {
                   Search for any career you aspire to explore, even if you do not yet have its prerequisites.
                 </p>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("mode_c_recruiter");
+                  setErrorMessage(null);
+                }}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  mode === "mode_c_recruiter"
+                    ? "bg-sand/30 border-ink ring-2 ring-ink/15 shadow-sm"
+                    : "bg-white hover:bg-sand/10 border-ink/15 text-ink-muted hover:text-ink"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink">
+                    <Building className="w-4 h-4 text-emerald-700" />
+                    Mode C — Recruiter-Published Jobs
+                  </span>
+                  {mode === "mode_c_recruiter" && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  Direct openings posted by verified employers. Match your verified skills and share your Skill Passport.
+                </p>
+              </button>
             </div>
           </div>
 
@@ -462,26 +489,36 @@ export default function DiscoverJobsPage() {
                             key={skill.id}
                             type="button"
                             onClick={() => toggleSkillSelection(skill.id)}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all border ${
+                            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs transition-all border ${
                               isSelected
-                                ? isVerified
-                                  ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-medium shadow-sm"
-                                  : "bg-amber-50 border-amber-400 text-amber-950 font-medium shadow-sm"
-                                : "bg-sand/15 border-ink/15 text-ink-muted/80 opacity-60 hover:opacity-100"
+                                ? "bg-ink text-white border-ink shadow-sm ring-1 ring-ink/20 font-medium"
+                                : "bg-sand/20 hover:bg-sand/40 border-ink/15 text-ink-muted hover:text-ink"
                             }`}
                             title={isSelected ? "Click to exclude from this search" : "Click to include in search query"}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isVerified ? "bg-emerald-600" : "bg-amber-500"
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isSelected
+                                  ? isVerified ? "bg-lime shadow-[0_0_6px_rgba(202,240,43,0.8)]" : "bg-amber-300"
+                                  : isVerified ? "bg-emerald-600" : "bg-amber-500"
                               }`}
                             />
                             <span>{skillName}</span>
-                            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-white/60 border border-ink/10 text-ink-muted">
+                            <span
+                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                                isSelected
+                                  ? "bg-white/15 text-white/90 border-white/20"
+                                  : "bg-white/70 text-ink-muted border-ink/10"
+                              }`}
+                            >
                               {profLevel}
                             </span>
                             {skill.confidence && (
-                              <span className="text-[10px] font-mono text-ink-muted font-bold">
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  isSelected ? "text-amber-200" : "text-ink-muted"
+                                }`}
+                              >
                                 {skill.confidence}%
                               </span>
                             )}
@@ -503,7 +540,7 @@ export default function DiscoverJobsPage() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : mode === "mode_b_role" ? (
               <div className="space-y-1.5">
                 <label htmlFor="role-query-input" className="block text-xs font-bold text-ink">
                   What role do you want to become?
@@ -520,6 +557,27 @@ export default function DiscoverJobsPage() {
                     autoComplete="off"
                   />
                 </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label htmlFor="role-query-input" className="block text-xs font-bold text-ink">
+                  Filter Employer Openings (Optional)
+                </label>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <input
+                    id="role-query-input"
+                    type="text"
+                    value={roleQuery}
+                    onChange={(e) => setRoleQuery(e.target.value)}
+                    placeholder="Search by role title, skill requirements, or company (leave blank for all)..."
+                    className="w-full bg-white border border-ink/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-muted/70 focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink/10"
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="text-[11px] text-ink-muted">
+                  Browsing verified employer openings published directly on Skill Passport.
+                </p>
               </div>
             )}
 
@@ -628,7 +686,7 @@ export default function DiscoverJobsPage() {
             {/* Job Cards Grid */}
             {discoveryResult.jobs && discoveryResult.jobs.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
-                {discoveryResult.jobs.map((job) => {
+                {discoveryResult.jobs.map((job: NormalizedJob) => {
                   const isExtracting = extractingJobId === job.id;
 
                   return (
@@ -744,7 +802,7 @@ export default function DiscoverJobsPage() {
                           <span>Source: {job.provider}</span>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {job.job_url && (
                             <a
                               href={job.job_url}
@@ -761,20 +819,30 @@ export default function DiscoverJobsPage() {
                             type="button"
                             onClick={() => handleCompareJobSkills(job)}
                             disabled={isExtracting}
-                            className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 font-bold shadow-sm"
+                            className="pill-btn pill-btn-secondary text-xs py-2 px-4 flex items-center justify-center gap-1.5 font-bold shadow-sm"
                           >
                             {isExtracting ? (
                               <>
                                 <RotateCw className="w-3 h-3 animate-spin" />
-                                Extracting Requirements...
+                                Analyzing Fit...
                               </>
                             ) : (
                               <>
                                 <Scale className="w-3 h-3" />
-                                Compare My Skills
+                                Analyze Fit
                               </>
                             )}
                           </button>
+
+                          {(job.provider === "recruiter_portal" || Boolean(job.public_recruiter_email)) && (
+                            <Link
+                              href={`/app/passport/share?jobId=${job.id}&recruiterEmail=${encodeURIComponent(job.public_recruiter_email || '')}&jobTitle=${encodeURIComponent(job.title)}`}
+                              className="pill-btn pill-btn-primary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 font-bold shadow-sm bg-[#E0533C] text-white hover:bg-[#d0452f] border-none"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>Send Passport</span>
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </div>

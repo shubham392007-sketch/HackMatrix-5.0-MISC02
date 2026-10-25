@@ -50,7 +50,7 @@ export default function SkillPassportBootScreen({
       typeof window !== "undefined" &&
       sessionStorage.getItem("skillpassport_boot_seen");
 
-    if (!isHomePage && hasSeenBoot === "true") {
+    if (hasSeenBoot === "true") {
       setPhase("done");
       onComplete?.();
       return;
@@ -125,8 +125,8 @@ export default function SkillPassportBootScreen({
         phase === "fading" ? "opacity-0 scale-[0.99] blur-[1px] pointer-events-none" : "opacity-100 scale-100"
       }`}
       style={{
-        background: "linear-gradient(180deg, #FBF1CF 0%, #F6C8D6 52%, #F3A878 100%)",
-        backgroundColor: "#FBF1CF",
+        background: "#F5F2EB",
+        backgroundColor: "#F5F2EB",
         minHeight: "100vh",
         height: "100dvh",
         width: "100vw",
@@ -145,8 +145,8 @@ export default function SkillPassportBootScreen({
           <defs>
             {/* Subtle soft gradient definition for ambient glow */}
             <radialGradient id="sp-ambient-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#DFE968" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#DFE968" stopOpacity="0" />
+              <stop offset="0%" stopColor="#000000" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
             </radialGradient>
           </defs>
 
@@ -193,7 +193,7 @@ export default function SkillPassportBootScreen({
           className="absolute inset-0 pointer-events-none -z-10 transition-opacity duration-1000 ease-out"
           style={{
             background:
-              "radial-gradient(ellipse 70% 50% at 50% 55%, rgba(223, 233, 104, 0.22), transparent 70%)",
+              "none",
             opacity: phase === "holding" || phase === "drawing" ? 1 : 0,
           }}
         />

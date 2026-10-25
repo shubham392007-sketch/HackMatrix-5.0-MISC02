@@ -46,12 +46,27 @@ export interface RoleCompetency {
   source_span?: string;
 }
 
+export interface ConfidenceRationale {
+  score: number;
+  score_percent: number;
+  score_meaning: string;
+  summary: string;
+  supporting_factors: string[];
+  evidence_limitations: string[];
+  uncertainty_notes: string[];
+  is_verified: boolean;
+  model_assisted?: boolean;
+}
+
 export interface RoleDemandModel {
   role_id: string;
   version: string; // e.g. "v2026.1"
   title: string;
-  seniority: "Entry Level" | "Mid Level" | "Senior Level" | "Staff / Lead";
+  role_title?: string; // alias used across backend/API
+  role_version?: string; // alias used across backend/API
+  seniority: "Entry Level" | "Mid Level" | "Senior Level" | "Staff / Lead" | string;
   context: string; // e.g. "Product / GenAI", "Distributed Systems"
+  context_domain?: string; // alias used across backend/API
   description: string;
   provenance: string;
   source_type: "curated_model" | "custom_parsed_job";
@@ -84,6 +99,10 @@ export interface CompetencyMatchResult {
     | "missing_weak"
     | "conflicting";
   reason_codes: string[];
+  confidence_explanation?: string;
+  confidence_rationale?: ConfidenceRationale;
+  requirement_source?: string;
+  provenance?: string;
 }
 
 export interface RoleMatchResult {
@@ -139,6 +158,9 @@ export interface GapRecord {
   diagnosis: string;
   next_step_direction: string;
   relevant_evidence_ids: string[];
+  confidence?: number;
+  confidence_explanation?: string;
+  confidence_rationale?: ConfidenceRationale;
   requirement_source?: string;
   source_references?: string[];
   provenance?: string;
@@ -189,4 +211,139 @@ export interface ParsedJobDescription {
   }>;
   status: "empty" | "parsing" | "completed" | "partial" | "saved";
   parsed_at: string;
+}
+
+export type GapExplanationType =
+  | "genuine_proficiency_gap"
+  | "evidence_gap"
+  | "verification_gap"
+  | "conflicting_evidence"
+  | "insufficient_data";
+
+export interface GapExplanation {
+  skill_id: string;
+  requirement_id: string;
+  gap_type: GapExplanationType;
+  summary: string;
+  required_capability: string;
+  demonstrated_capabilities: string[];
+  specific_shortfall: string;
+  evidence_limitations: string;
+  supporting_evidence_ids: string[];
+  contradicting_evidence_ids: string[];
+  reasoning_confidence: number;
+  recommended_next_actions: string[];
+  insufficient_information: boolean;
+  analysis_version: string;
+  evaluated_at: string;
+  is_cached?: boolean;
+}
+
+export interface GapExplanationsResponse {
+  role_id: string;
+  role_title: string;
+  snapshot_id?: string | null;
+  total_gaps: number;
+  explanations: Record<string, GapExplanation>;
+  from_cache: boolean;
+  model_used: string;
+  analysis_version: string;
+  generated_at: string;
+}
+
+
+// ==============================================================================
+// JOB DISCOVERY & PROVIDER STATUS
+// ==============================================================================
+
+export interface ProviderStatusInfo {
+  provider: string;
+  is_configured: boolean;
+  required_env_vars?: string[];
+  host?: string;
+  status_message?: string;
+}
+
+export interface JobProviderStatus {
+  any_configured: boolean;
+  primary_provider: string;
+  fallback_provider: string;
+  max_results_per_search: number;
+  cache_ttl_minutes: number;
+  fallback_enabled: boolean;
+  providers: ProviderStatusInfo[];
+}
+
+export interface NormalizedJob {
+  id: string;
+  provider: string;
+  provider_job_id: string;
+  title: string;
+  company_name: string;
+  company_domain?: string | null;
+  location_text?: string | null;
+  remote_status?: string | null;
+  employment_type?: string | null;
+  seniority?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string | null;
+  salary_period?: string | null;
+  description?: string;
+  job_url: string;
+  posted_at?: string | null;
+  retrieved_at?: string;
+  is_stale?: boolean;
+  extracted_competencies?: any[];
+  extracted_requirements?: any[];
+  organization_id?: string | null;
+  recruiter_user_id?: string | null;
+  public_recruiter_name?: string | null;
+  public_recruiter_email?: string | null;
+  status?: string | null;
+  local_relevance_score?: number | null;
+  relevance_reasons?: string[] | null;
+  match_summary?: {
+    score: number;
+    aligned_skills: string[];
+    gaps_count: number;
+  };
+}
+
+export interface JobDiscoveryResponse {
+  status: "success" | "no_results" | "not_configured" | "provider_error" | "rate_limited" | string;
+  notice?: string;
+  message?: string;
+  mode: string;
+  query?: string;
+  query_used?: string;
+  location?: string;
+  remote_only?: boolean;
+  provider_used?: string;
+  provider_selected?: string;
+  from_cache?: boolean;
+  cached?: boolean;
+  cache_age_seconds?: number;
+  total_results?: number;
+  total_returned?: number;
+  retrieved_at?: string;
+  primary_domain?: string;
+  role_families?: string[];
+  search_intent?: any;
+  ollama_latency_ms?: number;
+  provider_latency_ms?: number;
+  total_latency_ms?: number;
+  jobs: NormalizedJob[];
+  influencing_skills?: any[];
+}
+
+export interface JobDiscoveryParams {
+  mode: "mode_a_skills" | "mode_b_role" | "mode_c_recruiter";
+  query?: string;
+  location?: string;
+  country_code?: string;
+  remote_only?: boolean;
+  limit?: number;
+  selected_skill_ids?: string[];
+  selected_skills?: any[];
 }

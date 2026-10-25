@@ -20,8 +20,10 @@ import {
   ShieldAlert,
   X,
   Send,
+  Eye,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
+import ArtifactInspectorViewer from "@/components/evidence/ArtifactInspectorViewer";
 
 interface PageProps {
   params: Promise<{ skillId: string }>;
@@ -34,6 +36,7 @@ export default function EvidenceToSkillMappingPage({ params }: PageProps) {
   const [flagModalItem, setFlagModalItem] = useState<string | null>(null);
   const [flagReason, setFlagReason] = useState("");
   const [flagSuccessMessage, setFlagSuccessMessage] = useState<string | null>(null);
+  const [inspectingItem, setInspectingItem] = useState<any | null>(null);
 
   const skill = skills.find((s) => s.id === skillId);
 
@@ -116,7 +119,7 @@ export default function EvidenceToSkillMappingPage({ params }: PageProps) {
       )}
 
       {/* Trust & Provenance Card */}
-      <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
+      <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -192,12 +195,22 @@ export default function EvidenceToSkillMappingPage({ params }: PageProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInspectingItem(ev)}
+                        className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+                        title="Inspect full deliverable and cryptographic evidence"
+                      >
+                        <span>Inspect Full Artifact</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+
                       <Link
                         href={`/app/evidence/${ev.id}`}
-                        className="pill-btn pill-btn-secondary text-[11px] py-1.5 px-3 flex items-center gap-1"
+                        className="p-1.5 rounded-full text-[#8C827A] hover:text-[#1F1E1D] hover:bg-[#EFEAE1] transition-colors"
+                        title="Open full page view"
                       >
-                        Inspect Full Artifact
-                        <ExternalLink className="w-3 h-3" />
+                        <Eye className="w-3.5 h-3.5" />
                       </Link>
 
                       <button
@@ -259,6 +272,19 @@ export default function EvidenceToSkillMappingPage({ params }: PageProps) {
       </div>
 
       {/* Flag / Report Mapping Modal */}
+      {inspectingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1C1C1C]/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
+            <ArtifactInspectorViewer
+              evidenceItem={inspectingItem}
+              artifactId={inspectingItem.id}
+              mode="modal"
+              onClose={() => setInspectingItem(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {flagModalItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E0D9CD] space-y-5">

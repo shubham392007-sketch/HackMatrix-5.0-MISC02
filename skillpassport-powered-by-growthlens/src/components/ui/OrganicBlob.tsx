@@ -9,7 +9,7 @@ interface OrganicBlobProps {
 export default function OrganicBlob({
   children,
   className = "",
-  gradient = "bg-gradient-to-tr from-[#DFE968] via-[#FBF1CF] to-[#F3A878]",
+  gradient = "bg-[#FAF8F5]",
 }: OrganicBlobProps) {
   return (
     <div

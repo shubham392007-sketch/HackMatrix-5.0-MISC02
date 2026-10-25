@@ -41,15 +41,15 @@ class Settings(BaseSettings):
         description="Whether to permit SQLite fallback when PostgreSQL is unreachable. Defaults to True in dev/test, strictly False in production/staging.",
     )
     db_pool_size: int = Field(
-        default=8,
-        description="SQLAlchemy QueuePool size (bounded <= 8 to preserve Supabase 15 limit)",
+        default=10,
+        description="SQLAlchemy QueuePool size (supports concurrent frontend requests safely)",
     )
     db_max_overflow: int = Field(
-        default=0,
-        description="SQLAlchemy QueuePool max overflow (0 enforces strict upper bound)",
+        default=5,
+        description="SQLAlchemy QueuePool max overflow",
     )
     db_pool_timeout: float = Field(
-        default=20.0,
+        default=30.0,
         description="Seconds to wait in queue for a connection from pool before timeout",
     )
     db_pool_recycle: int = Field(
@@ -73,6 +73,15 @@ class Settings(BaseSettings):
         description="Seconds before half-open probe in circuit breaker",
     )
 
+    circuit_breaker_failure_threshold: int = Field(
+        default=5,
+        description="Number of consecutive failures to trip the circuit breaker",
+    )
+    circuit_breaker_recovery_timeout: int = Field(
+        default=30,
+        description="Seconds to wait before half-opening a tripped circuit breaker",
+    )
+
     # Supabase
     supabase_url: str = Field(default="", description="Supabase project URL")
     supabase_anon_key: str = Field(default="", description="Supabase anonymous/publishable key")
@@ -90,12 +99,24 @@ class Settings(BaseSettings):
     # Redis / Celery
     redis_url: str = "redis://localhost:6379/0"
 
-    # Ollama
+    # Integrations
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    github_token_encryption_key: str = "development-encryption-key-32b-min!"
+    jira_client_id: str = ""
+    jira_client_secret: str = ""
+
+    # AI / LLM / Ollama
     ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:3b"
     ollama_qwen_model: str = "qwen3:8b"
     ollama_ocr_model: str = "glm-ocr"
     ollama_embed_model: str = "nomic-embed-text"
+    ollama_embedding_model: str = "all-minilm:latest"
     ollama_timeout_seconds: float = 120.0
+    ollama_keep_alive: str = "30m"
+    ollama_num_ctx: int = 8192
+    ollama_num_gpu: int = 99
     ollama_roadmap_timeout_seconds: Optional[float] = Field(
         default=None,
         description="Dedicated timeout in seconds for roadmap generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds)",
@@ -103,10 +124,6 @@ class Settings(BaseSettings):
     ollama_assessment_timeout_seconds: Optional[float] = Field(
         default=None,
         description="Dedicated timeout in seconds for assessment generation requests (defaults to 120.0s, falls back to ollama_timeout_seconds)",
-    )
-    ollama_num_ctx: int = Field(
-        default=8192,
-        description="Effective context window (num_ctx) for Ollama inference requests (target: 8192 tokens for 100% GPU offload on 6GB VRAM)",
     )
 
     @property
@@ -148,7 +165,7 @@ class Settings(BaseSettings):
     fantastic_jobs_api_host: str = Field(default="active-jobs-db.p.rapidapi.com", description="RapidAPI Active Jobs Host")
     job_search_primary_provider: str = Field(default="theirstack", description="Primary job search provider: theirstack | jsearch | fantastic_jobs")
     job_search_fallback_provider: str = Field(default="jsearch", description="Fallback job search provider")
-    job_search_max_results: int = Field(default=10, description="Conservative default limit per search (1 page / 10 jobs) to minimize credit consumption")
+    job_search_max_results: int = Field(default=50, description="Default limit per search (up to 50 jobs)")
     job_search_cache_ttl_minutes: int = Field(default=120, description="Job search cache TTL in minutes")
     job_search_enable_fallback: bool = Field(default=True, description="Whether to allow fallback to secondary provider on eligible failures")
     job_search_monthly_budget: float = Field(default=0.0, description="Optional monthly budget cap (0.0 = unlimited/unknown)")
@@ -166,11 +183,52 @@ class Settings(BaseSettings):
                     keys.append(k_clean)
         return keys
 
+    @field_validator("database_url")
+    @classmethod
+    def validate_and_normalize_database_url(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError(
+                "DATABASE_URL is required. Configure it with your Supabase Session Pooler connection string in .env."
+            )
+        v = v.strip()
+        if v.startswith("postgres://"):
+            v = "postgresql+psycopg2://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        if "pooler.supabase.com:5432" in v:
+            v = v.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
+        return v
+
+    @field_validator("direct_url")
+    @classmethod
+    def normalize_direct_url(cls, v: str) -> str:
+        if not v:
+            return ""
+        v = v.strip()
+        if v.startswith("postgres://"):
+            v = "postgresql+psycopg2://" + v[len("postgres://"):]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+psycopg2://" + v[len("postgresql://"):]
+        if "pooler.supabase.com:5432" in v:
+            v = v.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
+        return v
+
     @property
-    def cors_origins(self) -> List[str]:
-        if not self.frontend_origins or self.app_env == "development":
-            return ["*"]
-        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+    def sanitized_database_url(self) -> str:
+        """Returns the database URL with the password redacted for safe logging."""
+        if not self.database_url:
+            return "[NOT CONFIGURED]"
+        try:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(self.database_url)
+            if parsed.password:
+                netloc = f"{parsed.username}:***@{parsed.hostname}"
+                if parsed.port:
+                    netloc += f":{parsed.port}"
+                return parsed._replace(netloc=netloc).geturl()
+            return self.database_url
+        except Exception:
+            return "[REDACTED]"
 
     @property
     def is_production_or_staging(self) -> bool:
@@ -178,12 +236,28 @@ class Settings(BaseSettings):
 
     def is_sqlite_fallback_allowed(self) -> bool:
         if self.is_production_or_staging:
-            # Strictly prohibited in production or staging environments to prevent non-durable writes
             return False
         if self.allow_sqlite_fallback is not None:
             return self.allow_sqlite_fallback
-        # Permitted by default in dev/test/local
         return self.app_env.lower() in ("development", "dev", "test", "local")
+
+    @property
+    def cors_origins(self) -> List[str]:
+        raw = self.frontend_origins or ""
+        parsed = [origin.strip() for origin in raw.split(",") if origin.strip()]
+        defaults = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+        ]
+        seen = set()
+        result = []
+        for o in parsed + defaults:
+            if o not in seen:
+                seen.add(o)
+                result.append(o)
+        return result
 
 
 @lru_cache()

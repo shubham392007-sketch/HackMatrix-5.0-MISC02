@@ -38,7 +38,7 @@ export default function EvidenceReviewPage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         {/* Verification Guard Reminder */}
         <div className="p-5 rounded-2xl bg-[#DFE968]/30 border-[1.5px] border-[#1C1C1C] flex items-start gap-3 shadow-[2px_2px_0_0_#1C1C1C]">
           <ShieldAlert className="w-5 h-5 text-[#1C1C1C] shrink-0 mt-0.5" />

@@ -60,6 +60,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    existing_tables = []
+    if not context.is_offline_mode():
+        conn = op.get_bind()
+        if conn is not None:
+            try:
+                inspector = sa.inspect(conn)
+                existing_tables = inspector.get_table_names()
+                if 'learning_step_packets' not in existing_tables:
+                    return
+            except Exception:
+                pass
+
     op.drop_index('idx_packets_topic', table_name='learning_step_packets')
     op.drop_index('idx_packets_step_owner', table_name='learning_step_packets')
     op.drop_table('learning_step_packets')

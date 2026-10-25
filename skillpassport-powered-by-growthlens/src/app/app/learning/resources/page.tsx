@@ -37,14 +37,32 @@ export default function LearningResourcesPage() {
   const [providerStatuses, setProviderStatuses] = useState<Record<string, string>>({});
 
   const allResources = useMemo(() => {
-    return [...liveResources, ...resources];
+    const combined = [...liveResources, ...resources];
+    const seen = new Set<string>();
+    const deduped: LearningResource[] = [];
+    for (const r of combined) {
+      const key = r.url || r.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(r);
+      }
+    }
+    return deduped;
   }, [liveResources, resources]);
 
   const filteredResources = useMemo(() => {
     return allResources.filter((res) => {
-      const matchesDomain = !res.domain_id || res.domain_id === activeDomainId;
+      const isYoutube = res.provider?.toLowerCase().includes("youtube") || res.url?.includes("youtube.com") || res.url?.includes("youtu.be");
+      const matchesDomain =
+        !activeDomainId ||
+        !res.domain_id ||
+        res.domain_id === activeDomainId ||
+        res.domain_id === "all" ||
+        isYoutube;
       const matchesType =
-        selectedType === "all" || res.resource_type === selectedType;
+        selectedType === "all" ||
+        res.resource_type === selectedType ||
+        (selectedType === "video" && isYoutube);
       const matchesDiff =
         selectedDifficulty === "all" || res.difficulty.toLowerCase() === selectedDifficulty.toLowerCase();
       const searchTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter((t) => t.length > 1);
@@ -64,7 +82,7 @@ export default function LearningResourcesPage() {
 
   const handleLiveSearch = async () => {
     setIsSearchingLive(true);
-    const query = searchQuery.trim() || activeBlueprint.title;
+    const query = searchQuery.trim() || activeBlueprint?.title || "Full Stack Engineering";
     try {
       const res = await searchCuratedResources(
         query,
@@ -76,32 +94,41 @@ export default function LearningResourcesPage() {
         setProviderStatuses(res.provider_statuses);
       }
       if (Array.isArray(res.resources) && res.resources.length > 0) {
-        const mapped: LearningResource[] = res.resources.map((r: any, idx: number) => ({
-          id: r.id || `live-${Date.now()}-${idx}`,
-          title: r.title,
-          provider: r.provider,
-          url: r.url,
-          resource_type: r.resource_type || "article",
-          difficulty: (r.difficulty ? r.difficulty.charAt(0).toUpperCase() + r.difficulty.slice(1) : "Intermediate") as any,
-          duration_minutes: r.duration_minutes || 20,
-          learning_objective: r.learning_objective || `Understand core concepts in ${query}`,
-          selection_explanation: r.selection_explanation || (
-            r.validation_status === "verified_available"
-              ? "Verified playable via YouTube Data API v3 catalog."
-              : r.validation_status === "unverified_quota_exhausted"
-              ? "Unverified availability due to provider API quota limits."
-              : "Live indexed from verified provider API catalog."
-          ),
-          relevance_score: Math.round(r.relevance_score * 100) || 85,
-          domain_id: activeDomainId,
-          topic_id: r.topic_id || `topic-live-${idx}`,
-          concepts_covered: Array.isArray(r.concepts_covered) ? r.concepts_covered : [query],
-          concepts_not_covered: Array.isArray(r.concepts_not_covered) ? r.concepts_not_covered : [],
-          roadmap_position: r.is_fallback ? "Curated Fallback" : "Live Provider Result",
-          thumbnail_url: r.thumbnail_url,
-          author_or_channel: r.author_or_channel || r.provider_metadata?.channel,
-          validation_status: r.validation_status,
-        }));
+        const mapped: LearningResource[] = res.resources.map((r: any, idx: number) => {
+          let thumb = r.thumbnail_url;
+          if (!thumb && r.provider === "youtube" && r.url) {
+            const vidMatch = r.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+            if (vidMatch && vidMatch[1]) {
+              thumb = `https://img.youtube.com/vi/${vidMatch[1]}/hqdefault.jpg`;
+            }
+          }
+          return {
+            id: r.id || `live-${Date.now()}-${idx}`,
+            title: r.title,
+            provider: r.provider,
+            url: r.url,
+            resource_type: r.resource_type || "video",
+            difficulty: (r.difficulty ? r.difficulty.charAt(0).toUpperCase() + r.difficulty.slice(1) : "Intermediate") as any,
+            duration_minutes: r.duration_minutes || 20,
+            learning_objective: r.learning_objective || `Understand core concepts in ${query}`,
+            selection_explanation: r.selection_explanation || (
+              r.validation_status === "verified_available"
+                ? "Verified playable via YouTube Data API v3 catalog."
+                : r.validation_status === "unverified_quota_exhausted"
+                ? "Unverified availability due to provider API quota limits."
+                : "Live indexed from verified provider API catalog."
+            ),
+            relevance_score: Math.round(r.relevance_score * 100) || 85,
+            domain_id: activeDomainId,
+            topic_id: r.topic_id || `topic-live-${idx}`,
+            concepts_covered: Array.isArray(r.concepts_covered) ? r.concepts_covered : [query],
+            concepts_not_covered: Array.isArray(r.concepts_not_covered) ? r.concepts_not_covered : [],
+            roadmap_position: r.is_fallback ? "Curated Fallback" : "Live Provider Result",
+            thumbnail_url: thumb,
+            author_or_channel: r.author_or_channel || r.provider_metadata?.channel,
+            validation_status: r.validation_status || "verified_available",
+          };
+        });
         setLiveResources(mapped);
         addToast(
           "Live Catalog Updated",
@@ -124,14 +151,9 @@ export default function LearningResourcesPage() {
     );
   };
 
-  // Auto-fetch live resources if active domain has few resources
+  // Auto-fetch live resources on mount and when domain changes
   useEffect(() => {
-    const domainMatches = allResources.filter(
-      (r) => !r.domain_id || r.domain_id === activeDomainId
-    );
-    if (domainMatches.length < 2 && activeBlueprint?.title) {
-      handleLiveSearch();
-    }
+    handleLiveSearch();
   }, [activeDomainId]);
 
   return (
@@ -311,10 +333,13 @@ export default function LearningResourcesPage() {
                       </span>
                     </div>
 
-                    {res.thumbnail_url && (
+                    {(res.thumbnail_url || (res.provider === "youtube" && res.url)) && (
                       <div className="relative w-full h-36 rounded-xl overflow-hidden bg-sand/30 border border-ink/10 my-2 group">
                         <img
-                          src={res.thumbnail_url}
+                          src={
+                            res.thumbnail_url ||
+                            `https://img.youtube.com/vi/${res.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)?.[1] || "default"}/hqdefault.jpg`
+                          }
                           alt={res.title}
                           className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
                           loading="lazy"

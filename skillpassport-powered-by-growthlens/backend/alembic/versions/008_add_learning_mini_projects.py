@@ -71,6 +71,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    existing_tables = []
+    if not context.is_offline_mode():
+        conn = op.get_bind()
+        if conn is not None:
+            try:
+                inspector = sa.inspect(conn)
+                existing_tables = inspector.get_table_names()
+                if 'learning_mini_projects' not in existing_tables:
+                    return
+            except Exception:
+                pass
+
     op.drop_index('idx_mini_projects_project_id', table_name='learning_mini_projects')
     op.drop_index('idx_mini_projects_owner_gap', table_name='learning_mini_projects')
     op.drop_index('idx_mini_projects_owner_domain', table_name='learning_mini_projects')

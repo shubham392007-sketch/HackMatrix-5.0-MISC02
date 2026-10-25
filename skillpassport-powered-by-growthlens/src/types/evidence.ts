@@ -3,6 +3,8 @@ export type { DemoRole } from "./ai";
 export type SourceType =
   | "github"
   | "jira"
+  | "leetcode"
+  | "hackerrank"
   | "certificate"
   | "document"
   | "portfolio"
@@ -12,10 +14,12 @@ export type SourceType =
 
 export type ConnectionStatus =
   | "connected"
+  | "profile_linked"
   | "demo_connected"
   | "not_connected"
   | "needs_attention"
-  | "syncing";
+  | "syncing"
+  | "disconnected";
 
 export type ProcessingStatus =
   | "discovered"
@@ -116,12 +120,17 @@ export interface ConnectedSource {
   id: string;
   name: string;
   type: SourceType;
+  provider?: string;
   status: ConnectionStatus;
   lastSync: string;
   importedRecordsCount: number;
   accountIdentity: string;
   permissions: string[];
   selectedEntities: string[]; // repos or projects
+  profileUrl?: string;
+  ownershipVerified?: boolean;
+  supportsSync?: boolean;
+  metadata?: Record<string, any>;
   languageSummary?: {
     analyzed_repositories_count?: number;
     total_selected_repositories?: number;

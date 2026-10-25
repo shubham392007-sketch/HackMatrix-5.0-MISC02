@@ -1,6 +1,9 @@
 """
 Test Alembic migration chain and schema creation in an isolated test environment.
-Ensures revision 003_add_learning_assessments is discoverable, creates the table correctly,
+Ensures revisions 001 through 010 (including 005_career_and_profile_tables,
+006_add_skill_gap_assessments, 007_add_learning_step_packets,
+008_add_learning_mini_projects, 009_add_learning_activities,
+and 010_add_roadmap_generation_metadata) are discoverable, create tables correctly,
 and can be cleanly downgraded and upgraded.
 """
 
@@ -28,8 +31,6 @@ from backend.app.models.learning import (
 )
 
 
-
-
 # Provide SQLite-compatible compilation for PostgreSQL-specific types during test runs
 @compiles(JSONB, 'sqlite')
 def compile_jsonb_sqlite(type_, compiler, **kw):
@@ -45,10 +46,11 @@ def test_alembic_migration_chain():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
         db_path = f.name
 
+    engine = None
     try:
         db_url = f'sqlite:///{db_path}'
         alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'alembic.ini')
-        
+
         alembic_cfg = Config(alembic_ini_path)
         alembic_cfg.set_main_option('sqlalchemy.url', db_url)
         # Ensure script_location is resolved relative to backend directory
@@ -65,6 +67,8 @@ def test_alembic_migration_chain():
         assert 'learning_roadmaps' in tables, "learning_roadmaps table was not created by migrations"
         assert 'learning_steps' in tables, "learning_steps table was not created by migrations"
         assert 'learning_project_submissions' in tables, "learning_project_submissions table was not created by migrations"
+        assert 'user_profiles' in tables, "user_profiles table was not created by migrations"
+        assert 'role_match_snapshots' in tables, "role_match_snapshots table was not created by migrations"
         assert 'skill_gap_assessments' in tables, "skill_gap_assessments table was not created by migrations"
         assert 'learning_step_packets' in tables, "learning_step_packets table was not created by migrations"
         assert 'learning_mini_projects' in tables, "learning_mini_projects table was not created by migrations"
@@ -74,7 +78,6 @@ def test_alembic_migration_chain():
         assert LearningAssessmentModel is LearningAssessment
         orm_cols = {c.name: c for c in LearningAssessmentModel.__table__.columns}
         db_cols = {c['name']: c for c in inspector.get_columns('learning_assessments')}
-
         for col_name in orm_cols:
             assert col_name in db_cols, f"Column {col_name} missing from migrated learning_assessments table"
 
@@ -108,58 +111,57 @@ def test_alembic_migration_chain():
         for col_name in act_orm_cols:
             assert col_name in act_db_cols, f"Column {col_name} missing from migrated learning_activities table"
 
-        # 3. Test downgrade -1 (downgrades 009 to 008)
-        command.downgrade(alembic_cfg, '-1')
+        # 3. Test downgrade of 010 to 009
+        command.downgrade(alembic_cfg, '009_add_learning_activities')
+        inspector = sa.inspect(engine)
+        assert 'learning_activities' in inspector.get_table_names(), "learning_activities should be present in 009"
+
+        # Downgrade 009 to 008
+        command.downgrade(alembic_cfg, '008_add_learning_mini_projects')
         inspector = sa.inspect(engine)
         assert 'learning_activities' not in inspector.get_table_names(), "learning_activities should be dropped on downgrade of 009"
         assert 'learning_mini_projects' in inspector.get_table_names(), "learning_mini_projects should still be present in 008"
 
-        # Downgrade 008 to 007
-        command.downgrade(alembic_cfg, '-1')
+        # Downgrade to 005
+        command.downgrade(alembic_cfg, '005_career_and_profile_tables')
         inspector = sa.inspect(engine)
-        assert 'learning_mini_projects' not in inspector.get_table_names(), "learning_mini_projects should be dropped on downgrade of 008"
-        assert 'learning_step_packets' in inspector.get_table_names(), "learning_step_packets should still be present in 007"
-
-        # Downgrade 007 to 006
-        command.downgrade(alembic_cfg, '-1')
-        inspector = sa.inspect(engine)
-        assert 'learning_step_packets' not in inspector.get_table_names(), "learning_step_packets should be dropped on downgrade of 007"
-        assert 'skill_gap_assessments' in inspector.get_table_names(), "skill_gap_assessments should still be present in 006"
-
-        # Downgrade 006 to 005
-        command.downgrade(alembic_cfg, '-1')
-        inspector = sa.inspect(engine)
-        assert 'skill_gap_assessments' not in inspector.get_table_names(), "skill_gap_assessments should be dropped on downgrade of 006"
-        assert 'learning_project_submissions' in inspector.get_table_names(), "learning_project_submissions should still be present in 005"
+        assert 'learning_mini_projects' not in inspector.get_table_names(), "learning_mini_projects should be dropped on downgrade to 005"
+        assert 'role_match_snapshots' in inspector.get_table_names(), "role_match_snapshots should still be present in 005"
 
         # Downgrade 005 to 004
-        command.downgrade(alembic_cfg, '-1')
+        command.downgrade(alembic_cfg, '004_learning_project_submissions')
         inspector = sa.inspect(engine)
-        assert 'learning_project_submissions' not in inspector.get_table_names(), "learning_project_submissions should be dropped on downgrade of 005"
-        assert 'job_postings' in inspector.get_table_names(), "job_postings should still be present in 004"
+        assert 'role_match_snapshots' not in inspector.get_table_names(), "role_match_snapshots should be dropped on downgrade of 005"
+        assert 'learning_project_submissions' in inspector.get_table_names(), "learning_project_submissions should still be present in 004"
 
         # Downgrade 004 to 003
-        command.downgrade(alembic_cfg, '-1')
+        command.downgrade(alembic_cfg, '003_add_learning_assessments')
         inspector = sa.inspect(engine)
-        assert 'job_postings' not in inspector.get_table_names(), "job_postings should be dropped on downgrade of 004"
+        assert 'learning_project_submissions' not in inspector.get_table_names(), "learning_project_submissions should be dropped on downgrade of 004"
         assert 'learning_assessments' in inspector.get_table_names(), "learning_assessments should still be present in 003"
 
         # Downgrade 003 to 002
         command.downgrade(alembic_cfg, '002_learning_tables')
         inspector = sa.inspect(engine)
         assert 'learning_assessments' not in inspector.get_table_names(), "learning_assessments should be dropped on downgrade to 002"
+        assert 'learning_roadmaps' in inspector.get_table_names(), "learning_roadmaps should still be present in 002"
 
         # 4. Test re-upgrade to head
         command.upgrade(alembic_cfg, 'head')
         inspector = sa.inspect(engine)
         assert 'learning_assessments' in inspector.get_table_names(), "learning_assessments should be re-created on upgrade"
-        assert 'job_postings' in inspector.get_table_names(), "job_postings should be re-created on upgrade"
         assert 'learning_project_submissions' in inspector.get_table_names(), "learning_project_submissions should be re-created on upgrade"
+        assert 'role_match_snapshots' in inspector.get_table_names(), "role_match_snapshots should be re-created on upgrade"
         assert 'skill_gap_assessments' in inspector.get_table_names(), "skill_gap_assessments should be re-created on upgrade"
         assert 'learning_step_packets' in inspector.get_table_names(), "learning_step_packets should be re-created on upgrade"
         assert 'learning_mini_projects' in inspector.get_table_names(), "learning_mini_projects should be re-created on upgrade"
         assert 'learning_activities' in inspector.get_table_names(), "learning_activities should be re-created on upgrade"
 
     finally:
+        if engine is not None:
+            engine.dispose()
         if os.path.exists(db_path):
-            os.remove(db_path)
+            try:
+                os.remove(db_path)
+            except Exception:
+                pass

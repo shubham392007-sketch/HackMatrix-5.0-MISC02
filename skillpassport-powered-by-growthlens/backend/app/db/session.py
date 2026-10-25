@@ -3,6 +3,7 @@ import json
 import re
 import uuid
 import urllib.request
+from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
@@ -88,6 +89,16 @@ def sync_cloud_supabase_to_local_sqlite(target_engine):
     if not supabase_key or not supabase_url:
         return
 
+    # Skip slow remote table fetching if local SQLite is already warm
+    try:
+        with target_engine.connect() as check_conn:
+            has_data = check_conn.execute(text("SELECT count(*) FROM user_profiles")).scalar()
+            if has_data and has_data > 0:
+                logger.debug("Local database already initialized with user records, skipping HTTPS cloud sync during startup.")
+                return
+    except Exception:
+        pass
+
     headers = {
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
@@ -157,13 +168,13 @@ def _init_resilient_engine():
             pg_engine = create_engine(
                 settings.database_url,
                 pool_pre_ping=settings.db_pool_pre_ping,
-                pool_recycle=settings.db_pool_recycle,
-                pool_size=min(settings.db_pool_size, 5),
-                max_overflow=settings.db_max_overflow,
-                pool_timeout=settings.db_pool_timeout,
-                pool_reset_on_return="rollback",
+                pool_recycle=60,
+                pool_size=min(settings.db_pool_size, 20),
+                max_overflow=max(settings.db_max_overflow, 10),
+                pool_timeout=max(settings.db_pool_timeout, 30.0),
+                pool_reset_on_return=None,
                 connect_args={
-                    "connect_timeout": 2,
+                    "connect_timeout": 5,
                     "keepalives": 1,
                     "keepalives_idle": 15,
                     "keepalives_interval": 5,
@@ -173,6 +184,9 @@ def _init_resilient_engine():
             with pg_engine.connect() as conn:
                 conn.execute(text("SELECT 1;"))
             logger.info("Direct PostgreSQL connection established successfully.")
+            from backend.app.models.base import Base as ModelsBase
+            import backend.app.models
+            ModelsBase.metadata.create_all(bind=pg_engine, checkfirst=True)
             _remote_postgres_status = {
                 "status": "healthy",
                 "connected": True,
@@ -192,17 +206,20 @@ def _init_resilient_engine():
                 ),
                 "error": sanitized_err,
             }
-            if not settings.is_sqlite_fallback_allowed():
+            if (
+                settings.app_env in ("production", "staging")
+                or os.environ.get("RENDER")
+                or os.environ.get("APP_ENV") in ("production", "staging")
+                or not settings.is_sqlite_fallback_allowed()
+            ):
                 logger.critical(
-                    f"FATAL: Authoritative PostgreSQL connection failed in '{settings.app_env}' environment: {sanitized_err}. "
-                    "SQLite fallback is strictly prohibited in production and staging to prevent non-durable local writes."
+                    f"FATAL: Database connection failed in '{settings.app_env}' environment: {sanitized_err}. "
+                    "SQLite fallback is strictly prohibited in production and staging."
                 )
                 raise RuntimeError(
                     f"Database connection failed in '{settings.app_env}' environment: {sanitized_err}. "
-                    "Local SQLite fallback is disabled in production/staging to prevent data loss. "
-                    "Please verify your Supabase PostgreSQL connection string, network egress on port 5432/6543, "
-                    "or configure the Supabase Connection Pooler."
-                )
+                    "Local SQLite fallback is disabled in production/staging to prevent data loss."
+                ) from pg_err
             logger.warning(
                 f"Direct PostgreSQL port 5432 / IPv6 unreachable ({sanitized_err}). "
                 f"Activating local SQLite fallback layer for '{settings.app_env}' mode. "
@@ -253,6 +270,7 @@ def _init_resilient_engine():
 
 
 engine = _init_resilient_engine()
+_use_fallback = (engine.dialect.name == 'sqlite')
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -276,7 +294,10 @@ def get_db() -> Generator[Session, None, None]:
             circuit_breaker.record_failure(exc)
         raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_err:
+            logger.debug(f"Safely ignored stale connection close exception: {close_err}")
 
 
 def get_local_database_status() -> dict:

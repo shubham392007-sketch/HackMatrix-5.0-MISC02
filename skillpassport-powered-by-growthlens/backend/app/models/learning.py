@@ -483,4 +483,3 @@ SkillGapAssessmentModel = SkillGapAssessmentRecord
 LearningStepPacketModel = LearningStepPacketRecord
 LearningMiniProjectModel = LearningMiniProject
 LearningActivityModel = LearningActivityRecord
-

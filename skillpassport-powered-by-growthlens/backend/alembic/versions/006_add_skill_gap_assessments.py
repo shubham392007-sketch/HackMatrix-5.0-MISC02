@@ -1,7 +1,7 @@
 """Add skill_gap_assessments table for Domain 5 Learn & Grow (Phase 9)
 
 Revision ID: 006_add_skill_gap_assessments
-Revises: 005_add_learning_project_submissions
+Revises: 005_career_and_profile_tables
 Create Date: 2026-10-23 17:55:00.000000
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '006_add_skill_gap_assessments'
-down_revision: Union[str, None] = '005_add_learning_project_submissions'
+down_revision: Union[str, None] = '005_career_and_profile_tables'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

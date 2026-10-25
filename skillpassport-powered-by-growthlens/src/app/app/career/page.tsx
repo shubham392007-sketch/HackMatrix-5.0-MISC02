@@ -50,7 +50,7 @@ export default function RoleIntelligenceOverviewPage() {
       <TargetRoleSelectorBar />
 
       {/* Core Architectural Philosophy Callout */}
-      <div className="gl-card p-5 bg-gradient-to-r from-lime/30 via-sand/20 to-white border border-ink/15">
+      <div className="gl-card p-5 bg-[#FAF8F5] border border-ink/15">
         <div className="flex items-start gap-3">
           <Scale className="w-5 h-5 text-ink shrink-0 mt-0.5" />
           <div className="space-y-1">

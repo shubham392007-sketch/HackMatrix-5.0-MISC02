@@ -67,8 +67,9 @@ def downgrade() -> None:
             try:
                 inspector = sa.inspect(conn)
                 existing_tables = inspector.get_table_names()
+                if 'learning_activities' not in existing_tables:
+                    return
             except Exception:
-                existing_tables = []
+                pass
 
-    if 'learning_activities' in existing_tables:
-        op.drop_table('learning_activities')
+    op.drop_table('learning_activities')

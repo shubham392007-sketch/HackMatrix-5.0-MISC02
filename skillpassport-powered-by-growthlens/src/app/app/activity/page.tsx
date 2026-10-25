@@ -108,7 +108,7 @@ export default function ActivityHistoryPage() {
         ]}
       />
 
-      <div className="p-6 lg:p-10 max-w-5xl space-y-6">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl w-full mx-auto pb-16">
         {/* Filter & Search Bar */}
         <div className="p-6 rounded-2xl bg-white border border-ink/15 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -173,8 +173,8 @@ export default function ActivityHistoryPage() {
           {filteredActivities.length === 0 ? (
             <EmptyState
               icon={Clock}
-              title="No Activity Events Found"
-              description="No timeline events match the search query or category filter."
+              title="No Activity Events Recorded"
+              description="No activity has been recorded for this period. As you update your profile, connect repositories, or undergo skill verification reviews, events will appear here."
               actionLabel="Show All Activity"
               onAction={() => {
                 setSearchQuery("");

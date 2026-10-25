@@ -8,6 +8,7 @@ import {
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
 import AppTopBar from "@/components/app/AppTopBar";
+import RadialReadinessDial from "@/components/career/RadialReadinessDial";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -72,7 +73,7 @@ export default function CareerReadinessPage() {
       <TargetRoleSelectorBar />
 
       {/* Hero Readiness Assessment Card */}
-      <div className="gl-card p-6 md:p-8 space-y-6 bg-gradient-to-br from-cream via-white to-sand/20 border-ink/15">
+      <div className="gl-card p-6 md:p-8 space-y-6 bg-[#FAF8F5] border-ink/15">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -98,18 +99,14 @@ export default function CareerReadinessPage() {
             </p>
           </div>
 
-          {/* Big Circular Readiness Indicator */}
-          <div className="w-36 h-36 rounded-full bg-white border-4 border-lime flex flex-col items-center justify-center shrink-0 shadow-lg relative">
-            <span className="text-[10px] font-mono uppercase text-ink-muted">
-              Readiness
-            </span>
-            <span className="text-3xl font-black text-ink">
-              {activeReadiness.readiness_index}%
-            </span>
-            <span className="text-[10px] font-mono text-emerald-700 font-semibold">
-              {activeReadiness.readiness_tier.split(" ")[0]}
-            </span>
-          </div>
+          {/* Precision SVG Multi-Tier Radial Readiness Dial */}
+          <RadialReadinessDial
+            readinessIndex={activeReadiness.readiness_index}
+            readinessTier={activeReadiness.readiness_tier}
+            requiredCoveragePct={activeReadiness.required_supported_pct}
+            proficiencyAlignmentPct={activeReadiness.proficiency_alignment_pct}
+            evidenceQualityPct={activeReadiness.evidence_quality_pct}
+          />
         </div>
 
         {/* 3 Component Breakdown Columns */}

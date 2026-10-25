@@ -1,8 +1,9 @@
 import uuid
+import urllib.parse
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from backend.app.models.connection import ConnectedSource, SelectedResource
 from backend.app.models.language import RepositoryLanguageSnapshot, RepositoryLanguageBreakdown
@@ -236,17 +237,26 @@ def get_repository_languages_response(
     Enforces owner-level authorization.
     """
     # 1. Resolve SelectedResource
+    decoded_id = urllib.parse.unquote(str(repository_identifier)).strip()
     resource = None
     try:
-        res_uuid = uuid.UUID(repository_identifier)
+        res_uuid = uuid.UUID(decoded_id)
         resource = db.query(SelectedResource).join(ConnectedSource).filter(
             SelectedResource.id == res_uuid,
             ConnectedSource.owner_user_id == user_id,
         ).first()
-    except ValueError:
-        # Search by external_resource_id or name
+    except (ValueError, AttributeError):
+        pass
+
+    if not resource:
+        # Search by external_resource_id or name (unquoted or raw)
         resource = db.query(SelectedResource).join(ConnectedSource).filter(
-            SelectedResource.external_resource_id == repository_identifier,
+            (SelectedResource.external_resource_id == decoded_id)
+            | (SelectedResource.name == decoded_id)
+            | (SelectedResource.external_resource_id == repository_identifier)
+            | (SelectedResource.name == repository_identifier)
+            | (SelectedResource.external_resource_id.ilike(f"%/{decoded_id}"))
+            | (SelectedResource.name.ilike(f"%/{decoded_id}")),
             ConnectedSource.owner_user_id == user_id,
         ).first()
 

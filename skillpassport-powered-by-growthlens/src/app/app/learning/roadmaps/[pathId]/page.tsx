@@ -34,9 +34,25 @@ import {
   BrainCircuit,
   ShieldCheck,
   Briefcase,
+  FastForward,
+  SkipForward,
+  RotateCcw,
+  Loader2,
+  ChevronDown,
+  Compass,
+  Trash2,
 } from "lucide-react";
-import { getRoadmapByPathId, listUserRoadmaps } from "@/lib/evidenceApi";
+import {
+  getRoadmapByPathId,
+  listUserRoadmaps,
+  skipLearningStep,
+  resumeLearningStep,
+  generatePersonalizedRoadmap,
+  deleteLearningRoadmap,
+} from "@/lib/evidenceApi";
+import { listRoles as listCareerRoles } from "@/lib/careerApi";
 import { LearningRoadmap } from "@/types/learning";
+import { RoleDemandModel } from "@/types/career";
 import SkillProvenanceModal from "@/components/app/SkillProvenanceModal";
 
 export default function PersonalizedRoadmapPage() {
@@ -49,12 +65,31 @@ export default function PersonalizedRoadmapPage() {
     updateRoadmapPreferences,
     activeDomainId,
     setActiveDomainId,
+    activeTargetRole,
+    setActiveTargetRole,
+    addToast,
   } = useEvidence();
 
   const [remoteRoadmap, setRemoteRoadmap] = useState<LearningRoadmap | null>(null);
   const [allUserRoadmaps, setAllUserRoadmaps] = useState<any[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<RoleDemandModel[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSwitchingRole, setIsSwitchingRole] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [skippingStepId, setSkippingStepId] = useState<string | null>(null);
   const [isProvenanceOpen, setIsProvenanceOpen] = useState<boolean>(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState<boolean>(false);
+  const roleDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setIsRoleDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,15 +117,111 @@ export default function PersonalizedRoadmapPage() {
     };
   }, [pathId]);
 
-  const displayRoadmap: LearningRoadmap = remoteRoadmap || activeRoadmap;
+  // Load career roles for multi-role roadmap switching
+  useEffect(() => {
+    listCareerRoles()
+      .then((roles: any) => {
+        if (Array.isArray(roles)) setAvailableRoles(roles);
+      })
+      .catch((e: any) => console.warn("Could not load roles for switcher:", e));
+  }, []);
+
+  const handleRoleSwitch = async (role: RoleDemandModel) => {
+    setIsSwitchingRole(true);
+    setIsRoleDropdownOpen(false);
+    const resolvedTitle = role.role_title || role.title;
+    const resolvedVersion = role.role_version || role.version || "v2026.1";
+    try {
+      await setActiveTargetRole(role.role_id, resolvedTitle, resolvedVersion);
+      // Fetch fresh roadmaps
+      const freshRes = await listUserRoadmaps().catch(() => ({ roadmaps: [] }));
+      const userRoadmaps: any[] = freshRes?.roadmaps || allUserRoadmaps;
+      setAllUserRoadmaps(userRoadmaps);
+
+      // Check if a roadmap for this role exists
+      const match = userRoadmaps.find(
+        (r) =>
+          r.target_role_id === role.role_id ||
+          (r.target_role_title && resolvedTitle && r.target_role_title.toLowerCase() === resolvedTitle.toLowerCase())
+      );
+
+      if (match && match.path_id) {
+        addToast("Target Role Aligned", `Loaded existing roadmap for ${resolvedTitle}.`, "success");
+        router.push(`/app/learning/roadmaps/${match.path_id}`);
+      } else {
+        addToast(
+          "Target Role Aligned",
+          `Role switched to ${resolvedTitle}. Remediate any identified skill gap below.`,
+          "success"
+        );
+        router.push("/app/learning");
+      }
+    } catch (err: any) {
+      addToast("Role Switch Notice", err.message || "Failed to switch target role.", "error");
+    } finally {
+      setIsSwitchingRole(false);
+    }
+  };
+
+  const handleDeleteThisRoadmap = async () => {
+    if (!displayRoadmap) return;
+    const title = displayRoadmap.domain_title || "this roadmap";
+    if (!confirm(`Are you sure you want to delete "${title}"? This will permanently remove its curriculum steps and progress.`)) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteLearningRoadmap(displayRoadmap.path_id);
+      addToast("Roadmap Deleted", `Removed "${title}".`, "info");
+      router.push("/app/learning");
+    } catch (err: any) {
+      addToast("Delete Notice", err.message || "Failed to delete roadmap.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSkipStep = async (stepId: string) => {
+    setSkippingStepId(stepId);
+    try {
+      await skipLearningStep(stepId, { roadmap_id: displayRoadmap?.id || pathId });
+      addToast(
+        "Step Skipped",
+        "Step bypassed. Subsequent objective unlocked without awarding mastery credit.",
+        "info"
+      );
+      const updated = await getRoadmapByPathId(pathId);
+      if (updated && updated.steps) setRemoteRoadmap(updated);
+    } catch (err: any) {
+      addToast("Skip Error", err.message || "Failed to skip step.", "error");
+    } finally {
+      setSkippingStepId(null);
+    }
+  };
+
+  const handleResumeStep = async (stepId: string) => {
+    setSkippingStepId(stepId);
+    try {
+      await resumeLearningStep(stepId, { roadmap_id: displayRoadmap?.id || pathId });
+      addToast("Step Restored", "Step unskipped and ready to complete.", "success");
+      const updated = await getRoadmapByPathId(pathId);
+      if (updated && updated.steps) setRemoteRoadmap(updated);
+    } catch (err: any) {
+      addToast("Resume Error", err.message || "Failed to resume step.", "error");
+    } finally {
+      setSkippingStepId(null);
+    }
+  };
+
+  const displayRoadmap: LearningRoadmap | null = remoteRoadmap;
 
   const [hoursPerWeek, setHoursPerWeek] = useState(
-    displayRoadmap.study_hours_per_week || 6
+    displayRoadmap?.study_hours_per_week || 6
   );
   const [preference, setPreference] = useState(
-    displayRoadmap.preference || "practice-first"
+    displayRoadmap?.preference || "practice-first"
   );
-  const [pace, setPace] = useState(displayRoadmap.pace || "standard");
+  const [pace, setPace] = useState(displayRoadmap?.pace || "standard");
   const [showPreferences, setShowPreferences] = useState(false);
 
   const handleUpdatePreferences = (
@@ -104,7 +235,46 @@ export default function PersonalizedRoadmapPage() {
     updateRoadmapPreferences(activeDomainId, newHours, newPref, newPace);
   };
 
-  const completedSteps = displayRoadmap.steps.filter(
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col">
+        <AppTopBar
+          title="Personalized Roadmap"
+          description="A sequenced, prerequisite-aware learning journey tailored to your skill gaps."
+          badge="Loading..."
+          badgeColor="border-ink/20 text-ink bg-sand/30"
+        />
+        <div className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+          <div className="gl-card p-6 h-32 animate-pulse bg-sand/20 rounded-2xl" />
+          <div className="gl-card p-8 h-80 animate-pulse bg-sand/20 rounded-2xl flex flex-col justify-center items-center text-center space-y-3">
+            <Sparkles className="w-8 h-8 animate-spin text-ink-muted" />
+            <p className="text-xs font-mono text-ink-muted">Loading verified learning roadmap from database...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!displayRoadmap || !displayRoadmap.steps || displayRoadmap.steps.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-16 space-y-4 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-sand/30 border border-ink/15 flex items-center justify-center text-ink">
+          <Map className="w-6 h-6 text-ink" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-lg font-bold text-ink">No Roadmap Found</h3>
+          <p className="text-xs text-ink/70 max-w-sm">
+            We could not find an active learning roadmap for path "{pathId}".
+          </p>
+        </div>
+        <Link href="/app/learning" className="pill-btn pill-btn-primary text-xs py-2 px-4">
+          Return to Learning Hub &rarr;
+        </Link>
+      </div>
+    );
+  }
+
+  const completedSteps = (displayRoadmap.steps || []).filter(
     (s) => s.status === "completed"
   ).length;
 
@@ -114,6 +284,11 @@ export default function PersonalizedRoadmapPage() {
   const isOllamaGenerated =
     displayRoadmap.generation_method === "ollama_qwen" ||
     displayRoadmap.generation_method === "cached_existing";
+
+  const effectiveRoleTitle =
+    activeTargetRole?.has_target && activeTargetRole?.role_title
+      ? activeTargetRole.role_title
+      : displayRoadmap.target_role_title || "Target Software / AI Role";
 
   return (
     <div className="flex-1 flex flex-col">
@@ -141,6 +316,112 @@ export default function PersonalizedRoadmapPage() {
 
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
+        {/* Target Role Selector Bar (Matching Learning Overview) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-ink/15 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-lime/40 border border-ink/15 flex items-center justify-center shrink-0 text-ink">
+              <Target className="w-5 h-5 text-ink" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono text-ink-muted uppercase tracking-wider block">
+                  Target Career Role Alignment
+                </span>
+                {activeTargetRole?.has_target && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-lime/30 text-ink border border-ink/15 font-bold">
+                    {activeTargetRole.target_role_version || "v2026.1"}
+                  </span>
+                )}
+                {isSwitchingRole && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Synchronizing...
+                  </span>
+                )}
+              </div>
+              <span className="font-bold text-ink text-base truncate block">
+                {effectiveRoleTitle}
+              </span>
+            </div>
+          </div>
+
+          {/* Interactive Target Role Dropdown */}
+          <div className="relative shrink-0" ref={roleDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsRoleDropdownOpen((prev) => !prev)}
+              aria-haspopup="listbox"
+              aria-expanded={isRoleDropdownOpen}
+              className="pill-btn bg-[#FAF8F5] hover:bg-sand/40 border border-ink/20 text-xs py-2 px-3.5 text-ink flex items-center justify-between gap-2.5 shadow-xs transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-lime min-w-[210px] max-w-full"
+            >
+              <Compass className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+              <span className="truncate font-semibold">
+                {activeTargetRole?.has_target ? "Change Target Role" : "Select Target Role"}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-ink-muted transition-transform duration-200 shrink-0 ${
+                  isRoleDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {isRoleDropdownOpen && (
+              <div
+                role="listbox"
+                className="absolute right-0 mt-1.5 w-72 sm:w-88 bg-[#FAF8F5] border border-ink/20 rounded-2xl shadow-xl z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+              >
+                <div className="px-3.5 py-1.5 border-b border-ink/10 flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-ink-muted">
+                    Career Intelligence Roles ({availableRoles.length})
+                  </span>
+                  <Link
+                    href="/app/career/roles"
+                    className="text-[10px] font-mono text-indigo-700 hover:underline"
+                  >
+                    Manage Roles &rarr;
+                  </Link>
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-ink/5">
+                  {availableRoles.length === 0 ? (
+                    <div className="p-4 text-center text-ink-muted text-xs">
+                      No roles discovered yet.
+                    </div>
+                  ) : (
+                    availableRoles.map((role) => {
+                      const isSelected = activeTargetRole?.target_role_id === role.role_id;
+                      return (
+                        <button
+                          key={role.role_id}
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => handleRoleSwitch(role)}
+                          className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between gap-2 transition-colors ${
+                            isSelected
+                              ? "bg-lime/25 text-ink font-semibold"
+                              : "hover:bg-sand/20 text-ink"
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className="block truncate font-bold text-ink">
+                              {role.role_title || role.title}
+                            </span>
+                            <span className="text-[10px] text-ink-muted font-mono block">
+                              {role.seniority || "Senior"} &bull;{" "}
+                              {role.context_domain || role.context || "Engineering"}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-ink shrink-0 font-bold" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* AI Model & Provenance Banner */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cream via-sand/20 to-white border border-ink/15 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3.5">
@@ -162,28 +443,28 @@ export default function PersonalizedRoadmapPage() {
                 ) : null}
               </div>
               <p className="text-xs text-ink/80 mt-0.5">
-                Target Role: <strong className="text-ink">{displayRoadmap.target_role_title || "Target Software / AI Role"}</strong> &bull; Tailored for <span className="font-semibold text-ink">{displayRoadmap.domain_title}</span>
+                Curriculum tailored for <strong className="text-ink">{displayRoadmap.domain_title}</strong> &bull; Baseline Mastery: <span className="font-mono font-semibold">{displayRoadmap.baseline_mastery}%</span>
               </p>
             </div>
           </div>
 
-          {/* Multi-Roadmap Switcher & Provenance Audit */}
+          {/* Action Buttons: Evidence Audit, Other Roadmaps, and Delete Roadmap */}
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             <button
               onClick={() => setIsProvenanceOpen(true)}
               className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-1.5 px-3 text-ink font-semibold flex items-center gap-1.5 shadow-xs"
             >
               <BrainCircuit className="w-3.5 h-3.5 text-indigo-600" />
-              Why is this skill lagging? (Audit Evidence)
+              Evidence Audit
             </button>
 
             {allUserRoadmaps.length > 1 && (
-              <div className="flex items-center gap-2 text-xs bg-white/80 p-1.5 px-3 rounded-xl border border-ink/10">
-                <span className="text-ink-muted font-mono text-[11px]">Your Roadmaps:</span>
+              <div className="flex items-center gap-2 text-xs bg-white/90 p-1.5 px-3 rounded-xl border border-ink/15 shadow-xs">
+                <span className="text-ink-muted font-mono text-[11px]">Roadmaps:</span>
                 <select
                   value={displayRoadmap.path_id}
                   onChange={(e) => router.push(`/app/learning/roadmaps/${e.target.value}`)}
-                  className="bg-transparent font-bold text-ink text-xs focus:outline-none cursor-pointer max-w-[200px] truncate"
+                  className="bg-transparent font-bold text-ink text-xs focus:outline-none cursor-pointer max-w-[160px] truncate"
                 >
                   {allUserRoadmaps.map((r) => (
                     <option key={r.path_id} value={r.path_id}>
@@ -193,6 +474,20 @@ export default function PersonalizedRoadmapPage() {
                 </select>
               </div>
             )}
+
+            <button
+              onClick={handleDeleteThisRoadmap}
+              disabled={isDeleting}
+              title="Delete this roadmap"
+              className="pill-btn bg-white hover:bg-rose-50 border border-rose-300 hover:border-rose-400 text-xs py-1.5 px-3 text-rose-700 font-semibold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50"
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              )}
+              <span className="hidden sm:inline">Delete Roadmap</span>
+            </button>
           </div>
         </div>
 
@@ -458,14 +753,51 @@ export default function PersonalizedRoadmapPage() {
                           Review Packet
                         </Link>
                       </div>
+                    ) : step.status === "skipped" ? (
+                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-1.5 rounded-full border border-stone-300">
+                          <FastForward className="w-3.5 h-3.5 text-stone-600" />
+                          Skipped
+                        </span>
+                        <Link
+                          href={`/app/learning/steps/${step.step_id}?roadmap_id=${encodeURIComponent(displayRoadmap.path_id || displayRoadmap.id || pathId)}`}
+                          className="pill-btn bg-white hover:bg-sand/30 border border-ink/20 text-xs py-1.5 px-3 flex items-center gap-1 text-ink font-medium"
+                        >
+                          Review
+                        </Link>
+                        <button
+                          onClick={() => handleResumeStep(step.step_id)}
+                          disabled={skippingStepId === step.step_id}
+                          className="pill-btn bg-lime/40 hover:bg-lime border border-ink/20 text-xs py-1.5 px-2.5 text-ink flex items-center gap-1 font-semibold"
+                          title="Unskip this step to complete it"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Unskip
+                        </button>
+                      </div>
                     ) : step.status !== "locked" ? (
-                      <Link
-                        href={`/app/learning/steps/${step.step_id}?roadmap_id=${encodeURIComponent(displayRoadmap.path_id || displayRoadmap.id || pathId)}`}
-                        className="pill-btn pill-btn-primary text-xs py-2 px-4 flex items-center gap-1"
-                      >
-                        <PlayCircle className="w-3.5 h-3.5" />
-                        Open Learning Packet
-                      </Link>
+                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                        <Link
+                          href={`/app/learning/steps/${step.step_id}?roadmap_id=${encodeURIComponent(displayRoadmap.path_id || displayRoadmap.id || pathId)}`}
+                          className="pill-btn pill-btn-primary text-xs py-2 px-3.5 flex items-center gap-1"
+                        >
+                          <PlayCircle className="w-3.5 h-3.5" />
+                          Open Packet
+                        </Link>
+                        <button
+                          onClick={() => handleSkipStep(step.step_id)}
+                          disabled={skippingStepId === step.step_id}
+                          className="pill-btn bg-stone-100 hover:bg-stone-200 border border-stone-300 text-xs py-1.5 px-2.5 text-stone-800 flex items-center gap-1 font-medium transition-colors"
+                          title="Bypass step and unlock next objective without awarding mastery"
+                        >
+                          {skippingStepId === step.step_id ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-stone-600" />
+                          ) : (
+                            <SkipForward className="w-3 h-3 text-stone-600" />
+                          )}
+                          Skip Step
+                        </button>
+                      </div>
                     ) : (
                       <div className="text-[11px] text-ink-muted font-mono flex items-center gap-1 bg-sand/30 py-1.5 px-3 rounded-full">
                         <Lock className="w-3 h-3 text-ink-muted" /> Prereqs Unmet

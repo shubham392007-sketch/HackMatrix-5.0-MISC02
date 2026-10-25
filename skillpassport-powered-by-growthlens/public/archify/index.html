@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archify Architecture Visualizer — SkillPassport & System Maps</title>
+  <style>
+    :root {
+      --bg: #F5F1EB;
+      --card-bg: #FFFFFF;
+      --ink: #1A1918;
+      --ink-muted: #5A5854;
+      --accent-coral: #E05D44;
+      --accent-green: #2B7A4B;
+      --accent-blue: #2563EB;
+      --accent-purple: #7C3AED;
+      --border: #1A1918;
+      --shadow: 3px 3px 0px #1A1918;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+      padding: 32px 20px 60px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 28px 32px;
+      margin-bottom: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      background: var(--ink);
+      color: #fff;
+      font-weight: 900;
+      font-size: 20px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .titles h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .titles p {
+      font-size: 13px;
+      color: var(--ink-muted);
+      margin-top: 3px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #E8F5E9;
+      color: var(--accent-green);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-green);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin: 36px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title span.count {
+      font-size: 12px;
+      background: var(--ink);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0px var(--border);
+    }
+
+    .card-top {
+      margin-bottom: 16px;
+    }
+
+    .tag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .badge-primary { background: #FDE8E4; color: var(--accent-coral); }
+    .badge-blue { background: #DBEAFE; color: var(--accent-blue); }
+    .badge-green { background: #DCFCE7; color: var(--accent-green); }
+    .badge-purple { background: #F3E8FF; color: var(--accent-purple); }
+    .badge-gray { background: #F3F4F6; color: #374151; }
+
+    .card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--ink-muted);
+      line-height: 1.45;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #ECE8E0;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.1s;
+    }
+
+    .btn:hover {
+      background: #333;
+    }
+
+    .btn-secondary {
+      background: #F4F0EA;
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #E8E2D6;
+    }
+
+    .file-path {
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--ink-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-badge">ARCHIFY</div>
+        <div class="titles">
+          <h1>Archify System Maps & Diagrams</h1>
+          <p>Interactive architecture maps, sequence flows, workflows, and lifecycles rendered via Archify</p>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Archify Engine Ready (v2.17.0-dev.1)
+      </div>
+    </header>
+
+    <!-- SECTION 1: SYSTEM & DEMOS -->
+    <div class="section-title">
+      Project Architecture & Primary Demos
+      <span class="count">4</span>
+    </div>
+    <div class="grid">
+      <!-- SkillPassport -->
+      <div class="card" style="border-color: var(--accent-coral);">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-primary">Primary Master Deliverable</span>
+            <span class="badge badge-gray">Full System Architecture & Tech Stack</span>
+          </div>
+          <h3>SkillPassport Complete System Architecture & Technology Stack</h3>
+          <p>Complete source-grounded architecture explorer modeling all 24 components with their exact technology stacks: Next.js 16.3.6 App Router, React 19, FastAPI 0.133.1, SQLAlchemy 2.0.51, ChromaDB 1.5.9 vector store, Ollama Qwen3 8B (num_ctx 8192) & nomic-embed-text (768-dim), GLM-OCR, Supabase PostgreSQL (:6543) & Storage, and VCS integrations.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">docs/architecture/skillpassport-system-architecture.html</span>
+          <a class="btn" href="/archify/generated/skillpassport-system-architecture.html" target="_blank">Open Complete Architecture &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Archify Demo -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Interactive Demo</span>
+            <span class="badge badge-gray">Multi-Preset</span>
+          </div>
+          <h3>Archify Official Demo</h3>
+          <p>The reference multi-tier architecture showcase highlighting dark/light themes, signal flow motion, search, and focus filters.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/archify-demo.html</span>
+          <a class="btn" href="/archify/generated/archify-demo.html" target="_blank">Open Demo &rarr;</a>
+        </div>
+      </div>
+
+      <!-- RAG Pipeline -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-blue">AI Pipeline</span>
+            <span class="badge badge-gray">Architecture</span>
+          </div>
+          <h3>RAG Pipeline Architecture</h3>
+          <p>Retrieval-Augmented Generation system showing guardrails, LangGraph orchestrator, Milvus vector store, cross-encoders, and Claude LLM.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/rag-pipeline.html</span>
+          <a class="btn" href="/archify/generated/rag-pipeline.html" target="_blank">Open Map &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Maka Workflow -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Workflow</span>
+            <span class="badge badge-gray">Finite State</span>
+          </div>
+          <h3>Maka Orchestration Workflow</h3>
+          <p>State machine workflow diagram detailing multi-step task orchestration, recovery branches, and execution stages.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/maka-regenerated.workflow.html</span>
+          <a class="btn" href="/archify/generated/maka-regenerated.workflow.html" target="_blank">Open Workflow &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: PROOF LAB & GALLERY SCENARIOS -->
+    <div class="section-title">
+      Interactive Proof Lab Scenarios (Gallery)
+      <span class="count">12</span>
+    </div>
+    <div class="grid">
+      <!-- Gallery Portal -->
+      <div class="card" style="border-color: var(--accent-purple);">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Gallery Portal</span>
+            <span class="badge badge-gray">Overview</span>
+          </div>
+          <h3>Archify Proof Lab</h3>
+          <p>Official interactive gallery catalog containing all 11 scenarios with direct controls for themes, presentation modes, and guided stories.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">docs/gallery.html</span>
+          <a class="btn" href="/archify/docs/gallery.html" target="_blank">Launch Proof Lab &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Production Deployment -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-blue">Architecture</span>
+          </div>
+          <h3>Production Cloud Deployment</h3>
+          <p>Multi-tier production architecture comparing backend, CDN edge caching, and relational database roles.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/production-deployment.architecture.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/production-deployment.architecture.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Web App Architecture -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-blue">Architecture</span>
+          </div>
+          <h3>Web Application Architecture</h3>
+          <p>Full-stack web application structure with client edge routing, API gateway, cache layers, and databases.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/web-app.architecture.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/web-app.architecture.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Agent Tool Call -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Workflow</span>
+          </div>
+          <h3>Agent Tool Call Workflow</h3>
+          <p>Autonomous AI agent decision tree demonstrating tool selection, sandbox execution, error handling, and output grounding.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/agent-tool-call.workflow.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/agent-tool-call.workflow.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Incident Response -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Workflow</span>
+          </div>
+          <h3>Incident Response Workflow</h3>
+          <p>Severity triage, escalation routing, on-call paging, post-mortem tracking, and service restoration flow.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/incident-response.workflow.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/incident-response.workflow.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Release Delivery -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Workflow</span>
+          </div>
+          <h3>Release Delivery Workflow</h3>
+          <p>Automated CI/CD pipeline from commit verification to staging deployment, automated canary testing, and production rollout.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/release-delivery.workflow.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/release-delivery.workflow.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Cache Miss Sequence -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Sequence</span>
+          </div>
+          <h3>Cache-Miss Sequence</h3>
+          <p>Detailed message sequence between browser, API server, distributed cache, and Postgres DB on cache-miss.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/cache-miss.sequence.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/cache-miss.sequence.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Async Job Roundtrip -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Sequence</span>
+          </div>
+          <h3>Async Job Roundtrip Sequence</h3>
+          <p>Message exchange pattern for asynchronous task dispatch, background worker queueing, status polling, and webhook completion.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/async-job-roundtrip.sequence.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/async-job-roundtrip.sequence.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Product Analytics Dataflow -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-primary">Dataflow</span>
+          </div>
+          <h3>Product Analytics Dataflow</h3>
+          <p>High-throughput telemetry pipeline from event collection SDKs, Kafka streams, ETL normalization, to analytical data warehouse.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/product-analytics.dataflow.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/product-analytics.dataflow.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Event Stream Dataflow -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-primary">Dataflow</span>
+          </div>
+          <h3>Event Stream Dataflow</h3>
+          <p>Streaming event ingestion, real-time window aggregations, alerting rules, and storage sink distribution.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/event-stream.dataflow.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/event-stream.dataflow.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Agent Run Lifecycle -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-gray">Lifecycle</span>
+          </div>
+          <h3>Agent Run Lifecycle</h3>
+          <p>Finite lifecycle states of an autonomous agent run: initialized &rarr; plan &rarr; execute &rarr; evaluate &rarr; finalize.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/agent-run.lifecycle.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/agent-run.lifecycle.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Deployment Release Lifecycle -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-gray">Lifecycle</span>
+          </div>
+          <h3>Deployment Release Lifecycle</h3>
+          <p>Software release state transitions: draft, build candidate, security scan, green-light, staged, canary, deployed.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">artifacts/deployment-release.lifecycle.html</span>
+          <a class="btn" href="/archify/docs/gallery/artifacts/deployment-release.lifecycle.html" target="_blank">View Diagram &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: REAL REPO CASE STUDIES & COMPARISONS -->
+    <div class="section-title">
+      Case Studies & Architecture Comparisons
+      <span class="count">4</span>
+    </div>
+    <div class="grid">
+      <!-- MCO Runtime -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-blue">Case Study</span>
+          </div>
+          <h3>MCO Public Runtime Architecture</h3>
+          <p>Reverse-engineered live architecture map from the public mco-org/mco repository, tracing command routing and executors.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">docs/cases/mco-runtime.architecture.html</span>
+          <a class="btn" href="/archify/docs/cases/mco-runtime.architecture.html" target="_blank">Open Case Study &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Checkout Platform Delta -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-primary">Delta Compare</span>
+          </div>
+          <h3>Checkout Platform (Before / Delta / After)</h3>
+          <p>Architecture diff view highlighting added microservices, removed legacy endpoints, and rerouted transactional payment pathways.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">examples/checkout-platform-delta.html</span>
+          <a class="btn" href="/archify/examples/checkout-platform-delta.html" target="_blank">Open Delta View &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Maka Architecture -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-blue">Example</span>
+          </div>
+          <h3>Maka System Architecture</h3>
+          <p>Layered distributed architecture showing frontend client cluster, messaging bus, and state management.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">examples/maka-architecture.html</span>
+          <a class="btn" href="/archify/examples/maka-architecture.html" target="_blank">Open Architecture &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Scenario Guide -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-purple">Documentation</span>
+          </div>
+          <h3>Archify Scenario Recipe Guide</h3>
+          <p>Comprehensive guide explaining how to formulate typed IR for architecture, workflows, sequence diagrams, and lifecycles.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">docs/guide.html</span>
+          <a class="btn" href="/archify/docs/guide.html" target="_blank">Open Guide &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: VISUAL VALIDATION EVIDENCE -->
+    <div class="section-title">
+      Visual Check Contact Sheets (Browser Evidence)
+      <span class="count">3</span>
+    </div>
+    <div class="grid">
+      <!-- SkillPassport Visual Check -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Browser Verified</span>
+          </div>
+          <h3>SkillPassport Visual Check Sheet</h3>
+          <p>Headless browser test contact sheet verifying zero text overflows, proper orthogonal routing, and container containment.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/skillpassport.visual-check.html</span>
+          <a class="btn btn-secondary" href="/archify/generated/skillpassport.visual-check.html" target="_blank">Open Contact Sheet &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Demo Visual Check -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Browser Verified</span>
+          </div>
+          <h3>Archify Demo Visual Check Sheet</h3>
+          <p>Browser visual validation contact sheet for the official demo with light and dark theme snapshot captures.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/archify-demo.visual-check.html</span>
+          <a class="btn btn-secondary" href="/archify/generated/archify-demo.visual-check.html" target="_blank">Open Contact Sheet &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Maka Visual Check -->
+      <div class="card">
+        <div class="card-top">
+          <div class="tag-row">
+            <span class="badge badge-green">Browser Verified</span>
+          </div>
+          <h3>Maka Workflow Visual Check Sheet</h3>
+          <p>Contact sheet verifying workflow node labels, orthogonal connector bends, and boundary alignment.</p>
+        </div>
+        <div class="card-footer">
+          <span class="file-path">generated/maka-regenerated.workflow.visual-check.html</span>
+          <a class="btn btn-secondary" href="/archify/generated/maka-regenerated.workflow.visual-check.html" target="_blank">Open Contact Sheet &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

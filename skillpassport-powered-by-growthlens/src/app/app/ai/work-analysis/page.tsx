@@ -97,6 +97,7 @@ function WorkAnalysisContent() {
     workAnalyses,
     upsertWorkAnalysis,
     addAIAuditEvent,
+    addNotification,
     refreshEvidenceData,
   } = useEvidence();
 
@@ -228,6 +229,9 @@ function WorkAnalysisContent() {
     setIsSimulating(true);
     setAnalysisError(null);
 
+    const targetEvidence = evidenceItems.find((e) => e.id === selectedSourceId);
+    const evidenceTitle = targetEvidence?.title || "Evidence Artifact";
+
     try {
       const { runWorkAnalysis } = await import("@/lib/evidenceApi");
       const res = await runWorkAnalysis([selectedSourceId]);
@@ -237,28 +241,181 @@ function WorkAnalysisContent() {
         const mapped = mapRawAnalysisToWorkResult(itemResult);
         setLocalAnalyses((prev) => [mapped, ...prev.filter((a) => a.source_id !== selectedSourceId)]);
         upsertWorkAnalysis(mapped);
+
+        const modelName = itemResult?.model_name || "qwen3:8b";
+        const isFallback = itemResult?.fallback_used || itemResult?.analysis_method === "rule_based";
+        const runId = itemResult?.run_id || itemResult?.analysis_id || selectedSourceId;
+        const analysisId = itemResult?.analysis_id || itemResult?.run_id;
+
+        // 1. Model unavailable (ConnectError or timeout)
+        if (
+          itemResult.fallback_used &&
+          (itemResult.fallback_reason === "ollama_connection_refused" ||
+            itemResult.fallback_reason === "ollama_timeout")
+        ) {
+          addNotification({
+            title: "Ollama model service unavailable",
+            description: `Could not reach Ollama at configured endpoint for "${evidenceTitle}". Reverted to deterministic rule-based analysis without model inference.`,
+            category: "ai",
+            severity: "warning",
+            relatedDomain: "AI Intelligence",
+            actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+            actionLabel: "Inspect Fallback",
+            dedupKey: `ai_model_unavailable_${runId}`,
+            entityType: "work_analysis",
+            entityId: analysisId,
+            modelName,
+            runId,
+            analysisId,
+          });
+        }
+        // 2. Invalid model output rejected
+        else if (
+          itemResult.fallback_used &&
+          (itemResult.fallback_reason === "invalid_model_response" ||
+            itemResult.validation_status === "warning")
+        ) {
+          addNotification({
+            title: "Invalid model output rejected",
+            description: `Model response for "${evidenceTitle}" failed output validation. Analysis was safely recovered using rule-based parsing.`,
+            category: "ai",
+            severity: "warning",
+            relatedDomain: "AI Intelligence",
+            actionRoute: `/app/ai/validation?evidence_id=${selectedSourceId}`,
+            actionLabel: "View Validation Failure",
+            dedupKey: `ai_invalid_output_${runId}`,
+            entityType: "work_analysis",
+            entityId: analysisId,
+            modelName,
+            runId,
+            analysisId,
+          });
+        }
+
+        // 3. Analysis could not process all content (context window limit truncation)
+        if (itemResult.truncated) {
+          addNotification({
+            title: "Source content exceeded context limit",
+            description: `Source text for "${evidenceTitle}" exceeded context budget and was truncated by ${itemResult.truncated_chars || 0} characters for inference.`,
+            category: "ai",
+            severity: "info",
+            relatedDomain: "AI Intelligence",
+            actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+            actionLabel: "Inspect Truncation",
+            dedupKey: `ai_content_truncated_${runId}`,
+            entityType: "work_analysis",
+            entityId: analysisId,
+            modelName,
+            runId,
+            analysisId,
+          });
+        }
+
+        // 4. Analysis partially completed
+        if (itemResult.partial_failure) {
+          addNotification({
+            title: "Analysis partially completed",
+            description:
+              itemResult.partial_failure.message ||
+              `Work decomposition for "${evidenceTitle}" completed, but ${itemResult.partial_failure.stage} encountered an issue: ${itemResult.partial_failure.error}`,
+            category: "ai",
+            severity: "warning",
+            relatedDomain: "AI Intelligence",
+            actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+            actionLabel: "Review Partial Output",
+            dedupKey: `ai_partial_failure_${runId}`,
+            entityType: "work_analysis",
+            entityId: analysisId,
+            modelName,
+            runId,
+            analysisId,
+          });
+        }
+
+        // 5. Analysis needs review
+        if (itemResult.uncertainty_flags && itemResult.uncertainty_flags.length > 0) {
+          addNotification({
+            title: "Analysis needs human review",
+            description: `Work analysis for "${evidenceTitle}" identified ${itemResult.uncertainty_flags.length} uncertainty item(s) requiring human confirmation.`,
+            category: "ai",
+            severity: "warning",
+            relatedDomain: "AI Intelligence",
+            actionRoute: `/app/ai/review-queue?source=${selectedSourceId}`,
+            actionLabel: "Review Claims",
+            dedupKey: `ai_analysis_review_${runId}`,
+            entityType: "work_analysis",
+            entityId: analysisId,
+            modelName,
+            runId,
+            analysisId,
+          });
+        }
+
+        // 6. AI analysis completed
+        addNotification({
+          title: "Work analysis completed",
+          description: `Analyzed "${evidenceTitle}" via ${isFallback ? "deterministic rule engine" : `Ollama (${modelName})`}. Extracted ${(itemResult.observed_facts || []).length} observed facts and ${(itemResult.technical_tasks || []).length} technical tasks.`,
+          category: "ai",
+          severity: "success",
+          relatedDomain: "AI Intelligence",
+          actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+          actionLabel: "Inspect Analysis",
+          dedupKey: `ai_work_analysis_completed_${runId}`,
+          entityType: "work_analysis",
+          entityId: analysisId,
+          modelName: isFallback ? undefined : modelName,
+          runId,
+          analysisId,
+        });
+
+        // 7. Analysis result ready to inspect
+        addNotification({
+          title: "Analysis result ready to inspect",
+          description: `Structured facts and candidate skills for "${evidenceTitle}" are persisted and ready for review.`,
+          category: "ai",
+          severity: "info",
+          relatedDomain: "AI Intelligence",
+          actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+          actionLabel: "View Result",
+          dedupKey: `ai_result_ready_${runId}`,
+          entityType: "work_analysis",
+          entityId: analysisId,
+          modelName: isFallback ? undefined : modelName,
+          runId,
+          analysisId,
+        });
+
+        addAIAuditEvent({
+          timestamp: "Just now",
+          event_type: "analysis_completed",
+          affected_entity_type: "source",
+          affected_entity_id: selectedSourceId,
+          new_state: "Analysis Completed",
+          reason: `Analyzed work artifacts for ${evidenceTitle} via ${isFallback ? "Deterministic Engine" : `Ollama (${modelName})`}`,
+          actor: isFallback ? "Rule-based Fallback Pipeline" : `Ollama LLM Pipeline (${modelName})`,
+          model_or_policy_version: modelName,
+        });
       } else if (itemResult?.status === "failed") {
         throw new Error(itemResult.error || "Analysis failed");
       }
 
       await refreshEvidenceData(true).catch(() => {});
-
-      const modelName = itemResult?.model_name || "qwen3:8b";
-      const isFallback = itemResult?.fallback_used || itemResult?.analysis_method === "rule_based";
-
-      addAIAuditEvent({
-        timestamp: "Just now",
-        event_type: "analysis_completed",
-        affected_entity_type: "source",
-        affected_entity_id: selectedSourceId,
-        new_state: "Analysis Completed",
-        reason: `Analyzed work artifacts for ${selectedEvidence?.title || selectedSourceId} via ${isFallback ? "Deterministic Engine" : `Ollama (${modelName})`}`,
-        actor: isFallback ? "Rule-based Fallback Pipeline" : `Ollama LLM Pipeline (${modelName})`,
-        model_or_policy_version: modelName,
-      });
     } catch (e: any) {
       console.error("Backend analysis error:", e);
       setAnalysisError(e?.message || "Ollama work analysis failed. Please verify Ollama is running and qwen3:8b is loaded.");
+
+      addNotification({
+        title: "AI analysis failed",
+        description: `Failed to complete AI work analysis for "${evidenceTitle}": ${e?.message || "Inference error"}`,
+        category: "ai",
+        severity: "error",
+        relatedDomain: "AI Intelligence",
+        actionRoute: `/app/ai/work-analysis?evidence_id=${selectedSourceId}`,
+        actionLabel: "Retry Analysis",
+        dedupKey: `ai_work_analysis_failed_${selectedSourceId}_${Date.now()}`,
+        entityType: "evidence",
+        entityId: selectedSourceId,
+      });
     } finally {
       setIsSimulating(false);
     }
@@ -337,7 +494,7 @@ function WorkAnalysisContent() {
                   onClick={() => setShowDirectory(!showDirectory)}
                   className={`pill-btn text-xs py-2 px-3 flex items-center gap-1.5 transition-all ${
                     showDirectory
-                      ? "bg-[#DFE968] text-[#1C1C1C] font-bold border-[#1C1C1C]"
+                      ? "bg-[#000000] text-[#FAF8F5] font-bold border-[#1A1918]"
                       : "pill-btn-secondary"
                   }`}
                   title="Browse all ingested sources in an organized directory view"

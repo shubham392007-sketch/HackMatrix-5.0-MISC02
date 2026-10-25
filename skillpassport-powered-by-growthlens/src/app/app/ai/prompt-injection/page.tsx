@@ -128,7 +128,7 @@ export default function PromptInjectionProtectionPage() {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
       {/* Threat Education Warning Banner */}
-      <div className="gl-card p-5 bg-gradient-to-r from-red-50/70 via-sand/20 to-white border border-red-200">
+      <div className="gl-card p-5 bg-[#FAF8F5] border border-red-200">
         <div className="flex items-start gap-3">
           <ShieldAlert className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
           <div className="space-y-1">

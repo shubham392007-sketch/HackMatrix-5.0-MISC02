@@ -223,7 +223,11 @@ class WorkAnalyzerService:
 
         max_chars = int(ctx_tokens * 2.8)
         content_payload = safe_text
+        truncated = False
+        truncated_chars = 0
         if len(content_payload) > max_chars:
+            truncated = True
+            truncated_chars = len(content_payload) - max_chars
             content_payload = content_payload[:max_chars] + f"\n\n[Content truncated to {max_chars} characters for context budget]"
 
         user_prompt = (
@@ -235,7 +239,9 @@ class WorkAnalyzerService:
         )
 
         endpoint_netloc = self._sanitize_netloc(self.ollama_url)
-        timeout_seconds = float(getattr(self.settings, "ollama_timeout_seconds", 180.0))
+        # Keep interactive work analysis timeout bounded (40s) so it cleanly falls back
+        # to the deterministic rule engine before reverse proxies (Next.js / Nginx) drop connection
+        timeout_seconds = min(float(getattr(self.settings, "ollama_timeout_seconds", 40.0)), 40.0)
 
         parsed_data = None
         fallback_used = False
@@ -260,7 +266,7 @@ class WorkAnalyzerService:
                         "think": False,
                         "options": {
                             "temperature": 0.0,
-                            "num_predict": 2048,
+                            "num_predict": 1024,
                             "num_ctx": ctx_tokens,
                             "num_gpu": 99,
                             "num_thread": 8,
@@ -488,6 +494,8 @@ class WorkAnalyzerService:
             fallback_reason=fallback_reason,
             analysis_status=analysis_status,
             validation_status=validation_status,
+            truncated=truncated,
+            truncated_chars=truncated_chars,
         )
 
     def _persist_analysis_result(
@@ -503,6 +511,8 @@ class WorkAnalyzerService:
         fallback_reason: Optional[str] = None,
         analysis_status: str = "completed",
         validation_status: str = "valid",
+        truncated: bool = False,
+        truncated_chars: int = 0,
     ) -> Dict[str, Any]:
         """Saves WorkAnalysisResult and updates AIAnalysisRun with explicit audit metadata."""
         result_id = uuid.uuid4()
@@ -553,8 +563,18 @@ class WorkAnalyzerService:
         analysis_run.completed_at = datetime.utcnow()
         analysis_run.model_name = model_name or "rule_based"
         analysis_run.output_record_refs = {"work_analysis_id": str(result_id)}
+        warnings_list = list(analysis_run.processing_warnings or [])
         if fallback_used and fallback_reason:
-            analysis_run.processing_warnings.append({"type": "fallback_used", "reason": fallback_reason})
+            warnings_list.append({"type": "fallback_used", "reason": fallback_reason})
+        if truncated:
+            warnings_list.append({
+                "type": "content_truncated",
+                "truncated_chars": truncated_chars,
+                "message": f"Input content exceeded context budget and was truncated by {truncated_chars} characters.",
+            })
+        analysis_run.processing_warnings = warnings_list
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(analysis_run, "processing_warnings")
         db.commit()
 
         return {
@@ -580,6 +600,8 @@ class WorkAnalyzerService:
             "fallback_reason": work_res.fallback_reason,
             "analysis_status": work_res.analysis_status,
             "validation_status": work_res.validation_status,
+            "truncated": truncated,
+            "truncated_chars": truncated_chars,
             "created_at": work_res.created_at.isoformat() if work_res.created_at else None,
         }
 

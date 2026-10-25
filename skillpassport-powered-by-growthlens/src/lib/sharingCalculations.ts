@@ -8,6 +8,7 @@ import {
   AuthorizedVerifiedSkill,
   AuthorizedEvidenceItem,
   AuthorizedRoleAlignment,
+  UserMasterPassport,
 } from "@/types/sharing";
 
 export const DEFAULT_CANDIDATE_PROFILE = {
@@ -28,17 +29,25 @@ export const DEFAULT_SHARE_PERMISSIONS: SharePermissionsConfig = {
     contactLinkedIn: DEFAULT_CANDIDATE_PROFILE.contactLinkedIn,
   },
   shareVerifiedSkillsOnly: true, // Non-negotiable security guard
-  selectedSkillIds: ["skill-python", "skill-api-integration", "skill-data-analysis", "skill-technical-writing"],
+  selectedSkillIds: [], // Default disclose all verified skills
   evidenceAccessLevel: "detail_inspection",
-  selectedEvidencePermissions: {
-    "ev-01": { shareSummary: true, allowDetail: true },
-    "ev-02": { shareSummary: true, allowDetail: true },
-    "ev-03": { shareSummary: true, allowDetail: false }, // Report summary only
-  },
+  selectedEvidencePermissions: {}, // Default allow all authorized evidence
   includeRoleAlignment: true,
   targetRoleId: "role-data-scientist",
   expiryDays: 14,
   customLinkLabel: "Standard Recruiter Share",
+  selectedCustomSkillIds: [],
+  allowRecruiterMessaging: true,
+  templateId: "verified-competency",
+  sections: {
+    work_experience: true,
+    portfolio_projects: true,
+    education: true,
+    certifications: true,
+    publications: true,
+    achievements: true,
+    custom_sections: true,
+  },
 };
 
 /**
@@ -50,7 +59,8 @@ export function buildShareProjection(
   allSkills: SkillItem[],
   allEvidence: EvidenceItem[],
   roles: RoleDemandModel[],
-  candidateProfile = DEFAULT_CANDIDATE_PROFILE
+  candidateProfile = DEFAULT_CANDIDATE_PROFILE,
+  masterPassport?: UserMasterPassport
 ): ShareProjection {
   const isRevoked = shareRecord.status === "revoked";
 
@@ -76,6 +86,9 @@ export function buildShareProjection(
       verifiedSkills: [],
       authorizedEvidence: [],
       roleAlignment: null,
+      templateId: shareRecord.templateId || "verified-competency",
+      customSkills: [],
+      allowRecruiterMessaging: false,
       verificationGuaranteeNote:
         "Access denied. This passport link is no longer active.",
     };
@@ -171,6 +184,36 @@ export function buildShareProjection(
     }
   }
 
+  // 5. Build Optional Sections from Master Passport
+  let activeMaster: UserMasterPassport | undefined = masterPassport;
+  if (!activeMaster && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("sp_master_passport_cache");
+      if (stored) activeMaster = JSON.parse(stored);
+    } catch {}
+  }
+
+  const secPerms = perms.sections || {};
+  const isSecEnabled = (key: string) => {
+    if (key in secPerms) return Boolean(secPerms[key]);
+    if (key === "portfolio_projects" && "projects" in secPerms) return Boolean(secPerms["projects"]);
+    if (key === "projects" && "portfolio_projects" in secPerms) return Boolean(secPerms["portfolio_projects"]);
+    if (activeMaster?.sectionsConfig) {
+      const target = key === "projects" ? "portfolio_projects" : key;
+      const found = activeMaster.sectionsConfig.find((s) => s.id === key || s.id === target);
+      if (found && found.enabled === false) return false;
+    }
+    return true;
+  };
+
+  const workExp = isSecEnabled("work_experience") && activeMaster?.workExperiences ? activeMaster.workExperiences : [];
+  const edu = isSecEnabled("education") && activeMaster?.educationEntries ? activeMaster.educationEntries : [];
+  const proj = (isSecEnabled("portfolio_projects") || isSecEnabled("projects")) && activeMaster?.portfolioProjects ? activeMaster.portfolioProjects : [];
+  const certs = isSecEnabled("certifications") && activeMaster?.certifications ? activeMaster.certifications : [];
+  const pubs = isSecEnabled("publications") && activeMaster?.publications ? activeMaster.publications : [];
+  const ach = isSecEnabled("achievements") && activeMaster?.achievements ? activeMaster.achievements : [];
+  const customSecs = isSecEnabled("custom_sections") && activeMaster?.customSections ? activeMaster.customSections : [];
+
   return {
     shareId: shareRecord.shareId,
     status: "active",
@@ -182,8 +225,19 @@ export function buildShareProjection(
     verifiedSkills: authorizedSkills,
     authorizedEvidence,
     roleAlignment,
+    templateId: shareRecord.templateId || perms.templateId || "verified-competency",
+    customSkills: [],
+    allowRecruiterMessaging: perms.allowRecruiterMessaging ?? true,
     verificationGuaranteeNote:
       "All capabilities listed in this passport are verified against authentic repository commits, technical specifications, and Jira work items via SkillPassport's evidence provenance engine.",
+    workExperience: workExp,
+    education: edu,
+    projects: proj,
+    certifications: certs,
+    publications: pubs,
+    achievements: ach,
+    customSections: customSecs,
+    sectionsConfig: activeMaster?.sectionsConfig,
   };
 }
 

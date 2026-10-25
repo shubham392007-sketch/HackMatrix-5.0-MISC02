@@ -233,7 +233,7 @@ export default function AIOverviewPage() {
       </div>
 
       {/* Fundamental Product Invariant Callout */}
-      <div className="gl-card p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5] space-y-3">
+      <div className="gl-card p-6 bg-gradient-to-r from-[#FAF8F5] to-[#F5EFE6] border-[#E8E1D5] space-y-3">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-[#2E6941]" />
           <h2 className="text-base font-bold text-[#1F1E1D]">

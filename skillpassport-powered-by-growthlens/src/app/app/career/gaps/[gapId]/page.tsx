@@ -12,6 +12,7 @@ import {
   CalculationExplanationModal,
 } from "@/components/app/CareerBadges";
 import AppTopBar from "@/components/app/AppTopBar";
+import { ConfidenceScoreExplainer } from "@/components/app/ConfidenceRationaleCard";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -388,6 +389,21 @@ export default function WhyThisGapDetailPage() {
 
         {/* Right Column (1 span): Priority Variable Breakdown & Next Actions */}
         <div className="space-y-6">
+          {/* Assessment Confidence & Evidence Rationale Card */}
+          <div className="gl-card p-6 space-y-4">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+              <Scale className="w-4 h-4 text-ink" />
+              Confidence & Evidence Rationale
+            </h3>
+            <ConfidenceScoreExplainer
+              score={gap.confidence}
+              explanation={gap.confidence_explanation}
+              rationale={gap.confidence_rationale}
+              skillName={gap.canonical_name}
+              defaultExpanded={true}
+            />
+          </div>
+
           {/* Priority Formula Explainer Card */}
           <div className="gl-card p-6 space-y-4">
             <h3 className="text-sm font-bold text-ink flex items-center gap-2">
@@ -452,7 +468,7 @@ export default function WhyThisGapDetailPage() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-amber-500" />
-                    Remediate in Learn & Grow &rarr;
+                    Remediate in Learn &amp; Grow &rarr;
                   </>
                 )}
               </button>

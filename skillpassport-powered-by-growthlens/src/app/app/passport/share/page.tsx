@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEvidence } from "@/context/EvidenceContext";
 import {
   Link2,
+  Loader2,
   CheckCircle,
   Copy,
   ExternalLink,
@@ -22,12 +23,27 @@ import {
   GitBranch,
   Briefcase,
   AlertTriangle,
+  GraduationCap,
+  FolderGit2,
+  Award,
+  BookOpen,
+  Trophy,
+  Mail,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
-import { SharePermissionsConfig } from "@/types/sharing";
+import TemplateSelector from "@/components/passport/TemplateSelector";
+import { SharePermissionsConfig, PassportTemplateId, UserMasterPassport } from "@/types/sharing";
+import { SkillItem } from "@/types/passport";
+import { EvidenceItem } from "@/types/evidence";
+import { sharingApi } from "@/lib/sharingApi";
 
 export default function SharePassportWizardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledJobId = searchParams?.get("jobId");
+  const prefilledRecruiterEmail = searchParams?.get("recruiterEmail");
+  const prefilledJobTitle = searchParams?.get("jobTitle");
+
   const {
     skills,
     evidenceItems,
@@ -40,36 +56,69 @@ export default function SharePassportWizardPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [createdShareId, setCreatedShareId] = useState<string | null>(null);
 
-  // Form local state initialized from draftPermissions
+  const [isDirectRecruiterShare, setIsDirectRecruiterShare] = useState<boolean>(
+    Boolean(prefilledRecruiterEmail || prefilledJobId)
+  );
+  const [targetRecruiterEmail, setTargetRecruiterEmail] = useState<string>(
+    prefilledRecruiterEmail || ""
+  );
+  const [targetJobId, setTargetJobId] = useState<string>(
+    prefilledJobId || ""
+  );
+  const [candidatePersonalMessage, setCandidatePersonalMessage] = useState<string>("");
+  const [invitationResult, setInvitationResult] = useState<any | null>(null);
+  const [masterPassport, setMasterPassport] = useState<UserMasterPassport | null>(null);
+  const [hasLoadedAuthoritative, setHasLoadedAuthoritative] = useState<boolean>(false);
+
+  const verifiedSkills = useMemo(() => {
+    return skills.filter((s: SkillItem) => s.verificationState === "verified");
+  }, [skills]);
+
+  // Form local state initialized from saved/draft permissions
   const [label, setLabel] = useState<string>(
     draftPermissions.customLinkLabel || "Recruiter Capability Share"
   );
   const [showDisplayName, setShowDisplayName] = useState<boolean>(
-    draftPermissions.identity.showDisplayName
+    draftPermissions.identity?.showDisplayName ?? true
   );
   const [showHeadline, setShowHeadline] = useState<boolean>(
-    draftPermissions.identity.showHeadline
+    draftPermissions.identity?.showHeadline ?? true
   );
   const [showSummary, setShowSummary] = useState<boolean>(
-    draftPermissions.identity.showSummary
+    draftPermissions.identity?.showSummary ?? true
   );
   const [showContactInfo, setShowContactInfo] = useState<boolean>(
-    draftPermissions.identity.showContactInfo
+    draftPermissions.identity?.showContactInfo ?? false
   );
 
-  const verifiedSkills = skills.filter((s) => s.verificationState === "verified");
+  const [templateId, setTemplateId] = useState<PassportTemplateId>(
+    draftPermissions.templateId || "verified-competency"
+  );
+  const [allowRecruiterMessaging, setAllowRecruiterMessaging] = useState<boolean>(
+    draftPermissions.allowRecruiterMessaging ?? true
+  );
+  const [includedSections, setIncludedSections] = useState<Record<string, boolean>>(
+    draftPermissions.sections || {
+      work_experience: true,
+      portfolio_projects: true,
+      education: true,
+      certifications: true,
+      publications: true,
+      achievements: true,
+      custom_sections: true,
+    }
+  );
+
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
-    draftPermissions.selectedSkillIds.length > 0
-      ? draftPermissions.selectedSkillIds
-      : verifiedSkills.map((s) => s.id)
+    draftPermissions.selectedSkillIds || []
   );
 
   const [selectedEvidencePerms, setSelectedEvidencePerms] = useState<
     Record<string, { shareSummary: boolean; allowDetail: boolean }>
-  >(draftPermissions.selectedEvidencePermissions);
+  >(draftPermissions.selectedEvidencePermissions || {});
 
   const [includeRoleAlignment, setIncludeRoleAlignment] = useState<boolean>(
-    draftPermissions.includeRoleAlignment
+    draftPermissions.includeRoleAlignment ?? true
   );
   const [targetRoleId, setTargetRoleId] = useState<string>(
     draftPermissions.targetRoleId || targetRoles[0]?.role_id || "role-data-scientist"
@@ -77,6 +126,129 @@ export default function SharePassportWizardPage() {
   const [expiryDays, setExpiryDays] = useState<number | null>(
     draftPermissions.expiryDays ?? 14
   );
+
+  // Authoritatively load saved Sharing Permissions and Master Passport on mount
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [m, perms] = await Promise.all([
+          sharingApi.getMasterPassport().catch(() => null),
+          sharingApi.getSharingPermissions().catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (m) {
+          setMasterPassport(m);
+        }
+
+        if (perms) {
+          // Pre-populate Step 1 with user's saved authoritative Sharing Permissions
+          if (perms.customLinkLabel) setLabel(perms.customLinkLabel);
+          if (perms.identity) {
+            setShowDisplayName(perms.identity.showDisplayName ?? true);
+            setShowHeadline(perms.identity.showHeadline ?? true);
+            setShowSummary(perms.identity.showSummary ?? true);
+            setShowContactInfo(perms.identity.showContactInfo ?? false);
+          }
+          if (perms.templateId) {
+            setTemplateId(perms.templateId as PassportTemplateId);
+          } else if (m?.templateId) {
+            setTemplateId(m.templateId as PassportTemplateId);
+          }
+          if (perms.allowRecruiterMessaging !== undefined) {
+            setAllowRecruiterMessaging(perms.allowRecruiterMessaging);
+          }
+          if (perms.sections) {
+            setIncludedSections(perms.sections);
+          }
+          if (Array.isArray(perms.selectedSkillIds)) {
+            setSelectedSkills(perms.selectedSkillIds);
+          }
+          if (perms.selectedEvidencePermissions) {
+            setSelectedEvidencePerms(perms.selectedEvidencePermissions);
+          }
+          if (perms.includeRoleAlignment !== undefined) {
+            setIncludeRoleAlignment(perms.includeRoleAlignment);
+          }
+          if (perms.targetRoleId) {
+            setTargetRoleId(perms.targetRoleId);
+          }
+          if (perms.expiryDays !== undefined) {
+            setExpiryDays(perms.expiryDays);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load saved permissions in share wizard:", err);
+      } finally {
+        if (isMounted) setHasLoadedAuthoritative(true);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const getSectionCount = (secId: string) => {
+    if (!masterPassport) return null;
+    switch (secId) {
+      case "work_experience": return masterPassport.workExperiences?.length ?? 0;
+      case "portfolio_projects": return masterPassport.portfolioProjects?.length ?? 0;
+      case "education": return masterPassport.educationEntries?.length ?? 0;
+      case "certifications": return masterPassport.certifications?.length ?? 0;
+      case "publications": return masterPassport.publications?.length ?? 0;
+      case "achievements": return masterPassport.achievements?.length ?? 0;
+      case "custom_sections": return masterPassport.customSections?.length ?? 0;
+      default: return null;
+    }
+  };
+
+  const toggleSection = (secKey: string) => {
+    setIncludedSections((prev) => ({
+      ...prev,
+      [secKey]: !prev[secKey],
+    }));
+  };
+
+  // Selected verified skills based on current checkboxes
+  const selectedVerifiedSkills = useMemo(() => {
+    return verifiedSkills.filter((s: SkillItem) => selectedSkills.includes(s.id));
+  }, [verifiedSkills, selectedSkills]);
+
+  // STRICT RULE: Build mapping from evidence ID -> list of selected skill names it backs
+  const evidenceToSelectedSkillsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    selectedVerifiedSkills.forEach((skill: SkillItem) => {
+      if (Array.isArray(skill.evidenceIds)) {
+        skill.evidenceIds.forEach((evId: string) => {
+          const current = map.get(evId) || [];
+          if (!current.includes(skill.canonicalName)) {
+            current.push(skill.canonicalName);
+          }
+          map.set(evId, current);
+        });
+      }
+
+      evidenceItems.forEach((ev: EvidenceItem) => {
+        const related = (ev as any).relatedSkillName;
+        if (related && related.toLowerCase() === skill.canonicalName.toLowerCase()) {
+          const current = map.get(ev.id) || [];
+          if (!current.includes(skill.canonicalName)) {
+            current.push(skill.canonicalName);
+          }
+          map.set(ev.id, current);
+        }
+      });
+    });
+    return map;
+  }, [selectedVerifiedSkills, evidenceItems]);
+
+  // STRICT REQUIREMENT: Only evidence items supporting currently selected skills are displayed
+  const relevantEvidenceItems = useMemo(() => {
+    return evidenceItems.filter((ev: EvidenceItem) => evidenceToSelectedSkillsMap.has(ev.id));
+  }, [evidenceItems, evidenceToSelectedSkillsMap]);
 
   const toggleSkill = (skillId: string) => {
     setSelectedSkills((prev) =>
@@ -98,7 +270,7 @@ export default function SharePassportWizardPage() {
 
   const toggleEvidenceDetail = (evId: string) => {
     setSelectedEvidencePerms((prev) => {
-      const current = prev[evId] || { shareSummary: true, allowDetail: false };
+      const current = prev[evId] || { shareSummary: true, allowDetail: true };
       return {
         ...prev,
         [evId]: { ...current, allowDetail: !current.allowDetail },
@@ -106,7 +278,10 @@ export default function SharePassportWizardPage() {
     });
   };
 
-  const handleCreateLink = () => {
+  const [creatingLink, setCreatingLink] = useState<boolean>(false);
+
+  const handleCreateLink = async () => {
+    setCreatingLink(true);
     const config: SharePermissionsConfig = {
       identity: {
         showDisplayName,
@@ -118,17 +293,53 @@ export default function SharePassportWizardPage() {
       },
       shareVerifiedSkillsOnly: true, // Non-negotiable
       selectedSkillIds: selectedSkills,
+      selectedCustomSkillIds: draftPermissions.selectedCustomSkillIds || [],
       evidenceAccessLevel: "detail_inspection",
-      selectedEvidencePermissions: selectedEvidencePerms,
+      selectedEvidencePermissions: (() => {
+        const enriched: Record<string, { shareSummary: boolean; allowDetail: boolean }> = {};
+        relevantEvidenceItems.forEach((ev: EvidenceItem) => {
+          const p = selectedEvidencePerms[ev.id];
+          enriched[ev.id] = p ? p : { shareSummary: true, allowDetail: true };
+        });
+        return { ...enriched, ...selectedEvidencePerms };
+      })(),
       includeRoleAlignment,
       targetRoleId,
       expiryDays,
       customLinkLabel: label,
+      templateId,
+      allowRecruiterMessaging,
+      sections: includedSections,
+      ...(masterPassport ? { masterPassport } : {}),
     };
 
-    const newShare = createShareRecord(label, config);
-    setCreatedShareId(newShare.shareId);
-    setStep(4);
+    try {
+      const serverRecord = await sharingApi.createLink({
+        label: label || "Selective Recruiter Share",
+        template_id: templateId,
+        permissions: config,
+        expiry_days: expiryDays,
+        recruiter_email: isDirectRecruiterShare && targetRecruiterEmail.trim() ? targetRecruiterEmail.trim() : undefined,
+        job_id: isDirectRecruiterShare && targetJobId ? targetJobId : undefined,
+        candidate_message: isDirectRecruiterShare && candidatePersonalMessage.trim() ? candidatePersonalMessage.trim() : undefined,
+      } as any);
+
+      if ((serverRecord as any).invitation) {
+        setInvitationResult((serverRecord as any).invitation);
+      }
+
+      const effectiveShareId = serverRecord.shareId || (serverRecord as any).id;
+      createShareRecord(label, { ...config, customLinkLabel: label });
+      setCreatedShareId(effectiveShareId);
+      setStep(4);
+    } catch (err) {
+      console.warn("Backend share creation failed, falling back to local record:", err);
+      const newShare = createShareRecord(label, config);
+      setCreatedShareId(newShare.shareId);
+      setStep(4);
+    } finally {
+      setCreatingLink(false);
+    }
   };
 
   const shareUrl = typeof window !== "undefined" && createdShareId
@@ -182,7 +393,7 @@ export default function SharePassportWizardPage() {
                 <span
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
                     step === s.num
-                      ? "bg-ink text-paper"
+                      ? "bg-[#1A1918] text-[#FAF8F5]"
                       : step > s.num
                       ? "bg-emerald-100 text-emerald-800"
                       : "bg-paper border border-ink/20"
@@ -199,13 +410,28 @@ export default function SharePassportWizardPage() {
       {/* STEP 1: Choose Contents */}
       {step === 1 && (
         <div className="gl-card p-6 md:p-8 space-y-6">
-          <div className="border-b border-ink/10 pb-4">
-            <h2 className="text-lg font-extrabold text-ink">
-              Step 1: Choose Share Contents
-            </h2>
-            <p className="text-xs text-ink/70 mt-0.5">
-              Select which candidate profile attributes and verified competencies to disclose.
-            </p>
+          <div className="border-b border-ink/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-extrabold text-ink">
+                Step 1: Choose Share Contents
+              </h2>
+              <p className="text-xs text-ink/70 mt-0.5">
+                Select which candidate profile attributes and verified competencies to disclose.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Pre-populated from Saved Permissions
+              </span>
+              <Link
+                href="/app/passport/permissions"
+                className="text-[11px] font-semibold text-ink/70 hover:text-ink underline flex items-center gap-1"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                Edit Defaults
+              </Link>
+            </div>
           </div>
 
           {/* Identity Disclosure */}
@@ -268,6 +494,70 @@ export default function SharePassportWizardPage() {
             </div>
           </div>
 
+          {/* Master Passport Sections Selection */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ink/60 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-peach" />
+                  Select Master Sections to Include
+                </h3>
+                <p className="text-[11px] text-ink/70">
+                  Choose which candidate-authored sections to disclose on this share link.
+                </p>
+              </div>
+              <Link
+                href="/app/passport/builder"
+                className="text-[11px] font-bold text-ink hover:underline flex items-center gap-1"
+              >
+                Edit in Content Builder &rarr;
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              {[
+                { id: "work_experience", label: "Work Experience", icon: Briefcase },
+                { id: "portfolio_projects", label: "Portfolio & Projects", icon: FolderGit2 },
+                { id: "education", label: "Education & Academics", icon: GraduationCap },
+                { id: "certifications", label: "Certifications", icon: Award },
+                { id: "publications", label: "Publications & Writing", icon: BookOpen },
+                { id: "achievements", label: "Honors & Achievements", icon: Trophy },
+                { id: "custom_sections", label: "Custom Sections", icon: Sparkles },
+              ].map((sec) => {
+                const isEnabled = includedSections[sec.id] !== false;
+                const Icon = sec.icon;
+                return (
+                  <label
+                    key={sec.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                      isEnabled
+                        ? "bg-peach/15 border-ink shadow-sm"
+                        : "bg-paper border-ink/10 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-3.5 h-3.5 text-ink/70 shrink-0" />
+                      <div>
+                        <span className="font-bold text-ink block">{sec.label}</span>
+                        {getSectionCount(sec.id) !== null && (
+                          <span className="text-[10px] text-ink/60">
+                            {getSectionCount(sec.id)} {getSectionCount(sec.id) === 1 ? "entry" : "entries"} available
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={() => toggleSection(sec.id)}
+                      className="w-4 h-4 accent-ink"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Verified Skills Selection */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
@@ -280,7 +570,7 @@ export default function SharePassportWizardPage() {
             </div>
 
             <div className="space-y-2">
-              {verifiedSkills.map((s) => {
+              {verifiedSkills.map((s: SkillItem) => {
                 const isSelected = selectedSkills.includes(s.id);
                 return (
                   <div
@@ -326,43 +616,59 @@ export default function SharePassportWizardPage() {
             </p>
 
             <div className="space-y-2">
-              {evidenceItems.slice(0, 3).map((ev) => {
-                const perm = selectedEvidencePerms[ev.id] || { shareSummary: true, allowDetail: false };
-                return (
-                  <div
-                    key={ev.id}
-                    className="p-3.5 rounded-xl bg-paper border border-ink/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-ink">{ev.title}</div>
-                      <div className="text-[11px] text-ink/60">{ev.evidenceType} · {ev.project}</div>
-                    </div>
+              {relevantEvidenceItems.length === 0 ? (
+                <div className="p-4 bg-paper rounded-xl border border-ink/10 text-xs text-ink/60">
+                  {selectedSkills.length === 0
+                    ? "Select one or more verified skills above to disclose supporting workplace evidence."
+                    : "No linked evidence artifacts found for the currently selected skills."}
+                </div>
+              ) : (
+                relevantEvidenceItems.map((ev: EvidenceItem) => {
+                  const perm = selectedEvidencePerms[ev.id] || { shareSummary: true, allowDetail: true };
+                  const backedSkillNames = evidenceToSelectedSkillsMap.get(ev.id) || [];
+                  return (
+                    <div
+                      key={ev.id}
+                      className="p-3.5 rounded-xl bg-paper border border-ink/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-ink">{ev.title}</div>
+                        <div className="text-[11px] text-ink/60">
+                          {ev.evidenceType} · {ev.project}
+                          {backedSkillNames.length > 0 && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded bg-peach/20 text-ink font-semibold">
+                              Backs: {backedSkillNames.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
-                        <input
-                          type="checkbox"
-                          checked={perm.shareSummary}
-                          onChange={() => toggleEvidenceSummary(ev.id)}
-                          className="accent-ink"
-                        />
-                        <span>Share Summary</span>
-                      </label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                          <input
+                            type="checkbox"
+                            checked={perm.shareSummary}
+                            onChange={() => toggleEvidenceSummary(ev.id)}
+                            className="accent-ink"
+                          />
+                          <span>Share Summary</span>
+                        </label>
 
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
-                        <input
-                          type="checkbox"
-                          disabled={!perm.shareSummary}
-                          checked={perm.allowDetail}
-                          onChange={() => toggleEvidenceDetail(ev.id)}
-                          className="accent-ink disabled:opacity-40"
-                        />
-                        <span>Allow Detail Inspection</span>
-                      </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                          <input
+                            type="checkbox"
+                            disabled={!perm.shareSummary}
+                            checked={perm.allowDetail}
+                            onChange={() => toggleEvidenceDetail(ev.id)}
+                            className="accent-ink disabled:opacity-40"
+                          />
+                          <span>Allow Detail Inspection</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -421,8 +727,8 @@ export default function SharePassportWizardPage() {
                     onClick={() => setExpiryDays(opt.days)}
                     className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
                       expiryDays === opt.days
-                        ? "bg-ink text-paper border-ink"
-                        : "bg-paper text-ink/70 border-ink/10 hover:bg-card"
+                        ? "bg-[#1A1918] text-[#FAF8F5] border-[#1A1918] font-black shadow-sm"
+                        : "bg-white text-[#1A1918] border-[#1A1918]/20 hover:border-[#1A1918] hover:bg-[#FAF8F5]"
                     }`}
                   >
                     {opt.label}
@@ -516,6 +822,8 @@ export default function SharePassportWizardPage() {
                   Included in Share
                 </span>
                 <ul className="space-y-1 text-ink/80 list-disc list-inside">
+                  <li>Template Archetype: <strong className="uppercase">{templateId}</strong></li>
+                  <li>Sections Disclosed: <strong>{Object.values(includedSections).filter(Boolean).length} of 7</strong></li>
                   <li>Display Name ({showDisplayName ? "Yes" : "Hidden"})</li>
                   <li>Professional Headline ({showHeadline ? "Yes" : "Hidden"})</li>
                   <li>Summary ({showSummary ? "Yes" : "Hidden"})</li>
@@ -537,6 +845,60 @@ export default function SharePassportWizardPage() {
                 </ul>
               </div>
             </div>
+
+            {/* Targeted Recruiter Share Section */}
+            <div className="p-5 bg-sand/30 rounded-2xl border border-ink/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-[#E0533C]" />
+                    Direct Employer / Recruiter Targeting
+                  </span>
+                  <p className="text-[11px] text-ink-muted">
+                    Deliver this passport directly to an employer recruiter&apos;s dashboard and track hiring status.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isDirectRecruiterShare}
+                    onChange={(e) => setIsDirectRecruiterShare(e.target.checked)}
+                    className="w-4 h-4 rounded text-ink focus:ring-ink"
+                  />
+                  <span className="text-xs font-bold text-ink">Enable Direct Share</span>
+                </label>
+              </div>
+
+              {isDirectRecruiterShare && (
+                <div className="pt-3 border-t border-ink/10 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-ink mb-1">
+                      Recruiter Work Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={targetRecruiterEmail}
+                      onChange={(e) => setTargetRecruiterEmail(e.target.value)}
+                      placeholder="recruiter@company.com"
+                      className="w-full bg-white border border-ink/25 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-ink mb-1">
+                      Personal Message to the Hiring Team (Optional)
+                    </label>
+                    <textarea
+                      value={candidatePersonalMessage}
+                      onChange={(e) => setCandidatePersonalMessage(e.target.value)}
+                      rows={3}
+                      placeholder="Briefly introduce your verified proof and interest in the opening..."
+                      className="w-full bg-white border border-ink/25 rounded-xl p-3 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink font-sans"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="pt-4 border-t border-ink/10 flex items-center justify-between">
@@ -548,10 +910,15 @@ export default function SharePassportWizardPage() {
             </button>
             <button
               onClick={handleCreateLink}
-              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
+              disabled={creatingLink}
+              className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-60"
             >
-              <Link2 className="w-4 h-4" />
-              Generate Public Recruiter Link
+              {creatingLink ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Link2 className="w-4 h-4" />
+              )}
+              {creatingLink ? "Generating Secure Link..." : "Generate Public Recruiter Link"}
             </button>
           </div>
         </div>
@@ -568,9 +935,32 @@ export default function SharePassportWizardPage() {
               Recruiter Link Generated Successfully!
             </h2>
             <p className="text-xs text-ink/70 leading-relaxed">
-              Your selective passport projection is now accessible via this demo link. You can revoke access at any time in Shared Access Management.
+              Your selective passport projection is now accessible via this link. You can revoke access at any time in Shared Access Management.
             </p>
           </div>
+
+          {/* Delivery Status Notice if targeted share was sent */}
+          {invitationResult && (
+            <div className={`p-4 rounded-2xl border text-xs max-w-2xl mx-auto space-y-1 ${
+              invitationResult.deliveryStatus === "delivered"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                : "bg-amber-50 border-amber-300 text-amber-950"
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                <CheckCircle className="w-4 h-4 text-emerald-700" />
+                <span>
+                  {invitationResult.deliveryStatus === "delivered"
+                    ? "Delivered Directly to Recruiter Dashboard!"
+                    : "Targeted Recruiter Share Initialized"}
+                </span>
+              </div>
+              <p className="leading-relaxed">
+                {invitationResult.deliveryStatus === "delivered"
+                  ? `Delivered to ${invitationResult.recruiterEmail}. The recruiter has received a real-time notification on their employer dashboard and can review your verified credentials directly.`
+                  : `${invitationResult.recruiterEmail} is not yet registered as an active employer on Skill Passport. You can copy the secure link below to send to them directly. Once registered, this submission will appear in their candidate pipeline.`}
+              </p>
+            </div>
+          )}
 
           {/* URL Box */}
           <div className="p-4 bg-paper rounded-2xl border-2 border-ink shadow-sm space-y-2 max-w-2xl mx-auto">

@@ -11,12 +11,12 @@ from backend.app.models.base import Base, TimestampMixin
 class JobPostingRecord(Base, TimestampMixin):
     """
     Persisted real job vacancy records retrieved from TheirStack, JSearch,
-    Fantastic.jobs, or uploaded by user.
+    Fantastic.jobs, or uploaded/published by verified recruiters.
     """
     __tablename__ = "job_postings"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # theirstack, jsearch, fantastic_jobs, custom_upload
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # theirstack, jsearch, fantastic_jobs, recruiter_portal, custom_upload
     provider_job_id: Mapped[str] = mapped_column(String(255), nullable=False)
     canonical_dedupe_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     
@@ -41,6 +41,13 @@ class JobPostingRecord(Base, TimestampMixin):
     retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     is_stale: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
+    # Recruiter Posting & Lifecycle
+    status: Mapped[str] = mapped_column(String(50), default="published", nullable=False, index=True)  # draft, published, paused, closed
+    organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    recruiter_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    public_recruiter_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    public_recruiter_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     extracted_requirements: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
     raw_source_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
@@ -48,6 +55,9 @@ class JobPostingRecord(Base, TimestampMixin):
     __table_args__ = (
         Index("idx_job_postings_provider_pid", "provider", "provider_job_id"),
         Index("idx_job_postings_title_company", "title", "company_name"),
+        Index("idx_job_postings_status", "status"),
+        Index("idx_job_postings_org_id", "organization_id"),
+        Index("idx_job_postings_recruiter", "recruiter_user_id"),
     )
 
 
@@ -136,7 +146,7 @@ class JobSearchCacheRecord(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cache_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
-    mode: Mapped[str] = mapped_column(String(50), nullable=False)  # mode_a_skills, mode_b_role
+    mode: Mapped[str] = mapped_column(String(50), nullable=False)  # mode_a_skills, mode_b_role, mode_c_recruiter
     query_text: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_used: Mapped[str] = mapped_column(String(50), nullable=False)
     

@@ -5,8 +5,22 @@ import { useEvidence } from "@/context/EvidenceContext";
 import { Activity, CheckCircle2, XCircle, RotateCcw, Clock } from "lucide-react";
 
 export default function IngestionRunsPage() {
-  const { ingestionRuns, retryIngestionRun, initialLoading, isLoadingEvidence } = useEvidence();
+  const { ingestionRuns, retryIngestionRun, initialLoading, isLoadingEvidence, addNotification } = useEvidence();
   const isDataLoading = initialLoading || (isLoadingEvidence && ingestionRuns.length === 0);
+
+  const handleRetry = (runId: string, source: string) => {
+    retryIngestionRun(runId);
+    addNotification({
+      title: "Evidence added successfully",
+      description: `Pipeline run '${source}' retried and re-enqueued for normalization.`,
+      category: "evidence",
+      severity: "info",
+      relatedDomain: "Evidence Workspace",
+      actionRoute: "/app/evidence/runs",
+      actionLabel: "Inspect Ingestion Run",
+      dedupKey: `retry_run_${runId}_${Date.now()}`,
+    });
+  };
 
   return (
     <div className="flex-1 flex flex-col">
@@ -17,7 +31,7 @@ export default function IngestionRunsPage() {
         backLabel="Evidence Center"
       />
 
-      <main className="p-6 lg:p-10 space-y-8 max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl w-full mx-auto pb-16">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-black text-[#1C1C1C]">Recent Pipeline Executions</h3>
@@ -96,7 +110,7 @@ export default function IngestionRunsPage() {
                     <span>{run.errorMessage}</span>
                     <button
                       type="button"
-                      onClick={() => retryIngestionRun(run.runId)}
+                      onClick={() => handleRetry(run.runId, run.source)}
                       className="pill-btn pill-btn-primary text-[10px] py-1 px-3 ml-2 flex items-center gap-1 shrink-0"
                     >
                       <RotateCcw className="w-3 h-3" />

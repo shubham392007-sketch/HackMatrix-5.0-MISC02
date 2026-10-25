@@ -8,14 +8,22 @@ export interface UserProfileData {
   id: string;
   email: string;
   display_name: string | null;
+  preferred_name?: string | null;
   headline: string | null;
   current_role: string;
   job_title?: string | null;
   specialization?: string | null;
   department_or_team?: string | null;
+  location?: string | null;
+  work_preference?: string | null;
   experience_level?: string | null;
   professional_goal?: string | null;
   professional_summary?: string | null;
+  portfolio_url?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  privacy_preferences?: Record<string, any> | null;
+  app_settings?: Record<string, any> | null;
   onboarding_status: "not_started" | "in_progress" | "completed";
   onboarding_current_step: number;
   onboarding_current_category: string;
@@ -30,15 +38,18 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: UserProfileData | null;
+  profileError: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isEmailVerified: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
     password: string,
     displayName?: string,
     role?: string
-  ) => Promise<{ error: Error | null; needsEmailVerification?: boolean }>;
+  ) => Promise<{ error: Error | null; needsEmailVerification?: boolean; user?: User | null }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -70,12 +81,26 @@ async function fetchProfileMe(token: string, method: string = "GET", body?: any)
     // Direct backend connection failed, continue to fallback
   }
 
-  // Fallback to relative proxy
-  return fetch("/api/v1/profile/me", {
-    method,
-    headers,
-    body: bodyStr,
-  });
+  // Fallback to relative proxy with safe offline error handling
+  try {
+    return await fetch("/api/v1/profile/me", {
+      method,
+      headers,
+      body: bodyStr,
+    });
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({
+        error: "Backend service unreachable",
+        detail: err?.message || "Connection refused",
+      }),
+      {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -93,25 +118,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileRequestIdRef = React.useRef(0);
+
+  const isEmailVerified = Boolean(
+    user && (user.email_confirmed_at || (user as any).confirmed_at)
+  );
 
   const fetchProfile = useCallback(async (currentSession: Session | null) => {
+    const requestId = ++profileRequestIdRef.current;
     if (!currentSession?.access_token) {
-      setProfile(null);
+      if (requestId === profileRequestIdRef.current) {
+        setProfile(null);
+        setProfileError(null);
+      }
       return;
     }
     try {
+      setProfileError(null);
       const resp = await fetchProfileMe(currentSession.access_token);
+      if (requestId !== profileRequestIdRef.current) return;
+
       if (resp.ok) {
         const data = await resp.json();
+        if (requestId !== profileRequestIdRef.current) return;
         setProfile(data);
+        setProfileError(null);
         if (typeof window !== "undefined") {
           sessionStorage.setItem("sp_user_profile", JSON.stringify(data));
         }
       } else {
         console.warn("Failed to fetch user profile:", resp.status);
+        if (resp.status === 503) {
+          // Backend temporarily unreachable (e.g. warming up or restarting), recover from cached profile
+          if (typeof window !== "undefined") {
+            try {
+              const cached = sessionStorage.getItem("sp_user_profile");
+              if (cached) {
+                setProfile(JSON.parse(cached));
+                return;
+              }
+            } catch {}
+          }
+          if (currentSession?.user) {
+            setProfile({
+              id: currentSession.user.id,
+              email: currentSession.user.email || "",
+              display_name: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split("@")[0] || "User",
+              headline: null,
+              current_role: "employee",
+              onboarding_status: "in_progress",
+              onboarding_current_step: 1,
+              onboarding_current_category: "resume",
+              github_skipped: false,
+              jira_skipped: false,
+              onboarding_completed_at: null,
+            });
+          }
+        } else if (resp.status === 401) {
+          console.warn("User session is invalid or stale (401), signing out locally");
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {}
+          if (requestId === profileRequestIdRef.current) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setProfileError(null);
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("sp_user_profile");
+            }
+          }
+        } else {
+          let errorMsg = `Unable to load workspace profile (HTTP ${resp.status})`;
+          try {
+            const errJson = await resp.json();
+            if (errJson.detail) errorMsg = errJson.detail;
+          } catch {}
+          if (requestId === profileRequestIdRef.current) {
+            setProfileError(errorMsg);
+          }
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (requestId !== profileRequestIdRef.current) return;
       console.error("Error fetching user profile:", err);
+      setProfileError(
+        err?.message || "Network error loading workspace profile. Please check your connection."
+      );
     }
   }, []);
 
@@ -161,11 +255,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           setSession(effSession);
           setUser(effUser);
-          setIsLoading(false);
           if (effSession) {
-            fetchProfile(effSession).catch((err) =>
-              console.warn("Background profile fetch:", err)
-            );
+            try {
+              await fetchProfile(effSession);
+            } catch (err) {
+              console.warn("Background profile fetch:", err);
+            }
+          }
+          if (mounted) {
+            setIsLoading(false);
           }
         }
       } catch (err) {
@@ -181,16 +279,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        setIsLoading(false);
         if (newSession) {
-          fetchProfile(newSession).catch((err) =>
-            console.warn("Background profile fetch:", err)
-          );
+          try {
+            await fetchProfile(newSession);
+          } catch (err) {
+            console.warn("Background profile fetch:", err);
+          }
         } else {
           setProfile(null);
           if (typeof window !== "undefined") {
             sessionStorage.removeItem("sp_user_profile");
           }
+        }
+        if (mounted) {
+          setIsLoading(false);
         }
       }
     );
@@ -203,8 +305,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
       if (error) {
@@ -253,68 +356,168 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: string = "employee"
   ) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      const normalizedEmail = email.trim().toLowerCase();
+      const trimmedName = displayName?.trim() || normalizedEmail.split("@")[0];
+      const callbackOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const redirectTo = callbackOrigin
+        ? `${callbackOrigin}/auth/callback?next=/app/onboarding`
+        : undefined;
+
+      let { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
         password,
         options: {
           data: {
-            full_name: displayName || email.split("@")[0],
+            full_name: trimmedName,
             role: role,
           },
+          emailRedirectTo: redirectTo,
         },
       });
-      if (error) {
-        if (process.env.NODE_ENV === "development" && (email.toLowerCase().includes("vernit") || email.toLowerCase().includes("alex"))) {
-          const demoUser = {
-            id: email.toLowerCase().includes("vernit") ? "fc7a0e59-7b54-46fe-95ff-8e7bc6234954" : "00000000-0000-0000-0000-000000000001",
-            email: email,
-            app_metadata: { provider: "email" },
-            user_metadata: { name: email.split("@")[0] },
-            aud: "authenticated",
-            created_at: new Date().toISOString(),
-          } as unknown as User;
-          const demoSession = {
-            access_token: email.toLowerCase().includes("vernit") ? "sp_demo_vernit" : "sp_demo_user",
-            token_type: "bearer",
-            expires_in: 86400,
-            refresh_token: "sp_demo_refresh",
-            user: demoUser,
-          } as unknown as Session;
-          setSession(demoSession);
-          setUser(demoUser);
-          if (typeof window !== "undefined") {
-            sessionStorage.setItem("sp_session_auth", "true");
-            localStorage.setItem("sp_dev_auth", "true");
+      // Handle hosted Supabase 429 rate limit fallback
+      const isRateLimited = error && (
+        (error as any).status === 429 ||
+        error.message?.toLowerCase().includes("rate limit") ||
+        error.message?.toLowerCase().includes("over_email_send_rate_limit")
+      );
+
+      if (isRateLimited) {
+        console.warn(
+          "Supabase email rate limit reached; provisioning user directly through backend fallback..."
+        );
+        try {
+          const directSignupResp = await fetch(`${API_BASE}/auth/signup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: normalizedEmail,
+              password,
+              full_name: trimmedName,
+              role,
+            }),
+          });
+
+          if (directSignupResp.ok) {
+            // User was provisioned in database with confirmed status
+            // Immediately establish real GoTrue JWT session via password sign-in
+            const signInRes = await supabase.auth.signInWithPassword({
+              email: normalizedEmail,
+              password,
+            });
+            if (signInRes.data?.session) {
+              setSession(signInRes.data.session);
+              setUser(signInRes.data.user);
+              await fetchProfile(signInRes.data.session);
+              return {
+                error: null,
+                needsEmailVerification: false,
+                user: signInRes.data.user,
+              };
+            }
+          } else {
+            const errJson = await directSignupResp.json().catch(() => ({}));
+            if (errJson.detail) {
+              return { error: new Error(errJson.detail), needsEmailVerification: false, user: null };
+            }
           }
-          await fetchProfile(demoSession);
-          return { error: null };
-        }
-        return { error };
-      }
-      let activeSession = data.session;
-      if (!activeSession) {
-        // Since emails are auto-confirmed via trigger, establish active session immediately
-        const signinRes = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signinRes.data?.session) {
-          activeSession = signinRes.data.session;
+        } catch (provErr: any) {
+          console.error("Direct signup provisioning fallback failed:", provErr);
         }
       }
 
-      if (activeSession) {
-        setSession(activeSession);
-        setUser(activeSession.user);
-        await fetchProfile(activeSession);
+      if (error && process.env.NODE_ENV === "development" && (email.toLowerCase().includes("vernit") || email.toLowerCase().includes("alex"))) {
+        const demoUser = {
+          id: email.toLowerCase().includes("vernit") ? "fc7a0e59-7b54-46fe-95ff-8e7bc6234954" : "00000000-0000-0000-0000-000000000001",
+          email: email,
+          app_metadata: { provider: "email" },
+          user_metadata: { name: email.split("@")[0] },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as unknown as User;
+        const demoSession = {
+          access_token: email.toLowerCase().includes("vernit") ? "sp_demo_vernit" : "sp_demo_user",
+          token_type: "bearer",
+          expires_in: 86400,
+          refresh_token: "sp_demo_refresh",
+          user: demoUser,
+        } as unknown as Session;
+        setSession(demoSession);
+        setUser(demoUser);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("sp_session_auth", "true");
+          localStorage.setItem("sp_dev_auth", "true");
+        }
+        await fetchProfile(demoSession);
+        return { error: null, needsEmailVerification: false, user: demoUser };
       }
-      return { error: null, needsEmailVerification: false };
+
+      if (error) {
+        return { error, needsEmailVerification: false, user: null };
+      }
+
+      // Check if user identities array is empty - indicates existing user when enumeration protection is enabled
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          error: new Error("An account with this email address already exists. Please sign in or reset your password."),
+          needsEmailVerification: false,
+          user: data.user,
+        };
+      }
+
+      // Authoritative verification check: session presence and email_confirmed_at
+      const isConfirmed = Boolean(data.user?.email_confirmed_at || (data.user as any)?.confirmed_at);
+      const hasActiveSession = Boolean(data.session);
+
+      if (!isConfirmed && !hasActiveSession) {
+        // Genuine email confirmation required by Supabase Auth
+        return {
+          error: null,
+          needsEmailVerification: true,
+          user: data.user,
+        };
+      }
+
+      // If already confirmed (e.g. email confirmation disabled in current environment)
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.user);
+        await fetchProfile(data.session);
+      }
+
+      return {
+        error: null,
+        needsEmailVerification: !isConfirmed,
+        user: data.user,
+      };
+    } catch (err: any) {
+      return { error: err, needsEmailVerification: false, user: null };
+    }
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const callbackOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const redirectTo = callbackOrigin
+        ? `${callbackOrigin}/auth/callback?next=/app/onboarding`
+        : undefined;
+
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
+
+      return { error };
     } catch (err: any) {
       return { error: err };
     }
   };
 
   const signOut = async () => {
+    profileRequestIdRef.current++;
     try {
       // Use local scope to safely clear local session and avoid 403 Forbidden
       // if the token was invalidated, expired, or deleted on the server.
@@ -325,6 +528,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setProfile(null);
+      setProfileError(null);
       // Clean local storage cache and session storage
       if (typeof window !== "undefined") {
         sessionStorage.clear();
@@ -344,12 +548,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPasswordForEmail = async (email: string) => {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const redirectTo = typeof window !== "undefined"
         ? `${window.location.origin}/auth/reset-password`
         : undefined;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo,
       });
+
+      if (error && (
+        (error as any).status === 429 ||
+        error.message?.toLowerCase().includes("rate limit") ||
+        error.message?.toLowerCase().includes("over_email_send_rate_limit")
+      )) {
+        console.warn("Supabase reset password rate limited; triggering backend reset-password endpoint...");
+        try {
+          const bpResp = await fetch(`${API_BASE}/auth/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail }),
+          });
+          if (bpResp.ok) {
+            return { error: null };
+          }
+        } catch {}
+      }
+
       return { error };
     } catch (err: any) {
       return { error: err };
@@ -368,6 +592,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
+    setProfileError(null);
     await fetchProfile(session);
   };
 
@@ -383,6 +608,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const data = await resp.json();
       setProfile(data);
+      setProfileError(null);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("sp_user_profile", JSON.stringify(data));
       }
@@ -398,10 +624,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         profile,
+        profileError,
         isLoading,
         isAuthenticated: !!user && !!session,
+        isEmailVerified,
         signIn,
         signUp,
+        resendVerificationEmail,
         signOut,
         resetPasswordForEmail,
         updatePassword,

@@ -23,6 +23,7 @@ import {
   BookOpen,
   ArrowRight,
   Filter,
+  FastForward,
 } from "lucide-react";
 import AppTopBar from "@/components/app/AppTopBar";
 import { PracticeExercise } from "@/types/learning";
@@ -102,7 +103,7 @@ export default function PracticeExercisesPage() {
     setEvaluationResult(null);
   };
 
-  const handleRunEvaluation = async () => {
+  const runCodeValidation = async (): Promise<{ passed: boolean; score: number } | null> => {
     setEvaluating(true);
     setEvaluationResult(null);
 
@@ -112,7 +113,7 @@ export default function PracticeExercisesPage() {
         let score = 100;
         if (selectedOption !== activeExercise.correct_index) {
           passed = false;
-          score = 30;
+          score = 0;
         }
 
         const testResults = [
@@ -138,13 +139,37 @@ export default function PracticeExercisesPage() {
           testCases: testResults,
           executionType: "conceptual_choice_validation",
           sandboxedRunnerAvailable: false,
-          summaryMessage: passed ? "Concept validation passed." : "Selected option violates engineering principles.",
+          summaryMessage: passed ? "Concept validation passed." : "Selected option violates engineering principles. Score: 0/100.",
         });
 
-        if (passed && activeExercise) {
-          completePracticeExercise(activeExercise.id, score);
-        }
+        return { passed, score };
       } else {
+        const trimmed = (userCode || "").trim();
+        // Guard against empty code, trivial starter skeletons, or solitary pass statements
+        if (
+          !trimmed ||
+          trimmed === "pass" ||
+          trimmed.replace(/\s+/g, "") === "pass" ||
+          (trimmed.startsWith("#") && !trimmed.includes("\ndef ") && !trimmed.includes("\nclass ") && !trimmed.includes("return"))
+        ) {
+          const emptyResult = {
+            passed: false,
+            score: 0,
+            testCases: [
+              {
+                name: "Test 1: Code Presence & Structure",
+                status: "fail" as const,
+                details: "Submitted code is empty, comment-only, or solitary pass statement.",
+              },
+            ],
+            executionType: "structural_ast_validation",
+            sandboxedRunnerAvailable: false,
+            summaryMessage: "No executable implementation logic detected. Score: 0/100.",
+          };
+          setEvaluationResult(emptyResult);
+          return { passed: false, score: 0 };
+        }
+
         // Run real backend AST structural validation
         try {
           const valRes = await validatePracticeCode({
@@ -162,12 +187,9 @@ export default function PracticeExercisesPage() {
             summaryMessage: valRes.summary_message,
           });
 
-          if (valRes.passed && activeExercise) {
-            completePracticeExercise(activeExercise.id, valRes.score);
-          }
+          return { passed: valRes.passed, score: valRes.score };
         } catch (apiErr: any) {
           // Client-side fallback if backend API is unreachable
-          const trimmed = (userCode || "").trim();
           const openParens = (trimmed.match(/\(/g) || []).length;
           const closeParens = (trimmed.match(/\)/g) || []).length;
           const openBrackets = (trimmed.match(/\[/g) || []).length;
@@ -176,8 +198,14 @@ export default function PracticeExercisesPage() {
           const closeBraces = (trimmed.match(/\}/g) || []).length;
           const isBalanced = openParens === closeParens && openBrackets === closeBrackets && openBraces === closeBraces;
 
-          const passed = trimmed.length > 10 && isBalanced && (trimmed.includes("return") || trimmed.includes("="));
-          const score = passed ? 90 : 35;
+          const hasBody =
+            trimmed.includes("return") ||
+            trimmed.includes("=") ||
+            (trimmed.toLowerCase().includes("select") && trimmed.toLowerCase().includes("from")) ||
+            trimmed.toLowerCase().includes("create index");
+
+          const passed = trimmed.length > 20 && isBalanced && hasBody;
+          const score = passed ? 85 : 0;
           setEvaluationResult({
             passed,
             score,
@@ -188,24 +216,55 @@ export default function PracticeExercisesPage() {
                 details: isBalanced ? "Delimiters balanced." : "Unbalanced parentheses or brackets.",
               },
               {
-                name: "Test 2: AST Structure",
+                name: "Test 2: AST Structure & Statements",
                 status: passed ? "pass" : "fail",
-                details: passed ? "Structural verification passed." : "Incomplete implementation.",
+                details: passed ? "Structural verification passed." : "Incomplete implementation without assignments or returns.",
               },
             ],
             executionType: "structural_ast_validation",
             sandboxedRunnerAvailable: false,
-            summaryMessage: "Client-side structural verification completed (dynamic sandbox unavailable).",
+            summaryMessage: passed
+              ? "Client-side structural verification completed (dynamic sandbox unavailable)."
+              : "Structural verification failed. Score: 0/100.",
           });
 
-          if (passed && activeExercise) {
-            completePracticeExercise(activeExercise.id, score);
-          }
+          return { passed, score };
         }
       }
     } finally {
       setEvaluating(false);
     }
+  };
+
+  const handleRunTests = async () => {
+    await runCodeValidation();
+  };
+
+  const handleSubmitSolution = async () => {
+    const res = await runCodeValidation();
+    if (res && res.passed && activeExercise) {
+      completePracticeExercise(activeExercise.id, res.score);
+    }
+  };
+
+  const handleSkipExercise = () => {
+    if (!activeExercise) return;
+    setEvaluationResult({
+      passed: false,
+      score: 0,
+      testCases: [
+        {
+          name: "Exercise Skipped",
+          status: "fail",
+          details: "Learner chose to skip this exercise. No practice mastery credit awarded.",
+        },
+      ],
+      executionType: "skipped",
+      sandboxedRunnerAvailable: false,
+      summaryMessage: "Exercise skipped by learner. Score recorded as 0/100.",
+    });
+    // Mark as completed locally with 0 score (no mastery awarded)
+    completePracticeExercise(activeExercise.id, 0);
   };
 
   return (
@@ -669,29 +728,58 @@ export default function PracticeExercisesPage() {
             )}
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-ink/10">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-ink/10">
               <button
+                type="button"
                 onClick={() => setActiveExercise(null)}
                 className="pill-btn pill-btn-ghost text-xs"
               >
                 Close Workspace
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
+                  type="button"
+                  onClick={handleSkipExercise}
                   disabled={evaluating}
-                  onClick={handleRunEvaluation}
-                  className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5"
+                  className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 text-amber-800 hover:bg-amber-100/60 border border-amber-300"
+                  title="Skip this exercise. Score will be recorded as 0/100 and no practice mastery credit awarded."
+                >
+                  <FastForward className="w-3.5 h-3.5 text-amber-700" />
+                  Skip Exercise
+                </button>
+
+                <button
+                  type="button"
+                  disabled={evaluating}
+                  onClick={handleRunTests}
+                  className="pill-btn pill-btn-ghost text-xs flex items-center gap-1.5 border border-ink/20 hover:bg-sand/40"
+                  title="Run structural tests and inspect test cases without submitting"
+                >
+                  {evaluating ? (
+                    <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 text-ink fill-current" />
+                  )}
+                  Run Tests
+                </button>
+
+                <button
+                  type="button"
+                  disabled={evaluating}
+                  onClick={handleSubmitSolution}
+                  className="pill-btn pill-btn-primary text-xs flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  title="Validate and submit solution for practice points"
                 >
                   {evaluating ? (
                     <>
-                      <span className="w-3 h-3 border-2 border-ink border-t-transparent rounded-full animate-spin" />
-                      Executing Test Suite...
+                      <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Evaluating...
                     </>
                   ) : (
                     <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      Run Tests & Submit Solution
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Submit Solution
                     </>
                   )}
                 </button>

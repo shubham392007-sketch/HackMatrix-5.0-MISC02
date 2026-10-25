@@ -9,6 +9,13 @@ import {
   RoleMatchResult,
   GapRecord,
   CareerReadinessAssessment,
+  GapExplanation,
+  GapExplanationsResponse,
+  ProviderStatusInfo,
+  JobProviderStatus,
+  NormalizedJob,
+  JobDiscoveryResponse,
+  JobDiscoveryParams,
 } from "@/types/career";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8001";
@@ -82,81 +89,13 @@ async function fetchWithDedupe(input: RequestInfo | URL, init?: RequestInit): Pr
 // TYPES
 // ==============================================================================
 
-export interface ProviderStatusInfo {
-  provider: string;
-  is_configured: boolean;
-  required_env_vars?: string[];
-  host?: string;
-  status_message?: string;
-}
-
-export interface JobProviderStatus {
-  any_configured: boolean;
-  primary_provider: string;
-  fallback_provider: string;
-  max_results_per_search: number;
-  cache_ttl_minutes: number;
-  fallback_enabled: boolean;
-  providers: ProviderStatusInfo[];
-}
-
-export interface NormalizedJob {
-  id: string;
-  provider: string;
-  provider_job_id: string;
-  title: string;
-  company_name: string;
-  company_domain?: string | null;
-  location_text?: string | null;
-  remote_status?: string | null;
-  employment_type?: string | null;
-  seniority?: string | null;
-  salary_min?: number | null;
-  salary_max?: number | null;
-  salary_currency?: string | null;
-  salary_period?: string | null;
-  description?: string;
-  job_url: string;
-  posted_at?: string | null;
-  retrieved_at?: string;
-  is_stale?: boolean;
-  extracted_competencies?: any[];
-  match_summary?: {
-    score: number;
-    aligned_skills: string[];
-    gaps_count: number;
-  };
-}
-
-export interface JobDiscoveryResponse {
-  status: "success" | "no_results" | "not_configured" | "provider_error" | "rate_limited" | string;
-  notice?: string;
-  message?: string;
-  mode: string;
-  query?: string;
-  query_used?: string;
-  location?: string;
-  remote_only?: boolean;
-  provider_used?: string;
-  provider_selected?: string;
-  from_cache?: boolean;
-  cached?: boolean;
-  cache_age_seconds?: number;
-  total_results?: number;
-  total_returned?: number;
-  retrieved_at?: string;
-  jobs: NormalizedJob[];
-  influencing_skills?: any[];
-}
-
-export interface JobDiscoveryParams {
-  mode: "mode_a_skills" | "mode_b_role";
-  query?: string;
-  location?: string;
-  country_code?: string;
-  remote_only?: boolean;
-  limit?: number;
-}
+export type {
+  ProviderStatusInfo,
+  JobProviderStatus,
+  NormalizedJob,
+  JobDiscoveryResponse,
+  JobDiscoveryParams,
+};
 
 // ==============================================================================
 // CAREER API METHODS
@@ -278,10 +217,12 @@ export async function getRoleDemandModel(roleId: string): Promise<RoleDemandMode
  * 7. Get user's active target role
  */
 export async function getUserTargetRole(): Promise<{
-  user_id: string;
-  target_role_id: string;
-  target_role_version: string;
-  role_title: string;
+  has_target?: boolean;
+  user_id?: string;
+  target_role_id: string | null;
+  target_role_version: string | null;
+  role_title: string | null;
+  selected_at?: string;
   updated_at?: string;
 }> {
   const authHeaders = await getAuthHeaders();
@@ -350,6 +291,26 @@ export async function getSkillGaps(roleId: string): Promise<{
   });
   if (!res.ok) {
     throw new Error(`Failed to get skill gaps: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * 10b. Get Evidence-Grounded Gap Explanations via Ollama
+ */
+export async function getGapExplanations(
+  roleId: string,
+  forceRefresh: boolean = false
+): Promise<GapExplanationsResponse> {
+  const authHeaders = await getAuthHeaders();
+  const url = `${API_BASE}/career/gaps/${encodeURIComponent(roleId)}/explanations${
+    forceRefresh ? "?force_refresh=true" : ""
+  }`;
+  const res = await _nativeFetch(url, {
+    headers: { ...authHeaders },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to get gap explanations: ${res.status}`);
   }
   return res.json();
 }
@@ -465,6 +426,32 @@ export async function parseJobDescription(payload: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `Failed to parse job description: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * 14b. Parse Job Description from URL (SSRF-safe)
+ */
+export async function parseJobDescriptionFromUrl(payload: {
+  url: string;
+  job_title?: string;
+  company_name?: string;
+  seniority?: string;
+  context?: string;
+}): Promise<any> {
+  const authHeaders = await getAuthHeaders();
+  const res = await _nativeFetch(`${API_BASE}/career/parse-jd/url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to parse job description from URL: ${res.status}`);
   }
   return res.json();
 }

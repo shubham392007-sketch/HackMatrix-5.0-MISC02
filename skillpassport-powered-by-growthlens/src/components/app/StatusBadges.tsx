@@ -21,21 +21,34 @@ export function SourceStatusBadge({ status }: { status: ConnectionStatus }) {
     case "connected":
     case "demo_connected":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#000000] border border-[#1A1918] text-[#FAF8F5] shadow-[1px_1px_0_0_#1A1918]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
           {status === "connected" ? "CONNECTED" : "DEMO CONNECTED"}
         </span>
       );
     case "syncing":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#F6BB84] border border-[#1C1C1C]">
-          <Activity className="w-3 h-3 animate-spin text-[#1C1C1C]" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#E0A96D] text-[#1A1918] border border-[#1A1918] shadow-[1px_1px_0_0_#1A1918]">
+          <Activity className="w-3 h-3 animate-spin text-[#1A1918]" />
           SYNCING ···
+        </span>
+      );
+    case "profile_linked":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918] text-[#1A1918] shadow-[1px_1px_0_0_#1A1918]" title="Profile URL registered. Account ownership not cryptographically verified.">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+          PROFILE LINKED · UNVERIFIED
+        </span>
+      );
+    case "disconnected":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918]/30 text-[#1A1918]/50">
+          DISCONNECTED
         </span>
       );
     case "needs_attention":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#F6C8D6] border border-[#1C1C1C]">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#C85A54]/15 border border-[#C85A54] text-[#C85A54]">
           <AlertTriangle className="w-3 h-3 text-[#C85A54]" />
           ATTENTION
         </span>
@@ -43,7 +56,7 @@ export function SourceStatusBadge({ status }: { status: ConnectionStatus }) {
     case "not_connected":
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/70 border border-[#1C1C1C]/50 text-[#1C1C1C]/60">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918]/30 text-[#1A1918]/70">
           NOT CONNECTED
         </span>
       );
@@ -54,42 +67,42 @@ export function ProcessingStatusBadge({ status }: { status: ProcessingStatus }) 
   switch (status) {
     case "indexed":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#DFE968] border border-[#1C1C1C]">
-          <CheckCircle2 className="w-3 h-3 text-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#000000] text-[#FAF8F5] border border-[#1A1918] shadow-[1px_1px_0_0_#1A1918]">
+          <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
           INDEXED
         </span>
       );
     case "ready_for_review":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#F6BB84] border border-[#1C1C1C]">
-          <Clock className="w-3 h-3 text-[#1C1C1C]" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#E0A96D] text-[#1A1918] border border-[#1A1918] shadow-[1px_1px_0_0_#1A1918]">
+          <Clock className="w-3 h-3 text-[#1A1918]" />
           READY FOR REVIEW
         </span>
       );
     case "extracted":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#FBF6DF] border border-[#1C1C1C]">
-          <Layers className="w-3 h-3 text-[#1C1C1C]" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#FAF8F5] text-[#1A1918] border border-[#1A1918]">
+          <Layers className="w-3 h-3 text-[#1A1918]" />
           EXTRACTED
         </span>
       );
     case "insufficient_content":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#F6C8D6] border border-[#1C1C1C] text-[#C85A54]">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#C85A54]/15 border border-[#C85A54] text-[#C85A54]">
           <AlertTriangle className="w-3 h-3 text-[#C85A54]" />
           INSUFFICIENT CONTENT
         </span>
       );
     case "failed":
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#F6C8D6] border border-[#1C1C1C] text-[#C85A54]">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-[#C85A54]/15 border border-[#C85A54] text-[#C85A54]">
           <XCircle className="w-3 h-3 text-[#C85A54]" />
           FAILED
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase bg-white border border-[#1C1C1C]/40 text-[#1C1C1C]/70">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold uppercase bg-[#FAF8F5] border border-[#1A1918]/30 text-[#1A1918]/70">
           {status}
         </span>
       );
@@ -100,21 +113,21 @@ export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   switch (status) {
     case "verified":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#DFE968] border border-[#1C1C1C]">
-          <ShieldCheck className="w-3 h-3 text-[#4A7A4E]" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#000000] border border-[#1A1918] text-[#FAF8F5] shadow-[1px_1px_0_0_#1A1918]">
+          <ShieldCheck className="w-3 h-3 text-[#FAF8F5]" />
           VERIFIED
         </span>
       );
     case "needs_confirmation":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#F6BB84] border border-[#1C1C1C]">
-          <AlertTriangle className="w-3 h-3 text-[#1C1C1C]" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#E0A96D] text-[#1A1918] border border-[#1A1918] shadow-[1px_1px_0_0_#1A1918]">
+          <AlertTriangle className="w-3 h-3 text-[#1A1918]" />
           CONFIRM CONTRIBUTION
         </span>
       );
     case "insufficient_evidence":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#F6C8D6] border border-[#1C1C1C] text-[#C85A54]">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#C85A54]/15 border border-[#C85A54] text-[#C85A54]">
           <HelpCircle className="w-3 h-3 text-[#C85A54]" />
           INSUFFICIENT EVIDENCE
         </span>
@@ -123,7 +136,7 @@ export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
     case "unreviewed":
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/90 border border-[#1C1C1C]/50 text-[#1C1C1C]/70">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FAF8F5] border border-[#1A1918]/30 text-[#1A1918]/70">
           UNREVIEWED
         </span>
       );
@@ -133,16 +146,16 @@ export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
 export function EvidenceStrengthBadge({ strength }: { strength: EvidenceStrength }) {
   const color =
     strength === "high"
-      ? "bg-[#DFE968] text-[#1C1C1C]"
+      ? "bg-[#000000] text-[#FAF8F5] border-[#1A1918]"
       : strength === "medium"
-      ? "bg-[#F6BB84] text-[#1C1C1C]"
+      ? "bg-[#E0A96D] text-[#1A1918] border-[#1A1918]"
       : strength === "insufficient"
-      ? "bg-[#F6C8D6] text-[#C85A54]"
-      : "bg-[#FBF6DF] text-[#1C1C1C]/70";
+      ? "bg-[#EAE5D9] text-[#C85A54] border-[#1A1918]"
+      : "bg-[#FAF8F5] text-[#1A1918]/80 border-[#1A1918]/40";
 
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded border border-[#1C1C1C] text-[9px] font-black uppercase tracking-wider ${color}`}
+      className={`inline-block px-2 py-0.5 rounded border text-[9px] font-black uppercase tracking-wider ${color}`}
     >
       STRENGTH: {strength.toUpperCase()}
     </span>

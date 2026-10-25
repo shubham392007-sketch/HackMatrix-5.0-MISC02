@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: skillpassport-api
+    runtime: python
+    rootDir: skillpassport-powered-by-growthlens
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port 10000
+    healthCheckPath: /api/v1/health/live
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://igsiwwztcxliwbuylshn.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CONNECTOR_CREDENTIAL_ENCRYPTION_KEY
+        sync: false

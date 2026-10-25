@@ -207,6 +207,20 @@ class Domain1ExtractionEngine:
                 "status": "candidate",
             })
 
+        # Ensure differentiation if all skills have identical score
+        if len(candidate_skills_output) > 1:
+            all_scores = [c["confidence"] for c in candidate_skills_output]
+            if len(set(all_scores)) == 1:
+                logger.info(f"Differentiating uniform skill scores ({all_scores[0]}) across candidate competencies based on evidence depth.")
+                for c in candidate_skills_output:
+                    c["confidence"] = compute_dynamic_confidence_score(
+                        raw_val=None,
+                        text_content=content_text,
+                        justification=c.get("supportingExcerpt", ""),
+                        demonstration_level=c.get("proficiencyLevel", "Intermediate"),
+                        skill_name=c["name"],
+                    )
+
         # 4. Vector index in ChromaDB
         try:
             chroma_store.index_evidence_item(
