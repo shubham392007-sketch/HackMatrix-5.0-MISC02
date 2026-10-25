@@ -21,6 +21,7 @@ from backend.app.models.user_profile import UserProfile
 from backend.app.models.taxonomy import CompetencyTaxonomy, EvidenceCompetencyMapping
 from backend.app.models.evidence import EvidenceItem
 from backend.app.models.ai_governance import VerificationDecision
+from backend.app.api.sharing import resolve_evidence_urls
 from backend.app.api.recruiter_dependencies import (
     get_current_recruiter_context,
     RecruiterContext,
@@ -28,6 +29,25 @@ from backend.app.api.recruiter_dependencies import (
 
 logger = get_logger("api.recruiter_candidates")
 router = APIRouter(prefix="/recruiter", tags=["Recruiter Portal - Candidates & Inbox"])
+
+def _is_valid_uuid(val: Any) -> bool:
+    try:
+        uuid.UUID(str(val))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+PROFICIENCY_RANKS = {
+    "Not Established": 0,
+    "Foundational": 1,
+    "Foundation": 1,
+    "Working": 2,
+    "Intermediate": 3,
+    "Practitioner": 3,
+    "Advanced": 4,
+    "Expert": 5,
+}
+
 
 
 # ==============================================================================
@@ -296,17 +316,20 @@ def get_candidate_passport_detail(
         "is_anonymous": not show_name,
     }
 
-    # Retrieve Verified Skills
-    skills_query = (
-        db.query(EvidenceCompetencyMapping, CompetencyTaxonomy)
+    # Retrieve Candidate Skills joined with Evidence
+    mappings_query = (
+        db.query(EvidenceCompetencyMapping, CompetencyTaxonomy, EvidenceItem)
         .join(CompetencyTaxonomy, EvidenceCompetencyMapping.competency_id == CompetencyTaxonomy.id)
+        .join(EvidenceItem, EvidenceCompetencyMapping.evidence_id == EvidenceItem.id)
         .filter(
             EvidenceCompetencyMapping.owner_user_id == inv.candidate_user_id,
+            EvidenceItem.is_deleted == False,
             EvidenceCompetencyMapping.status.in_(["verified", "reviewed", "candidate"]),
         )
+        .all()
     )
 
-    # Disallow rejected
+    # Disallow rejected competencies
     decisions = (
         db.query(VerificationDecision)
         .filter(
@@ -317,48 +340,104 @@ def get_candidate_passport_detail(
     )
     rejected_ids = {d.competency_id for d in decisions if d.competency_id}
 
-    verified_skills = []
-    seen_comp = set()
-    for m, comp in skills_query.all():
-        if comp.id in rejected_ids or comp.id in seen_comp:
+    # Skill filter from permissions
+    selected_skill_ids = perms.get("selected_skill_ids") or perms.get("selectedSkillIds") or []
+    active_selected_ids = set()
+    active_selected_names = set()
+    for sid in selected_skill_ids:
+        if not sid:
             continue
-        seen_comp.add(comp.id)
+        sid_str = str(sid).strip()
+        if _is_valid_uuid(sid_str):
+            active_selected_ids.add(sid_str)
+        else:
+            active_selected_names.add(sid_str.lower().replace("skill-", "").replace("-", " ").strip())
+    filter_by_selected = bool(selected_skill_ids)
 
-        # Build evidence items according to evidence permission level
+    # Valid evidence permissions
+    valid_ev_perms = {k: v for k, v in (evidence_perms.items() if isinstance(evidence_perms, dict) else []) if _is_valid_uuid(str(k))}
+
+    # Group evidence items strictly under their respective competencies
+    skills_map: Dict[str, Dict[str, Any]] = {}
+    for m, comp, ev in mappings_query:
+        if comp.id in rejected_ids:
+            continue
+        comp_id_str = str(comp.id)
+        cname_lower = comp.canonical_name.lower()
+        if filter_by_selected:
+            matches_filter = (
+                comp_id_str in active_selected_ids
+                or any(name in cname_lower for name in active_selected_names)
+            )
+            if not matches_filter:
+                continue
+
+        if comp_id_str not in skills_map:
+            skills_map[comp_id_str] = {
+                "competency": comp,
+                "mappings": [],
+                "evidence_dict": {},
+            }
+        skills_map[comp_id_str]["mappings"].append(m)
+
+        ev_id_str = str(ev.id)
+        ev_perm = valid_ev_perms.get(ev_id_str)
+        share_summary = ev_perm.get("shareSummary", True) if ev_perm else True
+        if share_summary:
+            if ev_id_str not in skills_map[comp_id_str]["evidence_dict"]:
+                skills_map[comp_id_str]["evidence_dict"][ev_id_str] = (ev, ev_perm)
+
+    verified_skills = []
+    for comp_id_str, sdata in skills_map.items():
+        comp = sdata["competency"]
+        cmap_list = sdata["mappings"]
+        ev_dict = sdata["evidence_dict"]
+
+        raw_levels = [m.proficiency_level for m in cmap_list if m.proficiency_level]
+        sorted_levels = sorted(raw_levels, key=lambda l: PROFICIENCY_RANKS.get(l, 2), reverse=True) if raw_levels else []
+        level = sorted_levels[0] if sorted_levels else "Practitioner"
+        max_score = max([m.relevance_score or 0.85 for m in cmap_list], default=0.85)
+        status_val = "verified" if any(m.status == "verified" for m in cmap_list) else cmap_list[0].status
+
         ev_items_projected = []
         if evidence_permission_level != "none":
-            ev_records = (
-                db.query(EvidenceItem)
-                .filter(EvidenceItem.owner_user_id == inv.candidate_user_id)
-                .limit(5)
-                .all()
-            )
-            for ev in ev_records:
-                if evidence_permission_level == "details":
-                    ev_items_projected.append({
-                        "id": str(ev.id),
-                        "title": ev.title,
-                        "source_type": ev.source_type,
-                        "content_summary": (getattr(ev, 'extracted_excerpt', None) or getattr(ev, 'description', ''))[:300],
-                        "verification_status": ev.verification_status,
-                        "created_at": ev.created_at.isoformat(),
-                    })
-                else:  # summary
-                    ev_items_projected.append({
-                        "id": str(ev.id),
-                        "title": ev.title,
-                        "source_type": ev.source_type,
-                        "verification_status": ev.verification_status,
-                        "created_at": ev.created_at.isoformat(),
-                    })
+            for ev, ev_perm in ev_dict.values():
+                urls = resolve_evidence_urls(ev, share_token=share_link.token)
+                proj_name = ev.project_name
+                if not proj_name and ev.provenance and isinstance(ev.provenance, dict):
+                    proj_name = ev.provenance.get("repo_full_name") or ev.provenance.get("issue_key")
+                if not proj_name:
+                    proj_name = "Workplace Project"
+
+                allow_detail = (ev_perm.get("allowDetail", True) if ev_perm else (evidence_permission_level in ("details", "detail_inspection", "full_inspection")))
+
+                item = {
+                    "id": str(ev.id),
+                    "title": ev.title,
+                    "source_type": ev.source_type,
+                    "source_provider": ev.source_provider,
+                    "project": proj_name,
+                    "verification_status": ev.verification_status,
+                    "created_at": (ev.observed_timestamp or ev.created_at).isoformat() if (ev.observed_timestamp or ev.created_at) else now.isoformat(),
+                    "source_url": urls.get("source_url") or getattr(ev, "source_url", None),
+                    "external_url": urls.get("external_url") or getattr(ev, "external_url", None),
+                    "document_url": urls.get("document_url"),
+                    "file_url": urls.get("file_url"),
+                    "allow_detail": allow_detail,
+                }
+                if allow_detail:
+                    item["content_summary"] = (ev.extracted_excerpt or ev.extracted_summary or ev.description or "")[:500]
+                else:
+                    item["content_summary"] = (ev.extracted_summary or ev.description or "")[:200]
+                ev_items_projected.append(item)
 
         verified_skills.append({
-            "competency_id": str(comp.id),
+            "competency_id": comp_id_str,
             "canonical_name": comp.canonical_name,
             "category": comp.category,
-            "level": (getattr(m, 'proficiency_level', None) or getattr(m, 'demonstrated_level', None) or "Practitioner"),
-            "score": m.relevance_score or 0.85,
-            "status": m.status,
+            "level": level,
+            "score": max_score,
+            "status": status_val,
             "evidence_count": len(ev_items_projected),
             "evidence": ev_items_projected,
         })

@@ -444,17 +444,48 @@ def build_canonical_projection(
             "isAnonymous": False,
         }
     # 3. Verified Skills Projection (Batched, resilient, and high-performance)
-    mappings = db.query(EvidenceCompetencyMapping).filter(
+    all_mappings = db.query(EvidenceCompetencyMapping).filter(
         EvidenceCompetencyMapping.owner_user_id == owner_user_id,
-        EvidenceCompetencyMapping.status.in_(["reviewed", "verified"]),
+        EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
     ).all()
-    # Fallback to high-confidence candidate extractions if verified count is 0
-    if not mappings:
-        mappings = db.query(EvidenceCompetencyMapping).filter(
-            EvidenceCompetencyMapping.owner_user_id == owner_user_id,
-            EvidenceCompetencyMapping.status.in_(["candidate", "reviewed", "verified"]),
-            (EvidenceCompetencyMapping.relevance_score == None) | (EvidenceCompetencyMapping.relevance_score >= 0.65),
-        ).all()
+
+    # Disallow rejected competencies or candidate mappings
+    decisions = (
+        db.query(VerificationDecision)
+        .filter(
+            VerificationDecision.owner_user_id == owner_user_id,
+            VerificationDecision.verification_state == "rejected",
+        )
+        .all()
+    )
+    rejected_comp_ids = {d.competency_id for d in decisions if d.competency_id}
+    rejected_mapping_ids = {d.candidate_mapping_id for d in decisions if d.candidate_mapping_id}
+
+    valid_mappings = [
+        m for m in all_mappings
+        if m.competency_id not in rejected_comp_ids and m.id not in rejected_mapping_ids
+    ]
+
+    share_verified_only = permissions.get("share_verified_skills_only")
+    if share_verified_only is None:
+        share_verified_only = permissions.get("shareVerifiedSkillsOnly", True)
+
+    # Competencies with at least one verified mapping or decision
+    comp_has_verified = set()
+    for m in valid_mappings:
+        if m.status in ("reviewed", "verified"):
+            comp_has_verified.add(m.competency_id)
+
+    # If share_verified_only is requested and some competencies have verified mappings,
+    # include all supporting evidence mappings for those verified competencies.
+    # Otherwise (e.g. all unverified or share_verified_only is false), include all mappings with relevance >= 0.65
+    if share_verified_only and comp_has_verified:
+        mappings = [m for m in valid_mappings if m.competency_id in comp_has_verified]
+    else:
+        mappings = [
+            m for m in valid_mappings
+            if m.status in ("reviewed", "verified") or (m.relevance_score is None or m.relevance_score >= 0.65)
+        ]
     # Pre-fetch taxonomy in a single batch to avoid N+1 queries
     comp_ids = list({m.competency_id for m in mappings if m.competency_id})
     tax_records = db.query(CompetencyTaxonomy).filter(CompetencyTaxonomy.id.in_(comp_ids)).all() if comp_ids else []
@@ -500,6 +531,7 @@ def build_canonical_projection(
             )
             if not matches_selected:
                 continue
+        prof_ranks = {"Not Established": 0, "Foundational": 1, "Foundation": 1, "Working": 2, "Intermediate": 3, "Practitioner": 3, "Advanced": 4, "Expert": 5}
         if tax_id_str not in skills_by_comp:
             skills_by_comp[tax_id_str] = {
                 "id": tax_id_str,
@@ -509,6 +541,11 @@ def build_canonical_projection(
                 "description": tax.description,
                 "authorizedEvidenceIds": [],
             }
+        else:
+            cur_p = skills_by_comp[tax_id_str].get("verifiedProficiency")
+            new_p = m.proficiency_level or "Practitioner"
+            if prof_ranks.get(new_p, 0) > prof_ranks.get(cur_p, 0):
+                skills_by_comp[tax_id_str]["verifiedProficiency"] = new_p
         ev_id_str = str(m.evidence_id)
         ev_perm = valid_ev_perms.get(ev_id_str)
         # Summary sharing: default to True for all evidence supporting disclosed skills

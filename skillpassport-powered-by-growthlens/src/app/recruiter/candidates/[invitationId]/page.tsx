@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { sharingApi } from "@/lib/sharingApi";
 import TemplateDispatcher from "@/components/passport/templates/TemplateDispatcher";
+import PublicEvidenceModal from "@/components/passport/PublicEvidenceModal";
 import { ShareProjection, PassportTemplateId } from "@/types/sharing";
 import { Printer, Eye } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +49,7 @@ export default function CandidatePassportReviewPage() {
   // Editorial Template Selection
   const [projection, setProjection] = useState<ShareProjection | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<PassportTemplateId>("verified-competency");
+  const [inspectingEvidenceId, setInspectingEvidenceId] = useState<string | null>(null);
 
   // Pipeline Status
   const [pipelineStatus, setPipelineStatus] = useState("new");
@@ -105,9 +107,9 @@ export default function CandidatePassportReviewPage() {
   }, [invitationId]);
 
   const effectiveProjection: ShareProjection | null = useMemo(() => {
-    if (projection) return projection;
-    if (!data?.passport) return null;
-    return {
+    if (!data?.passport && !projection) return null;
+
+    const baseProj = projection || {
       shareId: data.invitation?.share_token || invitationId,
       status: "active",
       createdAt: data.invitation?.created_at || new Date().toISOString(),
@@ -122,35 +124,86 @@ export default function CandidatePassportReviewPage() {
         contactEmail: data.passport.identity?.contact_email || "",
         contactLinkedIn: "",
       },
-      verifiedSkills: (data.passport.verified_skills || []).map((sk: any) => ({
-        id: sk.competency_id || sk.id,
-        canonicalName: sk.canonical_name || sk.name,
-        category: sk.category || "Core Competency",
-        verifiedProficiency: sk.level || "Practitioner",
-        description: sk.description || "",
-        evidenceCount: sk.evidence_count || (sk.evidence?.length) || 1,
-        authorizedEvidenceIds: (sk.evidence || []).map((e: any) => e.id),
-      })),
+      verifiedSkills: [],
       customSkills: [],
-      authorizedEvidence: (data.passport.verified_skills || []).flatMap((sk: any) =>
-        (sk.evidence || []).map((ev: any) => ({
-          id: ev.id,
-          title: ev.title,
-          sourceType: ev.source_type || "Artifact",
-          sourceProvider: ev.source_provider || "Workplace Proof",
-          project: ev.project || "Production",
-          date: ev.created_at,
-          shortSummary: ev.content_summary || ev.title,
-          relatedSkillName: sk.canonical_name,
-          allowDetailInspection: data.passport.evidence_permission_level === "details",
-        }))
-      ),
+      authorizedEvidence: [],
       allowRecruiterMessaging: true,
       verificationGuaranteeNote: "Cryptographically verifiable against workplace artifact SHA-256 proofs.",
       workExperience: data.passport.work_experiences || [],
       education: data.passport.education_entries || [],
       projects: data.passport.portfolio_projects || [],
       certifications: data.passport.certifications || [],
+    };
+
+    // 1. Build unified evidence map across both sources (deduplicating by ev.id)
+    const evidenceMap = new Map<string, any>();
+    (baseProj.authorizedEvidence || []).forEach((ev: any) => {
+      if (ev?.id) evidenceMap.set(ev.id, ev);
+    });
+
+    for (const sk of data?.passport?.verified_skills || []) {
+      for (const ev of sk.evidence || []) {
+        if (!ev?.id) continue;
+        if (!evidenceMap.has(ev.id)) {
+          evidenceMap.set(ev.id, {
+            id: ev.id,
+            title: ev.title,
+            sourceType: ev.source_type || "Artifact",
+            sourceProvider: ev.source_provider || "Workplace Proof",
+            project: ev.project || "Production",
+            date: ev.created_at,
+            shortSummary: ev.content_summary || ev.title,
+            relatedSkillName: sk.canonical_name,
+            allowDetailInspection: data.passport.evidence_permission_level === "details",
+            sourceUrl: ev.source_url,
+            externalUrl: ev.external_url,
+            documentUrl: ev.document_url,
+            fileUrl: ev.file_url,
+          });
+        }
+      }
+    }
+
+    // 2. Map skills and ensure authorizedEvidenceIds contains ALL evidence items for each skill
+    const passportSkillsMap = new Map<string, any>();
+    (data?.passport?.verified_skills || []).forEach((sk: any) => {
+      const key = (sk.canonical_name || sk.name || "").toLowerCase().trim();
+      const ids = (sk.evidence || []).map((e: any) => e.id);
+      passportSkillsMap.set(key, { ...sk, evidenceIds: ids });
+    });
+
+    let unifiedSkills: any[] = [];
+    if (baseProj.verifiedSkills && baseProj.verifiedSkills.length > 0) {
+      unifiedSkills = baseProj.verifiedSkills.map((skill: any) => {
+        const key = (skill.canonicalName || "").toLowerCase().trim();
+        const pSkill = passportSkillsMap.get(key);
+        const extraIds = pSkill?.evidenceIds || [];
+        const combinedIds = Array.from(new Set([...(skill.authorizedEvidenceIds || []), ...extraIds]));
+        return {
+          ...skill,
+          authorizedEvidenceIds: combinedIds,
+          evidenceCount: combinedIds.length,
+        };
+      });
+    } else {
+      unifiedSkills = (data?.passport?.verified_skills || []).map((sk: any) => {
+        const ids = (sk.evidence || []).map((e: any) => e.id);
+        return {
+          id: sk.competency_id || sk.id,
+          canonicalName: sk.canonical_name || sk.name,
+          category: sk.category || "Core Competency",
+          verifiedProficiency: sk.level || "Practitioner",
+          description: sk.description || "",
+          evidenceCount: ids.length,
+          authorizedEvidenceIds: ids,
+        };
+      });
+    }
+
+    return {
+      ...baseProj,
+      verifiedSkills: unifiedSkills,
+      authorizedEvidence: Array.from(evidenceMap.values()),
     };
   }, [projection, data, invitationId]);
 
@@ -467,15 +520,44 @@ export default function CandidatePassportReviewPage() {
                             key={ev.id}
                             className="p-3.5 rounded-xl bg-[#FAF8F5] border border-stone-200 text-xs space-y-1.5"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-[#1C1C1C]">{ev.title}</span>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 capitalize">
-                                Source: {ev.source_type}
-                              </span>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-[#1C1C1C] text-sm">{ev.title}</span>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 capitalize font-bold">
+                                  {ev.source_provider || ev.source_type}
+                                </span>
+                                {ev.project && (
+                                  <span className="text-[10px] font-mono text-stone-500">
+                                    Project: <strong className="text-stone-800">{ev.project}</strong>
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setInspectingEvidenceId(ev.id)}
+                                  className="px-2.5 py-1 rounded-full bg-[#1C1C1C] hover:bg-[#1C1C1C]/90 text-[#FBF6DF] text-[10px] font-bold uppercase inline-flex items-center gap-1 shadow-[1px_1px_0_0_#DFE968] cursor-pointer"
+                                >
+                                  <Eye className="w-3 h-3 text-[#DFE968]" />
+                                  <span>Inspect Artifact</span>
+                                </button>
+                                {(ev.external_url || ev.source_url) && (
+                                  <a
+                                    href={ev.external_url || ev.source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-2.5 py-1 rounded-full bg-white hover:bg-stone-100 border border-stone-300 text-[10px] font-bold uppercase inline-flex items-center gap-1 text-stone-800"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    <span>Source</span>
+                                  </a>
+                                )}
+                              </div>
                             </div>
 
                             {ev.content_summary ? (
-                              <p className="text-stone-700 leading-relaxed font-sans">
+                              <p className="text-stone-700 leading-relaxed font-sans text-xs">
                                 {ev.content_summary}
                               </p>
                             ) : (
@@ -484,10 +566,12 @@ export default function CandidatePassportReviewPage() {
                               </p>
                             )}
 
-                            <div className="flex items-center gap-2 text-[10px] text-stone-400 font-mono pt-1">
-                              <span>Status: {ev.verification_status || "verified"}</span>
+                            <div className="flex items-center gap-2 text-[10px] text-stone-400 font-mono pt-1 border-t border-stone-200/60">
+                              <span>Status: <strong className="text-emerald-700 uppercase">{ev.verification_status || "verified"}</strong></span>
                               <span>&bull;</span>
                               <span>Recorded: {new Date(ev.created_at).toLocaleDateString()}</span>
+                              <span>&bull;</span>
+                              <span className="truncate max-w-[200px]">ID: {ev.id}</span>
                             </div>
                           </div>
                         ))}
@@ -735,6 +819,14 @@ export default function CandidatePassportReviewPage() {
             </div>
           </div>
         )}
+      {/* Public Evidence Artifact Inspector Modal for Recruiter */}
+      {inspectingEvidenceId && (
+        <PublicEvidenceModal
+          token={data.invitation?.share_token || effectiveProjection?.shareId || ""}
+          evidenceId={inspectingEvidenceId}
+          onClose={() => setInspectingEvidenceId(null)}
+        />
+      )}
     </div>
   );
 }
