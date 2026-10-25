@@ -10,6 +10,8 @@ class Settings(BaseSettings):
         env_file=(
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", ".env"),
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".env"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))), ".env"),
         ),
         env_file_encoding="utf-8",
         extra="ignore",
@@ -148,6 +150,10 @@ class Settings(BaseSettings):
 
     # Career Intelligence & Job Discovery Providers (Cost-Aware Orchestration)
     theirstack_api_key: str = Field(default="", description="TheirStack API Key")
+    theirstack_api_key_2: str = Field(default="", description="TheirStack API Key 2")
+    theirstack_api_key_3: str = Field(default="", description="TheirStack API Key 3")
+    theirstack_api_key_4: str = Field(default="", description="TheirStack API Key 4")
+    theirstack_api_key_5: str = Field(default="", description="TheirStack API Key 5")
     theirstack_api_keys: str = Field(default="", description="Comma or newline separated list of TheirStack API keys for failover")
     jsearch_api_key: str = Field(default="", description="RapidAPI JSearch API Key")
     jsearch_api_host: str = Field(default="jsearch.p.rapidapi.com", description="RapidAPI JSearch Host")
@@ -166,7 +172,18 @@ class Settings(BaseSettings):
     @property
     def theirstack_keys(self) -> List[str]:
         keys: List[str] = []
-        source_strings = [self.theirstack_api_keys, self.theirstack_api_key]
+        source_strings = [
+            self.theirstack_api_keys,
+            self.theirstack_api_key,
+            self.theirstack_api_key_2,
+            self.theirstack_api_key_3,
+            self.theirstack_api_key_4,
+            self.theirstack_api_key_5,
+        ]
+        for i in range(1, 11):
+            env_val = os.environ.get(f"THEIRSTACK_API_KEY_{i}", "")
+            if env_val:
+                source_strings.append(env_val)
         for src in source_strings:
             if not src:
                 continue

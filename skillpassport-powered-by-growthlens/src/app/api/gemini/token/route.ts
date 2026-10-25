@@ -17,11 +17,7 @@ function getServerGeminiKeyPool(): string[] {
 
   const singleVars = [
     process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY_1,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4,
-    process.env.GEMINI_API_KEY_5,
+    ...Array.from({ length: 20 }, (_, i) => process.env[`GEMINI_API_KEY_${i + 1}`]),
     process.env.GOOGLE_API_KEY,
     process.env.NEXT_PUBLIC_GEMINI_API_KEY,
   ];

@@ -16,7 +16,9 @@ import { useAuth } from "@/context/AuthContext";
 import {
   APPLICATION_ROUTES_CATALOG,
   LiveWorkspaceSnapshot,
+  VOICE_GUARDRAIL_REFUSAL_MESSAGE,
   buildVoiceAssistantSystemInstruction,
+  evaluateProjectScopeGuardrail,
   searchProjectKnowledge,
 } from "@/lib/geminiVoiceContext";
 import {
@@ -61,7 +63,7 @@ export type GeminiLiveModelId = "gemini-3.8-live" | "gemini-3.8-live-extended-th
 
 export interface TranscriptTurn {
   id: string;
-  role: "user" | "model" | "tool" | "system";
+  role: "user" | "model" | "tool" | "system" | "guardrail";
   text: string;
   timestamp: string;
   toolName?: string;
@@ -296,6 +298,7 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
   const [inputVolume, setInputVolume] = useState(0);
   const [outputVolume, setOutputVolume] = useState(0);
   const [transcripts, setTranscripts] = useState<TranscriptTurn[]>([]);
+  const [guardrailBlocksCount, setGuardrailBlocksCount] = useState<number>(0);
 
   // Refs for real-time callbacks to always read fresh project state without reconnecting WebSocket
   const snapshotRef = useRef<LiveWorkspaceSnapshot | null>(null);
@@ -304,6 +307,8 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
   const sessionRef = useRef<any>(null);
   const isMicMutedRef = useRef(isMicMuted);
   const isSpeakerMutedRef = useRef(isSpeakerMuted);
+  const currentSpokenInputRef = useRef<string>("");
+  const activeTurnBlockedRef = useRef<boolean>(false);
 
   // Web Audio API refs
   const captureAudioCtxRef = useRef<AudioContext | null>(null);
@@ -533,7 +538,12 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
   }, [transcripts, isOpen]);
 
   const appendOrUpdateTranscript = useCallback(
-    (role: "user" | "model" | "tool" | "system", text: string, isFinal = false, toolName?: string) => {
+    (
+      role: "user" | "model" | "tool" | "system" | "guardrail",
+      text: string,
+      isFinal = false,
+      toolName?: string
+    ) => {
       if (!text.trim()) return;
       setTranscripts((prev) => {
         const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -564,6 +574,31 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
     },
     []
   );
+
+  const triggerSpokenGuardrailRefusal = useCallback((reason?: string) => {
+    setGuardrailBlocksCount((c) => c + 1);
+    appendOrUpdateTranscript(
+      "guardrail",
+      `${reason ? `[Blocked: ${reason}] ` : ""}${VOICE_GUARDRAIL_REFUSAL_MESSAGE}`,
+      true
+    );
+    if (
+      !isSpeakerMutedRef.current &&
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(
+          "I am restricted exclusively to the Skill Passport and GrowthLens project, so I cannot answer questions outside of this project."
+        );
+        utter.rate = 1.05;
+        window.speechSynthesis.speak(utter);
+      } catch {
+        // ignore browser speech synthesis errors
+      }
+    }
+  }, [appendOrUpdateTranscript]);
 
   // Stop all active audio output immediately (used on interruption or disconnect)
   const clearPlaybackQueue = useCallback(() => {
@@ -1036,11 +1071,53 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
                   // Handle interruption: immediately stop speaker playback
                   if (content.interrupted) {
                     clearPlaybackQueue();
+                    activeTurnBlockedRef.current = false;
+                    currentSpokenInputRef.current = "";
                     setStatus("connected");
                   }
 
-                  // Process all parts in modelTurn (audio chunks and/or text)
-                  if (content.modelTurn?.parts) {
+                  // Input Audio Transcriptions & Real-Time Guardrail Check
+                  if (content.inputTranscription?.text) {
+                    currentSpokenInputRef.current += content.inputTranscription.text;
+                    appendOrUpdateTranscript("user", content.inputTranscription.text, false);
+
+                    // Immediately block explicit prompt-injections or out-of-scope topics mid-utterance
+                    if (!activeTurnBlockedRef.current) {
+                      const streamingCheck = evaluateProjectScopeGuardrail(
+                        currentSpokenInputRef.current,
+                        snapshotRef.current
+                      );
+                      if (
+                        !streamingCheck.allowed &&
+                        (streamingCheck.category === "blocked_prompt_injection" ||
+                          streamingCheck.category === "blocked_out_of_scope_topic")
+                      ) {
+                        activeTurnBlockedRef.current = true;
+                        clearPlaybackQueue();
+                        triggerSpokenGuardrailRefusal(streamingCheck.reason);
+                      }
+                    }
+                  }
+
+                  // Before playing any model audio or showing model output, verify full user utterance against project guardrail
+                  if (
+                    (content.modelTurn?.parts || content.outputTranscription?.text) &&
+                    !activeTurnBlockedRef.current &&
+                    currentSpokenInputRef.current.trim().split(/\s+/).length >= 3
+                  ) {
+                    const fullTurnCheck = evaluateProjectScopeGuardrail(
+                      currentSpokenInputRef.current,
+                      snapshotRef.current
+                    );
+                    if (!fullTurnCheck.allowed) {
+                      activeTurnBlockedRef.current = true;
+                      clearPlaybackQueue();
+                      triggerSpokenGuardrailRefusal(fullTurnCheck.reason);
+                    }
+                  }
+
+                  // Process all parts in modelTurn (only if turn is NOT blocked by guardrail)
+                  if (content.modelTurn?.parts && !activeTurnBlockedRef.current) {
                     for (const part of content.modelTurn.parts) {
                       if (part.inlineData?.data) {
                         enqueuePcm24kAudio(part.inlineData.data);
@@ -1048,15 +1125,14 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
                     }
                   }
 
-                  // Input and Output Audio Transcriptions
-                  if (content.inputTranscription?.text) {
-                    appendOrUpdateTranscript("user", content.inputTranscription.text, false);
-                  }
-                  if (content.outputTranscription?.text) {
+                  // Output Audio Transcriptions (only if turn is NOT blocked by guardrail)
+                  if (content.outputTranscription?.text && !activeTurnBlockedRef.current) {
                     appendOrUpdateTranscript("model", content.outputTranscription.text, false);
                   }
 
                   if (content.turnComplete) {
+                    activeTurnBlockedRef.current = false;
+                    currentSpokenInputRef.current = "";
                     setTranscripts((prev) =>
                       prev.map((t, i) => (i >= prev.length - 2 ? { ...t, isFinal: true } : t))
                     );
@@ -1166,6 +1242,7 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
     enqueuePcm24kAudio,
     executeVoiceToolCall,
     stopSession,
+    triggerSpokenGuardrailRefusal,
   ]);
 
   // Toggle mic mute and send Hybrid VAD audioStreamEnd when muting
@@ -1189,13 +1266,24 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
     });
   }, [clearPlaybackQueue]);
 
-  // Send text message in the active Live session (or start session and send)
+  // Send text message in the active Live session (or start session and send), enforcing strict project-only guardrails
   const sendTextPrompt = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       appendOrUpdateTranscript("user", trimmed, true);
       setTextInput("");
+
+      // Pre-flight guardrail evaluation: block any out-of-project or prompt-injection queries before calling Gemini
+      const guardCheck = evaluateProjectScopeGuardrail(
+        trimmed,
+        snapshotRef.current || liveSnapshot
+      );
+      if (!guardCheck.allowed) {
+        clearPlaybackQueue();
+        triggerSpokenGuardrailRefusal(guardCheck.reason);
+        return;
+      }
 
       if (sessionRef.current && status !== "disconnected" && status !== "error") {
         try {
@@ -1214,7 +1302,14 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
         }, 800);
       }
     },
-    [appendOrUpdateTranscript, startSession, status]
+    [
+      appendOrUpdateTranscript,
+      clearPlaybackQueue,
+      liveSnapshot,
+      startSession,
+      status,
+      triggerSpokenGuardrailRefusal,
+    ]
   );
 
   // Save custom API key to localStorage
@@ -1441,7 +1536,7 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
               </div>
             </div>
 
-            {/* Live Context Pill Strip */}
+            {/* Live Context & Project-Only Guardrail Pill Strip */}
             <div className="px-3.5 py-2 bg-[#FBF1CF] border-b border-[#171717]/15 flex items-center justify-between gap-2 text-[10px]">
               <div className="flex items-center gap-1.5 truncate font-semibold text-[#171717]/85">
                 <span
@@ -1465,9 +1560,15 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
                   </strong>
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full border border-[#171717]/25 bg-white/80 font-mono font-bold text-[9px] text-[#171717] shrink-0">
-                {liveSnapshot.careerSummary.activeTargetRole?.title || "All Domains"}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-700/35 bg-emerald-50 font-mono font-bold text-[9px] text-emerald-900"
+                  title="Strict Project-Only Guardrail Active: Only answers questions about SkillPassport, GrowthLens, and your workspace."
+                >
+                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                  Project Guardrail{guardrailBlocksCount > 0 ? ` (${guardrailBlocksCount} blocked)` : ""}
+                </span>
+              </div>
             </div>
 
             {/* Settings Drawer (API Key, Model, Voice Selector) */}
@@ -1485,7 +1586,7 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
                     }`}
                   >
                     {hasServerKey
-                      ? `${serverKeyCount || 5} Server Keys Active (Auto-Rotate)`
+                      ? `${serverKeyCount || 8} Server Keys Active (Auto-Rotate)`
                       : customApiKey.trim()
                         ? "Custom Key Saved"
                         : "API Key Needed"}
@@ -1742,6 +1843,22 @@ export function GeminiVoiceProvider({ children }: { children: React.ReactNode })
                         >
                           <Terminal className="w-3 h-3 text-[#171717] shrink-0" />
                           <span className="truncate">{t.text}</span>
+                        </div>
+                      );
+                    }
+                    if (t.role === "guardrail") {
+                      return (
+                        <div
+                          key={t.id}
+                          className="p-2.5 rounded-xl bg-amber-50 border-[1.5px] border-[#171717] shadow-[1.5px_1.5px_0_0_#171717] text-[11px] font-medium text-[#171717] flex items-start gap-2"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="flex-1 leading-snug">
+                            <div className="text-[9px] font-black uppercase tracking-wider text-amber-900 mb-0.5">
+                              Project-Scope Guardrail Enforced • {t.timestamp}
+                            </div>
+                            <div>{t.text}</div>
+                          </div>
                         </div>
                       );
                     }
