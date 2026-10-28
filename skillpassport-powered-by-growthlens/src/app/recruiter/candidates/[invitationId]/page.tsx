@@ -283,7 +283,7 @@ export default function CandidatePassportReviewPage() {
     return (
       <div className="flex-1 p-16 text-center text-xs text-stone-500">
         <RotateCw className="w-6 h-6 animate-spin mx-auto mb-2 text-stone-400" />
-        Loading candidate Skill Passport & verified proof...
+        Loading candidate Skill Passport &amp; verified proof...
       </div>
     );
   }
@@ -361,6 +361,7 @@ export default function CandidatePassportReviewPage() {
             <option value="rejected">Not Moving Forward</option>
           </select>
         </div>
+      </div>
       </div>
         {/* Candidate Message Banner if present */}
         {invitation.candidate_message && (
@@ -451,18 +452,18 @@ export default function CandidatePassportReviewPage() {
                   onChange={(e) => setSelectedTemplate(e.target.value as PassportTemplateId)}
                   className="bg-[#FAF8F5] border border-[#1C1C1C]/20 rounded-full px-3 py-1 text-xs font-bold text-[#1C1C1C] focus:outline-none cursor-pointer"
                 >
-                  <option value="technical-portfolio">Technical Portfolio (Code & Architecture)</option>
+                  <option value="technical-portfolio">Technical Portfolio (Code &amp; Architecture)</option>
                   <option value="verified-competency">Verified Competency (Capability Matrix)</option>
                   <option value="professional-resume">Professional Resume (Executive Experience)</option>
-                  <option value="ai-ml-engineer">AI & ML Engineer (Models & Pipelines)</option>
-                  <option value="software-fullstack">Full-Stack Engineer (Systems & UI)</option>
-                  <option value="projects-impact">Projects & Impact (Outcomes & Metrics)</option>
-                  <option value="research-academic">Research & Academic (Publications & Patents)</option>
-                  <option value="minimal-privacy">Minimalist (Privacy & High Trust)</option>
+                  <option value="ai-ml-engineer">AI &amp; ML Engineer (Models &amp; Pipelines)</option>
+                  <option value="software-fullstack">Full-Stack Engineer (Systems &amp; UI)</option>
+                  <option value="projects-impact">Projects &amp; Impact (Outcomes &amp; Metrics)</option>
+                  <option value="research-academic">Research &amp; Academic (Publications &amp; Patents)</option>
+                  <option value="minimal-privacy">Minimalist (Privacy &amp; High Trust)</option>
                 </select>
                 {effectiveProjection?.templateId && selectedTemplate === effectiveProjection.templateId && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold">
-                    Candidate's Chosen Template
+                    Candidate&apos;s Chosen Template
                   </span>
                 )}
               </div>

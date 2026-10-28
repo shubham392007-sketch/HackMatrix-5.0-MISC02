@@ -154,7 +154,7 @@ export default function CustomSkillModal({
 
           <div>
             <label className="block text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] mb-1">
-              Usage Context & Application (Optional)
+              Usage Context &amp; Application (Optional)
             </label>
             <input
               type="text"
@@ -199,7 +199,7 @@ export default function CustomSkillModal({
           {/* Tags */}
           <div>
             <label className="block text-[11px] font-black uppercase tracking-wider text-[#1C1C1C] mb-1">
-              Tags & Technologies
+              Tags &amp; Technologies
             </label>
             <div className="flex gap-2 mb-2">
               <input
