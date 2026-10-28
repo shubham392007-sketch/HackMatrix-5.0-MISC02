@@ -2526,17 +2526,29 @@ def get_public_share_projection(
     Validates token, checks status and expiration, atomically increments access count,
     records telemetry, and resolves the canonical projection.
     """
-    if token.strip() in ("preview-token", "draft-preview", "preview"):
-        preview_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    clean_token = token.strip()
+    link = db.query(ShareLinkRecord).filter(
+        ShareLinkRecord.token == clean_token
+    ).first()
+
+    if clean_token in ("preview-token", "draft-preview", "preview"):
+        if link:
+            preview_user_id = link.owner_user_id
+            template_id = link.template_id or "classic"
+            permissions = link.permissions_json or {}
+        else:
+            latest_cfg = db.query(UserPassportConfigRecord).order_by(desc(UserPassportConfigRecord.updated_at)).first()
+            preview_user_id = latest_cfg.owner_user_id if latest_cfg else uuid.UUID("00000000-0000-0000-0000-000000000001")
+            template_id = latest_cfg.template_id if (latest_cfg and latest_cfg.template_id) else "classic"
+            permissions = {}
+
         return build_canonical_projection(
             owner_user_id=preview_user_id,
-            permissions={},
-            template_id="classic",
+            permissions=permissions,
+            template_id=template_id,
             db=db,
+            share_record=link,
         )
-    link = db.query(ShareLinkRecord).filter(
-        ShareLinkRecord.token == token.strip()
-    ).first()
     if not link:
         token_clean = token.strip()
         if token_clean.startswith("sh-") or token_clean.startswith("sp_") or token_clean in ("preview-token", "draft-preview", "preview"):
@@ -2711,13 +2723,22 @@ def get_public_evidence_detail(
     """
     if not _is_valid_uuid(evidence_id):
         raise HTTPException(status_code=400, detail="Invalid evidence ID format.")
-    is_preview = token.strip() in ("preview-token", "draft-preview", "preview") or token.strip().startswith("sh-")
+    clean_token = token.strip()
+    is_preview = clean_token in ("preview-token", "draft-preview", "preview") or clean_token.startswith("sh-")
+
+    ev = db.query(EvidenceItem).filter(
+        EvidenceItem.id == uuid.UUID(evidence_id),
+        EvidenceItem.is_deleted == False,
+    ).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidence item not found.")
+
     if is_preview:
-        owner_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        owner_user_id = ev.owner_user_id
         allow_detail = True
     else:
         link = db.query(ShareLinkRecord).filter(
-            ShareLinkRecord.token == token.strip(),
+            ShareLinkRecord.token == clean_token,
             ShareLinkRecord.status == "active",
         ).first()
         if not link:
@@ -2725,6 +2746,9 @@ def get_public_evidence_detail(
         if _is_expired(link.expires_at):
             raise HTTPException(status_code=410, detail="This share link has expired.")
         owner_user_id = link.owner_user_id
+        if ev.owner_user_id != owner_user_id:
+            raise HTTPException(status_code=403, detail="Evidence does not belong to this share link.")
+
         perms = link.permissions_json or {}
         valid_ev_perms = perms.get("selectedEvidencePermissions") or perms.get("selected_evidence_permissions") or {}
         ev_perms = valid_ev_perms.get(evidence_id, {})
@@ -2735,14 +2759,6 @@ def get_public_evidence_detail(
         allow_detail = bool(ev_perms.get("allowDetail", allow_detail_default))
         if access_level in ("detail_inspection", "full_inspection", "detail"):
             allow_detail = True
-
-    ev = db.query(EvidenceItem).filter(
-        EvidenceItem.id == uuid.UUID(evidence_id),
-        EvidenceItem.owner_user_id == owner_user_id,
-        EvidenceItem.is_deleted == False,
-    ).first()
-    if not ev:
-        raise HTTPException(status_code=404, detail="Evidence item not found.")
 
     # Find associated skill name
     assoc_map = db.query(EvidenceCompetencyMapping).filter(
@@ -2806,8 +2822,15 @@ def stream_public_evidence_file(
     clean_token = token.strip()
     is_preview = clean_token in ("preview-token", "draft-preview", "preview") or clean_token.startswith("sh-")
 
+    ev = db.query(EvidenceItem).filter(
+        EvidenceItem.id == uuid.UUID(evidence_id),
+        EvidenceItem.is_deleted == False,
+    ).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidence item not found.")
+
     if is_preview:
-        owner_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        owner_user_id = ev.owner_user_id
     else:
         link = db.query(ShareLinkRecord).filter(
             ShareLinkRecord.token == clean_token,
@@ -2819,19 +2842,14 @@ def stream_public_evidence_file(
             raise HTTPException(status_code=410, detail="This share link has expired.")
         owner_user_id = link.owner_user_id
 
+        if ev.owner_user_id != owner_user_id:
+            raise HTTPException(status_code=403, detail="Evidence does not belong to this share link.")
+
         perms = link.permissions_json or {}
         valid_ev_perms = perms.get("selectedEvidencePermissions") or perms.get("selected_evidence_permissions") or {}
         ev_perm = valid_ev_perms.get(evidence_id, {})
         if "shareSummary" in ev_perm and not ev_perm.get("shareSummary"):
             raise HTTPException(status_code=403, detail="Evidence item is not authorized for sharing.")
-
-    ev = db.query(EvidenceItem).filter(
-        EvidenceItem.id == uuid.UUID(evidence_id),
-        EvidenceItem.owner_user_id == owner_user_id,
-        EvidenceItem.is_deleted == False,
-    ).first()
-    if not ev:
-        raise HTTPException(status_code=404, detail="Evidence item not found.")
 
     storage_key = None
     filename = "evidence-document.pdf"
@@ -2907,10 +2925,17 @@ def send_recruiter_message(
     is_preview = clean_token in ("preview-token", "draft-preview", "preview")
 
     if is_preview:
-        recipient_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         link = db.query(ShareLinkRecord).filter(
-            ShareLinkRecord.owner_user_id == recipient_user_id,
-        ).order_by(desc(ShareLinkRecord.created_at)).first()
+            ShareLinkRecord.token == clean_token
+        ).first()
+        if link:
+            recipient_user_id = link.owner_user_id
+        else:
+            latest_cfg = db.query(UserPassportConfigRecord).order_by(desc(UserPassportConfigRecord.updated_at)).first()
+            recipient_user_id = latest_cfg.owner_user_id if latest_cfg else uuid.UUID("00000000-0000-0000-0000-000000000001")
+            link = db.query(ShareLinkRecord).filter(
+                ShareLinkRecord.owner_user_id == recipient_user_id,
+            ).order_by(desc(ShareLinkRecord.created_at)).first()
         if not link:
             link = ShareLinkRecord(
                 owner_user_id=recipient_user_id,
