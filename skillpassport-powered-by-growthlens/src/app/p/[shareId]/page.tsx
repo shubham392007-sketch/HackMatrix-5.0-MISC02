@@ -20,6 +20,7 @@ import {
   Loader2,
   ShieldAlert,
   HelpCircle,
+  Download,
 } from "lucide-react";
 import { sharingApi } from "@/lib/sharingApi";
 import { ShareProjection } from "@/types/sharing";
@@ -142,7 +143,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
           </div>
           <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 text-left space-y-1.5">
             <p className="font-semibold flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5" /> For Recruiters & Hiring Managers:
+              <Info className="w-3.5 h-3.5" /> For Recruiters &amp; Hiring Managers:
             </p>
             <p>
               Please verify you received the full, unaltered URL from the candidate. If you are the candidate, check this token in your Shared Access Management portal.
@@ -268,7 +269,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
                 </span>
               </div>
               <p className="hidden md:block text-[11px] text-[#1A1918]/60 font-medium leading-tight mt-0.5">
-                Authoritative Skill Verification & Provenance
+                Authoritative Skill Verification &amp; Provenance
               </p>
             </div>
           </div>
@@ -306,12 +307,26 @@ export default function RecruiterPassportPage({ params }: PageProps) {
             </button>
 
             <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="pill-btn pill-btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shadow-[1.5px_1.5px_0_0_#1C1C1C] font-bold disabled:opacity-50 cursor-pointer"
+              title="Download Evidence-Linked Skill Passport PDF with clickable source links"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              <span className="font-bold">{downloadingPdf ? "Exporting..." : "Download PDF"}</span>
+            </button>
+
+            <button
               onClick={handlePrint}
               className="pill-btn pill-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5 border border-[#1A1918]/15 hover:bg-[#FAF8F5]"
               title="Print or save as PDF"
             >
               <Printer className="w-3.5 h-3.5 text-[#1A1918]/70" />
-              <span className="hidden sm:inline font-medium text-[#1A1918]">Print / PDF</span>
+              <span className="hidden sm:inline font-medium text-[#1A1918]">Print</span>
             </button>
 
             {projection.allowRecruiterMessaging && (

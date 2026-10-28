@@ -364,7 +364,7 @@ export default function PassportExportPage() {
 
             {/* Print Footer Notice */}
             <div className="flex items-center justify-between border-t border-black/20 pt-3 text-[10px] text-stone-500 font-mono mt-8">
-              <span>SkillPassport Trust & Verification Protocol · PostgreSQL Audited Proof</span>
+              <span>SkillPassport Trust &amp; Verification Protocol · PostgreSQL Audited Proof</span>
               <span>Authorized Credential Projection</span>
             </div>
           </div>
