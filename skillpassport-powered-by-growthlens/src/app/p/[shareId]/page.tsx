@@ -40,6 +40,7 @@ export default function RecruiterPassportPage({ params }: PageProps) {
   const [copied, setCopied] = useState<boolean>(false);
   const [contactOpen, setContactOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadPublicPassport() {
@@ -76,6 +77,28 @@ export default function RecruiterPassportPage({ params }: PageProps) {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+
+  const handleDownloadPdf = async () => {
+    if (!shareId) return;
+    setDownloadingPdf(true);
+    try {
+      const { blob, filename } = await sharingApi.downloadPublicPassportPdf(shareId);
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(anchor);
+    } catch (err: any) {
+      console.error("PDF download failed:", err);
+      alert(err.message || "Failed to download evidence-linked PDF.");
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 

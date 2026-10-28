@@ -5,7 +5,7 @@ import { sharingApi } from "@/lib/sharingApi";
 import TemplateDispatcher from "@/components/passport/templates/TemplateDispatcher";
 import PublicEvidenceModal from "@/components/passport/PublicEvidenceModal";
 import { ShareProjection, PassportTemplateId } from "@/types/sharing";
-import { Printer, Eye } from "lucide-react";
+import { Printer, Eye, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -207,6 +207,32 @@ export default function CandidatePassportReviewPage() {
     };
   }, [projection, data, invitationId]);
 
+
+  const handleDownloadPdf = async () => {
+    const token = data?.invitation?.share_link?.token || data?.passport?.shareId || composedProjection?.shareId;
+    if (!token) {
+      alert("No active share token available for this candidate export.");
+      return;
+    }
+    setDownloadingPdf(true);
+    try {
+      const { blob, filename } = await sharingApi.downloadPublicPassportPdf(token);
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(anchor);
+    } catch (err: any) {
+      console.error("Recruiter PDF download failed:", err);
+      alert(err.message || "Failed to download candidate Skill Passport PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     setStatusUpdating(true);
     try {
@@ -303,7 +329,22 @@ export default function CandidatePassportReviewPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-[#FAF8F5] p-1 rounded-full border-[1.5px] border-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C] self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="pill-btn pill-btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1.5 shadow-[1.5px_1.5px_0_0_#1C1C1C] font-black disabled:opacity-50"
+            title="Download candidate Skill Passport with evidence hyperlinks"
+          >
+            {downloadingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>{downloadingPdf ? "Exporting..." : "Download Passport PDF"}</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 bg-[#FAF8F5] p-1 rounded-full border-[1.5px] border-[#1C1C1C] shadow-[1.5px_1.5px_0_0_#1C1C1C] self-start sm:self-auto">
           <span className="text-[11px] font-bold text-stone-600 pl-2">Stage:</span>
           <select
             value={pipelineStatus}

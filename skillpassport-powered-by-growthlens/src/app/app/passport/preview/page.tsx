@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  Download,
   Eye,
   ShieldCheck,
   Link2,
@@ -35,10 +36,42 @@ function PassportPreviewContent() {
   const { draftPermissions, skills, evidenceItems, targetRoles, userProfile } = useEvidence();
 
   const [selectedTemplate, setSelectedTemplate] = useState<PassportTemplateId>("verified-competency");
+  const [generatingPdf, setGeneratingPdf] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [projection, setProjection] = useState<ShareProjection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isFinalizedFromPermissions, setIsFinalizedFromPermissions] = useState<boolean>(false);
+
+
+  const handleDownloadPdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      let activePermissions = undefined;
+      if (typeof window !== "undefined") {
+        try {
+          const storedFinalized = localStorage.getItem("sp_finalized_permissions");
+          if (storedFinalized) activePermissions = JSON.parse(storedFinalized);
+        } catch {}
+      }
+      const { blob, filename } = await sharingApi.downloadPassportPdf({
+        templateId: selectedTemplate,
+        permissions: activePermissions,
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(anchor);
+    } catch (err: any) {
+      console.error("PDF download failed:", err);
+      alert(err.message || "Failed to download PDF.");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const loadPreview = async (templateId: PassportTemplateId = selectedTemplate) => {
     setLoading(true);
@@ -291,6 +324,19 @@ function PassportPreviewContent() {
                 {selectedTemplate.replace("_", " ").toUpperCase()}
               </span>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={generatingPdf}
+                  className="px-2.5 py-1 rounded-xl bg-white border border-[#1C1C1C]/20 hover:bg-stone-100 text-[#1C1C1C] text-[11px] font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  title="Download Evidence-Linked PDF"
+                >
+                  {generatingPdf ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-[#1C1C1C]" />
+                  ) : (
+                    <Download className="w-3 h-3 text-[#059669]" />
+                  )}
+                  <span>{generatingPdf ? "Exporting..." : "Download PDF"}</span>
+                </button>
                 <Link
                   href="/app/passport/export"
                   className="text-ink/70 hover:text-ink flex items-center gap-1 text-[11px] font-semibold"

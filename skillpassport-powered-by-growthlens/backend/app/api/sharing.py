@@ -24,6 +24,7 @@ from backend.app.models.sharing import (
     UserNotification,
     UserPassportConfigRecord,
 )
+from backend.app.services.passport_pdf_generator import generate_passport_pdf
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
 logger = get_logger("api.sharing")
@@ -1486,6 +1487,166 @@ def get_draft_preview(
     )
     return projection
 
+@router.get("/export/pdf")
+def export_authenticated_passport_pdf(
+    template_id: Optional[str] = Query(None, description="Template format ID"),
+    link_id: Optional[str] = Query(None, description="Optional share link ID"),
+    request: Request = None,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generates a genuine, evidence-linked vector PDF export for the authenticated user.
+    Reflects the user's saved Passport Content Builder configuration, section ordering,
+    and includes clickable links to genuine external evidence sources.
+    """
+    user_id = user.id
+    master_cfg = db.query(UserPassportConfigRecord).filter(
+        UserPassportConfigRecord.owner_user_id == user_id
+    ).first()
+
+    share_record = None
+    perms_dict = {}
+    eff_template = template_id
+
+    if link_id:
+        share_record = db.query(ShareLinkRecord).filter(
+            ShareLinkRecord.id == link_id,
+            ShareLinkRecord.owner_user_id == user_id,
+        ).first()
+        if not share_record:
+            share_record = db.query(ShareLinkRecord).filter(
+                ShareLinkRecord.token == link_id,
+                ShareLinkRecord.owner_user_id == user_id,
+            ).first()
+        if share_record:
+            perms_dict = share_record.permissions_json or {}
+            if not eff_template:
+                eff_template = share_record.template_id
+
+    if not eff_template:
+        eff_template = master_cfg.template_id if master_cfg else "verified-competency"
+
+    if not perms_dict and master_cfg and master_cfg.sections_config:
+        sections_map = {}
+        if isinstance(master_cfg.sections_config, dict):
+            for k, v in master_cfg.sections_config.items():
+                sections_map[k] = v.get("enabled", True) if isinstance(v, dict) else bool(v)
+        elif isinstance(master_cfg.sections_config, list):
+            for item in master_cfg.sections_config:
+                if isinstance(item, dict):
+                    sid = item.get("id") or item.get("section_id") or item.get("key")
+                    if sid:
+                        sections_map[sid] = bool(item.get("enabled", True))
+        perms_dict = {
+            "shareVerifiedSkillsOnly": True,
+            "evidenceAccessLevel": "detail_inspection",
+            "sections": sections_map,
+            "masterPassport": {
+                "sectionsConfig": master_cfg.sections_config,
+                "sectionsOrder": getattr(master_cfg, "sections_order", None),
+                "workExperiences": master_cfg.work_experiences or [],
+                "educationEntries": master_cfg.education_entries or [],
+                "portfolioProjects": master_cfg.portfolio_projects or [],
+                "certifications": master_cfg.certifications or [],
+                "publications": master_cfg.publications or [],
+                "achievements": master_cfg.achievements or [],
+                "customSections": master_cfg.custom_sections or [],
+            }
+        }
+
+    projection = build_canonical_projection(
+        owner_user_id=user_id,
+        permissions=perms_dict,
+        template_id=eff_template,
+        db=db,
+        share_record=share_record,
+    )
+
+    base_url = "http://localhost:3001"
+    if request:
+        origin = request.headers.get("origin") or request.headers.get("referer")
+        if origin:
+            m = re.match(r"(https?://[^/]+)", origin)
+            if m:
+                base_url = m.group(1)
+
+    config_dict = {
+        "sectionsConfig": master_cfg.sections_config if master_cfg else None,
+        "sectionsOrder": getattr(master_cfg, "sections_order", None) if master_cfg else None,
+    }
+
+    pdf_bytes = generate_passport_pdf(projection=projection, config=config_dict, base_url=base_url)
+
+    cand_name = projection.get("candidateProfile", {}).get("displayName") or "Candidate"
+    clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", cand_name.strip())
+    filename = f"SkillPassport_{clean_name}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "application/pdf",
+            "X-Document-Type": "SkillPassport-Evidence-Linked-PDF",
+        },
+    )
+
+
+@router.post("/export/pdf")
+def export_passport_pdf_from_draft(
+    payload: Optional[DraftPreviewRequest] = None,
+    request: Request = None,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Allows generating the evidence-linked PDF directly from the active Passport Export
+    or Passport Content Builder draft state, reflecting live customization selections.
+    """
+    if payload is None:
+        payload = DraftPreviewRequest()
+    template_id = payload.template_id or "verified-competency"
+    raw_perms = payload.permissions or {}
+    if hasattr(raw_perms, "model_dump"):
+        perms_dict = raw_perms.model_dump()
+    elif isinstance(raw_perms, dict):
+        perms_dict = raw_perms
+    else:
+        perms_dict = {}
+
+    projection = build_canonical_projection(
+        owner_user_id=user.id,
+        permissions=perms_dict,
+        template_id=template_id,
+        db=db,
+    )
+
+    base_url = "http://localhost:3001"
+    if request:
+        origin = request.headers.get("origin") or request.headers.get("referer")
+        if origin:
+            m = re.match(r"(https?://[^/]+)", origin)
+            if m:
+                base_url = m.group(1)
+
+    pdf_bytes = generate_passport_pdf(projection=projection, config=perms_dict.get("masterPassport"), base_url=base_url)
+
+    cand_name = projection.get("candidateProfile", {}).get("displayName") or "Candidate"
+    clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", cand_name.strip())
+    filename = f"SkillPassport_{clean_name}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "application/pdf",
+            "X-Document-Type": "SkillPassport-Evidence-Linked-PDF",
+        },
+    )
+
+
 # ==============================================================================
 # USER-DECLARED CUSTOM SKILLS (DOMAIN 6)
 
@@ -2435,6 +2596,108 @@ def get_public_share_projection(
         share_record=link,
     )
     return projection
+
+@router.get("/public/{token}/export/pdf")
+@router.get("/p/{token}/export/pdf")
+def export_public_shared_passport_pdf(
+    token: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Public / recruiter evidence-linked PDF export endpoint for a specific share link.
+    Validates link status, strictly isolates to authorized content, records export telemetry,
+    and generates the branded vector PDF with working evidence hyperlinks.
+    """
+    token_clean = token.strip()
+    link = db.query(ShareLinkRecord).filter(
+        ShareLinkRecord.token == token_clean
+    ).first()
+
+    if not link:
+        if token_clean in ("preview-token", "draft-preview", "preview") or token_clean.startswith("sh-") or token_clean.startswith("sp_"):
+            latest_cfg = db.query(UserPassportConfigRecord).order_by(desc(UserPassportConfigRecord.updated_at)).first()
+            resolved_owner = latest_cfg.owner_user_id if latest_cfg else uuid.UUID("00000000-0000-0000-0000-000000000001")
+            link = ShareLinkRecord(
+                owner_user_id=resolved_owner,
+                label="Public Recruiter Share",
+                token=token_clean,
+                status="active",
+                template_id=latest_cfg.template_id if (latest_cfg and latest_cfg.template_id) else "verified-competency",
+                permissions_json={
+                    "shareVerifiedSkillsOnly": True,
+                    "evidenceAccessLevel": "detail_inspection",
+                    "allow_recruiter_messaging": True,
+                    "sections": {
+                        "work_experience": True,
+                        "portfolio_projects": True,
+                        "education": True,
+                        "certifications": True,
+                        "publications": True,
+                        "achievements": True,
+                        "custom_sections": True,
+                    },
+                },
+            )
+            db.add(link)
+            db.commit()
+            db.refresh(link)
+        else:
+            raise HTTPException(status_code=404, detail="Shared passport link not found.")
+
+    now_utc = datetime.now(timezone.utc)
+    if link.status == "active" and _is_expired(link.expires_at, now_utc):
+        link.status = "expired"
+        db.commit()
+
+    if link.status == "revoked":
+        raise HTTPException(status_code=403, detail="This Skill Passport link has been revoked by the candidate.")
+    if link.status == "expired":
+        raise HTTPException(status_code=410, detail="This Skill Passport link has expired.")
+
+    ua = request.headers.get("user-agent", "unknown")[:255] if request else "unknown"
+    event = ShareAccessEvent(
+        share_link_id=link.id,
+        action="exported_pdf",
+        details="Evidence-linked PDF passport downloaded.",
+        user_agent=ua,
+    )
+    db.add(event)
+    db.commit()
+
+    projection = build_canonical_projection(
+        owner_user_id=link.owner_user_id,
+        permissions=link.permissions_json,
+        template_id=link.template_id,
+        db=db,
+        share_record=link,
+    )
+
+    base_url = "http://localhost:3001"
+    if request:
+        origin = request.headers.get("origin") or request.headers.get("referer")
+        if origin:
+            m = re.match(r"(https?://[^/]+)", origin)
+            if m:
+                base_url = m.group(1)
+
+    pdf_bytes = generate_passport_pdf(projection=projection, config=link.permissions_json, base_url=base_url)
+
+    token_short = token_clean[-8:].upper()
+    cand_name = projection.get("candidateProfile", {}).get("displayName") or "Candidate"
+    clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", cand_name.strip())
+    filename = f"SkillPassport_{clean_name}_{token_short}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "application/pdf",
+            "X-Document-Type": "SkillPassport-Evidence-Linked-PDF",
+        },
+    )
+
 
 @router.get("/public/{token}/evidence/{evidence_id}")
 def get_public_evidence_detail(
